@@ -4,29 +4,45 @@ Which stops lose service under the Bus Line Refresh, weighted by boardings.
 
 Joins three sources on the numeric GTFS stop id:
   - current GTFS stop_times  -> which stops are served today
-  - proposed_stop_sequences  -> which stops are served in the proposal (Remix)
+  - proposed GTFS stop_times -> which stops are served in the proposal
   - PRT stop usage, May 2025 -> average daily boardings per stop and per route
 
 Two questions, deliberately kept separate:
   A. Which stops lose ALL service, and how many boardings sit at them?
   B. Which riders lose THEIR route, even where the stop keeps other service?
 
-Confidence tiering matters here. The Remix map is built on a 2023 base feed, so
-a stop that is served today but missing from Remix entirely may have been added
-after 2023 rather than dropped by the plan. Those are reported separately as
-"unverifiable" and are never mixed into the headline.
+THE CONFIDENCE TIER IS GONE, and that is the point of this revision.
+
+The proposed side used to come from the Remix public map, whose base feed is
+2023. A stop served today and absent from Remix could therefore be either a
+stop the plan drops or a stop built after 2023, and the two were
+indistinguishable from inside the repo -- so anything in that position went
+into an "unverifiable" bucket and was kept out of the headline. Sixteen stops
+sat there.
+
+PRT's own GTFS for the proposed network settles it: the feed is authoritative
+about which stops the proposal serves, so absence is absence. All 16 formerly
+unverifiable stops are genuine losses. Remix turns out to have been close --
+5,513 of its 5,515 served stops are in PRT's feed -- but it also carried 107
+stops the proposal does not serve, which is exactly the error the tier existed
+to absorb.
+
+What has NOT changed is the walk-radius check below. Stop ids are still
+renumbered, consolidated and nudged across intersections between feeds, so a
+vanished id is still not a lost bus, and every stop flagged as losing service
+is still checked against the nearest stop the proposal actually serves.
 
 Run ingest_blr.py first.  Usage: python3 analyze_service_loss.py
 """
 
 import csv
-import io
 import json
 import urllib.request
 import urllib.parse
-import zipfile
 from collections import defaultdict
 from pathlib import Path
+
+import gtfs
 
 DATA = Path("data")
 RAW = DATA / "raw"
@@ -110,19 +126,13 @@ def load_usage():
 
 
 def served_today():
-    """Stop ids that actually have trips in the current feed, and their routes."""
-    z = zipfile.ZipFile(RAW / "current_gtfs.zip")
-    trip_route = {t["trip_id"]: t["route_id"]
-                  for t in csv.DictReader(
-                      io.TextIOWrapper(z.open("trips.txt"), "utf-8-sig"))}
-    stops, stop_routes = set(), defaultdict(set)
-    for st in csv.DictReader(io.TextIOWrapper(z.open("stop_times.txt"), "utf-8-sig")):
-        sid = st["stop_id"]
-        stops.add(sid)
-        r = trip_route.get(st["trip_id"])
-        if r:
-            stop_routes[sid].add(r)
-    return stops, stop_routes
+    """Stop ids that actually have trips in the current feed, and their routes.
+
+    All modes, not bus only: the question is whether the corner keeps a
+    vehicle, and a stop that keeps only the T has not lost all service.
+    """
+    routes, _coords = gtfs.stop_routes(gtfs.current(), bus_only=False)
+    return set(routes), routes
 
 
 def main():
@@ -130,14 +140,9 @@ def main():
     usage = load_usage()
     stops_now, stop_routes_now = served_today()
 
-    prop_stops = list(csv.DictReader(open(DATA / "proposed_stops.csv")))
-    uuid_to_gtfs = {s["stop_uuid"]: s["gtfs_stop_id"] for s in prop_stops}
-    remix_inventory = {s["gtfs_stop_id"] for s in prop_stops if s["gtfs_stop_id"]}
-
-    seqs = list(csv.DictReader(open(DATA / "proposed_stop_sequences.csv")))
-    prop_served = {uuid_to_gtfs.get(r["stop_uuid"]) for r in seqs}
-    prop_served.discard("")
-    prop_served.discard(None)
+    # The proposed side, from PRT's own feed. All modes, to match served_today().
+    prop_routes, prop_coords = gtfs.stop_routes(gtfs.proposed(), bus_only=False)
+    prop_served = set(prop_routes)
 
     cross = list(csv.DictReader(open(DATA / "route_crosswalk.csv")))
     discontinued = {r["current_route"].split()[0] for r in cross
@@ -156,9 +161,7 @@ def main():
     # ---- A. stops losing all service ------------------------------------
     # Coordinates of every stop the proposal actually serves, for the
     # walk-radius test below.
-    coords = {s["gtfs_stop_id"]: (float(s["lat"]), float(s["lon"]))
-              for s in prop_stops if s["gtfs_stop_id"]}
-    served_pts = [coords[c] for c in prop_served if c in coords]
+    served_pts = [prop_coords[c] for c in prop_served if c in prop_coords]
     cell = WALK_RADIUS_M / 111_320 * 2
     grid = build_grid(served_pts, cell)
 
@@ -168,23 +171,21 @@ def main():
             continue  # not served today; nothing to lose
         lat, lon = fnum(u["stop_lat"]), fnum(u["stop_lon"])
         if code in prop_served:
-            status, tier, dist = "kept", "confirmed", 0.0
+            status, dist = "kept", 0.0
         elif not (lat and lon):
-            status, tier, dist = "loses_all_service", "unverifiable", float("inf")
+            # No coordinates in the usage extract, so the walk-radius test
+            # cannot run. The proposed feed still says the stop is unserved.
+            status, dist = "loses_all_service_unplaced", float("inf")
         else:
             # Fast path first; fall back to an exact scan so the reported
             # distance is real rather than "somewhere beyond the grid".
             dist = nearest_m(lat, lon, near_grid(lat, lon, grid, cell))
             if dist > WALK_RADIUS_M:
                 dist = nearest_m(lat, lon, served_pts)
-            if dist <= WALK_RADIUS_M:
-                # Another served stop is right there - the stop id changed,
-                # the service did not go away.
-                status, tier = "kept_nearby", "confirmed"
-            elif code in remix_inventory:
-                status, tier = "loses_all_service", "confirmed"
-            else:
-                status, tier = "loses_all_service", "unverifiable"
+            # Another served stop right there means the stop id changed, not
+            # that the service went away.
+            status = ("kept_nearby" if dist <= WALK_RADIUS_M
+                      else "loses_all_service")
         rows.append({
             "stop_id": code,
             "stop_name": u["stop_name"],
@@ -192,7 +193,6 @@ def main():
             "hood": u["HOOD"] or "",
             "lat": u["stop_lat"], "lon": u["stop_lon"],
             "status": status,
-            "confidence": tier,
             "metres_to_nearest_proposed_stop": (
                 "" if dist == float("inf") else round(dist)),
             "weekday_boardings": round(fnum(u[f"B_W_{MONTH}"]), 2),
@@ -201,10 +201,8 @@ def main():
             "current_routes": ";".join(sorted(stop_routes_now.get(code, ()))),
         })
 
-    lost = [r for r in rows if r["status"] == "loses_all_service"
-            and r["confidence"] == "confirmed"]
-    unver = [r for r in rows if r["status"] == "loses_all_service"
-             and r["confidence"] == "unverifiable"]
+    lost = [r for r in rows if r["status"] == "loses_all_service"]
+    unplaced = [r for r in rows if r["status"] == "loses_all_service_unplaced"]
     kept = [r for r in rows if r["status"].startswith("kept")]
     nearby = [r for r in rows if r["status"] == "kept_nearby"]
     tot_wk = sum(r["weekday_boardings"] for r in rows)
@@ -221,8 +219,10 @@ def main():
     print(f"  lose all service:        {len(lost):5d}  "
           f"{sum(r['weekday_boardings'] for r in lost):10,.0f} wkdy boardings"
           f"  ({sum(r['weekday_boardings'] for r in lost) / tot_wk:.1%} of system)")
-    print(f"  unverifiable (see note): {len(unver):5d}  "
-          f"{sum(r['weekday_boardings'] for r in unver):10,.0f} wkdy boardings")
+    if unplaced:
+        print(f"  unplaced (no coords):    {len(unplaced):5d}  "
+              f"{sum(r['weekday_boardings'] for r in unplaced):10,.0f} wkdy "
+              f"boardings  <- unserved, but the walk test could not run")
 
     print("\n  Highest-ridership stops losing all service "
           f"(no proposed stop within {WALK_RADIUS_M}m):")
@@ -266,11 +266,12 @@ def main():
         w.writeheader()
         w.writerows(sorted(rows, key=lambda x: -x["weekday_boardings"]))
     print(f"\nWrote {out} ({len(rows)} rows)")
-    print(f"\nNOTE: boardings are May 2025 daily averages - the most recent month\n"
-          f"      PRT has published at stop level. 'unverifiable' stops are served\n"
-          f"      today but absent from the Remix 2023 base map, so a drop cannot\n"
-          f"      be distinguished from a post-2023 stop addition. Verify those\n"
-          f"      individually before citing them.")
+    print("\nNOTE: boardings are May 2025 daily averages - the most recent month\n"
+          "      PRT has published at stop level, and 'unadjusted, unofficial\n"
+          "      totals' by PRT's own disclaimer, which may understate ridership\n"
+          "      by up to 30%. Both networks' stop inventories now come from\n"
+          "      GTFS, so a stop absent from the proposal is absent: the\n"
+          "      'unverifiable' tier the Remix 2023 base map forced is retired.")
 
 
 if __name__ == "__main__":

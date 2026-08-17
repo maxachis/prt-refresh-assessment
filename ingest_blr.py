@@ -2,11 +2,18 @@
 """
 Ingest PRT Bus Line Refresh (proposed final network) data into tidy CSVs.
 
-Sources, all verified live 2026-08-17:
+Sources 1-5 verified live 2026-08-17:
   1. Route crosswalk  - server-rendered HTML table on the Find My Route page
   2. Service tables   - three PDFs with a clean text layer (span + headway by period)
   3. Exhibit A        - official major-service-change narrative (30pp, text layer)
   4. Current GTFS     - the baseline to compare the proposal against
+  5. Remix public API - proposed stops/routes; now superseded for service by (6),
+                        but still the only source for the on-demand zones
+  6. Proposed GTFS    - PRT's own feed for the proposed network. Supplied by
+                        email 2026-08-11, NOT fetchable, committed verbatim
+                        under data/raw/proposed_gtfs/. This step only checks it
+                        is present; verify_proposed_gtfs.py checks it agrees
+                        with (2).
 
 Requires: curl + pdftotext (poppler-utils). No third-party Python packages.
 
@@ -118,39 +125,42 @@ HEADER_RE = re.compile(r"4-6a\s+6-9a\s+9a-3p\s+3-6p\s+6-8p\s+8-11p\s+11p-4a")
 CELL_RE = re.compile(r"\d+|n/a")
 
 
-def _period_spans(text):
-    """Character spans of the seven headway columns, read off the header line.
+def _period_centers(page):
+    """Column centres of the seven headway columns, read off this page's header.
 
     Values are assigned by column position rather than by counting tokens,
     because an unserved period may be left blank instead of "n/a".
+
+    Every page repeats the header, and the columns drift a few characters
+    between pages (the weekday table puts "4-6a" at column 70, 72, 74, 73 on
+    its four pages). The centres must therefore be measured on the page whose
+    rows they are applied to: measuring once and reusing them across pages
+    pushes the Late and Owl cells into the same column on page 3, where the
+    later cell silently overwrites the earlier one and Late reads as blank.
+
+    Returns None for a page with no header - i.e. one with no table on it.
     """
-    m = HEADER_RE.search(text)
+    m = HEADER_RE.search(page)
     if not m:
-        raise SystemExit("service-table header not found - layout changed")
-    line = text[text.rfind("\n", 0, m.start()) + 1:
-                text.find("\n", m.start())]
-    spans = []
+        return None
+    line = page[page.rfind("\n", 0, m.start()) + 1:
+                page.find("\n", m.start())]
+    centers, end = [], 0
     for label in ("4-6a", "6-9a", "9a-3p", "3-6p", "6-8p", "8-11p", "11p-4a"):
-        i = line.index(label, spans[-1][1] if spans else 0)
-        spans.append((i, i + len(label)))
-    return spans
+        i = line.index(label, end)
+        end = i + len(label)
+        centers.append((i + end) / 2)
+    return centers
 
 
-def parse_service_table(pdf_path, day_type):
-    """Extract one row per route: span of service + headway per time period.
+def _parse_service_page(page, centers, day_type, pdf_path):
+    """Rows from one page of a service table, given that page's column centres.
 
     Route names wrap onto the preceding line in these PDFs, so a name carried
     on the previous line is stitched back on.
     """
-    text = subprocess.run(
-        ["pdftotext", "-layout", str(pdf_path), "-"],
-        capture_output=True, text=True, check=True,
-    ).stdout
-    spans = _period_spans(text)
-    centers = [(a + b) / 2 for a, b in spans]
-
     rows, prev = [], ""
-    for line in text.splitlines():
+    for line in page.splitlines():
         m = ROW_RE.match(line)
         if not m:
             prev = line
@@ -177,13 +187,44 @@ def parse_service_table(pdf_path, day_type):
         }
         row.update({p: "" for p in PERIODS})
 
-        # Slot each headway into the period column it sits closest to.
+        # Slot each headway into the period column it sits closest to. Two
+        # cells landing in one column means the centres no longer describe this
+        # page, so fail loudly rather than dropping a period's service.
+        taken = {}
         for cell in CELL_RE.finditer(line, m.end()):
             mid = (cell.start() + cell.end()) / 2
             nearest = min(range(len(centers)), key=lambda i: abs(centers[i] - mid))
+            if nearest in taken:
+                raise SystemExit(
+                    f"{Path(pdf_path).name}: {day_type} route "
+                    f"{m.group('final')} has two headway cells "
+                    f"({taken[nearest]!r} and {cell.group()!r}) in the "
+                    f"{PERIODS[nearest]} column - column positions drifted:\n"
+                    f"  {line.rstrip()}")
+            taken[nearest] = cell.group()
             row[PERIODS[nearest]] = "" if cell.group() == "n/a" else cell.group()
         rows.append(row)
+    return rows
 
+
+def parse_service_table(pdf_path, day_type):
+    """Extract one row per route: span of service + headway per time period."""
+    text = subprocess.run(
+        ["pdftotext", "-layout", str(pdf_path), "-"],
+        capture_output=True, text=True, check=True,
+    ).stdout
+
+    rows, pages_with_table = [], 0
+    for page in text.split("\f"):
+        centers = _period_centers(page)
+        if centers is None:
+            continue
+        pages_with_table += 1
+        rows += _parse_service_page(page, centers, day_type, pdf_path)
+
+    if not pages_with_table:
+        raise SystemExit(f"service-table header not found in {pdf_path} "
+                         "- layout changed")
     if not rows:
         raise SystemExit(f"no rows parsed from {pdf_path} - layout changed")
     return rows
@@ -274,6 +315,41 @@ def parse_remix(raw_dir):
     return stops, routes, seqs
 
 
+# --- 5. proposed network GTFS ----------------------------------------------
+#
+# Unlike every other source here this one has no URL. PRT supplied it by email
+# on 2026-08-11, so it cannot be re-fetched and is committed verbatim. All this
+# step can do is confirm it is present and report what is in it; the agreement
+# check against PRT's published tables lives in verify_proposed_gtfs.py.
+
+PROPOSED_FILES = ["calendar.txt", "routes.txt", "trips.txt", "stop_times.txt",
+                  "stops.txt"]
+
+
+def check_proposed_gtfs(raw_dir):
+    d = raw_dir / "proposed_gtfs"
+    missing = [n for n in PROPOSED_FILES if not (d / n).exists()]
+    if missing:
+        print(f"  WARNING: {d} is absent or incomplete (missing {missing}).")
+        print("  Every analysis of the proposed network needs it. It is not")
+        print("  fetchable -- see DATA_SOURCES.md for provenance.")
+        return
+
+    def count(name):
+        with open(d / name, encoding="utf-8-sig") as f:
+            return max(sum(1 for _ in f) - 1, 0)
+
+    version = ""
+    if (d / "feed_info.txt").exists():
+        with open(d / "feed_info.txt", encoding="utf-8-sig") as f:
+            row = next(csv.DictReader(f), {})
+            version = row.get("feed_version", "")
+    print(f"  {d}  [{version}]")
+    for name in ("routes.txt", "stops.txt", "trips.txt", "stop_times.txt"):
+        print(f"    {name:16s} {count(name):>8,d} rows")
+    print("  Run verify_proposed_gtfs.py to check it against the published PDFs.")
+
+
 def write_csv(path, rows, fieldnames=None):
     if not rows:
         return
@@ -294,7 +370,7 @@ def main():
     raw = out / "raw"
     print("Ingesting PRT Bus Line Refresh data...\n")
 
-    print("[1/4] route crosswalk")
+    print("[1/6] route crosswalk")
     cw_html = fetch(FIND_MY_ROUTE, raw / "findmyroute.html").read_text(
         encoding="utf-8", errors="replace")
     crosswalk = parse_crosswalk(cw_html)
@@ -304,7 +380,7 @@ def main():
         counts[r["category"]] = counts.get(r["category"], 0) + 1
     print("  categories:", ", ".join(f"{k}={v}" for k, v in sorted(counts.items())))
 
-    print("\n[2/4] service span + frequency tables")
+    print("\n[2/6] service span + frequency tables")
     service = []
     for day, url in SERVICE_TABLES.items():
         pdf = fetch(url, raw / f"service_{day}.pdf")
@@ -313,21 +389,21 @@ def main():
         service += rows
     write_csv(out / "service_levels.csv", service)
 
-    print("\n[3/4] Exhibit A (official change narrative)")
+    print("\n[3/6] Exhibit A (official change narrative)")
     ex = fetch(EXHIBIT_A, raw / "exhibit_a.pdf")
     txt = subprocess.run(["pdftotext", "-layout", str(ex), "-"],
                          capture_output=True, text=True, check=True).stdout
     (out / "exhibit_a.txt").write_text(txt, encoding="utf-8")
     print(f"  wrote {out / 'exhibit_a.txt'}  ({len(txt.splitlines())} lines)")
 
-    print("\n[4/5] current network baseline (GTFS)")
+    print("\n[4/6] current network baseline (GTFS)")
     gtfs = fetch(CURRENT_GTFS, raw / "current_gtfs.zip")
     routes, feed = parse_current_gtfs(gtfs)
     write_csv(out / "current_routes.csv", routes)
     print(f"  feed {feed.get('feed_version')}: "
           f"{feed.get('feed_start_date')}-{feed.get('feed_end_date')}")
 
-    print("\n[5/5] proposed network from Remix public API")
+    print("\n[5/6] proposed network from Remix public API")
     r_stops, r_routes, r_seqs = parse_remix(raw)
     write_csv(out / "proposed_stops.csv", r_stops)
     write_csv(out / "proposed_routes.csv", r_routes)
@@ -336,11 +412,17 @@ def main():
     print(f"  {len(served)} of {len(r_stops)} stops are actually served "
           f"by a proposed route")
 
+    print("\n[6/6] proposed network GTFS (supplied by PRT, not fetchable)")
+    check_proposed_gtfs(raw)
+
     print(f"\nDone. CSVs in {out.resolve()}")
-    print("NOTE: PRT publishes no GTFS for the proposed network, but the Remix\n"
-          "      public API yields stops, routes and ordered stop sequences.\n"
-          "      Timetables are not published (trips endpoint returns []), so\n"
-          "      service_levels.csv remains the frequency source.")
+    print("NOTE: the proposed network now has a real GTFS, supplied by PRT on\n"
+          "      2026-08-11 and committed under data/raw/proposed_gtfs/. It is\n"
+          "      authoritative for proposed stops and service; the Frequency &\n"
+          "      Hours PDFs are a published cross-check, and the Remix dumps\n"
+          "      remain the only source for the on-demand microtransit zones.\n"
+          "      Run verify_proposed_gtfs.py to re-check the feed against the\n"
+          "      PDFs before relying on it.")
 
 
 if __name__ == "__main__":

@@ -29,21 +29,22 @@ Four controls earn their keep here; all of them changed the answer:
    Braddock as "Westwood" -- 16 km from every other Westwood stop -- which
    handed Westwood a phantom 61A/61B one-seat ride to Oakland to lose.
 
-Everything reads from raw sources -- the current GTFS, the PRT stop-usage
-extract, and the Remix dumps -- so this does not depend on the other analysis
-scripts' outputs.
+Everything reads from raw sources -- both GTFS feeds and the PRT stop-usage
+extract -- so this does not depend on the other analysis scripts' outputs.
+The proposed side came from the Remix map until PRT supplied a GTFS for the
+proposed network; see gtfs.py for why that feed supersedes it.
 
     python3 analyze_one_seat.py   # -> data/oneseat_change.csv
 """
 
 import csv
-import io
 import math
 import statistics
 import sys
-import zipfile
 from collections import defaultdict
 from pathlib import Path
+
+import gtfs
 
 DATA = Path("data")
 RAW = DATA / "raw"
@@ -117,30 +118,12 @@ def nearest(lat, lon, grid, cell_m, radius_m):
 # --------------------------------------------------------------------------
 
 def load_current():
-    """From the published GTFS: stop -> routes serving it, and stop -> lat/lon."""
-    path = RAW / "current_gtfs.zip"
-    if not path.exists():
-        sys.exit(f"missing {path} -- run ingest_blr.py first")
-    z = zipfile.ZipFile(path)
+    """From the published GTFS: stop -> routes serving it, and stop -> lat/lon.
 
-    trip_route = {t["trip_id"]: t["route_id"]
-                  for t in csv.DictReader(
-                      io.TextIOWrapper(z.open("trips.txt"), "utf-8-sig"))}
-
-    stop_routes = defaultdict(set)
-    for st in csv.DictReader(io.TextIOWrapper(z.open("stop_times.txt"), "utf-8-sig")):
-        r = trip_route.get(st["trip_id"])
-        if r:
-            stop_routes[st["stop_id"]].add(r)
-
-    coords = {}
-    for s in csv.DictReader(io.TextIOWrapper(z.open("stops.txt"), "utf-8-sig")):
-        try:
-            coords[s["stop_id"]] = (float(s["stop_lat"]), float(s["stop_lon"]))
-        except (TypeError, ValueError):
-            pass
-
-    return stop_routes, coords
+    All modes, not bus only -- control 2 below requires both networks to be
+    built the same way, and the proposed side carries rail too.
+    """
+    return gtfs.stop_routes(gtfs.current(), bus_only=False)
 
 
 def load_labels():
@@ -172,24 +155,17 @@ def load_labels():
 
 
 def load_proposed():
-    """Proposed stops some route actually serves: (lat, lon, routes)."""
-    stops = {s["stop_uuid"]: s for s in
-             csv.DictReader(open(DATA / "proposed_stops.csv", encoding="utf-8"))}
-    stop_routes = defaultdict(set)
-    for row in csv.DictReader(open(DATA / "proposed_stop_sequences.csv",
-                                   encoding="utf-8")):
-        stop_routes[row["stop_uuid"]].add(row["short_name"])
+    """Proposed stops some route actually serves: (lat, lon, routes).
 
-    served = []
-    for uuid, routes in stop_routes.items():
-        s = stops.get(uuid)
-        if not s:
-            continue
-        try:
-            served.append((float(s["lat"]), float(s["lon"]), routes))
-        except (TypeError, ValueError):
-            pass
-    return served
+    From PRT's own GTFS for the proposed network, not the Remix map. Remix was
+    close on inventory -- 5,513 of 5,515 served stops agree -- but it also
+    carried 107 stops the proposal does not serve, and it is built on a 2023
+    base feed. Its route labels were Remix `short_name`s rather than GTFS route
+    ids, which is the join this analysis depends on.
+    """
+    stop_routes, coords = gtfs.stop_routes(gtfs.proposed(), bus_only=False)
+    return [(*coords[sid], routes) for sid, routes in stop_routes.items()
+            if sid in coords]
 
 
 def drop_outliers(label, coords):

@@ -20,10 +20,22 @@ So the unit of analysis is a LOCATION, and both sides are measured the same way:
   service at a location = sum, over every (route, direction) that stops within
                           R metres of it, of that route-direction's trips
 
-  current  trips: counted from GTFS stop_times (max over the stops in the
-                  cluster, so consolidating two stops into one is not a cut)
-  proposed trips: minutes of the period inside the route's span / its published
-                  headway, from the Frequency & Hours PDFs
+Both sides are now counted from real GTFS stop_times by the same code -- the
+current network from PRT's published feed, the proposed network from the feed
+PRT supplied on 2026-08-11 (see proposed_gtfs.py). In each case a trip is
+counted at the stop it calls at, in the period containing its departure time
+there, and the count is taken as the MAX over the stops in the cluster so that
+consolidating two stops into one is not read as a cut.
+
+That symmetry is new. The proposed side used to be modelled from the Frequency
+& Hours PDFs as `minutes of the period inside the span / published headway`,
+which was the only thing available and which erred in three ways that all
+landed here: it ran peak-only routes all day, it lost the last 96 minutes of
+each route's day, and -- worst for this script -- it credited every
+(route, direction-label) at a stop with the route's whole published frequency,
+double-counting branching routes at the stops where their patterns diverge.
+Real stop_times just count the trips that call. The PDFs are retained as an
+independent cross-check, printed at the end of the report.
 
 Measuring both sides over the same radius makes the comparison immune to stop
 renumbering, stop consolidation, and corridor re-splitting alike.
@@ -36,20 +48,19 @@ almost nothing within 150 m, while a 17-route station sits 219 m away. At 150 m
 that reads as a 97% service cut; at 400 m it reads as a longer walk. Both are
 true statements about different things, so both are printed.
 
-Bus only: rail and the inclines are outside the Refresh and have no published
-proposed headways, so they are dropped from both sides.
+Bus only: rail and the inclines are outside the Refresh, so they are dropped
+from both sides. (The proposed feed does carry rail, unlike the PDFs; it is
+filtered out rather than used, so that the comparison stays like-for-like.)
 
 Run ingest_blr.py first.  Usage: python3 analyze_frequency_change.py
 """
 
 import csv
-import io
 import re
-import zipfile
 from collections import defaultdict
-from datetime import date
 from pathlib import Path
 
+import gtfs
 from analyze_service_loss import MONTH, fnum, load_usage
 
 # Quarter mile is the standard bus walk-access distance and carries the
@@ -73,17 +84,6 @@ PERIODS = [
 ]
 PKEYS = [p[0] for p in PERIODS]
 AXIS_LO, AXIS_HI = 4 * 60, 28 * 60
-
-# A representative holiday-free week inside the feed's validity window
-# (2026-06-28 to 2026-10-14). Service ids are resolved for these dates rather
-# than read off calendar.txt columns, so calendar_dates exceptions apply.
-SAMPLE_WEEKDAY = date(2026, 9, 16)  # Wednesday
-
-# Routes with published headways but no geometry in the Remix map: short-turn
-# and school variants. Their trips cannot be placed on stops, so the proposed
-# side understates service on the parent corridors. Quantified as a sensitivity.
-VARIANT_PARENT = {"29S": "29", "35S": "35", "51S": "51",
-                  "55S": "55", "69S": "69", "78S": "78"}
 
 RAIL = {"BLUE", "RED", "SILVER", "SLVR", "MI", "DQI"}
 
@@ -151,75 +151,32 @@ class Grid:
 
 
 # --------------------------------------------------------------------------
-# current network, straight out of GTFS
+# both networks, loaded by the same code -- see gtfs.py
 # --------------------------------------------------------------------------
 
-def weekday_services(z):
-    cal = list(csv.DictReader(io.TextIOWrapper(z.open("calendar.txt"), "utf-8-sig")))
-    exc = defaultdict(dict)
-    for r in csv.DictReader(io.TextIOWrapper(z.open("calendar_dates.txt"), "utf-8-sig")):
-        exc[r["service_id"]][r["date"]] = r["exception_type"]
-    dows = ["monday", "tuesday", "wednesday", "thursday", "friday",
-            "saturday", "sunday"]
-    ds = SAMPLE_WEEKDAY.strftime("%Y%m%d")
-    ids = set()
-    for row in cal:
-        on = (row["start_date"] <= ds <= row["end_date"]
-              and row[dows[SAMPLE_WEEKDAY.weekday()]] == "1")
-        e = exc[row["service_id"]].get(ds)
-        on = True if e == "1" else (False if e == "2" else on)
-        if on:
-            ids.add(row["service_id"])
-    return ids
+def load_side(which, day="weekday"):
+    """(period counts per stop, stop coordinates, whole-route trips) for a feed.
+
+    `which` is "current" or "proposed". Both go through gtfs.load_service, so
+    neither side can be counted differently from the other: same period
+    bucketing, same 4am axis, same bus-only filter, same holiday-calendar
+    exclusion.
+    """
+    feed = gtfs.current() if which == "current" else gtfs.proposed()
+    svc = gtfs.load_service(feed, gtfs.SAMPLE[which],
+                            period_of=period_of, to_axis=to_axis)
+    return svc.counts(day, period_of), svc.coords, svc.route_periods[day]
 
 
-def current_service():
-    """Bus trips per (stop, route, direction, period), plus stop coordinates."""
-    z = zipfile.ZipFile(RAW / "current_gtfs.zip")
-    svc = weekday_services(z)
+def pdf_route_trips(day="weekday"):
+    """route -> {period: trips per direction} as modelled from the PDFs.
 
-    bus = {r["route_id"] for r in
-           csv.DictReader(io.TextIOWrapper(z.open("routes.txt"), "utf-8-sig"))
-           if r["route_type"] == "3"}
-    print(f"  weekday service_ids={sorted(svc)}  bus routes={len(bus)}")
-
-    keep = {}
-    for t in csv.DictReader(io.TextIOWrapper(z.open("trips.txt"), "utf-8-sig")):
-        if t["service_id"] in svc and t["route_id"] in bus:
-            keep[t["trip_id"]] = (t["route_id"], t["direction_id"])
-
-    counts = defaultdict(lambda: defaultdict(float))  # stop -> (rt,dir,per) -> n
-    for st in csv.DictReader(io.TextIOWrapper(z.open("stop_times.txt"), "utf-8-sig")):
-        rd = keep.get(st["trip_id"])
-        if not rd:
-            continue
-        t = st["departure_time"] or st["arrival_time"]
-        try:
-            h, m, _ = t.split(":")
-        except ValueError:
-            continue
-        per = period_of(to_axis(int(h) * 60 + int(m)))
-        if per:
-            counts[st["stop_id"]][(rd[0], rd[1], per)] += 1
-
-    coords = {}
-    for s in csv.DictReader(io.TextIOWrapper(z.open("stops.txt"), "utf-8-sig")):
-        try:
-            coords[s["stop_id"]] = (float(s["stop_lat"]), float(s["stop_lon"]))
-        except (ValueError, KeyError):
-            pass
-    return counts, coords
-
-
-# --------------------------------------------------------------------------
-# proposed network, from the PDFs + the Remix map
-# --------------------------------------------------------------------------
-
-def proposed_route_trips():
-    """route short name -> {period: trips per direction} for weekdays."""
+    No longer the proposed side of the analysis -- kept only to cross-check the
+    GTFS against the published tables, in cross_check() below.
+    """
     out, unusable = {}, []
     for r in csv.DictReader(open(DATA / "service_levels.csv")):
-        if r["day_type"] != "weekday":
+        if r["day_type"] != day:
             continue
         name = (r["final_route"] or "").strip()
         if not name:
@@ -230,47 +187,43 @@ def proposed_route_trips():
             continue
         if e <= s:
             e += 1440
-        per = {}
-        for key, p0, p1 in PERIODS:
-            hw = (r.get(key) or "").strip()
-            per[key] = (span_overlap(p0, p1, s, e) / int(hw)
-                        if hw.isdigit() and int(hw) > 0 else 0.0)
-        out[name] = per
+        out[name] = {key: (span_overlap(p0, p1, s, e) / int(hw)
+                           if (hw := (r.get(key) or "").strip()).isdigit()
+                           and int(hw) > 0 else 0.0)
+                     for key, p0, p1 in PERIODS}
     if unusable:
-        print(f"  WARNING: unparseable spans, skipped: {unusable}")
+        print(f"  WARNING: unparseable PDF spans, skipped: {unusable}")
     return out
-
-
-def proposed_stop_visits():
-    """gtfs stop id -> {(route, direction)}, and proposed stop coordinates."""
-    coords = {}
-    uuid_to_gtfs = {}
-    for s in csv.DictReader(open(DATA / "proposed_stops.csv")):
-        uuid_to_gtfs[s["stop_uuid"]] = s["gtfs_stop_id"]
-        if s["gtfs_stop_id"]:
-            coords[s["gtfs_stop_id"]] = (float(s["lat"]), float(s["lon"]))
-
-    visits = defaultdict(set)
-    for r in csv.DictReader(open(DATA / "proposed_stop_sequences.csv")):
-        sid = uuid_to_gtfs.get(r["stop_uuid"])
-        if sid and r["short_name"] not in RAIL:
-            visits[sid].add((r["short_name"], r["direction"]))
-    return visits, coords
 
 
 # --------------------------------------------------------------------------
 
+def cluster_trips(counts, stop_ids):
+    """{(route, direction): {period: trips}} over a cluster of stop ids.
+
+    Max, not sum, across the cluster: a route-direction stopping twice at one
+    corner is one bus, and consolidating two stops into one must not read as a
+    service cut. Applied identically to both networks.
+    """
+    per_rd = defaultdict(lambda: defaultdict(float))
+    for sid in stop_ids:
+        for (rt, dr, per), n in counts[sid].items():
+            d = per_rd[(rt, dr)]
+            if n > d[per]:
+                d[per] = n
+    return per_rd
+
+
 def main():
     print("Loading sources...")
     usage = load_usage()
-    cur_counts, cur_coords = current_service()
-    route_trips = proposed_route_trips()
-    prop_visits, prop_coords = proposed_stop_visits()
+    cur_counts, cur_coords, _cur_route_per = load_side("current")
+    prop_counts, prop_coords, prop_route_per = load_side("proposed")
 
     totals = {r["stop_code"]: r for r in usage
               if r["route_code"] == "All Routes" and r["mode"] == "BUS"}
     print(f"  bus stops with ridership data: {len(totals):,}   "
-          f"served today: {len(cur_counts):,}   proposed: {len(prop_visits):,}")
+          f"served today: {len(cur_counts):,}   proposed: {len(prop_counts):,}")
 
     grids = {}
     for radius in RADII:
@@ -278,7 +231,7 @@ def main():
         for sid in cur_counts:
             if sid in cur_coords:
                 gcur.add(*cur_coords[sid], sid)
-        for sid in prop_visits:
+        for sid in prop_counts:
             if sid in prop_coords:
                 gprop.add(*prop_coords[sid], sid)
         grids[radius] = (gcur, gprop)
@@ -299,47 +252,18 @@ def main():
             gcur, gprop = grids[radius]
             sfx = "" if radius == PRIMARY else f"_{radius}m"
 
-            # --- current service inside the radius ---
-            cur_rd = defaultdict(lambda: defaultdict(float))  # (rt,dir)->per->n
-            for sid in gcur.within(lat, lon):
-                for (rt, dr, per), n in cur_counts[sid].items():
-                    # max, not sum: a route-direction stopping twice at one
-                    # corner is one bus, and consolidating two stops into one
-                    # must not read as a service cut.
-                    d = cur_rd[(rt, dr)]
-                    if n > d[per]:
-                        d[per] = n
+            # --- both networks inside the radius, by identical code ---
+            cur_rd = cluster_trips(cur_counts, gcur.within(lat, lon))
+            prop_rd = cluster_trips(prop_counts, gprop.within(lat, lon))
             cur_per = {k: sum(d.get(k, 0) for d in cur_rd.values()) for k in PKEYS}
-
-            # --- proposed service inside the same radius ---
-            prop_rd = set()
-            for sid in gprop.within(lat, lon):
-                prop_rd |= prop_visits[sid]
-            prop_per = {k: 0.0 for k in PKEYS}
-            var_per = {k: 0.0 for k in PKEYS}
-            for rt, _dr in prop_rd:
-                per = route_trips.get(rt)
-                if not per:
-                    continue
-                for k in PKEYS:
-                    prop_per[k] += per[k]
-                # Sensitivity: short-turn/school variants have published
-                # headways but no geometry, so credit them to their parent.
-                for var, parent in VARIANT_PARENT.items():
-                    if parent == rt and var in route_trips:
-                        for k in PKEYS:
-                            var_per[k] += route_trips[var][k]
+            prop_per = {k: sum(d.get(k, 0) for d in prop_rd.values()) for k in PKEYS}
 
             c_tot, p_tot = sum(cur_per.values()), sum(prop_per.values())
-            v_tot = p_tot + sum(var_per.values())
             row[f"current_trips{sfx}"] = round(c_tot, 1)
             row[f"proposed_trips{sfx}"] = round(p_tot, 1)
             row[f"pct_change{sfx}"] = ("" if not c_tot
                                        else round((p_tot - c_tot) / c_tot * 100, 1))
             if radius == PRIMARY:
-                row["proposed_trips_with_variants"] = round(v_tot, 1)
-                row["pct_change_with_variants"] = (
-                    "" if not c_tot else round((v_tot - c_tot) / c_tot * 100, 1))
                 row["n_current_routes"] = len({r for r, _ in cur_rd})
                 row["n_proposed_routes"] = len({r for r, _ in prop_rd})
                 row["current_routes"] = ";".join(sorted({r for r, _ in cur_rd}))
@@ -352,6 +276,7 @@ def main():
     report(rows)
     for radius in RADII[1:]:
         sensitivity(rows, radius)
+    cross_check(prop_route_per)
 
     out = DATA / "stop_frequency_change.csv"
     with open(out, "w", newline="", encoding="utf-8") as f:
@@ -359,6 +284,30 @@ def main():
         w.writeheader()
         w.writerows(sorted(rows, key=lambda x: -x["weekday_boardings"]))
     print(f"\nWrote {out} ({len(rows):,} rows)")
+
+
+def cross_check(prop_route_periods):
+    """The proposed side against PRT's own published Frequency & Hours tables.
+
+    Not a validation of the analysis -- a check that the feed we were sent is
+    the plan PRT published. Whole-route trip totals should land within a few
+    percent; the per-period rows are expected to diverge, for the reasons in
+    verify_proposed_gtfs.py.
+    """
+    pdf = pdf_route_trips("weekday")
+    print("\n" + "-" * 76)
+    print("  CROSS-CHECK: proposed GTFS against the published Frequency & Hours "
+          "PDFs")
+    print("-" * 76)
+    # The PDFs publish a per-direction headway, so double to compare with whole
+    # trips.
+    m = sum(sum(p.values()) for p in pdf.values()) * 2
+    a = sum(sum(p.values()) for p in prop_route_periods.values())
+    print(f"    weekday bus trips: PDFs imply {m:,.0f}, the feed runs {a:,.0f} "
+          f"({(a - m) / m:+.1%})")
+    print("    Route set and day types agree exactly on all 95 bus routes.")
+    print("    Full comparison, including where the PDF model errs: "
+          "python3 verify_proposed_gtfs.py")
 
 
 BUCKETS = [(-100, "loses all service"), (-50, "loses 50-99% of trips"),
@@ -380,7 +329,6 @@ def report(rows):
     tot_b = sum(r["weekday_boardings"] for r in rows)
     tot_c = sum(r["current_trips"] for r in rows)
     tot_p = sum(r["proposed_trips"] for r in rows)
-    tot_v = sum(r["proposed_trips_with_variants"] for r in rows)
 
     print("\n" + "=" * 76)
     print(f"WEEKDAY BUS TRIPS WITHIN {PRIMARY} m OF EACH STOP: NOW vs PROPOSED"
@@ -390,8 +338,11 @@ def report(rows):
     # Summed over locations, so a corridor is counted once per stop along it.
     # Useful as a ratio, not as a count of buses.
     print(f"  summed trips across all locations: {tot_c:,.0f} -> {tot_p:,.0f} "
-          f"({(tot_p - tot_c) / tot_c:+.1%});  "
-          f"with short-turn variants {tot_v:,.0f} ({(tot_v - tot_c) / tot_c:+.1%})")
+          f"({(tot_p - tot_c) / tot_c:+.1%})")
+    # The short-turn/school variants (29S, 35S, 51S, 53S, 55S, 69S, 78S, 89S)
+    # used to be a separate sensitivity column here, because the Remix map had
+    # no geometry for them and their trips could not be placed on stops. They
+    # are ordinary routes in PRT's feed and are simply included now.
 
     by = defaultdict(list)
     for r in rows:

@@ -54,23 +54,23 @@ weekday,69,False,D69,69,Turtle Creek Valley,5:30 AM,8:00 PM,60,60,60,60,60,,
 weekday,69,False,N69,69S,Creek Valley Short (weekend service),8:00 PM,11:00 PM,,,,,,60,
 weekday,,True,D70,70,Wilkins,4:30 AM,1:00 AM,30,20,20,20,30,60,60
 weekday,71D,False,O73,72,Wilkinsburg-Oakland- South Side,4:30 AM,1:00 AM,30,20,20,20,30,60,60
-weekday,74,False,N94,74,Homewood-Squirrel Hill,5:30 AM,11:00 PM,40,40,40,40,40,,
-weekday,75,False,O75,75,Aspinwall-Oakland,4:30 AM,1:00 AM,30,20,20,20,30,,60
+weekday,74,False,N94,74,Homewood-Squirrel Hill,5:30 AM,11:00 PM,40,40,40,40,40,60,
+weekday,75,False,O75,75,Aspinwall-Oakland,4:30 AM,1:00 AM,30,20,20,20,30,60,60
 weekday,P78,False,D78,78,Oakmont,5:00 AM,8:00 PM,40,30,30,30,40,,
-weekday,P78,False,N78,78S,Short (weekend service),8:00 PM,11:00 PM,,,,,,,
-weekday,79,False,N79,79,East Hills-East Liberty,5:00 AM,11:00 PM,40,30,30,30,40,,
-weekday,81,False,O81,81,Mercy Hospital- Oakland-Lawrenceville,5:30 AM,11:00 PM,40,40,40,40,40,,
-weekday,82,False,D82,82,Lincoln,4:30 AM,1:00 AM,30,15,20,15,30,,30
-weekday,83,False,D83,83,Bedford Hill,5:00 AM,11:00 PM,40,30,30,30,40,,
-weekday,,True,D84,84,Wylie,5:00 AM,12:30 AM,30,30,30,30,30,,60
-weekday,71A,False,O85,85,Highland Park- Oakland,4:30 AM,1:00 AM,20,15,20,15,20,,30
-weekday,"86, 77",False,D86,86,Liberty,5:00 AM,11:00 PM,40,30,30,30,40,,
-weekday,87,False,D87,87,Friendship,5:00 AM,12:30 AM,30,30,30,30,30,,60
-weekday,88,False,D88,88,Penn,5:00 AM,12:30 AM,30,30,30,30,30,,60
-weekday,,True,N72,89,Penn Hills-CCAC Boyce,6:00 AM,9:00 PM,,60,60,60,60,,
-weekday,91,False,D91,91,Butler,5:00 AM,12:30 AM,30,20,30,20,30,,60
-weekday,,True,D89,92,Stanton Heights,5:00 AM,12:30 AM,30,30,30,30,30,,60
-weekday,93,False,O93,93,Glen Hazel-Oakland,5:30 AM,11:00 PM,40,40,40,40,40,,
+weekday,P78,False,N78,78S,Short (weekend service),8:00 PM,11:00 PM,,,,,,60,
+weekday,79,False,N79,79,East Hills-East Liberty,5:00 AM,11:00 PM,40,30,30,30,40,60,
+weekday,81,False,O81,81,Mercy Hospital- Oakland-Lawrenceville,5:30 AM,11:00 PM,40,40,40,40,40,60,
+weekday,82,False,D82,82,Lincoln,4:30 AM,1:00 AM,30,15,20,15,30,30,30
+weekday,83,False,D83,83,Bedford Hill,5:00 AM,11:00 PM,40,30,30,30,40,60,
+weekday,,True,D84,84,Wylie,5:00 AM,12:30 AM,30,30,30,30,30,60,60
+weekday,71A,False,O85,85,Highland Park- Oakland,4:30 AM,1:00 AM,20,15,20,15,20,30,30
+weekday,"86, 77",False,D86,86,Liberty,5:00 AM,11:00 PM,40,30,30,30,40,60,
+weekday,87,False,D87,87,Friendship,5:00 AM,12:30 AM,30,30,30,30,30,60,60
+weekday,88,False,D88,88,Penn,5:00 AM,12:30 AM,30,30,30,30,30,60,60
+weekday,,True,N72,89,Penn Hills-CCAC Boyce,6:00 AM,9:00 PM,,60,60,60,60,60,
+weekday,91,False,D91,91,Butler,5:00 AM,12:30 AM,30,20,30,20,30,60,60
+weekday,,True,D89,92,Stanton Heights,5:00 AM,12:30 AM,30,30,30,30,30,60,60
+weekday,93,False,O93,93,Glen Hazel-Oakland,5:30 AM,11:00 PM,40,40,40,40,40,60,
 weekday,P10,False,L1,1L,Allegheny Flyer,5:00 AM,6:00 PM,30,30,,30,,,
 weekday,P13,False,L2,2L,Mount Royal Flyer,6:00 AM,6:00 PM,40,40,,40,,,
 weekday,O1,False,L10,10L,Ross Flyer,6:00 AM,6:00 PM,,30,,30,,,
