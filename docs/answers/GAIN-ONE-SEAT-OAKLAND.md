@@ -45,11 +45,30 @@ of their stops. **McCandless goes from 100 served stops to 26**; Ross from 153
 to 92; Scott from 100 to 51; Mount Lebanon from 98 to 68. Carrick drops from 42
 to 29.
 
-That is the characteristic trade of this proposal — concentrating service on
-fewer, straighter corridors — and it means "gains a one-seat ride to Oakland"
-and "loses walk-up access" are true of the same community at the same time.
-Citing the gain without the stop count would misrepresent what these
-neighbourhoods are being offered. The two numbers belong in the same sentence.
+**The mechanism is routing, not stop thinning.** Take McCandless. Today five
+routes serve it — O5 (50 stops), 2 (25), 12 (24), P13 (24), O12 (14). Under the
+proposal it still has five — 12 (19), 9 (16), 18 (11), 12L (10), 17 (2). What
+changed is where they run. The discontinued **O5 Thompson Run Flyer** carried
+the residential loops: Remington Dr, Peebles Rd, Sample Rd, Springfield Dr.
+Service is not being thinned along a retained alignment; buses stop running down
+those streets at all, and are concentrated on the McKnight Rd and Perry Hwy
+corridors.
+
+That consequence is real rather than an artifact of stop renumbering. Applying
+the 150 m proximity control from `stop_service_change.csv`, 60 of the 85
+McCandless stops in that file lose all service, with several ending 1.5–1.8 km
+from the nearest remaining stop. They carry about 21 weekday boardings between
+them — a large footprint reduction over a very small ridership base, with the
+usual caveat that thin ridership partly reflects thin service.
+
+So "gains a one-seat ride to Oakland" and "loses coverage across its residential
+streets" are both true of the same community. Citing the gain without the
+footprint would misrepresent what these neighbourhoods are being offered; the
+two belong in the same sentence.
+
+(The 100 → 26 counts here and the 85 stops in `stop_service_change.csv` use
+different denominators — this file counts every GTFS-served stop with an
+inherited place label, that one counts only stops carrying a usage record.)
 
 ## Caveats
 

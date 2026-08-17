@@ -62,9 +62,13 @@ Turtle Creek, Wilmerding, Pitcairn, Trafford — keep their bus and lose their
 destination. This is the single most concentrated geographic pattern in the
 finding.
 
-**3. The 28X drops its Oakland leg.** Robinson township, Elliott, and Duquesne
-Heights lose Oakland via the Airport flyer, 790 weekday boardings between them.
-The 28X survives as a Modified route; it just no longer runs the same way.
+**3. The 28X stops serving Robinson, Elliott, and Duquesne Heights.** Another
+one that is easy to get backwards: the proposed 28X Airport **still reaches
+Oakland**. It simply no longer stops in these three communities, which are left
+with local routes (24, 25, 29 in Robinson; the 21–31 group in Elliott and
+Duquesne Heights), none of which run to Oakland. That is 790 weekday boardings
+losing transfer-free Oakland access to a routing change rather than a service
+cut.
 
 **4. Route 54 is rerouted off the Arlington/Warrington corridor.** This one is
 easy to misread. The proposed 54 is still named *North Side – Oakland – South
