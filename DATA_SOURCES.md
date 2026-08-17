@@ -8,11 +8,18 @@ All endpoints below were verified live on 2026-08-17.
 
 ## Bottom line
 
-**There is no public GTFS feed for the proposed network** — the published
-`GTFS.zip` is the *current* network. But nearly everything a GTFS would give you
-is still reachable: the **Remix public map's API answers anonymously**, yielding
-the proposed network's stops, routes, and ordered stop sequences. Timetables are
-the one real gap, and the service-level PDFs cover frequency and span.
+**PRT does not publish a GTFS for the proposed network at
+`rideprt.org/developerresources`** — the `GTFS.zip` there is the *current*
+network. Nearly everything a GTFS would give you is reachable anyway: the **Remix
+public map's API answers anonymously**, yielding the proposed network's stops,
+routes and ordered stop sequences, and the service-level PDFs cover frequency and
+span.
+
+**A proposed-network GTFS with real timetables is nonetheless present in this
+repo**, at `data/raw/proposed_gtfs/` — see the section below. It is the better
+source for anything on the proposed side, and `analyze_coverage_change.py` uses
+it. **Its provenance is not recorded here; record where it came from before
+citing it publicly.**
 
 ## Ingestible (machine-readable)
 
@@ -29,6 +36,39 @@ the one real gap, and the service-level PDFs cover frequency and span.
 | [WPRDC OTP](https://data.wprdc.org/dataset/port-authority-monthly-average-on-time-performance-by-route) | CSV / API | Monthly on-time performance by route. |
 | `PRT_Bus_Stop_Usage_Unweighted` [FeatureServer](https://services3.arcgis.com/544gNI3xxlFIWuTc/arcgis/rest/services/PRT_Bus_Stop_Usage_Unweighted/FeatureServer/0) | ArcGIS REST | **Stop-level boardings**, 19,854 stop×route rows over 7,076 stops, 13 months from Sep 2019. Latest populated month is **May 2025**. See the note below. |
 | [`PRT_Current_Shelter_Locations`](https://services3.arcgis.com/544gNI3xxlFIWuTc/arcgis/rest/services/PRT_Current_Shelter_Locations/FeatureServer/0) | ArcGIS REST | Stop amenities: shelters, bike racks, TVMs, real-time screens, ADA platforms. |
+
+## The proposed-network GTFS (`data/raw/proposed_gtfs/`)
+
+A complete feed for the Proposed Final Network, unpacked in `data/raw/`. Not
+downloaded by `ingest_blr.py`, and not published at the developer-resources URL
+above — **its provenance is unrecorded and needs to be established before
+publication.**
+
+| File | Contents |
+|---|---|
+| `calendar.txt` | 3 services: `Future_BLR_Service-Weekday` / `-Sa` / `-Su`, 2027-01-01 → 2027-12-31 |
+| `calendar_dates.txt` | header only — no exceptions, so no holiday-calendar trap on this side |
+| `routes.txt` | 100 routes; 95 bus, 3 light rail, 2 incline |
+| `trips.txt` | 14,488 trips with `direction_id` and `block_id` |
+| `stop_times.txt` | **698,865 rows with real departure times** |
+| `stops.txt` | 5,515 stops with coordinates; 4,981 ids match the current feed |
+| `shapes.txt` | route geometry |
+
+`feed_info.txt` gives `feed_version` "Updated: Aug 11, 2026", six days before the
+Proposed Final Network was published.
+
+**Why it matters.** It retires the two compromises every other script here still
+carries. First, the S-variants — 29S, 53S, 55S, 69S, 78S, 89S — are in the
+frequency PDFs but absent from the Remix map, and they carry the weekend service
+on those corridors: reading route numbers off Remix turns Clairton and Glassport
+into total weekend losses the plan does not inflict. Second, proposed trips no
+longer have to be derived as span ÷ headway, which lands within **1.4%** of the
+feed system-wide (5,480 estimated vs 5,559 actual weekday trips, median per-route
+error 5.6%) but doubles the peak-only limiteds — 1L, 2L, 12L, 19L, 23L, 46L, 52L,
+73L, 76L, 77L each run one peak direction.
+
+On day types the PDFs and the feed now agree for all 95 routes present in both;
+`analyze_coverage_change.py` prints any disagreement as a standing cross-check.
 
 ## The Remix public API (the proposed network, in structured form)
 
@@ -133,9 +173,16 @@ python3 ingest_blr.py               # -> data/*.csv
 python3 analyze_service_loss.py     # -> data/stop_service_change.csv
 python3 analyze_route_ridership.py  # -> data/discontinued_route_ridership_*.csv
 python3 analyze_frequency_change.py # -> data/stop_frequency_change.csv
+python3 analyze_one_seat.py         # -> data/oneseat_change.csv
+python3 analyze_coverage_change.py  # -> data/route_service_days.csv,
+                                    #    data/coverage_change.csv
 ```
 
 See `FINDINGS.md` for results.
+
+Answers to individual `docs/BASE_CAMP.md` questions live in `docs/answers/`,
+one file per question ID, with a status table covering every question in
+[`docs/answers/README.md`](docs/answers/README.md).
 
 Requires `pdftotext` (poppler-utils); no third-party Python packages.
 
@@ -153,6 +200,10 @@ Outputs, all in `data/`:
 | `stop_service_change.csv` | 5,782 | per stop: keeps / loses all service, distance to nearest |
 | `stop_frequency_change.csv` | 5,747 | per stop: current vs proposed trips at 400 m and 150 m, by period |
 | `discontinued_route_ridership_202604.csv` | 20 | riders on each discontinued route, Apr 2026 |
+| `oneseat_change.csv` | 369 | place × anchor: gains / keeps / loses a one-seat ride, with the routes responsible |
+| `route_service_days.csv` | 74 | per modified route: day types now vs proposed, by number and with variants credited, days lost / gained, riders by day type |
+| `coverage_change.csv` | 5,751 | per stop: the five BASE_CAMP coverage tiers for both networks, at 400 m and 150 m, trips by day type, route lists, `id_name_mismatch` |
+| `stop_route_replace.csv` | 356 | stops where one route replaces another at comparable service |
 
 Raw downloads are cached in `data/raw/` and reused.
 
@@ -175,17 +226,38 @@ Raw downloads are cached in `data/raw/` and reused.
 
 ## Parsing caveats
 
-The PDF layout has three traps, all handled in `ingest_blr.py` but worth knowing
+The PDF layout has four traps, all handled in `ingest_blr.py` but worth knowing
 if you re-roll the parser:
 
 1. Long route names wrap onto the **preceding** line.
 2. The current-route cell may list several routes (`86, 77`).
 3. An unserved period is sometimes **blank** rather than `n/a`, so headways must
    be assigned by column position — counting tokens silently misaligns rows.
+4. **The columns move between pages.** Each page repeats the header, and `4-6a`
+   sits at character 70, 72, 74 and 73 on the weekday table's four pages. Measure
+   the header once and page 3's Late and Owl cells collapse into one column,
+   where the later value overwrites the earlier and 16 routes silently lose their
+   8–11pm headway — which is exactly what happened, see `FINDINGS.md` caveat 9.
+   Column centres are now measured per page and a second cell landing in an
+   already-filled column is a hard error, not a silent overwrite.
 
 Coverage check: 87 proposed routes in the crosswalk all appear in the weekday
 table, plus 6 school/express variants (`29S`, `35S`, `51S`, `55S`, `69S`, `78S`)
 that the crosswalk omits.
+
+The current GTFS has a fourth trap, on the calendar rather than in a PDF, and it
+decides any day-of-week question. Read `calendar.txt` columns alone and the feed
+appears to hold two weekday calendars: service `2` (Mon–Fri) and service `4`
+(`monday=1`). Service `4` is Labor Day service — `calendar_dates.txt` suppresses
+it on all 17 Mondays in the window and adds it on 2026-09-07, the one day service
+`2` is suppressed. Service `1` is the same thing for 2026-07-04 against Saturday
+service `3`. Counting either as a day type credits 70 routes with a schedule they
+do not run, so day types must be resolved for real dates. `analyze_coverage_change.py`
+does this and reports the operating-date count per calendar (`1`=1, `2`=84, `3`=16,
+`4`=1, `5`=17) so the special calendars are visible rather than inferred. One
+consequence to know before quoting the 53: its only non-weekend trips are Labor
+Day trips, so on the feed's evidence the weekday 53 is already gone, ahead of the
+Refresh — WPRDC still shows 93 weekday riders in April 2026.
 
 ## Category counts (extracted, matches PRT's public numbers)
 
