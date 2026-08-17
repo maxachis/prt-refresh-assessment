@@ -1,0 +1,101 @@
+route_id,short_name,long_name,name,color,line_uuid
+62X,62X,Regent Square-Oakland-Downtown,62X Regent Square-Oakland-Downtown,#F1C400,0022d545-eefb-4221-95c9-a573ea56dde0
+65,65,Walnut St-Crawford Village,65 Walnut St-Crawford Village,#728fa1,0351f8c7-eca4-4042-ad97-15cfefe9f3fe
+70,70,Wilkins,70 Wilkins,#007680,0597c0c6-a41e-4e3d-b8e0-11e12d738234
+84,84,Wylie,84 Wylie,#044361,078f17cb-3ae9-4260-b4d2-cbbe012f2168
+55S,55,Glassport-McKeesport Short (weekend service),55 Glassport-McKeesport Short (weekend service),#728fa1,098117f6-c65a-4952-94fd-2487b818db87
+45,45,Carrick-Oakland-East Liberty,45 Carrick-Oakland-East Liberty,#044361,0abfc639-9fb4-482d-bb72-38318ee9ac51
+BLUE,BLUE,South Hills Village,BLUE South Hills Village,#2a77ae,0d9c192c-1336-4c2a-8438-70637ea01dff
+12,12,McKnight,12 McKnight,#728fa1,0e95dcfa-e2ba-42e9-b710-f1f19bbf038f
+38,38,Green Tree,38 Green Tree,#044361,145f3ca8-6932-4b03-b2db-8c95765b033b
+46L,46L,Elizabeth Flyer,46L Elizabeth Flyer,#044361,17059452-a445-4a16-bcdc-339738ddfb3f
+80X,80X,East Liberty-Oakland-Downtown,80X East Liberty-Oakland-Downtown,#F1C400,1803b3ae-dcf7-4871-bda9-36e0ce6899d5
+1L,1L,Allegheny Flyer,1L Allegheny Flyer,#044361,1a28945c-f82a-4d5f-b408-d6768f53e1a2
+23L,23L,Moon Flyer,23L Moon Flyer,#044361,1b559b41-26b9-4909-beab-29c72cc96f67
+16,16,Brighton,16 Brighton,#007680,1bdecdc4-9de8-4f07-b467-ea1bee0179f3
+74,74,Homewood- Squirrel Hill,74 Homewood- Squirrel Hill,#5c9dbe,201ae569-f5d7-46bd-bbee-c53cbc5a468a
+93,93,Glen Hazel-Oakland,93 Glen Hazel-Oakland,#5c9dbe,2462aeb7-6c81-487f-890f-524d73410924
+9,9,McCandless-Oakland,9 McCandless-Oakland,#728fa1,2495b56c-b103-4943-8610-473a6317bb47
+4,4,Troy Hill,4 Troy Hill,#5c9dbe,26a80d40-09fa-4e8c-93fb-66b70d83e77b
+63,63,Renzie Park - Olympia,63 Renzie Park - Olympia,#728fa1,28ae1ffa-771c-4885-b05f-b00f15428ffa
+18,18,Wexford,18 Wexford,#728fa1,28fddf49-c058-43a0-8e4e-5d726cb1d17e
+26,26,Chartiers,26 Chartiers,#5c9dbe,2d16471f-dd2c-489c-b255-35614b5ad1eb
+54,54,North Side-Oakland-South Side,54 North Side-Oakland-South Side,#007680,2d63ddce-dfd3-4dc7-a4b2-023f925c0294
+49,49,Prospect,49 Prospect,#044361,2df07b50-4757-4e10-affe-ae0e7f1c76e6
+73L,73L,Holiday Park Flyer,73L Holiday Park Flyer,#044361,31045471-a17f-4d2a-98cf-7f94fccaf60e
+57,57,Hazelwood,57 Hazelwood,#044361,35344fb6-00cf-4819-9fbb-00d817e0d173
+51,51,Carrick,51 Carrick,#007680,35656138-4539-463a-8507-728337ad7c70
+MI,MI,Monongahela Incline,MI Monongahela Incline,#555555,35b2e5a7-d74a-4d57-8e8a-7ddaf81f12fd
+82,82,Lincoln,82 Lincoln,#007680,37afdbdc-569e-40bb-995e-8ce7b251ed94
+G1,G1,West Busway,G1 West Busway,#37a446,38114c14-856c-4d7f-a018-df6fdc805b25
+1,1,Allegheny Valley-East Liberty,1 Allegheny Valley-East Liberty,#044361,3b26f9a0-1216-4304-98bc-54352a207c41
+60X,60X,Wilkinsburg-Oakland-Downtown,60X Wilkinsburg-Oakland-Downtown,#F1C400,3bb8ada4-887e-44b3-a17e-c7d0f06a4124
+29S,29,North Fayette Short (weekend service),29 North Fayette Short (weekend service),#044361,3c9fcc32-5af6-4eef-b96b-bfde838725c9
+36L,36L,Banksville Flyer,36L Banksville Flyer,#044361,40a77845-9d19-4999-ac9e-dc48a7a95a58
+24,24,West Park,24 West Park,#044361,4100874a-5781-4372-932f-406eab32c5b0
+14,14,Ohio Valley,14 Ohio Valley,#728fa1,41e0a84a-15ae-476d-9f36-edcc6f8300f9
+P1,P1,East Busway,P1 East Busway,#84286B,42b2b362-3be6-4b9f-b1ef-579eda4812d3
+50,50,Homestead-Oakland,50 Homestead-Oakland,#044361,4aa0a483-21c1-4af1-8f57-364eb234139f
+31,31,Noblestown,31 Noblestown,#5c9dbe,51f2702e-f53a-4995-a1b0-a766e5e0a515
+22,22,McCoy,22 McCoy,#5c9dbe,5849a1d9-3592-4b7b-9126-03dc348ed03a
+25,25,Robinson,25 Robinson,#044361,593bd069-5788-4700-83f3-8050a71ceee5
+8,8,Perrysville,8 Perrysville,#007680,5ae156fc-5772-48fc-9b04-37dfebb56c35
+53S,53,West Mifflin-Homestead Short (weekend service),53 West Mifflin-Homestead Short (weekend service),#728fa1,5cd63bff-78fc-4c58-9ab7-6238afd67a8d
+RED,RED,South Hills Village,RED South Hills Village,#d6322e,5e52b848-ca69-45c2-b625-4e99ed79a415
+3,3,Natrona Heights-New Kensington,3 Natrona Heights-New Kensington,#728fa1,603ab030-0f30-4581-96a3-38143a20c5ab
+6,6,Spring Hill,6 Spring Hill,#044361,62815d03-6deb-4a7d-8771-543d14de018f
+34,34,Carnegie-Brentwood,34 Carnegie-Brentwood,#728fa1,634fca0d-102a-4ab6-a4fa-af46d4a684a1
+40,40,Mount Washington,40 Mount Washington,#5c9dbe,63a52a7f-ffb7-4df9-a2ad-716c58babeff
+28X,28X,Airport,28X Airport,#044361,64d1dcf6-084a-401a-91dc-1e11ccd1daf9
+85,85,Highland Park-Oakland,85 Highland Park-Oakland,#007680,66d44092-8bfe-40e5-bb29-fddd497bc799
+48,48,Arlington,48 Arlington,#007680,6dde0a30-0153-4957-afa3-6b90cc7d207c
+53,53,Homestead Park,53 Homestead Park,#728fa1,7466ae50-c217-4169-a3f5-7d83369daf59
+5,5,Aspinwall,5 Aspinwall,#044361,754ca31b-0994-41c1-96a7-f5c864925a50
+44,44,Knoxville,44 Knoxville,#044361,757253e0-743f-4828-8a04-cb4d1703507c
+68,68,Wilkinsburg-Forbes Hospital,68 Wilkinsburg-Forbes Hospital,#5c9dbe,7589f0b3-1bd4-4190-8f1f-da8578518b30
+91,91,Butler,91 Butler,#007680,78b17add-e133-4a17-9e09-6b8add2a7cc3
+83,83,Bedford Hill,83 Bedford Hill,#044361,7a1620fc-b78f-421f-bd25-0b117d2221f7
+78S,78,Oakmont-Wilkinsburg Short (weekend service),78 Oakmont-Wilkinsburg Short (weekend service),#5c9dbe,7b3c4f0e-c29a-4135-bfbf-df32d8d1e876
+52L,52L,Homeville Flyer,52L Homeville Flyer,#044361,7bd7a860-7b66-4e28-9415-79fe094b30a2
+2L,2L,Mount Royal Flyer,2L Mount Royal Flyer,#044361,7f252a34-6b05-4d41-9244-58f3ff349b5f
+86,86,Liberty,86 Liberty,#044361,8e4736d1-1dd7-47b6-97c3-2680d6fb1be8
+SILVER,SILVER,Library,SILVER Library,#969c9b,92396177-36b1-4c57-bcf9-8e3c20fda64c
+19L,19L,Emsworth Flyer,19L Emsworth Flyer,#044361,95fbaa9d-9f1f-400f-a5a7-24506f9d93a8
+81,81,Mercy Hospital-Oakland-Lawrenceville,81 Mercy Hospital-Oakland-Lawrenceville,#5c9dbe,9894e58a-5699-492b-9f81-9cb47e80debb
+13,13,Bellevue,13 Bellevue,#044361,99322f87-cdfb-482d-960e-3c54146fb8f9
+58,58,Greenfield,58 Greenfield,#044361,99b39c1c-74b6-459a-b869-55e7edb54fa0
+67,67,Monroeville,67 Monroeville,#044361,9ae8b95e-7a60-44dd-a588-80eb7c944174
+35,35,Bower Hill-Oakland,35 Bower Hill-Oakland,#728fa1,9b6c5f1b-9050-4639-8549-859aedc2c0d8
+92,92,Stanton Heights,92 Stanton Heights,#044361,9b7e454f-b797-4517-b369-127ba963d4cb
+39,39,Brookline,39 Brookline,#5c9dbe,9f2698b2-ecb7-4d92-b99e-d12c5169c1e6
+89,89,Penn Hills-CCAC Boyce,89 Penn Hills-CCAC Boyce,#728fa1,a4433a4a-5bd3-46eb-bed9-dcd1f69483b6
+17,17,Avalon-McKnight Rd,17 Avalon-McKnight Rd,#728fa1,ab8bb3f9-5dc0-4b63-9385-5d4d183c8977
+P3,P3,East Busway-Oakland,P3 East Busway-Oakland,#84286B,ac3e50b0-62b0-4ced-bbc6-c3b619f8aa7f
+11,11,Fineview,11 Fineview,#5c9dbe,ae1c4d32-dc49-4145-8c20-d5aaa224e0fe
+76L,76L,North Versailles Flyer,76L North Versailles Flyer,#044361,b06062de-1ef1-42e5-bca1-402a24ca9fa6
+79,79,East Hills-East Liberty,79 East Hills-East Liberty,#044361,b48d8038-5766-44ca-9b08-bd8a52cb7b2b
+69,69,Wilkinsburg-Turtle Creek Valley,69 Wilkinsburg-Turtle Creek Valley,#728fa1,b5139dab-62ed-43ed-96de-a7e5e2bcfda5
+10L,10L,Ross Flyer,10L Ross Flyer,#044361,b9d8a377-46d5-448e-8265-d30ace3371dd
+35S,35,Mt Lebanon-Oakland Short,35 Mt Lebanon-Oakland Short,#728fa1,c4c169ba-c678-4490-a3ba-4e1e06440336
+29,29,North Fayette,29 North Fayette,#728fa1,c6b39945-9816-41f6-bc0b-4c33e3b0566d
+72,72,Wilkinsburg-Oakland-South Side,72 Wilkinsburg-Oakland-South Side,#007680,c8f552a2-35e2-4827-9b52-6da405c8e69b
+89S,89,Penn Hills-Monroeville Mall Short (weekend service),89 Penn Hills-Monroeville Mall Short (weekend service),#728fa1,ca90175c-b554-46b4-a018-a3db814a989c
+69S,69,Wilkinsburg-Turtle Creek Valley Short (weekend service),69 Wilkinsburg-Turtle Creek Valley Short (weekend service),#728fa1,cb0612de-6d25-4991-a443-2fc6abb98886
+75,75,Aspinwall-Oakland,75 Aspinwall-Oakland,#007680,d3052060-d184-4998-a60a-eacb5ac8d10c
+66,66,Homestead-McKeesport,66 Homestead-McKeesport,#728fa1,d3d03cb4-513e-4ce3-b610-f77d05738224
+78,78,Oakmont,78 Oakmont,#044361,d4a601c1-098d-4ea0-8231-155c3e2f7dfb
+64,64,Millvale-Homestead,64 Millvale-Homestead,#044361,d4c2a2a4-84de-4335-ad4a-e074b9e29cda
+88,88,Penn,88 Penn,#044361,da611cc7-8d7a-49b2-8a16-7416d6f911d6
+56,56,Lincoln Place,56 Lincoln Place,#5c9dbe,daa71c5a-797a-4069-ad4c-163499f4e10c
+87,87,Friendship,87 Friendship,#044361,df44f775-ac7b-49cf-b18d-8a8cd2a00047
+55,55,Glassport-McKeesport,55 Glassport-McKeesport,#5c9dbe,e3032318-9b30-47b0-aa25-1470fa56a8f2
+12L,12L,McKnight Flyer,12L McKnight Flyer,#044361,e989f79a-2b62-4340-aa80-1b6b55800d70
+51S,51,Carrick Short,51 Carrick Short,#007680,ec817217-945f-4c2a-8869-7067f31b5eb6
+7,7,Spring Garden,7 Spring Garden,#728fa1,ee2279b0-d29a-4fa2-b6e5-94d0ef68c69c
+77L,77L,Penn Hills Flyer,77L Penn Hills Flyer,#044361,ee240477-39a9-4cf0-85b9-152adc9bfd62
+59,59,Mon Valley-Homestead,59 Mon Valley-Homestead,#044361,ee8ca269-7d37-4008-bcdf-da02ff85311b
+71X,71X,Highland Park-Oakland-Downtown,71X Highland Park-Oakland-Downtown,#F1C400,eee6f1ce-3026-4ed2-a8bc-80b3fbf3f52b
+21,21,Coraopolis,21 Coraopolis,#5c9dbe,f1fc31d0-960c-41cc-8742-2f0d54b91942
+DQI,DQI,Duquesne Incline,DQI Duquesne Incline,#555555,f4da03f6-4893-44df-b6b0-51ce2af82f4d
+27,27,Fairywood,27 Fairywood,#5c9dbe,f62b985a-cde5-4a79-86c1-93a2f8805337
+61X,61X,McKeesport-Oakland-Downtown,61X McKeesport-Oakland-Downtown,#F1C400,f6a19572-d2d7-4ec0-915f-7126148d4692

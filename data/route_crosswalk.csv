@@ -1,0 +1,108 @@
+current_route,draft2_route,final_route,category,related_routes,route_page
+1,N1,1 Allegheny Valley - East Liberty,Modified,"5 Aspinwall (NEW!), 91",https://engage.rideprt.org/buslineredesign/BLR-route-1
+2 Mount Royal--DISCONTINUED,-,-,Discontinued,"5 Aspinwall (NEW!), 2L",https://engage.rideprt.org/buslineredesign/BLR-route-2-discontinued
+-,N3,3 Natrona Heights - New Kensington,New,,https://engage.rideprt.org/buslineredesign/BLR-route-3
+4,D4,4 Troy Hill,Modified,N/A,https://engage.rideprt.org/buslineredesign/BLR-route-4
+-,D5,5 Aspinwall,New,,https://engage.rideprt.org/buslineredesign/BLR-route-5
+6,D6,6 Spring Hill,Modified,N/A,https://engage.rideprt.org/buslineredesign/BLR-route-6
+7,D7,7 Spring Garden,Modified,4,https://engage.rideprt.org/buslineredesign/BLR-route-7
+8,D8,8 Perrysville,Modified,N/A,https://engage.rideprt.org/buslineredesign/BLR-route-8
+-,O9,9 McCandless - Oakland,New,,https://engage.rideprt.org/buslineredesign/BLR-route-9
+11,D11,11 Fineview,Modified,N/A,https://engage.rideprt.org/buslineredesign/BLR-route-11
+12,D12,12 McKnight,Modified,18 Wexford (NEW!),https://engage.rideprt.org/buslineredesign/BLR-route-12
+13,D13,13 Bellevue,Modified,17 Avalon - McKnight Rd (NEW!),https://engage.rideprt.org/buslineredesign/BLR-route-13
+14,D14,14 Ohio Valley,Modified,N/A,https://engage.rideprt.org/buslineredesign/BLR-route-14
+15 Charles--DISCONTINUED,-,-,Discontinued,"8, 11, 16",https://engage.rideprt.org/buslineredesign/BLR-route-15-discontinued
+16,D16,16 Brighton,Modified,N/A,https://engage.rideprt.org/buslineredesign/BLR-route-16
+17 Shadeland--DISCONTINUED,-,-,Discontinued,14,https://engage.rideprt.org/buslineredesign/BLR-route-17-discontinued
+-,N17,17 Avalon - McKnight Rd,New,,https://engage.rideprt.org/buslineredesign/BLR-route-17
+18 Manchester--DISCONTINUED,-,-,Discontinued,13,https://engage.rideprt.org/buslineredesign/BLR-route-18-discontinued
+-,D18,18 Wexford,New,,https://engage.rideprt.org/buslineredesign/BLR-route-18
+20 Kennedy--DISCONTINUED,-,-,Discontinued,"21 , 24 , 27",https://engage.rideprt.org/buslineredesign/BLR-route-20-discontinued
+21,D21,21 Coraopolis,Modified,N/A,https://engage.rideprt.org/buslineredesign/BLR-route-21
+22,D22,22 McCoy,Modified,N/A,https://engage.rideprt.org/buslineredesign/BLR-route-22
+24,D24,24 West Park,Modified,N/A,https://engage.rideprt.org/buslineredesign/BLR-route-24
+-,D25,25 Robinson,New,,https://engage.rideprt.org/buslineredesign/BLR-route-25
+26,D26,26 Chartiers,Modified,"27 , G1",https://engage.rideprt.org/buslineredesign/BLR-route-26
+27,D27,27 Fairywood,Modified,N/A,https://engage.rideprt.org/buslineredesign/BLR-route-27
+29,D29,29 North Fayette,Modified,29S North Fayette Short (weekend service),https://engage.rideprt.org/buslineredesign/BLR-route-29
+31,D31,31 Bridgeville,Modified,N/A,https://engage.rideprt.org/buslineredesign/BLR-route-31
+-,N34,34 Carnegie - Brentwood,New,,https://engage.rideprt.org/buslineredesign/BLR-route-34
+41,O35,35 Bower Hill - Oakland,Modified,35S Mt Lebanon-Oakland Short,https://engage.rideprt.org/buslineredesign/BLR-route-35
+38,D38,38 Green Tree,Modified,N/A,https://engage.rideprt.org/buslineredesign/BLR-route-38
+39,D39,39 Brookline,Modified,"34 , 35",https://engage.rideprt.org/buslineredesign/BLR-route-39
+40,D40,40 Mount Washington,Modified,N/A,https://engage.rideprt.org/buslineredesign/BLR-route-40
+43 Bailey--DISCONTINUED,-,-,Discontinued,40,https://engage.rideprt.org/buslineredesign/BLR-route-43-discontinued
+44,D44,44 Knoxville,Modified,"45 , 51 , 51S",https://engage.rideprt.org/buslineredesign/BLR-route-44
+-,O45,45 Carrick - Oakland - East Liberty,New,,https://engage.rideprt.org/buslineredesign/BLR-route-45
+48,D48,48 Arlington,Modified,N/A,https://engage.rideprt.org/buslineredesign/BLR-route-48
+Y49,D49,49 Prospect,Modified,N/A,https://engage.rideprt.org/buslineredesign/BLR-route-49
+61D,O50,50 Homestead - Oakland,Modified,61X,https://engage.rideprt.org/buslineredesign/BLR-route-50
+51,D51,51 Carrick,Modified,51S Carrick Short,https://engage.rideprt.org/buslineredesign/BLR-route-51
+51L Carrick Limited--DISCONTINUED,-,-,Discontinued,"51 , 51S",https://engage.rideprt.org/buslineredesign/BLR-route-51L-discontinued
+53,D53,53 Homestead Park,Modified,53S West Mifflin - Homestead Short,https://engage.rideprt.org/buslineredesign/BLR-route-53
+53L Homestead Park Limited--DISCONTINUED,-,-,Discontinued,53,https://engage.rideprt.org/buslineredesign/BLR-route-53L-discontinued
+54,O54,54 North Side - Oakland-South Side,Modified,"44 , 45 , 48",https://engage.rideprt.org/buslineredesign/BLR-route-54
+55,N55,55 Glassport-McKeesport,Modified,"55S Glassport-McKeesport Short (weekend service) , 66",https://engage.rideprt.org/buslineredesign/BLR-route-55
+56,D56,56 Lincoln Place,Modified,N/A,https://engage.rideprt.org/buslineredesign/BLR-route-56
+57,D57,57 Hazelwood,Modified,"53 , 56",https://engage.rideprt.org/buslineredesign/BLR-route-57
+58,D58,58 Greenfield,Modified,"50 , 56 , 61X , 93",https://engage.rideprt.org/buslineredesign/BLR-route-58
+59,N59,59 Mon Valley - Homestead,Modified,"66 , 68",https://engage.rideprt.org/buslineredesign/BLR-route-59
+-,N63,63 Renzie Park - Olympia,New,,https://engage.rideprt.org/buslineredesign/BLR-route-63
+64,N64,64 Lawrenceville-Waterfront,Modified,N/A,https://engage.rideprt.org/buslineredesign/BLR-route-64
+65 Squirrel Hill--DISCONTINUED,-,-,Discontinued,"58 , 60X , 61X , 62X",https://engage.rideprt.org/buslineredesign/BLR-route-65-discontinued
+60,N62,65 Walnut St-Crawford Village,Modified,N/A,https://engage.rideprt.org/buslineredesign/BLR-route-65
+-,N66,66 Homestead - McKeesport,New,,https://engage.rideprt.org/buslineredesign/BLR-route-66
+67,D67,67 Monroeville,Modified,70,https://engage.rideprt.org/buslineredesign/BLR-route-67
+P68,N68,68 Wilkinsburg-Forbes Hospital,Modified,P1,https://engage.rideprt.org/buslineredesign/BLR-route-68
+69,N69,69 Wilkinsburg - Turtle Creek Valley,Modified,"69S Wilkinsburg-Turtle Creek Valley Short (weekend service) , 70",https://engage.rideprt.org/buslineredesign/BLR-route-69
+-,D70,70 Wilkins,New,,https://engage.rideprt.org/buslineredesign/BLR-route-70
+71 Edgewood Town Center--DISCONTINUED,-,-,Discontinued,"58 , 62X",https://engage.rideprt.org/buslineredesign/BLR-route-71-discontinued
+71D,O73,72 Wilkinsburg-Oakland-Southside,Modified,N/A,https://engage.rideprt.org/buslineredesign/BLR-route-72
+74,N94,74 Homewood - Squirrel Hill,Modified,"70 , 88",https://engage.rideprt.org/buslineredesign/BLR-route-74
+75,O75,75 Aspinwall-Oakland,Modified,"45 , 54 , 72 , 83 , 84",https://engage.rideprt.org/buslineredesign/BLR-route-75
+P78,D78,78 Oakmont,Modified,78S Oakmont-Wilkinsburg Short (weekend service),https://engage.rideprt.org/buslineredesign/BLR-route-78
+79,N79,79 East Hills - East Liberty,Modified,"82 , 86 , 78",https://engage.rideprt.org/buslineredesign/BLR-route-79
+81,081,81 Mercy Hospital - Oakland - Lawrenceville,Modified,"83 , 84",https://engage.rideprt.org/buslineredesign/BLR-route-81
+82,D82,82 Lincoln,Modified,N/A,https://engage.rideprt.org/buslineredesign/BLR-route-82
+83,D83,83 Bedford Hill,Modified,N/A,https://engage.rideprt.org/buslineredesign/BLR-route-83
+-,D84,84 Wylie,New,,https://engage.rideprt.org/buslineredesign/BLR-route-84
+71A,O85,85 Highland Park-Oakland,Modified,N/A,https://engage.rideprt.org/buslineredesign/BLR-route-85
+"86, 77",D86,86 Liberty,Modified,"77L , 89",https://engage.rideprt.org/buslineredesign/BLR-route-86
+87,D86,87 Friendship,Modified,92,https://engage.rideprt.org/buslineredesign/BLR-route-87
+88,D88,88 Penn,Modified,N/A,https://engage.rideprt.org/buslineredesign/BLR-route-88
+-,N72,89 Penn Hills - CCAC Boyce,New,89S Monroeville Mall Short,https://engage.rideprt.org/buslineredesign/BLR-route-89
+91,D91,91 Butler,Modified,N/A,https://engage.rideprt.org/buslineredesign/BLR-route-91
+-,D89,92 Stanton Heights,New,,https://engage.rideprt.org/buslineredesign/BLR-route-92
+93,O93,93 Glen Hazel-Oakland,Modified,81,https://engage.rideprt.org/buslineredesign/BLR-route-93
+P10,L1,1L Allegheny Flyer,Modified,1,https://engage.rideprt.org/buslineredesign/BLR-route-1L
+P13,L2,2L Mount Royal Flyer,Modified,N/A,https://engage.rideprt.org/buslineredesign/BLR-route-2L
+O1,L10,10L Ross Flyer,Modified,8,https://engage.rideprt.org/buslineredesign/BLR-route-10L
+O12,L12,12L McKnight Flyer,Modified,"12 , 18 Wexford (NEW!)",https://engage.rideprt.org/buslineredesign/BLR-route-12L
+19L,L19,19L Emsworth Flyer,Modified,N/A,https://engage.rideprt.org/buslineredesign/BLR-route-19L
+G3,L23,23L Moon Flyer,Modified,N/A,https://engage.rideprt.org/buslineredesign/BLR-route-23L
+36,L36,36L Banksville Flyer,Modified,N/A,https://engage.rideprt.org/buslineredesign/BLR-route-36L
+Y46,L46,46L Elizabeth Flyer,Modified,"49 , 51 , 55",https://engage.rideprt.org/buslineredesign/BLR-route-46L
+52L,L52,52L Homeville Flyer,Modified,N/A,https://engage.rideprt.org/buslineredesign/BLR-route-52L
+P12,L74,73L Holiday Park Flyer,Modified,67,https://engage.rideprt.org/buslineredesign/BLR-route-73L
+P76,L76,76L North Versailles Flyer,Modified,"65 , 66",https://engage.rideprt.org/buslineredesign/BLR-route-76L
+P16,L77,77L Penn Hills Flyer,Modified,"86 , 89",https://engage.rideprt.org/buslineredesign/BLR-route-77L
+28X,X28,28X Airport,Modified,"25 , 45 , 71X , 72",https://engage.rideprt.org/buslineredesign/BLR-route-28X
+61A,X60,60X Wilkinsburg-Oakland-Downtown,Modified,N/A,https://engage.rideprt.org/buslineredesign/BLR-route-60X
+61C,X61,61X McKeesport-Oakland-Downtown,Modified,N/A,https://engage.rideprt.org/buslineredesign/BLR-route-61X
+61B,X65,62X Regent Square-Oakland-Downtown,Modified,N/A,https://engage.rideprt.org/buslineredesign/BLR-route-62X
+71B,X71,71X Highland Park-Oakland-Downtown,Modified,N/A,https://engage.rideprt.org/buslineredesign/BLR-route-71X
+71C,X80,80X East Liberty-Oakland-Downtown,Modified,"70 , 88",https://engage.rideprt.org/buslineredesign/BLR-route-80X
+G2,G2,G1 West Busway,Modified,"25 , 28X",https://engage.rideprt.org/buslineredesign/BLR-route-G1
+P1,P1,P1 East Busway,Modified,N/A,https://engage.rideprt.org/buslineredesign/BLR-route-P1
+P3,P3,P3 East Busway - Oakland,Modified,N/A,https://engage.rideprt.org/buslineredesign/BLR-route-P3
+G31 Bridgeville Flyer--DISCONTINUED,-,-,Discontinued,"31 , G1",https://engage.rideprt.org/buslineredesign/BLR-route-G31-discontinued
+O5 Thompson Run Flyer via 279--DISCONTINUED,-,-,Discontinued,"2L , 12L",https://engage.rideprt.org/buslineredesign/BLR-route-O5-discontinued
+P7 McKeesport Flyer--DISCONTINUED,-,-,Discontinued,"56 , 61X",https://engage.rideprt.org/buslineredesign/BLR-route-P7-discontinued
+P17 Lincoln Park Flyer--DISCONTINUED,-,-,Discontinued,79,https://engage.rideprt.org/buslineredesign/BLR-route-P17-discontinued
+P67 Monroeville Flyer--DISCONTINUED,-,-,Discontinued,67,https://engage.rideprt.org/buslineredesign/BLR-route-P67-discontinued
+P69 Trafford Flyer--DISCONTINUED,-,-,Discontinued,69,https://engage.rideprt.org/buslineredesign/BLR-route-P69-discontinued
+P71 Swissvale Flyer--DISCONTINUED,-,-,Discontinued,"58 , 62X , P1",https://engage.rideprt.org/buslineredesign/BLR-route-P71-discontinued
+Y1 Large Flyer--DISCONTINUED,-,-,Discontinued,46L,https://engage.rideprt.org/buslineredesign/BLR-route-Y1-discontinued
+Y45 Baldwin Manor Flyer--DISCONTINUED,-,-,Discontinued,46L,https://engage.rideprt.org/buslineredesign/BLR-route-Y45-discontinued
+Y47 Curry Flyer--DISCONTINUED,-,-,Discontinued,"46L , 49",https://engage.rideprt.org/buslineredesign/BLR-route-Y47-discontinued

@@ -1,0 +1,241 @@
+day_type,current_route,is_new,draft2_route,final_route,route_name,start_time,end_time,early_4_6a,am_6_9a,mid_9a_3p,pm_3_6p,eve_6_8p,late_8_11p,owl_11p_4a
+weekday,1,False,N1,1,Allegheny Valley- East Liberty,5:00 AM,12:30 AM,30,30,30,30,30,60,60
+weekday,,True,N3,3,Natrona Heights- New Kensington,6:00 AM,9:00 PM,,60,60,60,60,60,
+weekday,4,False,D4,4,Troy Hill,5:30 AM,9:00 PM,40,40,40,40,40,60,
+weekday,,True,D5,5,Aspinwall,5:00 AM,11:00 PM,40,30,30,30,40,60,
+weekday,6,False,D6,6,Spring Hill,5:00 AM,11:00 PM,40,30,30,30,40,60,
+weekday,7,False,D7,7,Spring Garden,5:30 AM,9:00 PM,60,60,60,60,60,60,
+weekday,8,False,D8,8,Perrysville,4:30 AM,1:00 AM,30,20,20,20,30,60,60
+weekday,,True,O9,9,McCandless-Oakland,5:30 AM,9:00 PM,60,60,60,60,60,60,
+weekday,11,False,D11,11,Fineview,5:30 AM,11:00 PM,40,40,40,40,40,60,
+weekday,12,False,D12,12,McKnight,5:00 AM,12:30 AM,60,60,60,60,60,60,60
+weekday,13,False,D13,13,Bellevue,5:00 AM,12:30 AM,30,30,30,30,30,60,60
+weekday,14,False,D14,14,Ohio Valley,5:00 AM,11:00 PM,60,60,60,60,60,60,
+weekday,16,False,D16,16,Brighton,4:30 AM,1:00 AM,20,15,20,15,20,30,30
+weekday,,True,N17,17,Avalon-McKnight Rd,5:30 AM,11:00 PM,60,60,60,60,60,60,
+weekday,,True,D18,18,Wexford,5:00 AM,8:00 PM,60,60,60,60,60,,
+weekday,21,False,D21,21,Coraopolis,5:00 AM,11:00 PM,40,40,40,40,40,60,
+weekday,22,False,D22,22,McCoy,5:30 AM,11:00 PM,40,40,40,40,40,60,
+weekday,24,False,D24,24,West Park,5:00 AM,11:00 PM,40,30,30,30,40,60,
+weekday,,True,D25,25,Robinson,5:00 AM,11:00 PM,40,30,40,30,40,60,
+weekday,26,False,D26,26,Chartiers,5:30 AM,11:00 PM,40,40,40,40,40,60,
+weekday,27,False,D27,27,Fairywood,5:30 AM,11:00 PM,40,40,40,40,40,60,
+weekday,29,False,D29,29,North Fayette,5:00 AM,8:00 PM,60,60,60,60,60,,
+weekday,29,False,D29S,29S,North Fayette Short (weekend service),6:00 AM,12:30 AM,60,60,60,60,60,60,60
+weekday,31,False,D31,31,Noblestown,5:30 AM,11:00 PM,40,40,40,40,40,60,
+weekday,,True,N34,34,Carnegie-Brentwood,5:30 AM,11:00 PM,60,60,60,60,60,60,
+weekday,41,False,O35,35,Bower Hill-Oakland,5:30 AM,11:00 PM,60,60,60,60,60,60,
+weekday,41,False,O35S,35S,Mt Lebanon-Oakland Short,6:00 AM,6:00 PM,,60,,60,,,
+weekday,38,False,D38,38,Green Tree,5:30 AM,11:00 PM,30,30,60,30,60,60,
+weekday,39,False,D39,39,Brookline,5:30 AM,11:00 PM,40,40,40,40,40,60,
+weekday,40,False,D40,40,Mount Washington,5:30 AM,11:00 PM,40,40,40,40,40,60,
+weekday,44,False,D44,44,Knoxville,5:00 AM,11:00 PM,40,30,30,30,40,60,
+weekday,,True,O45,45,Carrick-Oakland-East Liberty,5:00 AM,12:30 AM,30,30,30,30,30,60,60
+weekday,48,False,D48,48,Arlington,4:30 AM,1:00 AM,30,20,30,20,30,60,60
+weekday,Y49,False,D49,49,Prospect,5:30 AM,11:00 PM,60,30,60,30,60,60,
+weekday,61D,False,O50,50,Homestead-Oakland,5:00 AM,11:00 PM,40,30,30,30,40,60,
+weekday,51,False,D51,51,Carrick,4:30 AM,1:00 AM,20,20,20,30,30,30,30
+weekday,51,False,D51S,51S,Carrick Short,6:00 AM,8:00 PM,,20,20,20,30,,
+weekday,53,False,D53,53,Homestead Park,5:30 AM,9:00 PM,60,60,60,60,60,60,
+weekday,54,False,O54,54,North Side-Oakland- South Side,4:30 AM,1:00 AM,30,20,20,20,30,60,60
+weekday,55,False,N55,55,Glassport-McKeesport,5:30 AM,8:00 PM,40,40,40,40,40,,
+weekday,55,False,N55S,55S,Short (weekend service),8:00 PM,11:00 PM,,,,,,60,
+weekday,56,False,D56,56,Lincoln Place,5:30 AM,11:00 PM,40,40,40,40,40,60,
+weekday,57,False,D57,57,Hazelwood,5:00 AM,12:30 AM,40,30,30,30,40,60,60
+weekday,58,False,D58,58,Greenfield,5:00 AM,11:00 PM,40,30,30,30,40,60,
+weekday,59,False,N59,59,Mon Valley- Homestead,5:00 AM,11:00 PM,40,30,30,30,40,60,
+weekday,,True,N63,63,Renzie Park-Olympia,6:00 AM,9:00 PM,,60,60,60,60,60,
+weekday,64,False,N64,64,Millvale-Homestead,5:00 AM,12:30 AM,30,30,30,30,30,60,60
+weekday,60,False,N62,65,Walnut St-Crawford Village,5:30 AM,11:00 PM,60,60,60,60,60,60,
+weekday,,True,N66,66,Homestead- McKeesport,5:30 AM,11:00 PM,60,60,60,60,60,60,
+weekday,67,False,D67,67,Monroeville,5:00 AM,11:00 PM,40,30,30,30,40,60,
+weekday,P68,False,N68,68,Wilkinsburg-Forbes Hospital,5:30 AM,11:00 PM,40,40,40,40,40,60,
+weekday,69,False,D69,69,Turtle Creek Valley,5:30 AM,8:00 PM,60,60,60,60,60,,
+weekday,69,False,N69,69S,Creek Valley Short (weekend service),8:00 PM,11:00 PM,,,,,,60,
+weekday,,True,D70,70,Wilkins,4:30 AM,1:00 AM,30,20,20,20,30,60,60
+weekday,71D,False,O73,72,Wilkinsburg-Oakland- South Side,4:30 AM,1:00 AM,30,20,20,20,30,60,60
+weekday,74,False,N94,74,Homewood-Squirrel Hill,5:30 AM,11:00 PM,40,40,40,40,40,,
+weekday,75,False,O75,75,Aspinwall-Oakland,4:30 AM,1:00 AM,30,20,20,20,30,,60
+weekday,P78,False,D78,78,Oakmont,5:00 AM,8:00 PM,40,30,30,30,40,,
+weekday,P78,False,N78,78S,Short (weekend service),8:00 PM,11:00 PM,,,,,,,
+weekday,79,False,N79,79,East Hills-East Liberty,5:00 AM,11:00 PM,40,30,30,30,40,,
+weekday,81,False,O81,81,Mercy Hospital- Oakland-Lawrenceville,5:30 AM,11:00 PM,40,40,40,40,40,,
+weekday,82,False,D82,82,Lincoln,4:30 AM,1:00 AM,30,15,20,15,30,,30
+weekday,83,False,D83,83,Bedford Hill,5:00 AM,11:00 PM,40,30,30,30,40,,
+weekday,,True,D84,84,Wylie,5:00 AM,12:30 AM,30,30,30,30,30,,60
+weekday,71A,False,O85,85,Highland Park- Oakland,4:30 AM,1:00 AM,20,15,20,15,20,,30
+weekday,"86, 77",False,D86,86,Liberty,5:00 AM,11:00 PM,40,30,30,30,40,,
+weekday,87,False,D87,87,Friendship,5:00 AM,12:30 AM,30,30,30,30,30,,60
+weekday,88,False,D88,88,Penn,5:00 AM,12:30 AM,30,30,30,30,30,,60
+weekday,,True,N72,89,Penn Hills-CCAC Boyce,6:00 AM,9:00 PM,,60,60,60,60,,
+weekday,91,False,D91,91,Butler,5:00 AM,12:30 AM,30,20,30,20,30,,60
+weekday,,True,D89,92,Stanton Heights,5:00 AM,12:30 AM,30,30,30,30,30,,60
+weekday,93,False,O93,93,Glen Hazel-Oakland,5:30 AM,11:00 PM,40,40,40,40,40,,
+weekday,P10,False,L1,1L,Allegheny Flyer,5:00 AM,6:00 PM,30,30,,30,,,
+weekday,P13,False,L2,2L,Mount Royal Flyer,6:00 AM,6:00 PM,40,40,,40,,,
+weekday,O1,False,L10,10L,Ross Flyer,6:00 AM,6:00 PM,,30,,30,,,
+weekday,O12,False,L12,12L,McKnight Flyer,5:00 AM,6:00 PM,30,30,,30,,,
+weekday,19L,False,L19,19L,Emsworth Flyer,6:00 AM,6:00 PM,,30,,30,,,
+weekday,G3,False,L23,23L,Moon Flyer,5:00 AM,6:00 PM,30,30,,30,,,
+weekday,36,False,L36,36L,Banksville Flyer,6:00 AM,6:00 PM,,30,,30,,,
+weekday,Y46,False,L46,46L,Elizabeth Flyer,5:00 AM,6:00 PM,30,30,,30,,,
+weekday,52L,False,L52,52L,Homeville Flyer,5:00 AM,6:00 PM,30,30,,30,,,
+weekday,P12,False,L74,73L,Holiday Park Flyer,5:00 AM,6:00 PM,30,30,,30,,,
+weekday,P76,False,L76,76L,North Versailles Flyer,5:00 AM,6:00 PM,40,40,,40,,,
+weekday,P16,False,L77,77L,Penn Hills Flyer,5:00 AM,6:00 PM,30,30,,30,,,
+weekday,28X,False,X28,28X,Airport,4:00 AM,1:00 AM,40,30,30,30,40,40,60
+weekday,61A,False,X60,60X,Wilkinsburg-Oakland- Downtown,4:30 AM,2:00 AM,20,15,20,15,20,30,30
+weekday,61C,False,X61,61X,McKeesport-Oakland- Downtown,4:30 AM,2:00 AM,20,15,20,15,20,30,30
+weekday,61B,False,X65,62X,Regent Square- Oakland-Downtown,4:30 AM,2:00 AM,20,15,20,15,20,30,30
+weekday,71B,False,X71,71X,Highland Park- Oakland-Downtown,4:30 AM,2:00 AM,20,15,20,15,20,30,30
+weekday,71C,False,X80,80X,East Liberty-Oakland- Downtown,4:30 AM,2:00 AM,20,15,20,15,20,30,30
+weekday,G2,False,G1,G1,West Busway,5:00 AM,11:00 PM,40,20,40,20,40,60,
+weekday,P1,False,P1,P1,East Busway,4:30 AM,2:00 AM,20,7,12,6,15,20,30
+weekday,P3,False,P3,P3,East Busway-Oakland,4:30 AM,12:00 AM,20,15,20,15,20,30,30
+saturday,1,False,N1,1,Allegheny Valley-East Liberty,5:00 AM,12:00 AM,60,30,30,30,30,60,60
+saturday,,True,N3,3,Natrona Heights-New Kensington,7:00 AM,9:00 PM,,60,60,60,60,60,
+saturday,4,False,D4,4,Troy Hill,6:00 AM,9:00 PM,,60,60,60,60,60,
+saturday,,True,D5,5,Aspinwall,6:00 AM,10:00 PM,,40,40,40,60,60,
+saturday,6,False,D6,6,Spring Hill,6:00 AM,10:00 PM,,40,40,40,60,60,
+saturday,8,False,D8,8,Perrysville,5:00 AM,1:00 AM,30,30,30,30,30,60,60
+saturday,,True,O9,9,McCandless-Oakland,7:00 AM,9:00 PM,,60,60,60,60,60,
+saturday,11,False,D11,11,Fineview,6:00 AM,10:00 PM,,60,60,60,60,60,
+saturday,12,False,D12,12,McKnight,5:30 AM,12:00 AM,60,30,30,30,30,60,60
+saturday,13,False,D13,13,Bellevue,5:30 AM,12:00 AM,60,30,30,30,30,60,60
+saturday,14,False,D14,14,Ohio Valley,5:30 AM,10:00 PM,60,60,60,60,60,60,
+saturday,16,False,D16,16,Brighton,4:30 AM,1:00 AM,30,30,30,30,30,30,40
+saturday,,True,N17,17,Avalon-McKnight Rd,7:00 AM,9:00 PM,,60,60,60,60,60,
+saturday,21,False,D21,21,Coraopolis,6:00 AM,10:00 PM,,60,60,60,60,60,
+saturday,22,False,D22,22,McCoy,6:00 AM,10:00 PM,,60,60,60,60,60,
+saturday,24,False,D24,24,West Park,6:00 AM,10:00 PM,,40,40,40,60,60,
+saturday,,True,D25,25,Robinson,6:00 AM,10:00 PM,,40,40,40,60,60,
+saturday,26,False,D26,26,Chartiers,6:00 AM,10:00 PM,,60,60,60,60,60,
+saturday,27,False,D27,27,Fairywood,6:00 AM,10:00 PM,,60,60,60,60,60,
+saturday,29,False,D29S,29S,North Fayette Short (weekend service),5:30 AM,12:00 AM,60,30,30,30,30,60,60
+saturday,31,False,D31,31,Noblestown,6:00 AM,10:00 PM,,60,60,60,60,60,
+saturday,,True,N34,34,Carnegie-Brentwood,7:00 AM,9:00 PM,,60,60,60,60,60,
+saturday,41,False,O35,35,Bower Hill-Oakland,7:00 AM,9:00 PM,,60,60,60,60,60,
+saturday,38,False,D38,38,Green Tree,7:00 AM,9:00 PM,,60,60,60,60,60,
+saturday,39,False,D39,39,Brookline,6:00 AM,10:00 PM,,60,60,60,60,60,
+saturday,40,False,D40,40,Mount Washington,6:00 AM,10:00 PM,,60,60,60,60,60,
+saturday,44,False,D44,44,Knoxville,6:00 AM,10:00 PM,,60,60,60,60,60,
+saturday,,True,O45,45,Carrick-Oakland-East Liberty,5:30 AM,12:00 AM,60,30,30,30,30,60,60
+saturday,48,False,D48,48,Arlington,5:00 AM,1:00 AM,30,30,30,30,30,60,60
+saturday,Y49,False,D49,49,Prospect,7:00 AM,9:00 PM,,60,60,60,60,60,
+saturday,61D,False,O50,50,Homestead-Oakland,6:00 AM,10:00 PM,,40,40,40,60,60,
+saturday,51,False,D51,51,Carrick,4:30 AM,1:00 AM,30,30,30,30,30,30,40
+saturday,51,False,D51S,51S,Carrick Short,9:00 AM,6:00 PM,,,30,30,,,
+saturday,53,False,N53,53S,West Mifflin-Homestead Short (weekend service),7:00 AM,9:00 PM,,60,60,60,60,60,
+saturday,54,False,O54,54,North Side-Oakland- South Side,5:00 AM,1:00 AM,30,30,30,30,30,60,60
+saturday,55,False,N55S,55S,Glassport-McKeesport Short (weekend service),6:00 AM,10:00 PM,,60,60,60,60,60,
+saturday,56,False,D56,56,Lincoln Place,6:00 AM,10:00 PM,,60,60,60,60,60,
+saturday,57,False,D57,57,Hazelwood,6:00 AM,12:00 AM,,40,40,40,60,60,60
+saturday,58,False,D58,58,Greenfield,6:00 AM,10:00 PM,,40,40,40,60,60,
+saturday,59,False,N59,59,Mon Valley-Homestead,5:30 AM,10:00 PM,60,40,40,40,60,60,
+saturday,,True,N63,63,Renzie Park-Olympia,7:00 AM,9:00 PM,,60,60,60,60,60,
+saturday,64,False,N64,64,Millvale-Homestead,5:30 AM,12:00 AM,60,30,30,30,30,60,60
+saturday,60,False,N62,65,Walnut St-Crawford Village,7:00 AM,9:00 PM,,60,60,60,60,60,
+saturday,,True,N66,66,Homestead-McKeesport,7:00 AM,9:00 PM,,60,60,60,60,60,
+saturday,67,False,D67,67,Monroeville,6:00 AM,10:00 PM,,40,40,40,60,60,
+saturday,P68,False,N68,68,Wilkinsburg-Forbes Hospital,6:00 AM,10:00 PM,,60,60,60,60,60,
+saturday,69,False,N69,69S,Valley Short (weekend service),7:00 AM,9:00 PM,,60,60,60,60,60,
+saturday,,True,D70,70,Wilkins,5:00 AM,1:00 AM,30,30,30,30,30,60,60
+saturday,71D,False,O73,72,Wilkinsburg-Oakland- South Side,5:00 AM,1:00 AM,30,30,30,30,30,60,60
+saturday,74,False,N94,74,Homewood-Squirrel Hill,6:00 AM,10:00 PM,,60,60,60,60,60,
+saturday,75,False,O75,75,Aspinwall-Oakland,5:00 AM,1:00 AM,30,30,30,30,30,60,60
+saturday,P78,False,N78,78S,Oakmont-Wilkinsburg Short (weekend service),6:00 AM,10:00 PM,,40,40,40,60,60,
+saturday,79,False,N79,79,East Hills-East Liberty,6:00 AM,10:00 PM,,40,40,40,60,60,
+saturday,81,False,O81,81,Mercy Hospital-Oakland- Lawrenceville,6:00 AM,10:00 PM,,60,60,60,60,60,
+saturday,82,False,D82,82,Lincoln,5:00 AM,1:00 AM,30,30,30,30,30,30,30
+saturday,83,False,D83,83,Bedford Hill,6:00 AM,10:00 PM,,40,40,40,60,60,
+saturday,,True,D84,84,Wylie,5:30 AM,12:00 AM,60,30,30,30,30,60,60
+saturday,71A,False,O85,85,HIghland Park-Oakland,4:30 AM,1:00 AM,30,30,20,20,30,30,40
+saturday,"86, 77",False,D86,86,Liberty,6:00 AM,10:00 PM,,40,40,40,60,60,
+saturday,87,False,D87,87,Friendship,5:30 AM,12:00 AM,60,30,30,30,30,60,60
+saturday,88,False,D88,88,Penn,5:30 AM,12:00 AM,60,30,30,30,30,60,60
+saturday,,True,N72S,89S,Penn Hills-Monroeville Mall (weekend service),7:00 AM,9:00 PM,,60,60,60,60,60,
+saturday,91,False,D91,91,Butler,5:30 AM,12:00 AM,60,30,30,30,30,60,60
+saturday,,True,D89,92,Stanton Heights,5:30 AM,12:00 AM,60,30,30,30,30,60,60
+saturday,93,False,O93,93,Glen Hazel-Oakland,6:00 AM,10:00 PM,,60,60,60,60,60,
+saturday,28X,False,X28,28X,Airport,4:00 AM,1:00 AM,40,30,30,30,40,40,60
+saturday,61A,False,X60,60X,Wilkinsburg-Oakland- Downtown,4:30 AM,2:00 AM,20,20,20,20,20,30,30
+saturday,61C,False,X61,61X,McKeesport-Oakland- Downtown,4:30 AM,2:00 AM,20,20,20,20,20,30,30
+saturday,61B,False,X65,62X,Regent Square-Oakland- Downtown,4:30 AM,2:00 AM,20,20,20,20,20,30,30
+saturday,71B,False,X71,71X,Highland Park-Oakland- Downtown,4:30 AM,2:00 AM,20,20,20,20,20,30,30
+saturday,71C,False,X80,80X,East Liberty-Oakland- Downtown,4:30 AM,2:00 AM,20,20,20,20,20,30,30
+saturday,G2,False,G1,G1,West Busway,6:00 AM,10:00 PM,,40,40,40,40,60,
+saturday,P1,False,P1,P1,East Busway,4:30 AM,2:00 AM,20,15,15,15,20,30,30
+saturday,P3,False,P3,P3,East Busway-Oakland,4:30 AM,12:00 AM,30,30,30,30,30,30,30
+sunday,1,False,N1,1,Allegheny Valley-East Liberty,5:30 AM,11:00 PM,60,60,40,40,60,60,
+sunday,,True,N3,3,Natrona Heights-New Kensington,8:00 AM,8:00 PM,,60,60,60,60,,
+sunday,4,False,D4,4,Troy Hill,7:00 AM,8:00 PM,,60,60,60,60,,
+sunday,,True,D5,5,Aspinwall,6:00 AM,9:00 PM,,60,60,60,60,60,
+sunday,6,False,D6,6,Spring Hill,6:00 AM,9:00 PM,,60,60,60,60,60,
+sunday,8,False,D8,8,Perrysville,6:00 AM,12:00 AM,,60,30,30,30,60,60
+sunday,,True,O9,9,McCandless-Oakland,7:00 AM,8:00 PM,,60,60,60,60,,
+sunday,11,False,D11,11,Fineview,7:00 AM,8:00 PM,,60,60,60,60,,
+sunday,12,False,D12,12,McKnight,6:00 AM,11:00 PM,,60,40,40,60,60,
+sunday,13,False,D13,13,Bellevue,6:00 AM,11:00 PM,,60,40,40,60,60,
+sunday,14,False,D14,14,Ohio Valley,6:00 AM,9:00 PM,,60,60,60,60,60,
+sunday,16,False,D16,16,Brighton,5:00 AM,12:00 AM,40,30,30,30,30,30,40
+sunday,,True,N17,17,Avalon-McKnight Rd,7:00 AM,8:00 PM,,60,60,60,60,,
+sunday,21,False,D21,21,Coraopolis,7:00 AM,8:00 PM,,60,60,60,60,,
+sunday,22,False,D22,22,McCoy,7:00 AM,8:00 PM,,60,60,60,60,,
+sunday,24,False,D24,24,West Park,6:00 AM,9:00 PM,,60,60,60,60,60,
+sunday,,True,D25,25,Robinson,6:00 AM,9:00 PM,,60,60,60,60,60,
+sunday,26,False,D26,26,Chartiers,7:00 AM,8:00 PM,,60,60,60,60,,
+sunday,27,False,D27,27,Fairywood,7:00 AM,8:00 PM,,60,60,60,60,,
+sunday,29,False,D29S,29S,North Fayette Short (weekend service),6:00 AM,11:00 PM,,60,40,40,60,60,
+sunday,31,False,D31,31,Noblestown,7:00 AM,8:00 PM,,60,60,60,60,,
+sunday,,True,N34,34,Carnegie-Brentwood,7:00 AM,8:00 PM,,60,60,60,60,,
+sunday,41,False,O35,35,Bower Hill-Oakland,7:00 AM,8:00 PM,,60,60,60,60,,
+sunday,38,False,D38,38,Green Tree,7:00 AM,8:00 PM,,60,60,60,60,,
+sunday,39,False,D39,39,Brookline,7:00 AM,8:00 PM,,60,60,60,60,,
+sunday,40,False,D40,40,Mount Washington,7:00 AM,8:00 PM,,60,60,60,60,,
+sunday,44,False,D44,44,Knoxville,6:00 AM,9:00 PM,,60,60,60,60,60,
+sunday,,True,O45,45,Carrick-Oakland-East Liberty,6:00 AM,11:00 PM,,60,40,40,60,60,
+sunday,48,False,D48,48,Arlington,6:00 AM,12:00 AM,,60,30,30,30,60,60
+sunday,Y49,False,D49,49,Prospect,7:00 AM,8:00 PM,,60,60,60,60,,
+sunday,61D,False,O50,50,Homestead-Oakland,6:00 AM,9:00 PM,,60,60,60,60,60,
+sunday,51,False,D51,51,Carrick,5:00 AM,12:00 AM,40,30,30,30,30,30,40
+sunday,53,False,N53,53S,West Mifflin-Homestead Short (weekend service),7:00 AM,8:00 PM,,60,60,60,60,,
+sunday,54,False,O54,54,North Side-Oakland- South Side,6:00 AM,12:00 AM,,60,30,30,30,60,60
+sunday,55,False,N55S,55S,Glassport-McKeesport Short (weekend service),7:00 AM,8:00 PM,,60,60,60,60,,
+sunday,56,False,D56,56,Lincoln Place,7:00 AM,8:00 PM,,60,60,60,60,,
+sunday,57,False,D57,57,Hazelwood,6:00 AM,11:00 PM,,60,60,60,60,60,
+sunday,58,False,D58,58,Greenfield,6:00 AM,9:00 PM,,60,60,60,60,60,
+sunday,59,False,N59,59,Mon Valley-Homestead,6:00 AM,9:00 PM,,60,60,60,60,60,
+sunday,,True,N63,63,Renzie Park-Olympia,8:00 AM,8:00 PM,,60,60,60,60,,
+sunday,64,False,N64,64,Millvale-Homestead,6:00 AM,11:00 PM,,60,40,40,60,60,
+sunday,60,False,N62,65,Walnut St-Crawford Village,7:00 AM,8:00 PM,,60,60,60,60,,
+sunday,,True,N66,66,Homestead-McKeesport,7:00 AM,8:00 PM,,60,60,60,60,,
+sunday,67,False,D67,67,Monroeville,6:00 AM,9:00 PM,,60,60,60,60,60,
+sunday,P68,False,N68,68,Wilkinsburg-Forbes Hospital,7:00 AM,8:00 PM,,60,60,60,60,,
+sunday,69,False,N69,69S,Valley Short (weekend service),7:00 AM,8:00 PM,,60,60,60,60,,
+sunday,,True,D70,70,Wilkins,6:00 AM,12:00 AM,,60,30,30,30,60,60
+sunday,71D,False,O73,72,Wilkinsburg-Oakland- South Side,6:00 AM,12:00 AM,,60,30,30,30,60,60
+sunday,74,False,N94,74,Homewood-Squirrel Hill,7:00 AM,8:00 PM,,60,60,60,60,,
+sunday,75,False,O75,75,Aspinwall-Oakland,6:00 AM,12:00 AM,,60,30,30,30,60,60
+sunday,P78,False,N78,78S,Oakmont-Wilkinsburg Short (weekend service),6:00 AM,9:00 PM,,60,60,60,60,60,
+sunday,79,False,N79,79,East Hills-East Liberty,6:00 AM,9:00 PM,,60,60,60,60,60,
+sunday,81,False,O81,81,Mercy Hospital-Oakland- Lawrenceville,7:00 AM,8:00 PM,,60,60,60,60,,
+sunday,82,False,D82,82,Lincoln,6:00 AM,12:00 AM,,30,30,30,30,30,30
+sunday,83,False,D83,83,Bedford Hill,6:00 AM,9:00 PM,,60,60,60,60,60,
+sunday,,True,D84,84,Wylie,6:00 AM,11:00 PM,,60,40,40,60,60,
+sunday,71A,False,O85,85,HIghland Park-Oakland,5:00 AM,12:00 AM,40,30,30,30,30,30,40
+sunday,"86, 77",False,D86,86,Liberty,6:00 AM,9:00 PM,,60,60,60,60,60,
+sunday,87,False,D87,87,Friendship,6:00 AM,11:00 PM,,60,40,40,60,60,
+sunday,88,False,D88,88,Penn,6:00 AM,11:00 PM,,60,40,40,60,60,
+sunday,,True,N72S,89S,Penn Hills-Monroeville Mall (weekend service),8:00 AM,8:00 PM,,60,60,60,60,,
+sunday,91,False,D91,91,Butler,6:00 AM,11:00 PM,,60,40,40,60,60,
+sunday,,True,D89,92,Stanton Heights,6:00 AM,11:00 PM,,60,40,40,60,60,
+sunday,93,False,O93,93,Glen Hazel-Oakland,7:00 AM,8:00 PM,,60,60,60,60,,
+sunday,28X,False,X28,28X,Airport,4:00 AM,1:00 AM,40,30,30,30,40,40,60
+sunday,61A,False,X60,60X,Wilkinsburg-Oakland- Downtown,5:00 AM,2:00 AM,30,30,30,30,30,30,40
+sunday,61C,False,X61,61X,McKeesport-Oakland- Downtown,5:00 AM,2:00 AM,30,30,30,30,30,30,40
+sunday,61B,False,X65,62X,Regent Square-Oakland- Downtown,5:00 AM,2:00 AM,30,30,30,30,30,30,40
+sunday,71B,False,X71,71X,Highland Park-Oakland- Downtown,5:00 AM,2:00 AM,30,30,30,30,30,30,40
+sunday,71C,False,X80,80X,East Liberty-Oakland- Downtown,5:00 AM,2:00 AM,30,30,30,30,30,30,40
+sunday,G2,False,G1,G1,West Busway,6:00 AM,9:00 PM,,40,40,40,40,60,
+sunday,P1,False,P1,P1,East Busway,5:00 AM,2:00 AM,30,20,20,20,20,30,30
+sunday,P3,False,P3,P3,East Busway-Oakland,5:00 AM,12:00 AM,30,30,30,30,30,30,40

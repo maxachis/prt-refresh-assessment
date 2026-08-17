@@ -1,0 +1,200 @@
+# PRT Bus Line Refresh — data source inventory
+
+Assessment of what can be programmatically ingested for the **Proposed Final
+Network**, published 2026-08-17. Public comment period: **Aug 17 – Sep 30, 2026**
+(board vote expected fall 2026, implementation second half of 2027).
+
+All endpoints below were verified live on 2026-08-17.
+
+## Bottom line
+
+**There is no public GTFS feed for the proposed network** — the published
+`GTFS.zip` is the *current* network. But nearly everything a GTFS would give you
+is still reachable: the **Remix public map's API answers anonymously**, yielding
+the proposed network's stops, routes, and ordered stop sequences. Timetables are
+the one real gap, and the service-level PDFs cover frequency and span.
+
+## Ingestible (machine-readable)
+
+| Source | Format | What it gives you |
+|---|---|---|
+| [Find My Route table](https://engage.rideprt.org/buslineredesign/BLR-finaldraft-findmyroute) | server-rendered HTML `<table>` | Crosswalk: current # → draft 2.0 # → proposed final #, change category, related routes. 107 rows. |
+| Frequency & Hours PDFs ([wkdy](https://hdp-us-prod-app-rideprt-engage-files.s3.us-west-2.amazonaws.com/1217/8611/7803/FrequencyHoursTable_Weekday.pdf) / [sat](https://hdp-us-prod-app-rideprt-engage-files.s3.us-west-2.amazonaws.com/9717/8611/7803/FrequencyHoursTable_Saturday.pdf) / [sun](https://hdp-us-prod-app-rideprt-engage-files.s3.us-west-2.amazonaws.com/5217/8611/7803/FrequencyHoursTable_Sunday.pdf)) | PDF, text layer | **The quantitative core.** Span of service + headway across 7 time periods, per route, per day type. 93/74/73 routes. |
+| [Exhibit A](https://www.rideprt.org/link/d0a97382033d4e9a8849e52609df2218.aspx) | PDF, 30pp, text layer | Official major-service-change narrative — the legally noticed document. |
+| Route pages `BLR-route-{n}` | server-rendered HTML | ~100 pages of plain-language change bullets per route. Slug is the proposed number, or `{current}-discontinued`. |
+| [Current GTFS](https://www.rideprt.org/developerresources/GTFS.zip) | GTFS zip | Baseline for before/after. Feed `Merged_Clever_2606_2`, valid 2026-06-28 → 2026-10-14. 102 routes, 6,388 stops. |
+| GTFS-Realtime | protobuf | Bus `https://truetime.portauthority.org/gtfsrt-bus/`, train `/gtfsrt-train/`. Current network only. |
+| [ArcGIS Hub](https://open-data-pgh-transit.hub.arcgis.com/) | GeoJSON / API | 21 datasets — stops, routes, walksheds, park-and-rides, stop amenities. **All current/historical; nothing proposed.** DCAT catalog at `/data.json`. |
+| [WPRDC route ridership](https://data.wprdc.org/dataset/prt-monthly-average-ridership-by-route) | CKAN DataStore SQL | Average riders by route × day type, monthly, **Jan 2017 – Apr 2026**. Public, official, and the freshest ridership PRT publishes. Resource `12bb84ed-397e-435c-8d1b-8ce543108698`. |
+| [WPRDC OTP](https://data.wprdc.org/dataset/port-authority-monthly-average-on-time-performance-by-route) | CSV / API | Monthly on-time performance by route. |
+| `PRT_Bus_Stop_Usage_Unweighted` [FeatureServer](https://services3.arcgis.com/544gNI3xxlFIWuTc/arcgis/rest/services/PRT_Bus_Stop_Usage_Unweighted/FeatureServer/0) | ArcGIS REST | **Stop-level boardings**, 19,854 stop×route rows over 7,076 stops, 13 months from Sep 2019. Latest populated month is **May 2025**. See the note below. |
+| [`PRT_Current_Shelter_Locations`](https://services3.arcgis.com/544gNI3xxlFIWuTc/arcgis/rest/services/PRT_Current_Shelter_Locations/FeatureServer/0) | ArcGIS REST | Stop amenities: shelters, bike racks, TVMs, real-time screens, ADA platforms. |
+
+## The Remix public API (the proposed network, in structured form)
+
+The interactive map at `platform.remix.com/project/82ea6210` is a JS app, but the
+API behind it **answers anonymous requests** — no token, no login. Send a browser
+`User-Agent` and a `Referer` on the project URL.
+
+| Endpoint | Returns |
+|---|---|
+| `/api/projects/82ea6210` | Project metadata, including `transitMapId` (`632ce361`) |
+| `/api/maps/632ce361` | **~9.4 MB of JSON: 7,036 stops + 100 lines** with patterns, directions and ordered stop lists |
+| `/api/maps/632ce361/tile.pbf?x=&y=&z=` | Mapbox vector tiles, layer `shapes` — the route geometry |
+| `/api/maps/632ce361/lines/{lineUuid}/trips` | Returns `[]` — timetables are not published |
+
+`/api/maps/{id}` is the prize. Per stop: UUID, GTFS stop ID, name, lat/lon,
+wheelchair flag. Per line: GTFS route id, short/long name, colour, then
+patterns → directions → `directionStops`, each with a stop reference and
+`distanceFromStart` in metres. That is 10,464 stop-visits across 200 directions —
+effectively `stops.txt` + `routes.txt` + the sequence half of `stop_times.txt`.
+
+Verified: all 87 proposed routes from the crosswalk are present (plus rail,
+inclines, and reused numbers), and all 10,464 sequence rows resolve to a stop.
+
+### Caveats
+
+- **The map's base feed is old.** `feedStartDate` is 2023-06-18. Stop inventory
+  and GTFS stop IDs may reflect the 2023 base, not the 2026 current feed, so
+  before/after stop comparisons carry drift. 5,056 of the 5,620 served stop IDs
+  match the current published GTFS; treat the ~1,332 current stops with no
+  proposed service as an upper bound needing spot-checks, not a finding.
+- **1,416 of the 7,036 stops are not served by any proposed route.** This is a
+  stop inventory, not a service list — filter by `proposed_stop_sequences.csv`
+  before mapping anything.
+- **No timetables**, so no true `stop_times.txt`. Frequency and span come from
+  the PDFs.
+- This is an undocumented internal API for a public map. It can change without
+  notice; `data/raw/` caches every response so analysis stays reproducible.
+
+## The WPRDC stop-usage package: what its removal actually costs
+
+`data.wprdc.org/dataset/prt-transit-stop-usage` now returns
+`Authorization Error` from `package_show`, and it no longer appears in the
+transportation group listing. Checked against the [May 2026 Wayback
+snapshot](http://web.archive.org/web/20260510052551/https://data.wprdc.org/dataset/prt-transit-stop-usage),
+it held three resources:
+
+| Was on WPRDC | Still available? | Where |
+|---|---|---|
+| `Monthly_Updating_Bus_Stop_Usage` | **Yes, in full** | `PRT_Bus_Stop_Usage_Unweighted` FeatureServer — all 13 months, Sep 2019 → May 2025 |
+| `Transit Stop Usage by Route – Deprecated` (FY2019, with amenities) | Superseded | Ridership by the layer above; amenities by `PRT_Current_Shelter_Locations` |
+| `Transit Stop Usage Data Dictionary` | **Yes** | Verbatim in the ArcGIS Hub item description for *PRT Stop Ridership – Historical* |
+
+**Nothing of substance is lost.** The field encoding I had reverse-engineered is
+confirmed by PRT's own description: a data-type code (`D` days, `B` boardings,
+`A` alightings, `R` ramp deployments), a service-day code (`W`/`S`/`U`), and
+`YYYYMM`. What is genuinely gone is CKAN convenience — the DataStore SQL
+endpoint, resource version history, and the named data steward — none of which
+changes any analysis here.
+
+### The real gaps are upstream, and worth raising in the comment period
+
+1. **Stop-level ridership has not been updated since May 2025.** PRT publishes
+   on a Jan/May/Sep pick cycle and the layer's own schema pre-creates columns
+   through 2028, but `B_W_202509` onward are empty and the layer was last
+   modified 2026-01-12. Three picks — Sep 2025, Jan 2026, May 2026 — are
+   missing. So the network is being redesigned against ridership evidence that
+   is fifteen months old, and the public cannot check the plan against current
+   patterns.
+2. **Alightings stopped in September 2023.** `A_*` is populated for Sep 2019
+   through Sep 2023 and null thereafter; PRT confirms "passenger offs data is
+   currently only available from 2019-2023". Every stop-level analysis is
+   therefore boardings-only, which systematically understates destination stops
+   — hospitals, schools, shopping — exactly the places a redesign should be
+   judged on. Ramp deployments are similarly 2023-only.
+3. **PRT's own accuracy disclaimer** should be quoted whenever these numbers
+   are: stop figures are "unadjusted, unofficial totals" that "may underestimate
+   true system-wide ridership by as much as 30%".
+
+### What to use instead
+
+For **route-level** questions — including "how many riders lose their route" —
+WPRDC's `prt-monthly-average-ridership-by-route` is public, current through
+**April 2026**, official rather than unweighted, and queryable by SQL. It is
+strictly better than deriving route totals from the stop file, and the
+difference is material: 6,154 weekday riders on the 20 discontinued routes
+versus ~5,170 from the stop-level data.
+
+The stop-level layer remains the only source for **within-route** geography, so
+it stays in use for section A and C of FINDINGS.md — with its vintage stated.
+
+## Still missing
+
+- **An official proposed-network GTFS.** One *must exist* — the Transit App
+  trip-planning preview requires it. Requesting it from PRT during the comment
+  period remains worthwhile: it would supply the timetables and remove the
+  2023-base-feed caveat above.
+
+## Usage
+
+```bash
+python3 ingest_blr.py               # -> data/*.csv
+python3 analyze_service_loss.py     # -> data/stop_service_change.csv
+python3 analyze_route_ridership.py  # -> data/discontinued_route_ridership_*.csv
+python3 analyze_frequency_change.py # -> data/stop_frequency_change.csv
+```
+
+See `FINDINGS.md` for results.
+
+Requires `pdftotext` (poppler-utils); no third-party Python packages.
+
+Outputs, all in `data/`:
+
+| File | Rows | Contents |
+|---|---|---|
+| `route_crosswalk.csv` | 107 | current # → draft 2.0 # → final #, category |
+| `service_levels.csv` | 240 | route × day type: span + 7 headway columns |
+| `proposed_stops.csv` | 7,036 | proposed-network stop inventory with lat/lon |
+| `proposed_routes.csv` | 100 | proposed lines with GTFS ids and colours |
+| `proposed_stop_sequences.csv` | 10,464 | route × direction × stop order + distance |
+| `current_routes.csv` | 102 | current-network baseline |
+| `exhibit_a.txt` | 1,311 lines | official change narrative |
+| `stop_service_change.csv` | 5,782 | per stop: keeps / loses all service, distance to nearest |
+| `stop_frequency_change.csv` | 5,747 | per stop: current vs proposed trips at 400 m and 150 m, by period |
+| `discontinued_route_ridership_202604.csv` | 20 | riders on each discontinued route, Apr 2026 |
+
+Raw downloads are cached in `data/raw/` and reused.
+
+## Analysis joins this enables
+
+- `service_levels.csv` × `route_crosswalk.csv` on route number — service change
+  by route, including the 20 discontinued.
+- Either × **WPRDC monthly ridership by route** — weight changes by who
+  actually rides, i.e. estimate riders affected by each discontinuation.
+- `proposed_stop_sequences.csv` × `proposed_stops.csv` × **WPRDC stop-level
+  boardings** — the strongest available analysis: which specific stops lose
+  service, weighted by observed boardings. Mind the 2023-base caveat.
+- `proposed_stops.csv` against census geography — walkshed and equity exposure
+  of the proposed network, independently of PRT's own Equity Memo.
+- `service_levels.csv` vs headways computed from current GTFS `stop_times.txt`
+  — a true before/after frequency delta, independent of PRT's framing.
+  **Done** (`analyze_frequency_change.py`). Note the trap: the plan re-splits
+  corridors, so route-to-route comparison is invalid and the unit of analysis
+  must be a location with a walk radius applied identically to both sides.
+
+## Parsing caveats
+
+The PDF layout has three traps, all handled in `ingest_blr.py` but worth knowing
+if you re-roll the parser:
+
+1. Long route names wrap onto the **preceding** line.
+2. The current-route cell may list several routes (`86, 77`).
+3. An unserved period is sometimes **blank** rather than `n/a`, so headways must
+   be assigned by column position — counting tokens silently misaligns rows.
+
+Coverage check: 87 proposed routes in the crosswalk all appear in the weekday
+table, plus 6 school/express variants (`29S`, `35S`, `51S`, `55S`, `69S`, `78S`)
+that the crosswalk omits.
+
+## Category counts (extracted, matches PRT's public numbers)
+
+| Category | Count |
+|---|---|
+| Modified | 73 |
+| Discontinued | 20 |
+| New | 14 |
+
+PRT publicly describes "changes to 56 routes" — narrower than the 73 the table
+marks *Modified*, so their headline figure appears to exclude minor changes.
+Use the extracted 73 with that caveat noted.
