@@ -1,0 +1,2 @@
+feed_publisher_name,feed_publisher_url,feed_lang,feed_contact_url,feed_contact_email,feed_start_date,feed_end_date,feed_version
+Pittsburgh Regional Transit,https://www.rideprt.org,en,,info@rideprt.org,20270101,20271231,"Updated: Aug 11, 2026, 12:14 PM"
