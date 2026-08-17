@@ -9,10 +9,10 @@ Sources 1-5 verified live 2026-08-17:
   4. Current GTFS     - the baseline to compare the proposal against
   5. Remix public API - proposed stops/routes; now superseded for service by (6),
                         but still the only source for the on-demand zones
-  6. Proposed GTFS    - PRT's own feed for the proposed network. Supplied by
-                        email 2026-08-11, NOT fetchable, committed verbatim
-                        under data/raw/proposed_gtfs/. This step only checks it
-                        is present; verify_proposed_gtfs.py checks it agrees
+  6. Proposed GTFS    - PRT's own feed for the proposed network, obtained from
+                        PRT directly. NOT fetchable; committed verbatim under
+                        data/raw/proposed_gtfs/. This step only checks it is
+                        present; verify_proposed_gtfs.py checks it agrees
                         with (2).
 
 Requires: curl + pdftotext (poppler-utils). No third-party Python packages.
@@ -317,10 +317,11 @@ def parse_remix(raw_dir):
 
 # --- 5. proposed network GTFS ----------------------------------------------
 #
-# Unlike every other source here this one has no URL. PRT supplied it by email
-# on 2026-08-11, so it cannot be re-fetched and is committed verbatim. All this
-# step can do is confirm it is present and report what is in it; the agreement
-# check against PRT's published tables lives in verify_proposed_gtfs.py.
+# Unlike every other source here this one has no URL. It came from PRT directly
+# -- by what route is not recorded, see DATA_SOURCES.md -- so it cannot be
+# re-fetched and is committed verbatim. All this step can do is confirm it is
+# present and report what is in it; the agreement check against PRT's published
+# tables lives in verify_proposed_gtfs.py.
 
 PROPOSED_FILES = ["calendar.txt", "routes.txt", "trips.txt", "stop_times.txt",
                   "stops.txt"]
@@ -416,8 +417,8 @@ def main():
     check_proposed_gtfs(raw)
 
     print(f"\nDone. CSVs in {out.resolve()}")
-    print("NOTE: the proposed network now has a real GTFS, supplied by PRT on\n"
-          "      2026-08-11 and committed under data/raw/proposed_gtfs/. It is\n"
+    print("NOTE: the proposed network now has a real GTFS, obtained from\n"
+          "      PRT directly and committed under data/raw/proposed_gtfs/. It is\n"
           "      authoritative for proposed stops and service; the Frequency &\n"
           "      Hours PDFs are a published cross-check, and the Remix dumps\n"
           "      remain the only source for the on-demand microtransit zones.\n"

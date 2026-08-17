@@ -2,11 +2,15 @@
 """
 Does PRT's proposed-network GTFS describe the same plan as its published PDFs?
 
-This exists because the feed arrived by email rather than from a URL, six days
-before the Proposed Final Network was published. Nothing on the feed itself
-proves it is the final plan rather than a working draft, so the claim has to be
-earned against the documents PRT did publish. Every number quoted in `gtfs.py`'s
-docstring and in DATA_SOURCES.md is printed here.
+This exists because the feed came from PRT directly rather than from a URL, and
+its own `feed_info.txt` stamps it 2026-08-11, six days before the Proposed Final
+Network was published. Nothing on the feed proves it is the final plan rather
+than a working draft, so the claim has to be earned against the documents PRT
+did publish. Every number quoted in `gtfs.py`'s docstring and in DATA_SOURCES.md
+is printed here.
+
+This check is not a substitute for recording where the feed came from -- see
+DATA_SOURCES.md, where that is still open.
 
 Four checks, in increasing order of how much they would hurt to fail:
 

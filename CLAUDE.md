@@ -65,11 +65,19 @@ row counts, and the PDF parsing traps. Read it before touching `ingest_blr.py`.
 
 **PRT does not publish a GTFS for the proposed network, but one is in this repo**
 at `data/raw/proposed_gtfs/` (real timetables: 698,865 `stop_times` rows,
-`Future_BLR_Service-Weekday/-Sa/-Su`, provenance unrecorded). Prefer it for
-anything on the proposed side. `analyze_coverage_change.py` uses it; the other
-scripts still derive proposed service from the PDFs, which drops the S-variants
-(absent from Remix) and doubles the peak-only limiteds. The Remix trips endpoint
-returns `[]`, so Remix itself remains timetable-free.
+`Future_BLR_Service-Weekday/-Sa/-Su`). Prefer it for anything on the proposed
+side. `analyze_coverage_change.py` uses it; the other scripts still derive
+proposed service from the PDFs, which drops the S-variants (absent from Remix)
+and doubles the peak-only limiteds. The Remix trips endpoint returns `[]`, so
+Remix itself remains timetable-free.
+
+Be exact about that feed's provenance, because the repo says three different
+things about it if you are careless. What the feed evidences: `feed_info.txt`
+names PRT as publisher and stamps it 2026-08-11. What `verify_proposed_gtfs.py`
+earns: that it is the published plan, not a draft. What is **unrecorded**: how it
+reached this repo — do not write that it was emailed, requested, or received on
+any date, and flag it as not-yet-citable, until someone records the real answer
+in `DATA_SOURCES.md`.
 
 ## Analytical conventions that must be preserved
 

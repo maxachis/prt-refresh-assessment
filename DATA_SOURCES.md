@@ -41,8 +41,12 @@ citing it publicly.**
 
 A complete feed for the Proposed Final Network, unpacked in `data/raw/`. Not
 downloaded by `ingest_blr.py`, and not published at the developer-resources URL
-above — **its provenance is unrecorded and needs to be established before
-publication.**
+above. Every other file in this repo points here for its provenance, so keep
+three things apart: what the feed evidences about itself (`feed_info.txt`,
+below), what `verify_proposed_gtfs.py` earns against PRT's published documents
+("How it is checked"), and how the feed reached this repo — which is **not
+recorded**, and is the one that gates public citation ("Provenance, still
+open").
 
 | File | Contents |
 |---|---|
@@ -54,8 +58,10 @@ publication.**
 | `stops.txt` | 5,515 stops with coordinates; 4,981 ids match the current feed |
 | `shapes.txt` | route geometry |
 
-`feed_info.txt` gives `feed_version` "Updated: Aug 11, 2026", six days before the
-Proposed Final Network was published.
+`feed_info.txt` names `Pittsburgh Regional Transit` as publisher and gives
+`feed_version` "Updated: Aug 11, 2026, 12:14 PM", six days before the Proposed
+Final Network was published. That is the whole of what the feed evidences about
+its own origin.
 
 **Why it matters.** It retires the two compromises every other script here still
 carries. First, the S-variants — 29S, 53S, 55S, 69S, 78S, 89S — are in the
@@ -69,6 +75,26 @@ error 5.6%) but doubles the peak-only limiteds — 1L, 2L, 12L, 19L, 23L, 46L, 5
 
 On day types the PDFs and the feed now agree for all 95 routes present in both;
 `analyze_coverage_change.py` prints any disagreement as a standing cross-check.
+
+**How it is read.** `gtfs.py` loads either feed into one structure, so both
+networks go through identical code — the repo's "measure both sides the same
+way" convention is now structural rather than a convention. Every analysis
+script uses it: `analyze_frequency_change.py`, `analyze_coverage_change.py`,
+`analyze_route_hours.py`, `analyze_service_loss.py` and `analyze_one_seat.py`.
+
+**How it is checked.** `verify_proposed_gtfs.py` tests the feed against the
+documents PRT published, and prints the numbers quoted above. Route sets match
+(95 bus routes each way), day types match for all 95, and service start times
+match on 229 of 240 route-days. It also measures where the old span ÷ headway
+model went wrong: the published span *end* is the last departure from the
+anchor, not from the route, so the feed's last departure is later on all 240
+route-days by a median of 96 minutes — which is why the PDFs undercount evening
+and overnight service, and why the earlier "night service is being withdrawn"
+finding in `FINDINGS.md` has been withdrawn.
+
+**Provenance, still open.** Record how and when this feed was obtained from PRT
+before citing any of it publicly. `feed_info.txt` stamps it "Updated: Aug 11,
+2026"; that is the feed's own timestamp, not evidence of how it reached us.
 
 ## The Remix public API (the proposed network, in structured form)
 
