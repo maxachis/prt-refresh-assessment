@@ -11,11 +11,16 @@ answers that one place at a time by hand. This answers it for every place.
 
 ## Status
 
-Runs locally, and `refresh serve` binds `127.0.0.1` by default. The proposed
-feed's provenance — the one thing that blocked a public deploy — is now recorded
-(`DATA_SOURCES.md`): PRT sent the feed to PPT on request and PPT passed it on.
-What remains before it goes public is a short list, not a blocker; see [Before it
-goes public](#before-it-goes-public).
+Deployed and reachable at <https://prt-refresh.lemaliconsulting.com> (since
+2026-08-19), and it still runs locally — `refresh serve` binds `127.0.0.1` by
+default. The proposed feed's provenance, which is what had blocked a public
+deploy, is recorded in `DATA_SOURCES.md`: PRT sent the feed to PPT on request
+and PPT passed it on.
+
+Reachable is not announced. Nobody has been pointed at that URL, and item 1 of
+[Before it goes public](#before-it-goes-public) — asking PPT whether serving the
+timetable itself is expected — is still open. See [`deploy/README.md`](../deploy/README.md)
+for the box.
 
 ## Why this became possible on 2026-08-11
 

@@ -15,9 +15,10 @@ Since both networks gained a real GTFS it also carries **a web app** (`src/refre
 at today's stops or as a continuous 100 m surface — see
 [`docs/WEBAPP.md`](docs/WEBAPP.md). The pipeline remains the primary artifact and
 stays standard-library only; the app is an optional extra that only reads what
-the pipeline builds. It has not been deployed publicly yet; the proposed feed's
-provenance is now recorded (`DATA_SOURCES.md`), so that is a decision rather
-than a blocker.
+the pipeline builds. It is deployed at
+<https://prt-refresh.lemaliconsulting.com> (`deploy/README.md`), though nobody
+has been pointed at that URL yet — one permission question to PPT is open before
+it is announced.
 
 `docs/BASE_CAMP.md` is human-authored and is **ground truth for intent**; every
 other document is secondary to it. Work is organised around its question IDs
@@ -58,9 +59,11 @@ uv run pytest                        # 49 tests, incl. served == published
 npx vitest run && npx tsc --noEmit   # 37 frontend tests
 ```
 
-**Hosting** is `deploy/` — a Hetzner VM behind Caddy, `./deploy/provision.sh` to
-create or redeploy it. It deploys a *pushed commit*, not the working tree, and
-builds `refresh.db` on the box. See `deploy/README.md`.
+**Hosting** is `deploy/` — a Hetzner VM behind Caddy, live at
+<https://prt-refresh.lemaliconsulting.com>. `./deploy/provision.sh` creates or
+redeploys it; re-running is the redeploy, and is a no-op when the box already
+serves the commit you asked for. It deploys a *pushed commit*, not the working
+tree, and builds `refresh.db` on the box. See `deploy/README.md`.
 
 Each script prints a human-readable report to stdout alongside writing its CSV;
 that printed report is the draft material for `FINDINGS.md` and `docs/answers/`.

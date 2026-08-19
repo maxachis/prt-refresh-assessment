@@ -8,6 +8,26 @@ HTTPS. Two commands, and the second one is optional until DNS exists:
 DOMAIN=refresh.example.org bash deploy/setup-caddy.sh   # as root, on the box
 ```
 
+## What is running
+
+Both commands have been run. The map is live at
+**<https://prt-refresh.lemaliconsulting.com>** — a `cpx11` in Ashburn named
+`prt-refresh`, in the `prt-refresh` hcloud context, behind Caddy on a Let's
+Encrypt certificate. DNS is one `A` record in the `lemaliconsulting.com` zone,
+which DigitalOcean serves.
+
+Deployed on 2026-08-19; a box is mutable, so treat the specifics as a starting
+point and check rather than assume:
+
+```bash
+HCLOUD_CONTEXT=prt-refresh hcloud server list        # does it still exist, at what IP
+curl -s https://prt-refresh.lemaliconsulting.com/api/meta | head -c 200
+ssh root@<ip> 'cd /opt/prt-refresh/app && git log -1 --oneline'   # what is live
+```
+
+Nobody has been pointed at the URL yet — see [Before you point people at
+it](#before-you-point-people-at-it), whose one open item is permission, not code.
+
 ## Why this is a small kit
 
 The app has **no moving parts at runtime**. It reads a SQLite database built
