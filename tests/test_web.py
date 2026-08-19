@@ -122,3 +122,40 @@ def test_meta_carries_the_change_layer_caveat(client):
     """The layer's denominator is a caveat: a dot is a location, not a rider."""
     ids = {c["id"] for c in client.get("/api/meta").json()["caveats"]}
     assert "change-layer" in ids
+
+
+def test_surface_is_served_for_both_radii(client):
+    for radius in (400, 150):
+        d = client.get(f"/api/surface?radius={radius}").json()
+        assert d["radius"] == radius
+        assert d["cell_m"] == 100
+        assert d["days"] == ["weekday", "saturday", "sunday"]
+        assert len(d["cells"]) > 10_000
+        assert all(len(c) == len(d["fields"]) for c in d["cells"])
+
+
+def test_surface_rejects_a_radius_it_was_not_built_at(client):
+    """Same reason as the change layer, and more of it: an unbuilt radius
+    coming back empty would render as a county with no service anywhere."""
+    r = client.get("/api/surface?radius=250")
+    assert r.status_code == 400
+    assert "precomputed" in r.json()["detail"]
+
+
+def test_surface_origin_reconstructs_a_cell(client):
+    """The client draws squares from (ix, iy) and this origin; if the origin
+    does not round-trip, every cell renders in the wrong place."""
+    from refresh import query
+    d = client.get("/api/surface").json()
+    o = d["origin"]
+    ix, iy = d["cells"][0][0], d["cells"][0][1]
+    lat = o["lat0"] + (iy + 0.5) * o["dlat"]
+    lon = o["lon0"] + (ix + 0.5) * o["dlon"]
+    assert query.cell_of(lat, lon) == (ix, iy)
+
+
+def test_meta_carries_the_surface_caveat(client):
+    """Area is extent, not people -- convention 10 requires that said next to
+    the number, and the methods drawer is where the app says it."""
+    ids = {c["id"] for c in client.get("/api/meta").json()["caveats"]}
+    assert "surface" in ids

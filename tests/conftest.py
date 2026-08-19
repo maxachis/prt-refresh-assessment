@@ -1,9 +1,18 @@
 import csv
+import sys
 from pathlib import Path
 
 import pytest
 
 ROOT = Path(__file__).resolve().parent.parent
+
+# The pipeline scripts live at the repo root and are not an installed package.
+# test_surface.py imports analyze_coverage_area to check that the app's lattice
+# is the same lattice the published area figures were measured on -- which is
+# only a real check if it reaches the actual script.
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
 DB = ROOT / "data" / "refresh.db"
 COVERAGE = ROOT / "data" / "coverage_change.csv"
 

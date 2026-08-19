@@ -46,6 +46,19 @@
     .lg-foot { font-size:10.5px; color:var(--muted); margin:8px 2px 0;
       line-height:1.4; }
     #legend-reset { margin:6px 0 0 2px; }
+    /* The surface's own key: a continuous strip, because a swatch list would
+       imply the ramp has buckets and the buckets are published criteria. */
+    #legend .lg-ramp { margin:8px 0 2px; }
+    #legend .lg-bar { height:8px; border-radius:3px; margin:4px 0 3px; }
+    #legend .lg-ends { display:flex; justify-content:space-between;
+                       font-size:10px; color:var(--muted); }
+    #legend .lg-steps { display:flex; gap:10px; font-size:10px;
+                        color:var(--muted); margin-top:5px; }
+    #legend .lg-steps i { display:inline-block; width:9px; height:9px;
+                          border-radius:2px; vertical-align:-1px; margin-right:4px; }
+    #legend .lg-area { display:flex; flex-wrap:wrap; gap:2px 12px; font-size:11px;
+                       margin-top:6px; color:var(--muted); }
+    #legend .lg-area b { color:var(--ink); font-weight:600; }
 
     header { padding:14px 16px; border-bottom:1px solid var(--line); }
     header h1 { margin:0; font-size:15px; letter-spacing:.01em; }
@@ -166,6 +179,20 @@
           <button data-day="weekday" class="active">Weekday</button>
           <button data-day="saturday">Saturday</button>
           <button data-day="sunday">Sunday</button>
+        </div>
+      </div>
+      <!-- Locations vs surface. The dots can only be drawn where a stop
+           stands today, so they scatter and they cannot show ground the plan
+           adds a bus to; the surface measures the same comparison on a 100 m
+           lattice. They are complements, not alternatives — the plan reads as
+           roughly service-neutral per location and as 12% less covered ground,
+           and either figure alone is a talking point rather than a finding. -->
+      <div class="controls">
+        <span class="lbl">view</span>
+        <div class="seg">
+          <button data-view="dots" class="active">Locations</button>
+          <button data-view="surface">Surface</button>
+          <button data-view="both">Both</button>
         </div>
       </div>
       <div id="panel"></div>

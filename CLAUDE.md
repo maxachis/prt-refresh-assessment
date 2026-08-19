@@ -11,7 +11,8 @@ let Pittsburghers for Public Transit answer the questions in `docs/BASE_CAMP.md`
 with evidence PRT has not itself published.
 
 Since both networks gained a real GTFS it also carries **a web app** (`src/refresh/`,
-`frontend/`) that answers "what changes here?" at an arbitrary point — see
+`frontend/`) that answers "what changes here?" at an arbitrary point, as dots
+at today's stops or as a continuous 100 m surface — see
 [`docs/WEBAPP.md`](docs/WEBAPP.md). The pipeline remains the primary artifact and
 stays standard-library only; the app is an optional extra that only reads what
 the pipeline builds, and it is **not cleared for public deployment** — the
@@ -52,8 +53,8 @@ uv sync --extra web && npm install   # one-time
 npm run build                        # frontend/*.ts -> static/app.js
 uv run refresh serve                 # http://127.0.0.1:8000
 
-uv run pytest                        # 38 tests, incl. served == published
-npx vitest run && npx tsc --noEmit   # 23 frontend tests
+uv run pytest                        # 49 tests, incl. served == published
+npx vitest run && npx tsc --noEmit   # 37 frontend tests
 ```
 
 Each script prints a human-readable report to stdout alongside writing its CSV;

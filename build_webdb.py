@@ -197,6 +197,24 @@ CREATE TABLE change (
     PRIMARY KEY (radius, day, point_id)
 );
 CREATE INDEX ix_change_radius ON change(radius);
+
+-- The magnitude surface: the same before-and-after the `change` table holds,
+-- measured on a 100 m lattice instead of only where a stop stands today, so
+-- the map can be read as a continuous field rather than a scatter of dots.
+-- Cells are `analyze_coverage_area.py`'s cells -- see the lattice note in
+-- query.py -- which is what lets the served-cell count be checked against the
+-- km2 figures docs/answers/ publishes. Cells with no bus either way on any day
+-- are not stored.
+CREATE TABLE surface (
+    radius     INTEGER NOT NULL,   -- 400 | 150, both built
+    ix         INTEGER NOT NULL,   -- lattice column
+    iy         INTEGER NOT NULL,   -- lattice row
+    day        TEXT NOT NULL,
+    cur_trips  INTEGER NOT NULL,
+    prop_trips INTEGER NOT NULL,
+    PRIMARY KEY (radius, day, ix, iy)
+);
+CREATE INDEX ix_surface_radius ON surface(radius);
 """
 
 
@@ -344,6 +362,7 @@ def build(out_path):
     con.close()
 
     change_layer(out_path)
+    surface_layer(out_path)
 
     mb = out_path.stat().st_size / 1e6
     print(f"\nwrote {out_path}  ({mb:.1f} MB)")
@@ -381,6 +400,29 @@ def change_layer(out_path):
               f"{len(rows) // len(DAYS):,} locations")
         print("    published weekday buckets: "
               + ", ".join(f"{tally[k]} {k}" for k, _ in query.BUCKETS if tally[k]))
+    write.commit()
+    write.close()
+    read.close()
+
+
+def surface_layer(out_path):
+    """Fill the `surface` table -- the magnitude surface, precomputed.
+
+    Same fresh-connection requirement as `change_layer` above, and it costs far
+    more here: this is ~48,500 cells per radius against ~5,900 locations, so
+    the r-tree query plan is the difference between a minute and twenty.
+    """
+    read = query.connect(out_path)
+    write = sqlite3.connect(out_path)
+    for radius in query.RADII:
+        rows = query.compute_surface(read, radius)
+        write.executemany("INSERT INTO surface VALUES (?,?,?,?,?,?)", rows)
+        cells = len(rows) // len(DAYS)
+        served = sum(1 for r in rows
+                     if r[3] == "weekday" and (r[4] > 0 or r[5] > 0))
+        print(f"\nsurface @ {radius} m: {cells:,} cells "
+              f"({cells * query.CELL_M ** 2 / 1e6:.1f} km2 of lattice), "
+              f"{served:,} with weekday service either side")
     write.commit()
     write.close()
     read.close()

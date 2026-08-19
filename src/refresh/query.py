@@ -73,6 +73,23 @@ RTREE_PAD_M = 10.0
 PRIMARY_RADIUS = 400
 RADII = (400, 150)
 
+# --- the lattice the magnitude surface is drawn on ------------------------
+#
+# THESE THREE NUMBERS ARE NOT FREE. They are `analyze_coverage_area.py`'s
+# lattice, repeated here so the surface's cells are the same squares that
+# script measured `data/coverage_area.csv` on -- move the origin or the cell
+# size and the served-cell count stops being comparable to the published km2,
+# while still looking like a plausible map.
+# `test_lattice_agrees_with_the_area_analysis` imports that script and checks
+# the agreement cell for cell rather than trusting this comment.
+#
+# The projection is local equirectangular about the county's centre. Note it is
+# used ONLY to index cells; every distance the surface actually measures goes
+# through `stops_within`, on the app's own metric. See `cell_metres`.
+CELL_M = 100
+LAT0, LON0 = 40.45, -79.98
+M_PER_DEG_LON = METERS_PER_DEGREE * math.cos(math.radians(LAT0))
+
 
 def connect(db_path: str | Path) -> sqlite3.Connection:
     """Open the serving DB read-only. The app never writes to it."""
@@ -464,6 +481,146 @@ def change_layer(con, radius: float = PRIMARY_RADIUS):
                    *[f"{d}_{f}" for d in DAYS
                      for f in ("cur", "prop", "bucket")]],
         "points": list(packed.values()),
+    }
+
+
+# --------------------------------------------------------------------------
+# the magnitude surface
+# --------------------------------------------------------------------------
+#
+# The change layer can only paint places where a stop stands today, so it
+# renders as a scatter of dots and it cannot show ground the plan adds a bus
+# to. The surface answers the same question -- what happens to the buses within
+# a walk of here -- at every point in space instead, by treating a lattice cell
+# as a location that need not have a stop on it. That is not a new method:
+# `analyze_coverage_area.py` already measures the published area figures this
+# way, and its docstring is where the reasoning lives ("a rider stands in a
+# place, not at a stop id").
+#
+# Two rules this shares with the change layer, for the same reasons:
+#
+#   - PRECOMPUTED THROUGH `side_at_place`, the same function a click calls, so
+#     a cell and the panel a reader opens on it cannot disagree.
+#   - THE CELL SET IS FIXED AT PRIMARY_RADIUS for both radii. At 150 m the
+#     covered area is a third of the 400 m one, and choosing cells per radius
+#     would change what ground is on the map rather than what the plan does
+#     to it.
+
+
+def cell_of(lat: float, lon: float) -> tuple[int, int]:
+    """The lattice cell containing a point, as (ix, iy)."""
+    return (int(math.floor((lon - LON0) * M_PER_DEG_LON / CELL_M)),
+            int(math.floor((lat - LAT0) * METERS_PER_DEGREE / CELL_M)))
+
+
+def cell_centre(ix: int, iy: int) -> tuple[float, float]:
+    """The (lat, lon) at the centre of a cell -- where it is measured."""
+    return (LAT0 + (iy + 0.5) * CELL_M / METERS_PER_DEGREE,
+            LON0 + (ix + 0.5) * CELL_M / M_PER_DEG_LON)
+
+
+def cell_metres(lat: float, lon: float, plat: float, plon: float) -> float:
+    """Distance on the app's metric -- cosine of the QUERY point's latitude.
+
+    Deliberately not the lattice projection above, which fixes that cosine at
+    the county centre. `stops_within` scales by the query point's own latitude,
+    and a cell whose membership was decided on one metric while the panel
+    behind it used the other would show a stop outside the circle it is
+    supposedly inside. The lattice indexes; this measures.
+    """
+    coslat = math.cos(math.radians(lat)) or 1e-9
+    dla = (plat - lat) * METERS_PER_DEGREE
+    dlo = (plon - lon) * METERS_PER_DEGREE * coslat
+    return math.sqrt(dla * dla + dlo * dlo)
+
+
+def surface_cells(con, radius: float = PRIMARY_RADIUS):
+    """Sorted (ix, iy) for every cell within `radius` of a stop on either side.
+
+    Rasterising a union of discs: a cell counts when its CENTRE is covered,
+    which is unbiased and is what the published area figures do. Candidates
+    come from each stop's bounding box in lattice space and are then trimmed by
+    the true circular test, so the box is a prefilter and never the decision --
+    the same shape as `stops_within`.
+    """
+    span = int(math.ceil(radius / CELL_M)) + 1
+    cells: set[tuple[int, int]] = set()
+    for r in con.execute("SELECT DISTINCT lat, lon FROM stops"):
+        cx, cy = cell_of(r["lat"], r["lon"])
+        for ix in range(cx - span, cx + span + 1):
+            for iy in range(cy - span, cy + span + 1):
+                if (ix, iy) in cells:
+                    continue
+                clat, clon = cell_centre(ix, iy)
+                if cell_metres(clat, clon, r["lat"], r["lon"]) <= radius:
+                    cells.add((ix, iy))
+    return sorted(cells)
+
+
+def compute_surface(con, radius: float = PRIMARY_RADIUS):
+    """Rows for the `surface` table: every covered cell, every day type.
+
+    Cells with no bus on either side on any day are dropped rather than stored
+    as zeros. At 150 m that is most of the 400 m cell set, and they would
+    triple the payload to draw nothing.
+
+    Roughly three minutes per radius; `build_webdb.py` calls it, and the note
+    there about opening a fresh connection applies with more force here than
+    anywhere else in the build.
+    """
+    out = []
+    for ix, iy in surface_cells(con, PRIMARY_RADIUS):
+        lat, lon = cell_centre(ix, iy)
+        cur = side_at_place(con, "current", lat, lon, radius)["days"]
+        prop = side_at_place(con, "proposed", lat, lon, radius)["days"]
+        if not any(cur[d]["trips"] or prop[d]["trips"] for d in DAYS):
+            continue
+        for day in DAYS:
+            out.append((int(radius), ix, iy, day,
+                        cur[day]["trips"], prop[day]["trips"]))
+    return out
+
+
+def surface_layer(con, radius: float = PRIMARY_RADIUS):
+    """The surface at one radius, all three day types, packed for the wire.
+
+    Cells travel as lattice indices rather than coordinates: the lattice is
+    regular, so `origin` plus (ix, iy) reconstructs the square exactly, and
+    shipping four corners per cell would multiply a payload that is already the
+    largest thing this app sends.
+
+    Each row is [ix, iy, then per day: cur, prop]. No bucket is sent, and that
+    is deliberate -- the surface is drawn on a continuous ramp, while the
+    BUCKETS above are published criteria whose counts the legend reports. A
+    ramp is a display choice; those counts are not, and blurring the two would
+    let a reader quote a figure off the surface as though `docs/answers/`
+    published it.
+    """
+    rows = con.execute(
+        "SELECT ix, iy, day, cur_trips, prop_trips FROM surface "
+        "WHERE radius = ? ORDER BY ix, iy", (int(radius),)).fetchall()
+
+    packed: dict[tuple[int, int], list] = {}
+    for r in rows:
+        c = packed.setdefault((r["ix"], r["iy"]),
+                              [r["ix"], r["iy"], 0, 0, 0, 0, 0, 0])
+        at = 2 + 2 * DAYS.index(r["day"])
+        c[at:at + 2] = [r["cur_trips"], r["prop_trips"]]
+
+    return {
+        "radius": int(radius),
+        "cell_m": CELL_M,
+        "days": list(DAYS),
+        # Enough to rebuild any cell's square client-side: the south-west
+        # corner of cell (ix, iy) is (lat0 + iy*dlat, lon0 + ix*dlon).
+        "origin": {
+            "lat0": LAT0, "lon0": LON0,
+            "dlat": CELL_M / METERS_PER_DEGREE,
+            "dlon": CELL_M / M_PER_DEG_LON,
+        },
+        "fields": ["ix", "iy",
+                   *[f"{d}_{f}" for d in DAYS for f in ("cur", "prop")]],
+        "cells": list(packed.values()),
     }
 
 

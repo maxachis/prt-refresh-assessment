@@ -6,6 +6,10 @@ import {
   layerData, dotLabel,
 } from './change';
 import { renderLegend } from './legend';
+import {
+  initSurfaceLayer, loadSurfaceLayer, setSurfaceDay, setSurfaceVisible,
+  layerData as surfaceData, isVisible as surfaceOn,
+} from './surface';
 import { PlaceResult, Day } from './types';
 
 const PGH: [number, number] = [-79.9959, 40.4406];
@@ -26,6 +30,7 @@ map.addControl(new maplibregl.NavigationControl(), 'top-right');
 map.on('load', () => {
   initMapLayers(map);
   initChangeLayer(map);      // after initMapLayers: it inserts beneath 'walk-fill'
+  initSurfaceLayer(map, 'change-dots');   // under the dots, so 'Both' reads
   renderEmpty($('panel'));
 
   map.on('click', (e: any) => {
@@ -60,6 +65,9 @@ map.on('load', () => {
   segment('[data-radius]', (b) => {
     radius = Number(b.dataset.radius);
     void loadChangeLayer(map, radius, activeDay()).then(refreshLegend);
+    if (surfaceData()) {
+      void loadSurfaceLayer(map, radius, activeDay()).then(refreshLegend);
+    }
     if (last) void load(last.lat, last.lon);
   });
 
@@ -70,7 +78,18 @@ map.on('load', () => {
     const day = b.dataset.day as Day;
     setDay(day);
     setChangeDay(map, day);
+    setSurfaceDay(map, day);
     refreshLegend();
+  });
+
+  // Locations, surface, or both. The surface is fetched on first use rather
+  // than at startup: it is ~48,500 cells against ~5,900 dots, and a reader who
+  // never switches views should not pay for it.
+  segment('[data-view]', (b) => {
+    const view = b.dataset.view!;
+    map.setLayoutProperty('change-dots', 'visibility',
+      view === 'surface' ? 'none' : 'visible');
+    void showSurface(view !== 'dots');
   });
 
   $('legend').addEventListener('click', (e) => {
@@ -106,7 +125,21 @@ function refreshLegend() {
   renderLegend($('legend'), d, activeDay(), {
     west: b.getWest(), south: b.getSouth(),
     east: b.getEast(), north: b.getNorth(),
-  });
+  }, surfaceOn() ? surfaceData() : null);
+}
+
+/** Turn the surface on or off, loading it the first time it is asked for. */
+async function showSurface(on: boolean) {
+  if (on && !surfaceData()) {
+    $('legend').classList.add('loading');
+    try {
+      await loadSurfaceLayer(map, radius, activeDay());
+    } finally {
+      $('legend').classList.remove('loading');
+    }
+  }
+  setSurfaceVisible(map, on);
+  refreshLegend();
 }
 
 async function load(lat: number, lon: number) {

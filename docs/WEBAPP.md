@@ -43,6 +43,7 @@ data/raw/proposed_gtfs/    ─┘      (stdlib)         (14 MB, ~26s)     read-o
 | `src/refresh/web/app.py` | Thin FastAPI skin. No arithmetic. |
 | `frontend/*.ts` | Vanilla TypeScript, esbuild → one `app.js`. MapLibre vendored, no CDN. |
 | `frontend/change.ts`, `legend.ts` | The citywide layer and the legend that summarises and filters it. |
+| `frontend/surface.ts` | The magnitude surface — the same layer as a continuous field. |
 
 The stack follows `pgh-ghost-bus` (kept as a gitignored reference checkout at
 `pgh-ghost-bus/`): uv, `src/` package, an optional web extra, read-only SQLite,
@@ -143,12 +144,67 @@ Three decisions worth keeping:
    `queryRenderedFeatures`, which only sees what survived the filter, so
    switching a bucket off would otherwise look like those losses had gone away.
 
+## The magnitude surface
+
+The dots answer "what happens at my corner" everywhere a corner exists. They
+cannot do two things: read as a *shape* — 5,900 points at county scale is a
+scatter, not a picture — and show ground the plan adds a bus to, since a place
+with no stop today has no dot to colour.
+
+The surface is the same measurement on `analyze_coverage_area.py`'s 100 m
+lattice, where a cell is a location that need not have a stop on it. That is
+not a new method: it is how the published area figures in
+`data/coverage_area.csv` were already measured, and that script's docstring
+carries the reasoning — *a rider stands in a place, not at a stop id*.
+
+48,526 cells at 400 m (485 km² of ground), 18,786 at 150 m. About a minute per
+radius to build, 1.3 MB on the wire and 198 KB gzipped.
+
+Five decisions worth keeping:
+
+1. **It is the same lattice, not a similar one.** The origin, cell size and
+   projection are `analyze_coverage_area.py`'s, so counting served cells
+   reproduces the published km² — 405.15 against a published 405.06 for the
+   proposed network at 400 m, a 0.02% difference that is entirely the two
+   distance metrics (the lattice fixes its longitude scale at the county
+   centre; the app scales by each query point's own latitude). The app's metric
+   wins, because a cell that disagreed with the panel behind it is the worse
+   error. `test_surface_area_reproduces_the_published_km2` pins this at 0.2%.
+2. **Precomputed through `side_at_place`**, like the dots and for the same
+   reason: a cell and the panel a click opens on it cannot disagree.
+   `test_a_cell_agrees_with_the_panel_it_opens` checks it directly.
+3. **The ramp is a display choice and the buckets are not.** The ramp passes
+   *through* the bucket colours at the published edges — halved is the same
+   orange here as on the dots — but the surface never reports a bucket tally.
+   Those counts belong to `docs/answers/`; a continuous ramp has none to
+   publish, and blurring the two would let a reader quote a figure off the
+   surface as though it were published.
+4. **Total loss and new service are steps, not ramp ends.** `gone` is a
+   categorical outcome, not "a lot less". Fading it in from "quartered" would
+   bury the plainest finding on the map in a gradient.
+5. **Opacity carries magnitude, and antialiasing is off.** Most ground keeps
+   roughly what it has, so a field at one opacity is mostly neutral with the
+   real changes competing against it; fading the middle of the ramp lets the
+   extremes carry while the covered ground stays visible to orient against.
+   Antialiasing off is not a performance tweak — abutting squares' antialiased
+   edges blend with the basemap rather than each other, drawing a pale seam
+   along every shared edge and laying a visible 100 m mesh over the county.
+
+**Area and locations are complements and the UI has to say so** (convention
+10). The plan reads as roughly service-neutral per location and as 12% less
+covered ground; either alone is a talking point rather than a finding. So the
+view control offers *Both*, the legend shows the location counts and the area
+km² together, and the area line says "of ground in view, not of people" — a
+square kilometre of hillside paints exactly like a square kilometre of
+Brookline.
+
 ## API
 
 | Endpoint | Returns |
 |---|---|
 | `GET /api/place?lat=&lon=&radius=` | Before and after at one point, all three day types. The app's purpose; everything else is navigation. |
 | `GET /api/change?radius=` | The citywide layer: every location bucketed, all three day types, columnar. Radius must be 400 or 150 — it is precomputed. ~300 KB, 77 KB gzipped. |
+| `GET /api/surface?radius=` | The magnitude surface: every covered 100 m cell, all three day types, columnar as lattice indices. Radius must be 400 or 150. ~1.3 MB, 198 KB gzipped. |
 | `GET /api/stops?side=&lat=&lon=&radius=` | Stops one network puts inside the radius. |
 | `GET /api/routes?side=` | Bus routes with trips, revenue hours and span per day type. |
 | `GET /api/crosswalk` | PRT's current → proposed route mapping. A labelling aid; no served number goes through it. |
@@ -177,11 +233,27 @@ Three decisions worth keeping:
 
 ## Known gaps
 
-- No route shapes on the map yet; both feeds have `shapes.txt`.
-- The change layer can only draw locations, so it shows added coverage only
-  where a proposed stop lands somewhere with no bus today. Coverage gained
-  across an *area* is `analyze_coverage_area.py`'s 100 m raster, and nothing
-  serves it yet — that is the polygon layer, still to build.
+- **A "heat route map" — corridors coloured by change — is the alternative
+  visualisation to explore next**, and is deliberately not built. Both feeds
+  carry `shapes.txt` (483k points current, 121k proposed), and transit change
+  is linear: it happens along streets, not in blobs, so ribbons would read more
+  naturally than either dots or a field. Two things have to be settled first,
+  and neither is mechanical. **Shapes are not comparable across networks** —
+  the plan re-splits corridors, so the proposed 60X has no counterpart line to
+  diff against (convention 1); both sides' geometry would have to be snapped
+  onto a shared spatial reference, for which the 100 m lattice already works,
+  accumulating trips per cell per side deduplicated by trip. And **buses
+  passing is not service you can board**: a cell on a busy stretch with no stop
+  would light up as well-served, so the layer either says "through service" in
+  as many words or restricts itself to segments within a walk of a stop — at
+  which point it is the surface again, sampled along lines. Estimated 2–3 days,
+  most of it in those two questions rather than in the drawing.
+  *Max chose the magnitude surface first and asked for this to be held as an
+  alternative to explore later; it is not abandoned.*
+- The 10 on-demand microtransit zones are still undrawn — see item 2 under
+  *Before it goes public*. This matters more now the surface exists: 23% of the
+  area losing all fixed-route service is inside a zone, and the surface paints
+  every square metre of it plain red.
 - Stop-name and neighbourhood search is not built (the DB has FTS5 available).
 - `nearest_place_label` uses PRT's `HOOD`/`MUNI` labels, which contain errors up
   to 40 km (caveat 4). It is a display hint; nothing computed depends on it.

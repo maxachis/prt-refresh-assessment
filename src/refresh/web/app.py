@@ -100,6 +100,25 @@ def create_app(db_path: str | Path = "data/refresh.db") -> FastAPI:
                      "layer is precomputed at those two")
         return query.change_layer(con, radius)
 
+    @app.get("/api/surface")
+    def api_surface(
+        radius: float = Query(query.PRIMARY_RADIUS,
+                              description="walk radius in metres; must be one "
+                                          "of the precomputed radii"),
+    ):
+        """The magnitude surface: every covered 100 m cell, all three days.
+
+        The continuous counterpart to `/api/change` — the same before-and-after
+        measured on a lattice rather than only where a stop stands today, so
+        the plan reads as a field instead of a scatter. Precomputed for the
+        same reason, and more so: this is ~48,500 cells per radius.
+        """
+        if int(radius) not in query.RADII:
+            raise HTTPException(
+                400, f"radius must be one of {list(query.RADII)} — the surface "
+                     "is precomputed at those two")
+        return query.surface_layer(con, radius)
+
     @app.get("/api/stops")
     def api_stops(
         side: str = Query("current", pattern="^(current|proposed)$"),
@@ -151,6 +170,17 @@ CAVEATS = [
                 "plus the places the proposed network serves where nothing "
                 "stops within 400 m today. It is not a population map: a dot "
                 "is a location, not the people at it.",
+    },
+    {
+        "id": "surface",
+        "text": "The continuous surface measures the same comparison at every "
+                "point on a 100 m lattice, so it shows ground the plan adds or "
+                "drops rather than only stops that exist today. It is extent, "
+                "not people: a square kilometre of hillside counts like a "
+                "square kilometre of Brookline. Read it beside the location "
+                "dots — the plan is roughly service-neutral per location and "
+                "covers 12% less ground, and either figure alone is a talking "
+                "point rather than a finding.",
     },
     {
         "id": "location-not-route",

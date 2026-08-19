@@ -78,3 +78,29 @@ export interface PlaceResult {
   change: Record<Day, { trips: number; hourly: [boolean, boolean] }>;
   place: { muni: string; hood: string } | null;
 }
+
+/**
+ * One cell of the magnitude surface, columnar for the same reason the change
+ * layer is — ~48,500 cells is the largest thing this app sends:
+ *
+ *   [ix, iy, wCur, wProp, sCur, sProp, uCur, uProp]
+ *
+ * Position is a lattice index, not a coordinate: the lattice is regular, so
+ * `origin` reconstructs the square exactly and four corners per cell would
+ * multiply the payload for nothing.
+ */
+export type SurfaceCell = number[];
+
+/** Offsets into a SurfaceCell for day `i` of DAYS. */
+export const S_CUR = (i: number) => 2 + 2 * i;
+export const S_PROP = (i: number) => 3 + 2 * i;
+
+export interface SurfaceLayer {
+  radius: number;
+  cell_m: number;
+  days: Day[];
+  /** South-west corner of cell (ix, iy) is (lat0 + iy*dlat, lon0 + ix*dlon). */
+  origin: { lat0: number; lon0: number; dlat: number; dlon: number };
+  fields: string[];
+  cells: SurfaceCell[];
+}
