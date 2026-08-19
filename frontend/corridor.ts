@@ -20,19 +20,26 @@
  *    reader who has already learned red-means-gone from the surface does not
  *    have to relearn it here.
  *  - KEPT DOES NOT SHARE IT, AND THAT IS DELIBERATE. The surface's dead-band
- *    grey (#59606e) was chosen to sit inside a saturated ramp on a fill layer
- *    -- it all but disappears drawn as a thin line against Positron's near-
- *    white basemap, and kept is 897.8 of 1,239.3 km, most of the layer. A
- *    kept network that cannot be seen fails the one thing this view exists
- *    to do: show a red or blue segment as part of a network, so a reader can
- *    tell an isolated block from a severed trunk corridor. So kept gets its
- *    own neutral grey with real contrast against the basemap, drawn thinner
- *    and lower-opacity than lost/added and underneath them -- subordinate,
- *    not invisible. It stays DESATURATED rather than taking a cooler blue-
- *    grey: added is a blue, and a blue-grey kept next to it makes "gains a
- *    bus" and "keeps its bus" read as one hue family, which is the single
- *    distinction this view exists to draw. Grey against red and blue keeps
- *    change as the only thing on the map carrying colour.
+ *    grey (DEAD_BAND_COLOR) was chosen to sit inside a saturated ramp on a
+ *    fill layer -- it all but disappears drawn as a thin line against
+ *    Positron's near-white basemap, and kept is 897.8 of 1,239.3 km, most of
+ *    the layer. A kept network that cannot be seen fails the one thing this
+ *    view exists to do: show a red or blue segment as part of a network, so a
+ *    reader can tell an isolated block from a severed trunk corridor. So
+ *    kept gets its own neutral grey with real contrast against the basemap,
+ *    drawn thinner and lower-opacity than lost/added and underneath them --
+ *    subordinate, not invisible. It stays DESATURATED rather than taking a
+ *    cooler blue-grey: added is a blue, and a blue-grey kept next to it
+ *    makes "gains a bus" and "keeps its bus" read as one hue family, which
+ *    is the single distinction this view exists to draw. Grey against red
+ *    and blue keeps change as the only thing on the map carrying colour.
+ *  - KEPT ALSO DARKENS AS YOU ZOOM OUT, NOT ONE FLAT COLOUR. At city zoom the
+ *    kept grey sits right next to Positron's OWN grey motorway casings, and
+ *    the network reads as basemap -- which defeats the point of drawing it.
+ *    That only resolves by z14, where the street grid has spread out enough
+ *    for kept's grey to read as a layer again rather than blend into the
+ *    roads under it. So kept takes a darker grey below z14 and lightens back
+ *    to its base colour from z14 up, rather than one colour at every zoom.
  *  - LEGEND TOTALS ARE CITYWIDE, NOT IN-VIEW, unlike every other legend in
  *    this app. The API has no radius parameter and returns the whole city's
  *    kilometres for the requested day type; summing only what scrolled into
@@ -50,6 +57,11 @@ const LAYER = 'corridor-lines';
 // contrast against Positron's near-white basemap, which the surface's fill
 // version never had to survive. See the module docstring.
 export const KEPT_COLOR = '#8b929c';
+
+// A darker variant of KEPT_COLOR, used below z14 where the kept grey would
+// otherwise compete with Positron's own motorway-casing grey. See the module
+// docstring.
+export const KEPT_COLOR_LOW = '#6f7783';
 
 /** Colour per class, sharing the surface's palette so the two views agree. */
 export const KLASS_COLOR: Record<CorridorKlass, string> = {
@@ -101,11 +113,27 @@ export function pavementPct(km: Record<CorridorKlass, number>) {
   };
 }
 
-function colorExpr(): any {
-  return ['match', ['get', 'klass'],
+/**
+ * Colour per class, with kept darkening below z14 -- see the module
+ * docstring's "darkens as you zoom out" note.
+ *
+ * ZOOM HAS TO BE THE OUTER EXPRESSION, which is why this reads inside-out:
+ * only kept varies with zoom, so the natural shape is a match on class with
+ * an interpolate in the kept branch -- and MapLibre rejects that outright
+ * ("zoom expression may only be used as input to a top-level step or
+ * interpolate"), silently dropping the whole layer at addLayer time rather
+ * than falling back to a flat colour. TypeScript cannot see it: these
+ * expressions are `any`. So the match is repeated per zoom stop instead, and
+ * `corridor.test.ts` pins the ordering.
+ */
+export function colorExpr(): any {
+  const atZoom = (kept: string) => ['match', ['get', 'klass'],
     'lost', KLASS_COLOR.lost,
     'added', KLASS_COLOR.added,
-    KLASS_COLOR.kept];
+    kept];
+  return ['interpolate', ['linear'], ['zoom'],
+    9, atZoom(KEPT_COLOR_LOW),
+    14, atZoom(KEPT_COLOR)];
 }
 
 /**

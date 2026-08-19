@@ -36,15 +36,22 @@ import { fetchJSON } from './utils';
  * of the app would then contradict. The redundancy is size: `gone` and `new`
  * are the largest dots on the map and `same` the smallest, so the extremes
  * survive any colour deficiency.
+ *
+ * The ramp is also balanced for CONTRAST against the basemap, not just for
+ * saturation. Gains at the previous brightness read ~1.6:1 against Positron
+ * where losses read ~3.1:1 -- "gains as loud as losses" was true of hue and
+ * size but not of the one channel that decides whether you see a dot at all.
+ * frontend/contrast.test.ts now enforces a 2.5:1 floor per bucket and 6%
+ * loss/gain symmetry, so this can't silently drift back.
  */
 export const STYLE: Record<string, { color: string; size: number }> = {
-  gone:    { color: '#ff3b47', size: 6 },
-  halved:  { color: '#ff8f6e', size: 4.5 },
-  less:    { color: '#a8756c', size: 3 },
-  same:    { color: '#59606e', size: 2.5 },
-  more:    { color: '#6aa387', size: 3 },
-  doubled: { color: '#35d98a', size: 4.5 },
-  new:     { color: '#4ec3ff', size: 6 },
+  gone:    { color: '#e8232f', size: 6 },
+  halved:  { color: '#ef5c33', size: 4.5 },
+  less:    { color: '#b06a55', size: 3 },
+  same:    { color: '#6b7280', size: 2.5 },
+  more:    { color: '#478a68', size: 3 },
+  doubled: { color: '#12a163', size: 4.5 },
+  new:     { color: '#0f79c9', size: 6 },
   none:    { color: '#3a3f4a', size: 2 },
 };
 
@@ -111,7 +118,7 @@ function toGeoJSON(layer: ChangeLayer) {
   };
 }
 
-/** `['match', ['get', 'b0'], 'gone', '#ff3b47', ..., fallback]` */
+/** `['match', ['get', 'b0'], 'gone', '#e8232f', ..., fallback]` */
 function rampExpr(dayIndex: number, field: 'color' | 'size'): any {
   const cases = Object.entries(STYLE).flatMap(([k, s]) => [k, s[field]]);
   return ['match', ['get', `b${dayIndex}`], ...cases, STYLE.none[field]];
@@ -140,8 +147,15 @@ export function initChangeLayer(map: maplibregl.Map) {
       'circle-color': rampExpr(0, 'color'),
       'circle-radius': sizeExpr(0),
       'circle-opacity': 0.85,
-      'circle-stroke-width': 0.5,
-      'circle-stroke-color': 'rgba(10,12,16,.65)',
+      // A near-white halo, not a dark hairline, and one that grows with zoom.
+      // A dark stroke does nothing for a pale dot on Positron's near-white
+      // ground -- it doesn't separate the dot from the basemap, since the
+      // basemap is already dark by comparison. And in the "Both" view a dot
+      // sits on a surface cell of its OWN colour -- a green dot on green
+      // ground -- so the halo is what keeps the dot visible against the layer
+      // that agrees with it, not against the basemap it's already clear of.
+      'circle-stroke-color': 'rgba(255,255,255,.9)',
+      'circle-stroke-width': ['interpolate', ['linear'], ['zoom'], 9, 0.5, 12, 1, 16, 1.6],
     },
   }, 'walk-fill');
 }

@@ -31,6 +31,9 @@ import { fetchJSON } from './utils';
 const SRC = 'surface';
 const LAYER = 'surface-fill';
 
+/** The dead-band grey -- same colour as change.ts's `same` bucket, by design. */
+export const DEAD_BAND_COLOR = '#6b7280';
+
 /**
  * Ramp anchors in log2(proposed / current), with the colours the dots use at
  * the bucket edges so the two layers agree where they can.
@@ -41,16 +44,16 @@ const LAYER = 'surface-fill';
  * nothing published rests on it.
  */
 export const RAMP: [number, string][] = [
-  [-2, '#c9142a'],      // quartered or worse
-  [-1, '#ff8f6e'],      // halved — LOSE-FREQUENCY-HALF's edge
-  [-0.138, '#59606e'],  // dead band
-  [0.138, '#59606e'],
-  [1, '#35d98a'],       // doubled — GAIN-FREQUENCY-DOUBLE's edge
-  [2, '#0f9c5c'],       // quadrupled or better
+  [-2, '#d01c2f'],          // quartered or worse
+  [-1, '#ef5c33'],          // halved — LOSE-FREQUENCY-HALF's edge
+  [-0.138, DEAD_BAND_COLOR], // dead band
+  [0.138, DEAD_BAND_COLOR],
+  [1, '#12a163'],           // doubled — GAIN-FREQUENCY-DOUBLE's edge
+  [2, '#0b7a48'],           // quadrupled or better
 ];
 
-export const GONE_COLOR = '#ff3b47';
-export const NEW_COLOR = '#4ec3ff';
+export const GONE_COLOR = '#e8232f';
+export const NEW_COLOR = '#0f79c9';
 export const RAMP_CLAMP = 2;
 
 let data: SurfaceLayer | null = null;

@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { toGeoJSON, klassColor, pavementPct, KEPT_COLOR } from './corridor';
-import { GONE_COLOR, NEW_COLOR } from './surface';
+import {
+  toGeoJSON, klassColor, pavementPct, colorExpr, KEPT_COLOR, KEPT_COLOR_LOW,
+} from './corridor';
+import { GONE_COLOR, NEW_COLOR, DEAD_BAND_COLOR } from './surface';
 import { CorridorLayer } from './types';
 
 function layer(overrides: Partial<CorridorLayer> = {}): CorridorLayer {
@@ -40,7 +42,7 @@ describe('klassColor', () => {
     // kept needs contrast against the Positron basemap that the surface's
     // fill layer never had to survive -- see the corridor.ts module doc.
     expect(klassColor('kept')).toBe(KEPT_COLOR);
-    expect(KEPT_COLOR).not.toBe('#59606e');
+    expect(KEPT_COLOR).not.toBe(DEAD_BAND_COLOR);
   });
 });
 
@@ -55,5 +57,38 @@ describe('pavementPct', () => {
   it('does not divide by added km, which is not part of the denominator', () => {
     const { lostPct } = pavementPct({ kept: 10, lost: 10, added: 1000 });
     expect(lostPct).toBeCloseTo(50, 5);
+  });
+});
+
+describe('colorExpr', () => {
+  // MapLibre allows a zoom expression only as the input to a TOP-LEVEL step or
+  // interpolate. Nesting one inside the match on `klass` -- the shape the code
+  // wants, since only kept varies with zoom -- is rejected at addLayer time and
+  // the entire Streets layer silently fails to draw. It typechecks, because
+  // these expressions are `any`, so this test is the only thing standing
+  // between that mistake and a blank map.
+  it('puts zoom at the top level, not inside the match on class', () => {
+    const expr = colorExpr();
+    expect(expr[0]).toBe('interpolate');
+    expect(expr[2]).toEqual(['zoom']);
+    for (const part of expr.slice(3)) {
+      expect(JSON.stringify(part)).not.toContain('zoom');
+    }
+  });
+
+  it('darkens kept at low zoom and lightens it back in', () => {
+    const expr = colorExpr();
+    const [lowZoom, lowExpr, highZoom, highExpr] = expr.slice(3);
+    expect(lowZoom).toBeLessThan(highZoom);
+    expect(lowExpr[lowExpr.length - 1]).toBe(KEPT_COLOR_LOW);
+    expect(highExpr[highExpr.length - 1]).toBe(KEPT_COLOR);
+  });
+
+  it('keeps lost and added flat at every zoom', () => {
+    const [lowExpr, highExpr] = [colorExpr()[4], colorExpr()[6]];
+    for (const expr of [lowExpr, highExpr]) {
+      expect(expr).toContain(klassColor('lost'));
+      expect(expr).toContain(klassColor('added'));
+    }
   });
 });
