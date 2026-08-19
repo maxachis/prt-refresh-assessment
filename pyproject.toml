@@ -1,0 +1,43 @@
+[project]
+name = "prt-refresh"
+version = "0.1.0"
+description = "Web app for comparing PRT's current network with the Bus Line Refresh proposal"
+requires-python = ">=3.12"
+
+# The analysis pipeline -- ingest_blr.py, the analyze_*.py scripts, gtfs.py and
+# build_webdb.py -- is standard library only and stays that way. It is run with
+# a bare `python3`, needs no install, and must keep working on a machine that
+# has never heard of uv. Nothing below is a dependency of it.
+dependencies = []
+
+[project.optional-dependencies]
+# The web app. Optional so the pipeline install stays empty: someone
+# reproducing a finding runs the scripts, and only someone serving the map
+# needs a web framework. Same split pgh-ghost-bus uses for its dashboard.
+web = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.30",
+]
+
+[project.scripts]
+refresh = "refresh.cli:main"
+
+[build-system]
+requires = ["uv_build>=0.11.7,<0.12.0"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-name = "refresh"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+    "httpx>=0.27",  # required by fastapi.testclient.TestClient
+]
+
+[tool.pytest.ini_options]
+# `pgh-ghost-bus/` is a gitignored reference checkout of a separate project
+# (see .gitignore); without pinning testpaths, a bare `pytest` collects its
+# suite as if it were ours.
+testpaths = ["tests"]
+norecursedirs = ["pgh-ghost-bus", ".venv", "node_modules", "data"]

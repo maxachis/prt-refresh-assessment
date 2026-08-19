@@ -5,3 +5,17 @@ venv/
 .env
 .ipynb_checkpoints/
 .DS_Store
+node_modules/
+
+# Serving artifact of the web app: rebuilt from committed data in ~26s by
+# `python3 build_webdb.py`, so it is derived, not source.
+data/refresh.db
+data/refresh.db-wal
+data/refresh.db-shm
+
+# Reference checkout of the private Lemali-Consulting/pgh-ghost-bus repo, kept
+# here for its stack and patterns. This repo is public and that one is not, so
+# it is a gitignored plain clone rather than a real submodule -- a submodule
+# would commit .gitmodules with a private URL and break clones for anyone
+# without access. Refresh with: git -C pgh-ghost-bus pull
+pgh-ghost-bus/

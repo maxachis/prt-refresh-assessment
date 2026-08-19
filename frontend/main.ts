@@ -1,0 +1,154 @@
+import { $, fetchJSON } from './utils';
+import { initMapLayers, showPlace } from './mapview';
+import { render, renderEmpty, setDay, activeDay } from './place';
+import {
+  initChangeLayer, loadChangeLayer, setChangeDay, toggleBucket, resetBuckets,
+  layerData, dotLabel,
+} from './change';
+import { renderLegend } from './legend';
+import { PlaceResult, Day } from './types';
+
+const PGH: [number, number] = [-79.9959, 40.4406];
+
+let radius = 400;
+let marker: maplibregl.Marker | null = null;
+let last: { lat: number; lon: number } | null = null;
+let seq = 0;   // guards against a slow response overwriting a newer click
+
+const map = new maplibregl.Map({
+  container: 'map',
+  style: 'https://tiles.openfreemap.org/styles/positron',
+  center: PGH,
+  zoom: 12,
+});
+map.addControl(new maplibregl.NavigationControl(), 'top-right');
+
+map.on('load', () => {
+  initMapLayers(map);
+  initChangeLayer(map);      // after initMapLayers: it inserts beneath 'walk-fill'
+  renderEmpty($('panel'));
+
+  map.on('click', (e: any) => {
+    // Snap to a change dot when one is under the cursor, so the panel that
+    // opens is measured at the same point the dot was coloured from. Clicking
+    // a dot and getting a different answer to the one it is painted with is
+    // the single worst thing this layer could do.
+    const hit = map.queryRenderedFeatures(e.point, { layers: ['change-dots'] })[0];
+    const c = hit ? (hit.geometry as any).coordinates : [e.lngLat.lng, e.lngLat.lat];
+    void load(c[1], c[0]);
+  });
+
+  const popup = new maplibregl.Popup({ closeButton: false, offset: 8 });
+  map.on('mouseenter', 'change-dots', () => { map.getCanvas().style.cursor = 'pointer'; });
+  map.on('mouseleave', 'change-dots', () => {
+    map.getCanvas().style.cursor = '';
+    popup.remove();
+  });
+  map.on('mousemove', 'change-dots', (e: any) => {
+    const f = e.features?.[0];
+    const d = layerData();
+    if (!f || !d) return;
+    popup.setLngLat((f.geometry as any).coordinates)
+      .setHTML(dotLabel(f.properties, activeDay(), d.buckets)).addTo(map);
+  });
+
+  map.on('moveend', refreshLegend);
+
+  // Radius is a control, not a constant: 400 m is the headline quarter-mile
+  // access distance and 150 m the strict same-corner test, and where the two
+  // disagree that disagreement is the finding (the station consolidations).
+  segment('[data-radius]', (b) => {
+    radius = Number(b.dataset.radius);
+    void loadChangeLayer(map, radius, activeDay()).then(refreshLegend);
+    if (last) void load(last.lat, last.lon);
+  });
+
+  // Day type governs the citywide layer and the panel together. 152 locations
+  // keep every weekday bus and lose the weekend entirely, and on a
+  // weekday-only map they are invisible.
+  segment('[data-day]', (b) => {
+    const day = b.dataset.day as Day;
+    setDay(day);
+    setChangeDay(map, day);
+    refreshLegend();
+  });
+
+  $('legend').addEventListener('click', (e) => {
+    const row = (e.target as HTMLElement).closest<HTMLElement>('[data-bucket]');
+    if (!row) return;
+    toggleBucket(map, row.dataset.bucket!, activeDay());
+    refreshLegend();
+  });
+  $('legend-reset').addEventListener('click', () => {
+    resetBuckets(map, activeDay());
+    refreshLegend();
+  });
+
+  void loadChangeLayer(map, radius, activeDay()).then(refreshLegend);
+  void loadMeta();
+});
+
+/** Wire one segmented control: mark the clicked button active, then act. */
+function segment(sel: string, onPick: (b: HTMLButtonElement) => void) {
+  document.querySelectorAll<HTMLButtonElement>(sel).forEach((b) => {
+    b.addEventListener('click', () => {
+      document.querySelectorAll(sel).forEach((o) =>
+        o.classList.toggle('active', o === b));
+      onPick(b);
+    });
+  });
+}
+
+function refreshLegend() {
+  const d = layerData();
+  if (!d) return;
+  const b = map.getBounds();
+  renderLegend($('legend'), d, activeDay(), {
+    west: b.getWest(), south: b.getSouth(),
+    east: b.getEast(), north: b.getNorth(),
+  });
+}
+
+async function load(lat: number, lon: number) {
+  const mine = ++seq;
+  last = { lat, lon };
+  $('panel').classList.add('loading');
+
+  if (!marker) {
+    marker = new maplibregl.Marker({ color: '#e2574c' }).setLngLat([lon, lat]).addTo(map);
+  } else {
+    marker.setLngLat([lon, lat]);
+  }
+
+  try {
+    const p = await fetchJSON<PlaceResult>(
+      `/api/place?lat=${lat.toFixed(6)}&lon=${lon.toFixed(6)}&radius=${radius}`);
+    if (mine !== seq) return;       // a newer click already won
+    showPlace(map, lat, lon, radius, p.current.stops, p.proposed.stops);
+    render(p);
+  } catch (err) {
+    if (mine !== seq) return;
+    $('panel').innerHTML =
+      `<div class="empty"><h2>No answer for that point</h2>
+       <p class="muted">${(err as Error).message}</p></div>`;
+  } finally {
+    if (mine === seq) $('panel').classList.remove('loading');
+  }
+}
+
+async function loadMeta() {
+  try {
+    const m = await fetchJSON<any>('/api/meta');
+    $('feedline').textContent =
+      `today: ${m.feeds.current_feed_version || 'current GTFS'} · ` +
+      `proposed: ${m.feeds.proposed_feed_version || 'proposed-network feed'}`;
+    $('caveats').innerHTML = m.caveats
+      .map((c: any) => `<li>${c.text}</li>`).join('');
+  } catch {
+    /* the methods panel is not load-bearing; the map still works without it */
+  }
+}
+
+// Methods drawer
+$('methods-open').addEventListener('click', () => $('methods').classList.add('open'));
+$('methods-close').addEventListener('click', () => $('methods').classList.remove('open'));

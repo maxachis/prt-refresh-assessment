@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Bus Line Refresh — what changes here?</title>
+  <!-- MapLibre is vendored under static/vendor/ (pinned 4.7.1) and served
+       same-origin, so the map does not depend on a CDN. -->
+  <link rel="stylesheet" href="/vendor/maplibre-gl.css" />
+  <style>
+    :root {
+      --bg:#0f1115; --panel:#171a21; --line:#262a33; --ink:#e8eaed; --muted:#98a0ac;
+      --now:#4aa3ff; --prop:#ffa23a; --up:#4ec98a; --down:#ff6b6b;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin:0; height:100%; background:var(--bg); color:var(--ink);
+      font:14px/1.5 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+    #app { display:grid; grid-template-columns: 400px 1fr; height:100vh; height:100dvh; }
+    /* dvh tracks the visible viewport so mobile browser chrome can't push the
+       bottom of the panel off-screen; the vh line is the fallback. */
+    #side { background:var(--panel); border-right:1px solid var(--line);
+      display:flex; flex-direction:column; overflow:hidden; }
+    #map { height:100vh; height:100dvh; position:relative; }
+    @media (max-width: 820px) {
+      #app { grid-template-columns: 1fr; grid-template-rows: 45vh 55vh; }
+      #map { height:auto; }
+      #legend-box { max-height:none; }
+      #legend .lg-foot { display:none; }
+    }
+
+    /* The legend: key, in-view summary and filter in one block. */
+    #legend-box { position:absolute; left:12px; bottom:24px; z-index:2;
+      background:rgba(20,23,29,.93); border:1px solid var(--line);
+      border-radius:10px; padding:10px 10px 8px; width:250px;
+      backdrop-filter:blur(3px); }
+    .lg-head { font-size:12px; margin:0 2px 8px; }
+    .lg-head b { font-size:14px; }
+    #legend .lg-row { display:flex; align-items:center; gap:8px; width:100%;
+      background:none; border:0; padding:3px 2px; font:inherit; font-size:12px;
+      color:var(--ink); cursor:pointer; border-radius:5px; text-align:left; }
+    #legend .lg-row:hover { background:#20242d; }
+    #legend .lg-row.off { opacity:.35; }
+    #legend .lg-row i { width:10px; height:10px; border-radius:50%; flex:none; }
+    .lg-lab { flex:1; }
+    .lg-n { font-variant-numeric:tabular-nums; color:var(--muted); }
+    .lg-foot { font-size:10.5px; color:var(--muted); margin:8px 2px 0;
+      line-height:1.4; }
+    #legend-reset { margin:6px 0 0 2px; }
+
+    header { padding:14px 16px; border-bottom:1px solid var(--line); }
+    header h1 { margin:0; font-size:15px; letter-spacing:.01em; }
+    header .sub { color:var(--muted); font-size:12px; margin-top:3px; }
+    #feedline { color:var(--muted); font-size:11px; margin-top:6px; }
+
+    .controls { display:flex; gap:8px; align-items:center; padding:10px 16px;
+      border-bottom:1px solid var(--line); flex-wrap:wrap; }
+    .controls .lbl { color:var(--muted); font-size:11px; text-transform:uppercase;
+      letter-spacing:.06em; }
+    .seg { display:inline-flex; border:1px solid var(--line); border-radius:8px;
+      overflow:hidden; }
+    .seg button { border:0; border-right:1px solid var(--line); background:#0c0e12;
+      color:var(--muted); padding:5px 11px; font:inherit; font-size:12px; cursor:pointer; }
+    .seg button:last-child { border-right:0; }
+    .seg button.active { background:#1b1f27; color:var(--ink); }
+    .link { background:none; border:0; color:var(--now); cursor:pointer;
+      font:inherit; font-size:12px; padding:0; margin-left:auto; }
+
+    #panel { padding:16px; overflow:auto; flex:1; }
+    #panel.loading { opacity:.5; }
+    .empty h2 { font-size:16px; margin:8px 0; }
+    .muted { color:var(--muted); }
+    .sub { color:var(--muted); font-size:12px; margin-top:2px; }
+
+    .place-head h2 { margin:0 0 2px; font-size:18px; }
+    .headline { display:flex; align-items:center; gap:12px; padding:12px 0 2px; }
+    .hl-side { text-align:center; }
+    .hl-label { font-size:10px; text-transform:uppercase; letter-spacing:.07em;
+      color:var(--muted); }
+    .hl-n { font-size:30px; font-variant-numeric:tabular-nums; line-height:1.1; }
+    .hl-arrow { color:var(--muted); font-size:18px; }
+    .hl-delta { margin-left:auto; text-align:right; font-size:15px;
+      font-variant-numeric:tabular-nums; }
+    .hl-delta.up { color:var(--up); } .hl-delta.down { color:var(--down); }
+    .hl-delta.flat { color:var(--muted); }
+    .hl-delta .muted { font-size:12px; }
+
+    .tiers { margin:14px 0; }
+    .tier { display:inline-block; font-size:12px; padding:4px 10px; border-radius:999px;
+      border:1px solid var(--line); }
+    .tier.gain { color:var(--up); border-color:#265c42; background:rgba(78,201,138,.09); }
+    .tier.loss { color:var(--down); border-color:#5c2626; background:rgba(255,107,107,.09); }
+    .tier.keep { color:var(--ink); }
+    .tier.none { color:var(--muted); }
+
+    table.periods { width:100%; border-collapse:collapse; margin-top:6px; font-size:12px; }
+    table.periods th { text-align:left; font-weight:400; color:var(--muted);
+      padding:3px 6px 3px 0; white-space:nowrap; }
+    table.periods td.n, table.periods th.n { text-align:right;
+      font-variant-numeric:tabular-nums; padding:3px 0 3px 8px; width:34px; }
+    td.n.up { color:var(--up); } td.n.down { color:var(--down); }
+    td.n.flat { color:var(--muted); }
+    td.bar { width:100%; padding:3px 0; }
+    td.bar span { display:block; height:5px; border-radius:2px; min-width:1px; }
+    .b-now { background:var(--now); margin-bottom:2px; }
+    .b-prop { background:var(--prop); }
+    .legend { display:flex; gap:14px; font-size:11px; color:var(--muted); margin-top:8px; }
+    .legend i { display:inline-block; width:10px; height:5px; border-radius:2px;
+      margin-right:5px; vertical-align:middle; }
+    .sw-now { background:var(--now); } .sw-prop { background:var(--prop); }
+
+    dl.facts { margin:18px 0 0; font-size:13px; }
+    dl.facts dt { color:var(--muted); font-size:11px; text-transform:uppercase;
+      letter-spacing:.05em; margin-top:11px; }
+    dl.facts dd { margin:2px 0 0; font-variant-numeric:tabular-nums; }
+
+    .routes { margin-top:20px; border-top:1px solid var(--line); padding-top:14px; }
+    .routes h3 { font-size:12px; text-transform:uppercase; letter-spacing:.06em;
+      color:var(--muted); margin:0 0 9px; font-weight:400; }
+    .rrow { display:flex; gap:6px; flex-wrap:wrap; align-items:baseline;
+      margin-bottom:8px; }
+    .rlab { font-size:11px; color:var(--muted); width:58px; flex:none; }
+    .route { display:inline-block; font-size:11px; padding:1px 6px; border-radius:4px;
+      background:#0c0e12; border:1px solid var(--line); font-variant-numeric:tabular-nums; }
+    .note { font-size:11px; color:var(--muted); margin:10px 0 0; line-height:1.45; }
+
+    /* Methods drawer — the caveats travel with the numbers. */
+    #methods { position:fixed; inset:0; background:rgba(8,10,14,.72); display:none;
+      z-index:10; }
+    #methods.open { display:flex; align-items:center; justify-content:center; }
+    #methods .card { background:var(--panel); border:1px solid var(--line);
+      border-radius:12px; max-width:620px; max-height:80vh; overflow:auto;
+      padding:22px 24px; }
+    #methods h2 { margin:0 0 12px; font-size:16px; }
+    #methods li { margin-bottom:10px; font-size:13px; color:var(--ink); }
+    #methods button { margin-top:14px; background:#0c0e12; color:var(--ink);
+      border:1px solid var(--line); border-radius:8px; padding:6px 14px;
+      font:inherit; cursor:pointer; }
+    .maplibregl-popup-content { background:#171a21; color:var(--ink); font-size:12px;
+      border:1px solid var(--line); }
+    .maplibregl-popup-tip { border-top-color:#171a21 !important;
+      border-bottom-color:#171a21 !important; }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <div id="side">
+      <header>
+        <h1>Bus Line Refresh — what changes here?</h1>
+        <div class="sub">PRT's network today vs the Proposed Final Network</div>
+        <div id="feedline"></div>
+      </header>
+      <div class="controls">
+        <span class="lbl">walk</span>
+        <div class="seg">
+          <button data-radius="400" class="active">400 m</button>
+          <button data-radius="150">150 m</button>
+        </div>
+        <button class="link" id="methods-open">Method &amp; caveats</button>
+      </div>
+      <!-- Day type governs the map layer as well as the panel: a place that
+           keeps every weekday bus and loses the weekend reads as untouched on
+           a weekday-only screen, and 152 are in that position. -->
+      <div class="controls">
+        <span class="lbl">day</span>
+        <div class="seg">
+          <button data-day="weekday" class="active">Weekday</button>
+          <button data-day="saturday">Saturday</button>
+          <button data-day="sunday">Sunday</button>
+        </div>
+      </div>
+      <div id="panel"></div>
+    </div>
+    <div id="map">
+      <!-- The legend is the summary and the filter as well as the key: the
+           counts are for what is on screen, so panning is the interaction. -->
+      <div id="legend-box">
+        <div id="legend"></div>
+        <button class="link" id="legend-reset">Show all</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="methods">
+    <div class="card">
+      <h2>How these numbers are made</h2>
+      <p class="muted" style="font-size:13px">
+        Both networks are read from real GTFS timetables and measured by the
+        same code inside the same circle on the ground. Trips are buses per day
+        in both directions, counted from actual departure times.
+      </p>
+      <ul id="caveats"></ul>
+      <button id="methods-close">Close</button>
+    </div>
+  </div>
+
+  <script src="/vendor/maplibre-gl.js"></script>
+  <script src="/app.js"></script>
+</body>
+</html>

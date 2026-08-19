@@ -1,0 +1,18 @@
+{
+  "name": "prt-refresh-frontend",
+  "private": true,
+  "description": "Frontend build tooling (TypeScript → static app.js)",
+  "scripts": {
+    "build": "esbuild frontend/main.ts --bundle --minify --outfile=src/refresh/web/static/app.js",
+    "watch": "esbuild frontend/main.ts --bundle --outfile=src/refresh/web/static/app.js --watch",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.1",
+    "maplibre-gl": "4.7.1",
+    "typescript": "^5.7.0",
+    "vitest": "^4.1.9"
+  }
+}

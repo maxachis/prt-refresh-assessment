@@ -6,9 +6,16 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 A pro-bono analysis of Pittsburgh Regional Transit's **Bus Line Refresh** — the
 Proposed Final Network published 2026-08-17, in public comment until 2026-09-30.
-It is not an application. It is a reproducible data pipeline plus written
-findings, whose purpose is to let Pittsburghers for Public Transit answer the
-questions in `docs/BASE_CAMP.md` with evidence PRT has not itself published.
+It is a reproducible data pipeline plus written findings, whose purpose is to
+let Pittsburghers for Public Transit answer the questions in `docs/BASE_CAMP.md`
+with evidence PRT has not itself published.
+
+Since both networks gained a real GTFS it also carries **a web app** (`src/refresh/`,
+`frontend/`) that answers "what changes here?" at an arbitrary point — see
+[`docs/WEBAPP.md`](docs/WEBAPP.md). The pipeline remains the primary artifact and
+stays standard-library only; the app is an optional extra that only reads what
+the pipeline builds, and it is **not cleared for public deployment** — the
+proposed feed's provenance is unestablished (see `DATA_SOURCES.md`).
 
 `docs/BASE_CAMP.md` is human-authored and is **ground truth for intent**; every
 other document is secondary to it. Work is organised around its question IDs
@@ -17,9 +24,9 @@ other document is secondary to it. Work is organised around its question IDs
 
 ## Commands
 
-No build, no test suite, no linter, no third-party Python packages. Requires
-Python 3 and `pdftotext` (poppler-utils). Scripts are run directly from the repo
-root, in this order:
+**The pipeline** has no build, no linter and no third-party Python packages.
+Requires Python 3 and `pdftotext` (poppler-utils). Scripts are run directly from
+the repo root, in this order:
 
 ```bash
 python3 ingest_blr.py               # must run first -> data/*.csv from remote sources
@@ -28,15 +35,39 @@ python3 analyze_route_ridership.py  # -> data/discontinued_route_ridership_*.csv
 python3 analyze_frequency_change.py # -> data/stop_frequency_change.csv
 python3 analyze_one_seat.py         # -> data/oneseat_change.csv
 python3 analyze_coverage_change.py  # -> data/coverage_change.csv, route_service_days.csv
+python3 analyze_coverage_area.py    # -> data/coverage_area*.csv (coverage as km2)
+python3 analyze_route_hours.py      # -> data/route_frequency_change.csv
+python3 build_webdb.py              # -> data/refresh.db, for the web app only
+```
+
+**The web app** is the only part with dependencies, and they are an optional
+extra so the pipeline install stays empty. `build_webdb.py` is deliberately a
+pipeline script rather than a CLI subcommand — putting it behind the package
+would make the pipeline require an install. It does import `refresh.query` off
+`src/` to precompute the map's change layer with the app's own code, which
+needs no install because `query.py` is standard library like everything else.
+
+```bash
+uv sync --extra web && npm install   # one-time
+npm run build                        # frontend/*.ts -> static/app.js
+uv run refresh serve                 # http://127.0.0.1:8000
+
+uv run pytest                        # 38 tests, incl. served == published
+npx vitest run && npx tsc --noEmit   # 23 frontend tests
 ```
 
 Each script prints a human-readable report to stdout alongside writing its CSV;
 that printed report is the draft material for `FINDINGS.md` and `docs/answers/`.
 
 `analyze_one_seat.py` reads only raw sources, so it runs independently of the
-other analyses. `analyze_frequency_change.py` imports `MONTH`, `fnum`, and
-`load_usage` from `analyze_service_loss.py` — that is the only cross-script
-dependency.
+other analyses. The cross-script imports are few and deliberate:
+`analyze_frequency_change.py` takes `MONTH`, `fnum` and `load_usage` from
+`analyze_service_loss.py`; `analyze_coverage_change.py` takes the periods, radii
+and `Grid` from `analyze_frequency_change.py`; and `analyze_coverage_area.py`
+takes the tier list and the hourly test from `analyze_coverage_change.py` plus
+the place-label outlier filter from `analyze_one_seat.py`, so the area answer
+cannot drift from the location answer it complements. Both feeds always load
+through `gtfs.py`.
 
 ## Data flow and caching
 
@@ -66,10 +97,15 @@ row counts, and the PDF parsing traps. Read it before touching `ingest_blr.py`.
 **PRT does not publish a GTFS for the proposed network, but one is in this repo**
 at `data/raw/proposed_gtfs/` (real timetables: 698,865 `stop_times` rows,
 `Future_BLR_Service-Weekday/-Sa/-Su`). Prefer it for anything on the proposed
-side. `analyze_coverage_change.py` uses it; the other scripts still derive
-proposed service from the PDFs, which drops the S-variants (absent from Remix)
-and doubles the peak-only limiteds. The Remix trips endpoint returns `[]`, so
-Remix itself remains timetable-free.
+side. Everything that counts service now reads it through `gtfs.py` —
+`analyze_service_loss.py`, `analyze_frequency_change.py`,
+`analyze_coverage_change.py`, `analyze_coverage_area.py`, `analyze_route_hours.py`,
+`analyze_one_seat.py`. The PDFs survive as a published cross-check only: deriving
+proposed service from them drops the S-variants (absent from Remix) and doubles
+the peak-only limiteds. The Remix trips endpoint returns `[]`, so Remix itself
+remains timetable-free — but it is still the only source for the 10 on-demand
+microtransit zones, which `analyze_coverage_area.py` reads from
+`remix_project.json`.
 
 Be exact about that feed's provenance, because the repo says three different
 things about it if you are careless. What the feed evidences: `feed_info.txt`
@@ -114,11 +150,21 @@ changes published findings.
    this cost 16 routes their 8–11pm headway and inflated the late-evening cut to
    −38.7% (`FINDINGS.md` caveat 9). Two cells landing in one column now raises.
 
+10. **Area and locations are complements; never quote one alone.** The
+    per-location tiers are measured at stops that exist today, so they cannot
+    see ground the plan adds a bus to and they weight a downtown block like a
+    mile of Route 51. Area fixes both and introduces its own bias — a square
+    kilometre of hillside counts like a square kilometre of Brookline. The plan
+    reads as roughly service-neutral by location and as a 12% loss of covered
+    ground; both are true, and either alone is a talking point rather than a
+    finding.
+
 State data vintage and PRT's own accuracy disclaimer (stop figures are
 "unadjusted, unofficial totals" that may understate ridership by up to 30%)
 wherever these numbers are quoted. Report gains as plainly as losses — the
-current headline finding is a near service-neutral, ridership-over-coverage
-redesign, and overstating losses would discredit the real ones.
+current headline finding is a ridership-over-coverage redesign that is roughly
+service-neutral per location while covering 12% less ground, and overstating
+either half would discredit the other.
 
 ## Writing conventions
 
