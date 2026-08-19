@@ -161,11 +161,11 @@ attached to the wrong stop, so they are excluded from every example table in
   2023, so destination-side effects are invisible.
 - **A thin ridership base partly reflects thin service.** Weekend boardings at a
   stop with two Saturday buses are not evidence that nobody wants the trip.
-- **The proposed feed's provenance is unrecorded.** `feed_info.txt` names PRT as
+- **The proposed feed is not published anywhere.** `feed_info.txt` names PRT as
   publisher and stamps it 2026-08-11, and `verify_proposed_gtfs.py` confirms it
-  describes the plan PRT published — but how it reached this repo is not written
-  down anywhere. Treat it as not-yet-citable until someone records that in
-  `DATA_SOURCES.md`.
+  describes the plan PRT published. PRT sent it to Pittsburghers for Public
+  Transit on request and PPT passed it on, so cite it that way rather than as a
+  download; no date is recorded for PRT's email (`DATA_SOURCES.md`).
 - **The 10 `onDemandZones` polygons in `data/raw/remix_project.json`** — proposed
   microtransit areas — are now counted, but only by
   [COVERAGE-CHANGE.md](COVERAGE-CHANGE.md): 23% of the area losing all

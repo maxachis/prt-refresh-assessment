@@ -5,13 +5,14 @@ around a pure function in `query.py`, which is what lets `tests/test_query.py`
 check the numbers against `data/coverage_change.csv` without going through
 HTTP. Built via `create_app` so tests can point it at a temp DB.
 
-ON BINDING THIS PUBLICLY. `refresh serve` binds 127.0.0.1 by default and that
-default is doing real work. The proposed-network GTFS this app serves names PRT
-as its publisher and is not published at any URL; how it reached this repo is
-not recorded, and DATA_SOURCES.md says that must be settled before the numbers
-are cited publicly. Serving it on a public address publishes PRT's unreleased
-timetable at the finest possible grain -- every departure at every stop. Settle
-provenance and permission first; the code will still be here.
+ON BINDING THIS PUBLICLY. `refresh serve` binds 127.0.0.1 by default. The
+proposed-network GTFS this app serves is published at no URL: PRT sent it to
+Pittsburghers for Public Transit on request and PPT passed it on
+(DATA_SOURCES.md), which settles provenance and makes the numbers citable.
+Serving it on a public address is still a further step -- it puts PRT's
+unpublished timetable on the web at the finest possible grain, every departure
+at every stop -- so confirm that is expected before changing the bind address.
+See docs/WEBAPP.md, "Before it goes public".
 """
 from __future__ import annotations
 
@@ -160,8 +161,10 @@ CAVEATS = [
     {
         "id": "provenance",
         "text": "The proposed-network GTFS names PRT as its publisher and is "
-                "not published at any URL. How it reached this repo is not "
-                "recorded; DATA_SOURCES.md carries that as an open question.",
+                "published at no URL: PRT supplied it to Pittsburghers for "
+                "Public Transit on request, and PPT passed it on. It is the "
+                "plan PRT put out for comment, checked against PRT's own "
+                "published tables -- not a download anyone can repeat.",
     },
     {
         "id": "change-layer",

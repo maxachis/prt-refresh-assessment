@@ -193,7 +193,7 @@ groups are 0 by construction and the column is not a projection.
 
 | File | Size | Source | Vintage |
 |---|---|---|---|
-| `proposed_gtfs/` | 66 MB, 10 files | **From PRT, at no URL — provenance unrecorded** | stamped 2026-08-11, calendars over 2027 |
+| `proposed_gtfs/` | 66 MB, 10 files | **From PRT, at no URL** — sent to PPT on request, passed on from there | stamped 2026-08-11, calendars over 2027 |
 | `current_gtfs.zip` | 22 MB | `rideprt.org/developerresources/GTFS.zip` | feed `Merged_Clever_2606_2`, valid 2026-06-28 → 2026-10-14 |
 | `remix_map.json` | 9.4 MB | `platform.remix.com/api/maps/632ce361` | base feed 2023-06-18 |
 | `remix_project.json` | 59 KB | `platform.remix.com/api/projects/82ea6210` | fetched 2026-08-17 |
@@ -207,8 +207,9 @@ groups are 0 by construction and the column is not a projection.
 things about it are evidenced by the feed itself: `feed_info.txt` names
 Pittsburgh Regional Transit as publisher, and its `feed_version` reads
 `Updated: Aug 11, 2026, 12:14 PM` — six days before the Proposed Final Network
-was published. **How it reached this repo is not recorded; record that before
-citing the feed publicly.** Nothing on the feed proves it is the final plan
+was published. **It reached this repo by request:** PPT asked PRT for it, PRT
+sent it by email, and PPT passed it along; no date is recorded for that email
+(`DATA_SOURCES.md`). Nothing on the feed proves it is the final plan
 rather than a working draft either, and `verify_proposed_gtfs.py` earns that
 claim against the documents PRT did publish: route set, day types and span must
 agree with the Frequency & Hours PDFs (they do), while trip volume is expected

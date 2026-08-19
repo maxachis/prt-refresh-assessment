@@ -251,8 +251,9 @@ corridor — lose their all-week flyers and keep a peak-only limited.
 1. **Proposed-side figures come from the proposed network's own GTFS**
    (`data/raw/proposed_gtfs/`). Its `feed_info.txt` names PRT as publisher and
    is stamped 2026-08-11, and `verify_proposed_gtfs.py` establishes it is the
-   published plan rather than a draft — but **how it reached this repo is not
-   recorded**, so this file is not yet citable publicly. See `DATA_SOURCES.md`.
+   published plan rather than a draft. **PRT sent it to PPT on request and PPT
+   passed it on** — it is at no URL, so cite it that way rather than as a
+   download. See `DATA_SOURCES.md`.
 2. **Boardings are PRT's May 2025 unweighted extract**, which PRT describes as
    "unadjusted, unofficial totals" that may understate ridership by up to 30%.
    They are all-purpose boardings, not counts of riders bound anywhere in

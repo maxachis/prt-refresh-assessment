@@ -317,9 +317,9 @@ def parse_remix(raw_dir):
 
 # --- 5. proposed network GTFS ----------------------------------------------
 #
-# Unlike every other source here this one has no URL. It came from PRT directly
-# -- by what route is not recorded, see DATA_SOURCES.md -- so it cannot be
-# re-fetched and is committed verbatim. All this step can do is confirm it is
+# Unlike every other source here this one has no URL. PRT sent it to PPT on
+# request and PPT passed it on (see DATA_SOURCES.md), so it cannot be re-fetched
+# and is committed verbatim. All this step can do is confirm it is
 # present and report what is in it; the agreement check against PRT's published
 # tables lives in verify_proposed_gtfs.py.
 

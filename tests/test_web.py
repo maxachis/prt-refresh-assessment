@@ -32,10 +32,11 @@ def test_meta_reports_both_feed_versions(client):
 
 
 def test_meta_carries_the_provenance_caveat(client):
-    """The unestablished provenance of the proposed feed must reach the UI.
+    """Where the proposed feed came from must reach the UI.
 
-    DATA_SOURCES.md requires it before the numbers are cited publicly, and this
-    app is the most public form of citing them.
+    It is published at no URL -- PRT sent it to PPT on request -- so a reader
+    cannot go and check it the way they can the current GTFS. This app is the
+    most public form of citing it, so the caveat travels with the numbers.
     """
     ids = {c["id"] for c in client.get("/api/meta").json()["caveats"]}
     assert "provenance" in ids

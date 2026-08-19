@@ -11,9 +11,11 @@ answers that one place at a time by hand. This answers it for every place.
 
 ## Status
 
-Runs locally. **Not cleared for public deployment** — see [Before it goes
-public](#before-it-goes-public). `refresh serve` binds `127.0.0.1` for that
-reason.
+Runs locally, and `refresh serve` binds `127.0.0.1` by default. The proposed
+feed's provenance — the one thing that blocked a public deploy — is now recorded
+(`DATA_SOURCES.md`): PRT sent the feed to PPT on request and PPT passed it on.
+What remains before it goes public is a short list, not a blocker; see [Before it
+goes public](#before-it-goes-public).
 
 ## Why this became possible on 2026-08-11
 
@@ -210,16 +212,25 @@ Brookline.
 | `GET /api/crosswalk` | PRT's current → proposed route mapping. A labelling aid; no served number goes through it. |
 | `GET /api/meta` | Feed versions, sample dates, periods, caveats. |
 
+## Hosting it
+
+[`deploy/`](../deploy/) is a Hetzner + Caddy kit: `./deploy/provision.sh` creates
+the box, checks out a pushed commit, builds the database there and starts the
+service on `127.0.0.1:8000`; `deploy/setup-caddy.sh` then puts it behind a
+hostname with automatic HTTPS. Until you run the second one, the only way in is
+an SSH tunnel, which is also how you show it to a few people first. The kit is
+small on purpose — nothing here collects data, so there is no replica, archive
+or heartbeat to maintain. See [`deploy/README.md`](../deploy/README.md).
+
 ## Before it goes public
 
-1. **Settle the proposed feed's provenance.** It exists at no URL, and how it
-   reached this repo is not recorded anywhere — its `feed_info.txt` is stamped
-   2026-08-11 and names PRT as publisher, which is evidence about the feed, not
-   about how we got it. `DATA_SOURCES.md` records the provenance as
-   unestablished and says that must be fixed before the numbers are cited
-   publicly. Serving it publicly publishes
-   PRT's unreleased timetable at the finest possible grain — every departure at
-   every stop. This is a permission question, not a technical one.
+1. **Confirm that republishing the feed's contents is expected.** Provenance is
+   settled — PRT sent the feed to PPT on request and PPT passed it on
+   (`DATA_SOURCES.md`) — so the numbers are citable. What is a different act is
+   *serving the timetable itself*: this app exposes every departure at every
+   stop of a feed PRT publishes at no URL, and sending a file to a requester is
+   not the same as publishing it. One question to PPT settles it. Permission,
+   not a technical matter.
 2. **Draw the microtransit zones.** `remix_project.json` carries 10 on-demand
    zone polygons. `analyze_coverage_area.py` now counts them — 23% of the area
    losing all fixed-route service is inside one — but nothing at stop level

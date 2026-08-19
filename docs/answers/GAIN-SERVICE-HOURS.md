@@ -202,10 +202,11 @@ routes' 531 hours have no ridership figure attached anywhere in this repo.
 proposed 2027-09-15/18/19, each a holiday-free week inside its own validity
 window. Rail and the inclines are excluded on both sides.
 
-**The proposed feed's provenance is not yet recorded.** Its `feed_info.txt` names
-PRT as publisher and is stamped 2026-08-11, and `verify_proposed_gtfs.py` checks
-it against the published plan, but how it reached this repo is unrecorded and
-must be before this page is cited publicly. See `DATA_SOURCES.md`.
+**The proposed feed is not published anywhere.** Its `feed_info.txt` names PRT
+as publisher and is stamped 2026-08-11, and `verify_proposed_gtfs.py` checks it
+against the published plan. PRT sent it to Pittsburghers for Public Transit on
+request and PPT passed it on; cite it that way, not as a download. See
+`DATA_SOURCES.md`.
 
 ## Reproduce
 

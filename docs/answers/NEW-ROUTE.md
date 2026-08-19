@@ -62,8 +62,8 @@ analytical one, but they will confuse riders comparing an old timetable to a new
 one, and they make naive route-number joins wrong.
 
 Trip counts are for one representative day in each day type from the proposed
-feed's 2027 calendar; the feed's provenance is not recorded in this repo
-(see [METHOD-coverage.md](METHOD-coverage.md)).
+feed's 2027 calendar; that feed came from PRT via PPT on request rather than
+from any URL (see [METHOD-coverage.md](METHOD-coverage.md)).
 
 ## Reproduce
 

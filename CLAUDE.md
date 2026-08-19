@@ -15,8 +15,9 @@ Since both networks gained a real GTFS it also carries **a web app** (`src/refre
 at today's stops or as a continuous 100 m surface — see
 [`docs/WEBAPP.md`](docs/WEBAPP.md). The pipeline remains the primary artifact and
 stays standard-library only; the app is an optional extra that only reads what
-the pipeline builds, and it is **not cleared for public deployment** — the
-proposed feed's provenance is unestablished (see `DATA_SOURCES.md`).
+the pipeline builds. It has not been deployed publicly yet; the proposed feed's
+provenance is now recorded (`DATA_SOURCES.md`), so that is a decision rather
+than a blocker.
 
 `docs/BASE_CAMP.md` is human-authored and is **ground truth for intent**; every
 other document is secondary to it. Work is organised around its question IDs
@@ -56,6 +57,10 @@ uv run refresh serve                 # http://127.0.0.1:8000
 uv run pytest                        # 49 tests, incl. served == published
 npx vitest run && npx tsc --noEmit   # 37 frontend tests
 ```
+
+**Hosting** is `deploy/` — a Hetzner VM behind Caddy, `./deploy/provision.sh` to
+create or redeploy it. It deploys a *pushed commit*, not the working tree, and
+builds `refresh.db` on the box. See `deploy/README.md`.
 
 Each script prints a human-readable report to stdout alongside writing its CSV;
 that printed report is the draft material for `FINDINGS.md` and `docs/answers/`.
@@ -108,13 +113,14 @@ remains timetable-free — but it is still the only source for the 10 on-demand
 microtransit zones, which `analyze_coverage_area.py` reads from
 `remix_project.json`.
 
-Be exact about that feed's provenance, because the repo says three different
-things about it if you are careless. What the feed evidences: `feed_info.txt`
-names PRT as publisher and stamps it 2026-08-11. What `verify_proposed_gtfs.py`
-earns: that it is the published plan, not a draft. What is **unrecorded**: how it
-reached this repo — do not write that it was emailed, requested, or received on
-any date, and flag it as not-yet-citable, until someone records the real answer
-in `DATA_SOURCES.md`.
+Be exact about that feed's provenance, because three separate claims get run
+together if you are careless. What the feed evidences: `feed_info.txt` names PRT
+as publisher and stamps it 2026-08-11. What `verify_proposed_gtfs.py` earns:
+that it is the published plan, not a draft. How it reached this repo: PRT
+supplied it to Pittsburghers for Public Transit by email at PPT's request, and
+PPT passed it on. That last one is Max's account, recorded in `DATA_SOURCES.md`;
+**no date is known for PRT's email**, so do not write one, and do not describe
+the feed as published, downloadable, or fetchable — it is none of those.
 
 ## Analytical conventions that must be preserved
 

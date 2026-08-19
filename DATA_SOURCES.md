@@ -18,8 +18,8 @@ span.
 **A proposed-network GTFS with real timetables is nonetheless present in this
 repo**, at `data/raw/proposed_gtfs/` — see the section below. It is the better
 source for anything on the proposed side, and `analyze_coverage_change.py` uses
-it. **Its provenance is not recorded here; record where it came from before
-citing it publicly.**
+it. **PRT supplied it to Pittsburghers for Public Transit by email, on PPT's
+request, and PPT passed it to this repo's author** — see the section below.
 
 ## Ingestible (machine-readable)
 
@@ -44,9 +44,7 @@ downloaded by `ingest_blr.py`, and not published at the developer-resources URL
 above. Every other file in this repo points here for its provenance, so keep
 three things apart: what the feed evidences about itself (`feed_info.txt`,
 below), what `verify_proposed_gtfs.py` earns against PRT's published documents
-("How it is checked"), and how the feed reached this repo — which is **not
-recorded**, and is the one that gates public citation ("Provenance, still
-open").
+("How it is checked"), and how the feed reached this repo ("Provenance").
 
 | File | Contents |
 |---|---|
@@ -92,9 +90,28 @@ route-days by a median of 96 minutes — which is why the PDFs undercount evenin
 and overnight service, and why the earlier "night service is being withdrawn"
 finding in `FINDINGS.md` has been withdrawn.
 
-**Provenance, still open.** Record how and when this feed was obtained from PRT
-before citing any of it publicly. `feed_info.txt` stamps it "Updated: Aug 11,
-2026"; that is the feed's own timestamp, not evidence of how it reached us.
+**Provenance.** PRT does not publish this feed at any URL. Pittsburghers for
+Public Transit asked PRT for it, PRT supplied it to PPT by email, and PPT passed
+it to this repo's author. The network it describes is itself public: the Proposed
+Final Network is out for comment at
+<https://engage.rideprt.org/buslineredesign> — the machine-readable form of that
+plan is what PPT asked for and what PRT sent.
+
+> Stated by Max; not verifiable from the repo. No copy of the email is held
+> here, and the date PRT sent it is not recorded — only the feed's own stamp,
+> "Updated: Aug 11, 2026", which is a timestamp on the file rather than evidence
+> of how it travelled.
+
+**So the numbers are citable**, described as *obtained from PRT on request via
+Pittsburghers for Public Transit*. Two things are still worth doing, and they are
+different from each other:
+
+1. **Get the date** of PRT's email from PPT, and add it above. A citation reads
+   better with one, and it is a single question to a person who has the answer.
+2. **Confirm before republishing the feed itself**, as distinct from findings
+   computed from it. Sending a file to a requester is not the same act as
+   publishing it, and the web app serves that timetable at its finest possible
+   grain — every departure at every stop. One question to PPT settles it.
 
 ## The Remix public API (the proposed network, in structured form)
 
