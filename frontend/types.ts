@@ -104,3 +104,18 @@ export interface SurfaceLayer {
   fields: string[];
   cells: SurfaceCell[];
 }
+
+/** A run's outcome: whether a bus runs on this piece of street today, under the plan, or both. */
+export type CorridorKlass = 'kept' | 'lost' | 'added';
+
+export interface CorridorRun {
+  klass: CorridorKlass;
+  length_m: number;
+  geometry: [number, number][];
+}
+
+export interface CorridorLayer {
+  day: Day;
+  km: Record<CorridorKlass, number>;
+  runs: CorridorRun[];
+}

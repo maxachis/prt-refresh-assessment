@@ -38,14 +38,21 @@ export function renderEmpty(el: HTMLElement) {
   el.innerHTML = `
     <div class="empty">
       <h2>What changes here?</h2>
-      <p>The map is coloured by what the Proposed Final Network does to the
-         buses within a short walk. Pan and zoom to read a neighbourhood; the
-         legend counts what is on screen.</p>
-      <p><b>Locations</b> draws one dot per place a bus stops today.
-         <b>Surface</b> measures the same comparison at every point on a 100 m
-         grid, so it can also show ground the plan adds a bus to — but it is
-         extent, not people: a hillside counts like a city block. The two
-         answer different questions and are best read together.</p>
+      <p>The map draws the whole city at once, one of three ways depending on
+         the view above. Pan and zoom to read a neighbourhood.</p>
+      <p><b>Locations</b> draws one dot per place a bus stops today, coloured
+         by what the plan does to the buses within a short walk.
+         <b>Surface</b> measures that same walk-access comparison at every
+         point on a 100 m grid, so it can also show ground the plan adds a bus
+         to — but it is extent, not people: a hillside counts like a city
+         block.</p>
+      <p><b>Streets</b> takes no walk radius at all: it colours the street
+         itself by whether any bus runs on it today, under the plan, or both.
+         Route numbers never enter that call — a street is served or it isn't,
+         regardless of which route does the serving on either side. A place
+         can keep full walk access while a specific street loses its only bus,
+         if a parallel block a minute's walk away picks up the trip instead:
+         real loss of pavement, possibly no loss of access.</p>
       <p>Click anywhere on the map for the full before-and-after.</p>
       <p class="muted">Both networks are measured inside the same circle, so
          renumbered routes and consolidated stops don't distort the comparison.

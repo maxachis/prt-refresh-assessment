@@ -85,6 +85,7 @@ from refresh import query  # noqa: E402
 DATA = Path("data")
 DB = DATA / "refresh.db"
 COVERAGE = DATA / "coverage_change.csv"
+CORRIDOR = DATA / "corridor_change.csv"
 
 SIDES = ["current", "proposed"]
 
@@ -215,6 +216,25 @@ CREATE TABLE surface (
     PRIMARY KEY (radius, day, ix, iy)
 );
 CREATE INDEX ix_surface_radius ON surface(radius);
+
+-- The corridor layer: does a bus run on THIS STREET, not what a rider can
+-- reach from a point. `analyze_corridor_change.py`'s module docstring is the
+-- method; the distinction that must survive here is that this is pavement,
+-- not walk access -- a street can lose its only bus while a stop two blocks
+-- over shows no change at all in `change` or `surface` above. Never join this
+-- to those tables as though they answered the same question.
+--
+-- Unlike `change` and `surface`, this is NOT precomputed through
+-- `query.side_at_place` -- there is no "app's own code path" rationale here.
+-- It is a straight carry-over of data/corridor_change.csv, verbatim, the same
+-- way `stop_place` below carries over coverage_change.csv.
+CREATE TABLE corridor (
+    day       TEXT NOT NULL,          -- weekday | saturday | sunday
+    klass     TEXT NOT NULL,          -- kept | lost | added
+    length_m  REAL NOT NULL,
+    geometry  TEXT NOT NULL           -- "lon,lat lon,lat ..." as the CSV wrote it
+);
+CREATE INDEX ix_corridor_day ON corridor(day);
 """
 
 
@@ -249,6 +269,21 @@ def load_places():
     return out
 
 
+def load_corridor():
+    """[(day, klass, length_m, geometry), ...] from corridor_change.csv.
+
+    Unlike `load_places`, a missing file is fatal -- the corridor table has no
+    meaningful empty state to fall back to the way place labels do, and a
+    silently empty layer would render as "the plan touches no streets", which
+    is not a caveat, it's a wrong answer.
+    """
+    if not CORRIDOR.exists():
+        sys.exit(f"error: {CORRIDOR} missing -- run "
+                  "`python3 analyze_corridor_change.py` first")
+    return [(r["day"], r["klass"], float(r["length_m"]), r["geometry"])
+            for r in csv.DictReader(open(CORRIDOR, encoding="utf-8"))]
+
+
 def load_crosswalk():
     path = DATA / "route_crosswalk.csv"
     if not path.exists():
@@ -280,6 +315,10 @@ def build(out_path):
     cw = load_crosswalk()
     con.executemany("INSERT INTO crosswalk VALUES (?,?,?,?,?)", cw)
     print(f"  place labels: {len(places):,} stops   crosswalk: {len(cw)} rows")
+
+    corridor = load_corridor()
+    con.executemany("INSERT INTO corridor VALUES (?,?,?,?)", corridor)
+    print(f"  corridor runs: {len(corridor):,} rows")
 
     key_id = 0
     for side in SIDES:

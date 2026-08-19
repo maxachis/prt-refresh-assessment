@@ -5,11 +5,15 @@ import {
   initChangeLayer, loadChangeLayer, setChangeDay, toggleBucket, resetBuckets,
   layerData, dotLabel,
 } from './change';
-import { renderLegend } from './legend';
+import { renderLegend, renderCorridorLegend } from './legend';
 import {
   initSurfaceLayer, loadSurfaceLayer, setSurfaceDay, setSurfaceVisible,
   layerData as surfaceData, isVisible as surfaceOn,
 } from './surface';
+import {
+  initCorridorLayer, loadCorridorLayer, setCorridorDay, setCorridorVisible,
+  layerData as corridorData, isVisible as corridorOn,
+} from './corridor';
 import { PlaceResult, Day } from './types';
 
 const PGH: [number, number] = [-79.9959, 40.4406];
@@ -31,6 +35,7 @@ map.on('load', () => {
   initMapLayers(map);
   initChangeLayer(map);      // after initMapLayers: it inserts beneath 'walk-fill'
   initSurfaceLayer(map, 'change-dots');   // under the dots, so 'Both' reads
+  initCorridorLayer(map, 'change-dots');  // same slot; corridors and dots/surface are mutually exclusive
   renderEmpty($('panel'));
 
   map.on('click', (e: any) => {
@@ -79,17 +84,21 @@ map.on('load', () => {
     setDay(day);
     setChangeDay(map, day);
     setSurfaceDay(map, day);
+    if (corridorData()) void setCorridorDay(map, day).then(refreshLegend);
     refreshLegend();
   });
 
-  // Locations, surface, or both. The surface is fetched on first use rather
-  // than at startup: it is ~48,500 cells against ~5,900 dots, and a reader who
-  // never switches views should not pay for it.
+  // Locations, surface, both, or streets. The surface and the corridors are
+  // both fetched on first use rather than at startup: the surface is ~48,500
+  // cells against ~5,900 dots and the corridors are ~200 KB per day type, and
+  // a reader who never switches views should not pay for either.
   segment('[data-view]', (b) => {
     const view = b.dataset.view!;
     map.setLayoutProperty('change-dots', 'visibility',
-      view === 'surface' ? 'none' : 'visible');
-    void showSurface(view !== 'dots');
+      view === 'surface' || view === 'corridors' ? 'none' : 'visible');
+    void showSurface(view === 'surface' || view === 'both');
+    void showCorridors(view === 'corridors');
+    setRadiusEnabled(view !== 'corridors');
   });
 
   $('legend').addEventListener('click', (e) => {
@@ -119,6 +128,15 @@ function segment(sel: string, onPick: (b: HTMLButtonElement) => void) {
 }
 
 function refreshLegend() {
+  // "Show all" clears buckets hidden from the change legend's filter, which
+  // has no counterpart here -- the corridor legend is a key, not a filter --
+  // so the button is hidden rather than left clickable and silently inert.
+  $('legend-reset').classList.toggle('hidden', corridorOn());
+  if (corridorOn()) {
+    const c = corridorData();
+    if (c) renderCorridorLegend($('legend'), c);
+    return;
+  }
   const d = layerData();
   if (!d) return;
   const b = map.getBounds();
@@ -140,6 +158,31 @@ async function showSurface(on: boolean) {
   }
   setSurfaceVisible(map, on);
   refreshLegend();
+}
+
+/** Turn the corridor layer on or off, loading it the first time it is asked for. */
+async function showCorridors(on: boolean) {
+  if (on && !corridorData()) {
+    $('legend').classList.add('loading');
+    try {
+      await loadCorridorLayer(map, activeDay());
+    } finally {
+      $('legend').classList.remove('loading');
+    }
+  }
+  setCorridorVisible(map, on);
+  refreshLegend();
+}
+
+/**
+ * The walk radius has no meaning for the corridor view — a corridor is a
+ * piece of street, not a catchment — so the control is disabled rather than
+ * left clickable and silently ignored.
+ */
+function setRadiusEnabled(on: boolean) {
+  document.querySelectorAll<HTMLButtonElement>('[data-radius]').forEach((b) => {
+    b.disabled = !on;
+  });
 }
 
 async function load(lat: number, lon: number) {

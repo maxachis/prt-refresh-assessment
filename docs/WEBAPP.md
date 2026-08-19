@@ -2,7 +2,8 @@
 
 A map that answers, for any point in Allegheny County, what the Bus Line Refresh
 does to the buses within a short walk of it — measured from real timetables on
-both sides, by the same code.
+both sides, by the same code. A third view drops the walk radius and colours the
+street network itself, by whether any bus still runs on each block.
 
 It exists because the comment period generates one question far more than any
 other, and it is not a question the answer documents can hold: **not** "what
@@ -205,6 +206,51 @@ km² together, and the area line says "of ground in view, not of people" — a
 square kilometre of hillside paints exactly like a square kilometre of
 Brookline.
 
+## The street layer
+
+The dots and the surface both measure from a walk radius. Neither can answer
+"does my street keep its bus", because a location that keeps full walk access
+can sit on a block whose own bus is gone — the trip moved one street over. The
+*Streets* view answers that directly, and it is the only layer here with no
+radius at all: a corridor is a piece of pavement, not a catchment.
+
+It is `analyze_corridor_change.py` carried over verbatim — 4,933 runs, 583 KB
+on disk, ~290 KB per day type on the wire. Unlike the dots and the surface it
+is **not** precomputed through `side_at_place`, and that difference matters
+when reading the code: the "a dot and the panel behind it cannot disagree"
+guarantee governs those two layers and has no counterpart here, because this
+layer answers a question `/api/place` never asks.
+
+Four decisions worth keeping:
+
+1. **Any bus, not which bus.** A street is served if a single trip runs on it;
+   route numbers never enter the classification. That is what makes a corridor
+   layer compatible with the never-compare-route-N-to-route-N rule — there is
+   no route to compare.
+2. **Matching is tolerant, and it has to be.** The two feeds digitise the same
+   street a few metres apart, so a key matches within about 35 m and a 45°
+   heading band. An exact test renders a real corridor as an alternating
+   stripe of kept and lost, which reads as a finding and is an artefact.
+   Heading matters as much as position: without it a street matches the cross
+   street standing in the same block.
+3. **Kept is grey, and it is drawn.** 897.8 of 1,239.3 weekday km are kept, and
+   an invisible kept network costs the view its point — a red segment with no
+   network behind it gives no way to tell an isolated block from a severed
+   trunk corridor. Kept also stays *desaturated* rather than taking the
+   surface's cooler dead-band grey: added is a blue, and a blue-grey kept
+   beside it makes "gains a bus" and "keeps its bus" one hue family. Lost and
+   added keep the surface's own red and blue.
+4. **The legend totals are citywide, not in-view**, unlike every other legend
+   in this app, and it says so on the legend. There is no radius to scope them
+   with, and letting the reader carry the in-view habit over would silently
+   change what the numbers mean between views.
+
+**Pavement and access are complements** — convention 11, the same shape as
+convention 10 one unit further down. The street view's 22.4% weekday loss is a
+bigger-sounding number than the surface's 12% area loss and measures something
+narrower, so the legend carries the caveat inline and the panel explains the
+distinction whichever view is open.
+
 ## API
 
 | Endpoint | Returns |
@@ -212,6 +258,7 @@ Brookline.
 | `GET /api/place?lat=&lon=&radius=` | Before and after at one point, all three day types. The app's purpose; everything else is navigation. |
 | `GET /api/change?radius=` | The citywide layer: every location bucketed, all three day types, columnar. Radius must be 400 or 150 — it is precomputed. ~300 KB, 77 KB gzipped. |
 | `GET /api/surface?radius=` | The magnitude surface: every covered 100 m cell, all three day types, columnar as lattice indices. Radius must be 400 or 150. ~1.3 MB, 198 KB gzipped. |
+| `GET /api/corridors?day=` | Every street run kept, lost or added for one day type, with citywide kilometres by class. No radius — a corridor is pavement, not a catchment. ~290 KB weekday. |
 | `GET /api/stops?side=&lat=&lon=&radius=` | Stops one network puts inside the radius. |
 | `GET /api/routes?side=` | Bus routes with trips, revenue hours and span per day type. |
 | `GET /api/crosswalk` | PRT's current → proposed route mapping. A labelling aid; no served number goes through it. |

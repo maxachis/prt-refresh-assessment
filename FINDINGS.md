@@ -344,6 +344,52 @@ which flatters both networks equally. Blocks, municipal totals and the zone
 table are in `data/coverage_area_blocks.csv`, `_places.csv` and `_ondemand.csv`;
 the write-up is [docs/answers/COVERAGE-CHANGE.md](docs/answers/COVERAGE-CHANGE.md).
 
+
+## F. How much street keeps a bus
+
+Sections C and E both measure from a walk radius, so neither can say whether a
+particular street keeps its bus. `analyze_corridor_change.py` asks that
+directly, and it is the only analysis here whose unit is the pavement itself:
+both feeds' route geometry is resampled every 20 m and matched between networks
+on position and heading, so a corridor is "served" if **any** bus runs on it,
+whatever the route number. Route identity never enters — which is what keeps
+this clear of the rule in section C's opening.
+
+| | Street with a bus today | Proposed | Lost | Added |
+|---|---:|---:|---:|---:|
+| Weekday | 1,156.3 km | 980.8 km | **−258.5 (−22.4%)** | +83.0 (+7.2%) |
+| Saturday | 914.4 km | 847.7 km | −175.5 (−19.2%) | +108.8 (+11.9%) |
+| Sunday | 907.5 km | 847.9 km | −171.1 (−18.9%) | +111.5 (+12.3%) |
+
+**Nearly a quarter of the streets carrying a weekday bus today will not carry
+one under the plan**, against 7.2% of today's mileage added — a net 15.2%
+reduction in street carrying a bus.
+
+The weekday/weekend split is the more interesting half. The plan sheds 258 km
+of weekday pavement but only 171 km on Sunday, and adds *more* street on the
+weekend than on a weekday. What is being withdrawn is disproportionately the
+weekday-only apparatus — peak expresses, branch tails, and the loops that run
+five days a week — while the seven-day network spreads slightly wider. This is
+the same peaks-to-all-day trade section C describes, seen as geography rather
+than as trips.
+
+**This is pavement, not access, and the two numbers must travel together.** The
+22.4% here sounds larger than section E's 12.0% area loss and measures something
+narrower: a street can lose its only bus while a parallel street a minute's walk
+away keeps one, in which case the pavement is genuinely gone and nobody's walk
+gets longer. Section E is what people can reach; this is what the buses drive
+on. Quoting this figure alone would be the error section E's own closing warns
+against, one unit further down.
+
+Two limits specific to this section. The two feeds draw the same street a few
+metres apart, so matching allows about 35 m of lateral tolerance and a 45°
+heading band; without it a real corridor renders as an alternating stripe of
+kept and lost. And **kept mileage is measured on the proposed feed's geometry
+while lost mileage is measured on the current feed's**, so the "today" column
+adds two digitisations of one street network — close, but not an exact
+survey length. Runs are in `data/corridor_change.csv`; the layer is on the map
+under *Streets* ([docs/WEBAPP.md](docs/WEBAPP.md)).
+
 ---
 
 ## Caveats — read before citing

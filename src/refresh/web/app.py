@@ -120,6 +120,20 @@ def create_app(db_path: str | Path = "data/refresh.db") -> FastAPI:
                      "is precomputed at those two")
         return query.surface_layer(con, radius)
 
+    @app.get("/api/corridors")
+    def api_corridors(
+        day: str = Query("weekday", pattern=f"^({'|'.join(query.DAYS)})$"),
+    ):
+        """Every street segment gained, lost or kept, for one day type.
+
+        No `radius` parameter, and that is deliberate: a corridor is a piece
+        of street, not a catchment, so a walk radius has no meaning here the
+        way it does for `/api/place`, `/api/change` or `/api/surface`. This is
+        pavement, not access -- see `query.corridor_layer` and
+        `analyze_corridor_change.py` for the distinction.
+        """
+        return query.corridor_layer(con, day)
+
     @app.get("/api/stops")
     def api_stops(
         side: str = Query("current", pattern="^(current|proposed)$"),
@@ -184,6 +198,17 @@ CAVEATS = [
                 "dots — the plan is roughly service-neutral per location and "
                 "covers 12% less ground, and either figure alone is a talking "
                 "point rather than a finding.",
+    },
+    {
+        "id": "corridor",
+        "text": "The street-level layer shows whether ANY bus runs on a given "
+                "street — route numbers never enter it. A street can lose its "
+                "only bus while a parallel street a block away keeps one, so "
+                "this is pavement, not access: it can show a real loss where "
+                "the location and surface views show none, and no change "
+                "where they show a loss two blocks over. Read it alongside "
+                "those views, never instead of them. Weekday citywide: 897.8 "
+                "km kept, 258.5 km lost, 83.0 km added.",
     },
     {
         "id": "location-not-route",

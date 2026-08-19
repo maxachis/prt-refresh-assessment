@@ -13,11 +13,12 @@
  * to 30% low).
  */
 import { esc } from './utils';
-import { Day, ChangeLayer, SurfaceLayer } from './types';
+import { Day, ChangeLayer, SurfaceLayer, CorridorLayer, CorridorKlass } from './types';
 import { STYLE, countInBounds, isHidden } from './change';
 import {
   RAMP, GONE_COLOR, NEW_COLOR, summariseInBounds,
 } from './surface';
+import { KLASS_COLOR, pavementPct } from './corridor';
 
 const DAY_WORD: Record<Day, string> = {
   weekday: 'a weekday',
@@ -79,6 +80,61 @@ export function surfaceKey(
       </div>
       <div class="lg-ends" style="margin-top:4px">of ground in view, not of people</div>
     </div>`;
+}
+
+const CORRIDOR_ORDER: CorridorKlass[] = ['lost', 'added', 'kept'];
+
+const CORRIDOR_LABEL: Record<CorridorKlass, string> = {
+  lost: 'loses its bus',
+  added: 'gains a bus',
+  kept: 'keeps its bus',
+};
+
+/** Plain day names for the corridor header -- "weekday", not "a weekday". */
+const CORRIDOR_DAY_LABEL: Record<Day, string> = {
+  weekday: 'weekday',
+  saturday: 'Saturday',
+  sunday: 'Sunday',
+};
+
+/**
+ * The corridor legend: three swatches, citywide kilometres, and the loss and
+ * gain as a share of today's pavement.
+ *
+ * Every other legend in this app counts what's in view, because panning is
+ * the interaction. This one can't: the API has no radius or bounds parameter
+ * and hands back the whole city's kilometres for the day type asked for, so
+ * summing only the runs currently on screen would silently redefine what the
+ * number means relative to the dots and the surface. Said explicitly rather
+ * than left for the reader to assume from the other two views.
+ */
+export function renderCorridorLegend(el: HTMLElement, layer: CorridorLayer) {
+  const { lostPct, addedPct } = pavementPct(layer.km);
+  const n = (v: number) => v.toFixed(1);
+  const total = layer.km.kept + layer.km.lost + layer.km.added;
+  const totalStr = total.toLocaleString(undefined,
+    { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+
+  el.innerHTML = `
+    <div class="lg-head">
+      <b>${totalStr}</b> km of street, citywide — ${CORRIDOR_DAY_LABEL[layer.day]}
+    </div>
+    ${CORRIDOR_ORDER.map((k) => `
+      <div class="lg-row lg-static">
+        <i style="background:${KLASS_COLOR[k]}"></i>
+        <span class="lg-lab">${esc(CORRIDOR_LABEL[k])}</span>
+        <span class="lg-n">${n(layer.km[k])} km</span>
+      </div>`).join('')}
+    <div class="lg-area">
+      <span><b>${n(lostPct)}%</b> of today's pavement lost</span>
+      <span><b>${n(addedPct)}%</b> of today's pavement gained</span>
+    </div>
+    <div class="lg-ends" style="margin-top:4px">citywide, not in view</div>
+    <div class="lg-foot">A piece of street either has a bus on it or it doesn't —
+      this is not a walk-access question, so there is no radius here. A place
+      can keep full walk access while a specific street loses its only bus, if
+      a parallel block picks up the trip instead. See Locations or Surface for
+      what you can still reach on foot.</div>`;
 }
 
 export function renderLegend(

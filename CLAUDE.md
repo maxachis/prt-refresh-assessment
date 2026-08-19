@@ -12,7 +12,8 @@ with evidence PRT has not itself published.
 
 Since both networks gained a real GTFS it also carries **a web app** (`src/refresh/`,
 `frontend/`) that answers "what changes here?" at an arbitrary point, as dots
-at today's stops or as a continuous 100 m surface — see
+at today's stops, as a continuous 100 m surface, or as the street network
+itself gaining and losing buses — see
 [`docs/WEBAPP.md`](docs/WEBAPP.md). The pipeline remains the primary artifact and
 stays standard-library only; the app is an optional extra that only reads what
 the pipeline builds. It is deployed at
@@ -40,6 +41,7 @@ python3 analyze_one_seat.py         # -> data/oneseat_change.csv
 python3 analyze_coverage_change.py  # -> data/coverage_change.csv, route_service_days.csv
 python3 analyze_coverage_area.py    # -> data/coverage_area*.csv (coverage as km2)
 python3 analyze_route_hours.py      # -> data/route_frequency_change.csv
+python3 analyze_corridor_change.py  # -> data/corridor_change.csv
 python3 build_webdb.py              # -> data/refresh.db, for the web app only
 ```
 
@@ -109,7 +111,7 @@ at `data/raw/proposed_gtfs/` (real timetables: 698,865 `stop_times` rows,
 side. Everything that counts service now reads it through `gtfs.py` —
 `analyze_service_loss.py`, `analyze_frequency_change.py`,
 `analyze_coverage_change.py`, `analyze_coverage_area.py`, `analyze_route_hours.py`,
-`analyze_one_seat.py`. The PDFs survive as a published cross-check only: deriving
+`analyze_one_seat.py`, `analyze_corridor_change.py`. The PDFs survive as a published cross-check only: deriving
 proposed service from them drops the S-variants (absent from Remix) and doubles
 the peak-only limiteds. The Remix trips endpoint returns `[]`, so Remix itself
 remains timetable-free — but it is still the only source for the 10 on-demand
@@ -168,6 +170,18 @@ changes published findings.
     reads as roughly service-neutral by location and as a 12% loss of covered
     ground; both are true, and either alone is a talking point rather than a
     finding.
+
+11. **Pavement is not access, and the corridor layer must never be quoted as
+    if it were.** `analyze_corridor_change.py` asks a third question — does
+    ANY bus run on this piece of street — and it is the only analysis whose
+    unit is the street itself rather than a location or an area. A street can
+    lose its only bus while a parallel street a block away keeps one: real
+    pavement lost, no access lost, and the location and surface views will
+    correctly show no change there. The weekday network drops from 1,156 km of
+    street carrying a bus to 981 km, a 22.4% loss against 7.2% added. That is
+    a larger-sounding number than the 12% area loss and it measures something
+    narrower; quoting it without the access figures beside it would be the
+    same error convention 10 forbids, one unit further down.
 
 State data vintage and PRT's own accuracy disclaimer (stop figures are
 "unadjusted, unofficial totals" that may understate ridership by up to 30%)

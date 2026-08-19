@@ -40,6 +40,13 @@ from pathlib import Path
 DAYS = ("weekday", "saturday", "sunday")
 SIDES = ("current", "proposed")
 
+# The corridor layer's classes -- mirrors analyze_corridor_change.py's
+# KLASS_KEPT/KLASS_LOST/KLASS_ADDED verbatim (that script stays self-contained
+# pipeline code, so the strings are repeated here rather than imported).
+KLASS_KEPT = "kept"
+KLASS_LOST = "lost"
+KLASS_ADDED = "added"
+
 # The seven periods the Frequency & Hours PDFs publish, as minutes on the
 # 4:00-28:00 axis. Mirrors analyze_frequency_change.PERIODS; the DB carries the
 # same list in `meta` so a served number can be traced to the build.
@@ -621,6 +628,59 @@ def surface_layer(con, radius: float = PRIMARY_RADIUS):
         "fields": ["ix", "iy",
                    *[f"{d}_{f}" for d in DAYS for f in ("cur", "prop")]],
         "cells": list(packed.values()),
+    }
+
+
+# --------------------------------------------------------------------------
+# the corridor layer
+# --------------------------------------------------------------------------
+#
+# Everything above answers "what can a rider reach from a place they might
+# stand" -- a stop, a location within a walk radius, a lattice cell. This
+# layer answers something narrower: on this piece of STREET, does a bus run?
+# `analyze_corridor_change.py`'s module docstring is the method and the
+# reasoning; a street can lose its only bus while a stop two blocks over shows
+# no change at all in `place()` or the surface, so this is pavement, not
+# access, and it must never be read as though it answered the walk-access
+# question those do.
+
+def corridor_layer(con, day: str = "weekday"):
+    """The corridor layer at one day type, geometry parsed for the wire.
+
+    A straight carry-over of `data/corridor_change.csv` -- unlike `change` and
+    `surface` above, nothing here is recomputed through `side_at_place`, so
+    there is no "the dot and the panel behind it cannot disagree" guarantee to
+    make; this table simply repeats what `analyze_corridor_change.py` already
+    measured on the street network itself.
+
+    `km` totals citywide length by class (kept/lost/added), summed from every
+    row for the day -- not only the runs currently in view -- because the
+    layer's whole point is a network-wide pavement figure, the corridor
+    counterpart of the area total `surface_layer` complements. A rider zoomed
+    into one neighbourhood should still see the citywide kept/lost/added
+    split, the same way the legend's citywide bucket counts do not shrink to
+    match the map's current viewport.
+
+    Geometry is parsed here, not on the client, so the client does no parsing:
+    "lon,lat lon,lat ..." becomes [[lon, lat], ...] per run.
+    """
+    rows = con.execute(
+        "SELECT klass, length_m, geometry FROM corridor WHERE day = ?",
+        (day,)).fetchall()
+
+    km = {klass: 0.0 for klass in (KLASS_KEPT, KLASS_LOST, KLASS_ADDED)}
+    runs = []
+    for r in rows:
+        km[r["klass"]] += r["length_m"]
+        coords = [[float(v) for v in pt.split(",")]
+                  for pt in r["geometry"].split(" ")]
+        runs.append({"klass": r["klass"], "length_m": r["length_m"],
+                     "geometry": coords})
+
+    return {
+        "day": day,
+        "km": {k: round(v / 1000, 1) for k, v in km.items()},
+        "runs": runs,
     }
 
 
