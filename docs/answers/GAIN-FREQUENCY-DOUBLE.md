@@ -2,10 +2,10 @@
 
 > What routes are doubling frequency or better?
 
-**221 locations at least double their weekday trips, 342 double on Saturday and
+**217 locations at least double their weekday trips, 331 double on Saturday and
 373 on Sunday.** The weekend gains are the story: they outnumber weekend halvings
-by roughly three to one, and Saturday doubling reaches 1,404 boardings against
-291 at halving locations.
+by roughly three to one, and Saturday doubling reaches 1,381 boardings against
+256 at halving locations.
 
 As with the losses, this is answered by location rather than by route — the plan
 re-splits corridors, so route-to-route deltas are meaningless
@@ -15,9 +15,9 @@ re-splits corridors, so route-to-route deltas are meaningless
 
 | Day | Doubled or better | Boardings | Halved or worse | Boardings |
 |---|---:|---:|---:|---:|
-| Weekday | **221** | 917 | 282 | 822 |
-| Saturday | **342** | 1,404 | 123 | 291 |
-| Sunday | **373** | 905 | 112 | 198 |
+| Weekday | **217** | 912 | 284 | 829 |
+| Saturday | **331** | 1,381 | 125 | 256 |
+| Sunday | **373** | 905 | 113 | 198 |
 
 Detail in `data/coverage_change.csv` — compare `cur_{day}_trips` against
 `prop_{day}_trips`.
@@ -27,21 +27,21 @@ Detail in `data/coverage_change.csv` — compare `cur_{day}_trips` against
 | Boardings | Stop | Place | Weekday trips |
 |---:|---|---|---|
 | 82.0 | WEST BUSWAY + CARNEGIE STATION | Carnegie | 102 → 300 |
-| 60.0 | E CARSON ST + 27TH ST | South Side Flats | 168 → 350 |
-| 57.4 | 26TH ST + E CARSON | South Side Flats | 168 → 350 |
-| 49.4 | E CARSON ST + 26TH | South Side Flats | 168 → 350 |
-| 44.3 | E CARSON ST + S 28TH ST | South Side Flats | 168 → 350 |
+| 60.0 | E CARSON ST + 27TH ST | South Side Flats | 170 → 355 |
+| 57.4 | 26TH ST + E CARSON | South Side Flats | 170 → 355 |
+| 49.4 | E CARSON ST + 26TH | South Side Flats | 170 → 355 |
+| 44.3 | E CARSON ST + S 28TH ST | South Side Flats | 170 → 352 |
 | 39.7 | SUMMIT PARK DR + ANDREW (WAL-MART) | North Fayette | 43 → 136 |
-| 39.5 | BEDFORD AVE + CHAUNCEY DR | Bedford Dwellings | 56 → 132 |
+| 39.5 | BEDFORD AVE + CHAUNCEY DR | Bedford Dwellings | 58 → 134 |
 
 Two corridors dominate, and both are dense and already well-used:
 
-- **East Carson St, South Side Flats** — 168 weekday trips to 350, at half a
+- **East Carson St, South Side Flats** — 170 weekday trips to 355, at half a
   dozen consecutive stops. This is the largest concentrated frequency gain in the
   plan.
 - **West Busway at Carnegie Station** — 102 to 300, nearly tripling.
 
-**Bedford Dwellings** (56 → 132) is worth naming separately: a public-housing
+**Bedford Dwellings** (58 → 134) is worth naming separately: a public-housing
 community more than doubling its weekday service. Together with the new **84
 Wylie**, which runs 68 Saturday trips against 66 on weekdays, the Hill District
 corridors are among the plan's clearest winners.
@@ -80,7 +80,7 @@ frequency as a gap rather than a total.
 combined across routes** — not revenue-hours, not capacity. A corridor gaining
 trips while shortening buses would still read as a gain.
 
-A doubling from 6 trips to 12 and one from 168 to 350 are both in the 221 and are
+A doubling from 6 trips to 12 and one from 170 to 355 are both in the 217 and are
 not comparable. Filter by `cur_weekday_trips` before quoting the count.
 
 Boardings are May 2025 averages, so they describe who uses these stops **today**,

@@ -1,0 +1,451 @@
+tier,side,km2,place,n_places,also,nearest_stop,nearest_stop_m,lat,lon
+WEEK-ANY-MINIMUM,lost,12.01,"McCandless township (Allegheny, PA)",3,"Ross township (Allegheny, PA);Hampton township (Allegheny, PA)",MCINTYRE DR + THOMPSON RUN FS,627,40.55772,-79.99571
+WEEK-ANY-MINIMUM,lost,7.77,"Plum borough (Allegheny, PA)",3,"Penn Hills township (Allegheny, PA);Monroeville municipality (Allegheny, PA)",UNITY TRESTLE RD + ASHLAND DR,589,40.48208,-79.77576
+WEEK-ANY-MINIMUM,lost,5.67,"Baldwin borough (Allegheny, PA)",3,"South Park township (Allegheny, PA);Whitehall borough (Allegheny, PA)",CURRY RD + HORNING,416,40.33647,-79.99621
+WEEK-ANY-MINIMUM,lost,4.94,"Kennedy township (Allegheny, PA)",2,"Neville township (Allegheny, PA)",CORAOPOLIS RD + HWY RT 51,209,40.49165,-80.11413
+WEEK-ANY-MINIMUM,lost,4.9,"Mount Lebanon township (Allegheny, PA)",2,"Bethel Park municipality (Allegheny, PA)",GALLERIA STOREFRONT + SOUTHEAST ENTRANCE,374,40.35546,-80.05617
+WEEK-ANY-MINIMUM,lost,4.65,"Baldwin borough (Allegheny, PA)",3,"Carrick;Brentwood borough (Allegheny, PA)",CHURCHVIEW AVE + VILLAGE DR,480,40.39032,-79.96256
+WEEK-ANY-MINIMUM,lost,4.49,"Reserve township (Allegheny, PA)",4,"Ross township (Allegheny, PA);Spring Garden;Summer Hill",MT TROY RD + #3222,213,40.48641,-79.99419
+WEEK-ANY-MINIMUM,lost,2.37,"North Versailles township (Allegheny, PA)",1,,LINCOLN HWY + MCKEE,23,40.37322,-79.79263
+WEEK-ANY-MINIMUM,lost,2.08,"Scott township (Allegheny, PA)",3,"Bridgeville borough (Allegheny, PA);Collier township (Allegheny, PA)",BOWER HILL RD AT BEDNERS FARM MARKET,352,40.36372,-80.09303
+WEEK-ANY-MINIMUM,lost,1.94,"West Mifflin borough (Allegheny, PA)",2,"McKeesport city (Allegheny, PA)",HOMEVILLE RD AT DUQUESNE VILLAGE ENTRANCE #1,187,40.36857,-79.8718
+WEEK-ANY-MINIMUM,lost,1.79,"Trafford borough (Westmoreland, PA)",2,"Trafford borough (Allegheny, PA)",FOREST AVE + 7TH ST,224,40.38825,-79.75477
+WEEK-ANY-MINIMUM,lost,1.78,"Oakmont borough (Allegheny, PA)",1,,HULTON RD + THE FAIRWAYS,230,40.52536,-79.82436
+WEEK-ANY-MINIMUM,lost,1.43,"Penn Hills township (Allegheny, PA)",1,,CHASKE ST + BRAMBLE,69,40.47378,-79.86571
+WEEK-ANY-MINIMUM,lost,1.38,"Scott township (Allegheny, PA)",2,"Mount Lebanon township (Allegheny, PA)",LINDSAY RD + CHERRYTREE,235,40.38472,-80.07659
+WEEK-ANY-MINIMUM,lost,1.25,"McCandless township (Allegheny, PA)",2,"Ross township (Allegheny, PA)",PERRY HWY OPP WASHINGTON BLVD,82,40.55186,-80.0382
+WEEK-ANY-MINIMUM,lost,1.17,"White Oak borough (Allegheny, PA)",1,,LONG RUN RD + SUNSET,97,40.3354,-79.8104
+WEEK-ANY-MINIMUM,lost,0.97,"McCandless township (Allegheny, PA)",1,,PERRY HWY AT CUMBERLAND RD,290,40.56922,-80.03746
+WEEK-ANY-MINIMUM,lost,0.95,"Harrison township (Allegheny, PA)",1,,FREEPORT RD + OAK MANOR,252,40.65341,-79.70771
+WEEK-ANY-MINIMUM,lost,0.9,"Harrison township (Allegheny, PA)",1,,BAKERSTOWN RD + BP ENTRANCE FS,208,40.66734,-79.70942
+WEEK-ANY-MINIMUM,lost,0.85,"McKeesport city (Allegheny, PA)",2,"Versailles borough (Allegheny, PA)",LONG RUN RD + LOU WASHOWICH WAY,209,40.32262,-79.82332
+WEEK-ANY-MINIMUM,lost,0.81,"Plum borough (Allegheny, PA)",1,,FIESTA DR + RIVIERA,139,40.47393,-79.70784
+WEEK-ANY-MINIMUM,lost,0.78,"Neville township (Allegheny, PA)",2,"Coraopolis borough (Allegheny, PA)",LEWIS AVE + #1236,126,40.50548,-80.14097
+WEEK-ANY-MINIMUM,lost,0.7,Bon Air,3,Knoxville;Beltzhoover,CAMFIELD ST + CALLE,62,40.40837,-79.99867
+WEEK-ANY-MINIMUM,lost,0.68,"Kennedy township (Allegheny, PA)",2,"McKees Rocks borough (Allegheny, PA)",CHARTIERS AVE EXT + #1536,79,40.46753,-80.08251
+WEEK-ANY-MINIMUM,lost,0.68,"McCandless township (Allegheny, PA)",1,,BLAZIER DR + TARGET ENTRANCE DRIVE,119,40.5858,-80.03979
+WEEK-ANY-MINIMUM,lost,0.67,"North Versailles township (Allegheny, PA)",1,,JACKS RUN RD + MCKEESPORT SPORTSMENS ASSOC,89,40.35938,-79.7859
+WEEK-ANY-MINIMUM,lost,0.65,Lincoln-Lemington-Belmar,1,,HIGHLAND DR + JOB CORPS DR,109,40.47725,-79.89883
+WEEK-ANY-MINIMUM,lost,0.62,"White Oak borough (Allegheny, PA)",1,,JACKS RUN RD + #3030,70,40.34443,-79.79744
+WEEK-ANY-MINIMUM,lost,0.6,"Penn Hills township (Allegheny, PA)",1,,HULTON RD + HULTON ESTATES,18,40.51348,-79.80362
+WEEK-ANY-MINIMUM,lost,0.55,"Ross township (Allegheny, PA)",1,,JACKS RUN RD EXT + YORK,103,40.49907,-80.03109
+WEEK-ANY-MINIMUM,lost,0.52,"Sewickley borough (Allegheny, PA)",2,"Edgeworth borough (Allegheny, PA)",UNIVERSITY BLVD + STOOPS FERRY RD,11,40.53786,-80.20032
+WEEK-ANY-MINIMUM,lost,0.48,"West Mifflin borough (Allegheny, PA)",1,,HWY RT 885 + HUSTON,67,40.33775,-79.9374
+WEEK-ANY-MINIMUM,lost,0.48,"Brackenridge borough (Allegheny, PA)",3,"Tarentum borough (Allegheny, PA);Harrison township (Allegheny, PA)",PROSPECT ST + RESERVOIR DR,249,40.6122,-79.74882
+WEEK-ANY-MINIMUM,lost,0.46,"Sewickley borough (Allegheny, PA)",1,,SEWICKLEY BRIDGE RAMP + KRAMER,99,40.53602,-80.18604
+WEEK-ANY-MINIMUM,lost,0.45,"Mount Lebanon township (Allegheny, PA)",2,"Scott township (Allegheny, PA)",COCHRAN + ROBINWOOD,26,40.39118,-80.05958
+WEEK-ANY-MINIMUM,lost,0.45,"Monroeville municipality (Allegheny, PA)",1,,MOSSIDE BLVD + MACBETH DR,39,40.42528,-79.75483
+WEEK-ANY-MINIMUM,lost,0.4,"Whitehall borough (Allegheny, PA)",1,,PROVOST RD + WHITEHILL CIR,185,40.36778,-79.99154
+WEEK-ANY-MINIMUM,lost,0.36,"Scott township (Allegheny, PA)",2,"Carnegie borough (Allegheny, PA)",CAROTHERS AVE + HILL,280,40.40062,-80.09159
+WEEK-ANY-MINIMUM,lost,0.36,"Monroeville municipality (Allegheny, PA)",1,,MONROEVILLE BLVD AT IVANHOE DR,146,40.43268,-79.7643
+WEEK-ANY-MINIMUM,lost,0.35,Chartiers City,2,Windgap,CHARTIERS AVE + KRUPP,72,40.45776,-80.07159
+WEEK-ANY-MINIMUM,lost,0.35,"Monroeville municipality (Allegheny, PA)",1,,BEATTY RD + BEATTY POINTE VILLAGE,119,40.44645,-79.74635
+WEEK-ANY-MINIMUM,lost,0.29,Chateau,1,,BRANCHPORT ST + PREBLE,250,40.45887,-80.03636
+WEEK-ANY-MINIMUM,lost,0.28,"Ross township (Allegheny, PA)",1,,EVERGREEN RD + PEOPLES TWP,142,40.50505,-79.99699
+WEEK-ANY-MINIMUM,lost,0.24,Chateau,1,,BEAVER AVE + NORTH POINTE,62,40.44906,-80.02687
+WEEK-ANY-MINIMUM,lost,0.23,Squirrel Hill South,1,,BEECHWOOD BLVD + FOREST GLEN,172,40.43319,-79.91074
+WEEK-ANY-MINIMUM,lost,0.23,"Monroeville municipality (Allegheny, PA)",2,"Wilkins township (Allegheny, PA)",MONROEVILLE PARK AND RIDE,172,40.42725,-79.79982
+WEEK-ANY-MINIMUM,lost,0.22,"Braddock borough (Allegheny, PA)",2,"North Braddock borough (Allegheny, PA)",VERONA ST + MAPLEVIEW DR,222,40.399,-79.86109
+WEEK-ANY-MINIMUM,lost,0.21,Brookline,1,,CHELTON AVE + FREEDOM,208,40.38675,-80.01392
+WEEK-ANY-MINIMUM,lost,0.21,"North Versailles township (Allegheny, PA)",1,,CLYDE AVE + PORT PERRY RD,191,40.385,-79.83466
+WEEK-ANY-MINIMUM,lost,0.18,"McCandless township (Allegheny, PA)",1,,INGOMAR RD + SARATOGA DR,232,40.582,-80.02794
+WEEK-ANY-MINIMUM,lost,0.18,Point Breeze,1,,REYNOLDS ST + HOMEWOOD,227,40.44461,-79.90445
+WEEK-ANY-MINIMUM,lost,0.18,"Penn Hills township (Allegheny, PA)",1,,MT CARMEL + MASON RD,190,40.46382,-79.87874
+WEEK-ANY-MINIMUM,lost,0.17,"Sewickley borough (Allegheny, PA)",1,,HILL ST + LOCUST,252,40.5434,-80.17613
+WEEK-ANY-MINIMUM,lost,0.15,"North Fayette township (Allegheny, PA)",1,,CCAC WEST,228,40.43554,-80.19607
+WEEK-ANY-MINIMUM,lost,0.14,"Bridgeville borough (Allegheny, PA)",1,,WASHINGTON AVE + JAMES ST,256,40.35523,-80.11635
+WEEK-ANY-MINIMUM,lost,0.14,"Swissvale borough (Allegheny, PA)",2,Swisshelm Park,WHIPPLE ST + AURELIUS,244,40.42607,-79.89846
+WEEK-ANY-MINIMUM,lost,0.11,"Sharpsburg borough (Allegheny, PA)",2,Morningside,BUTLER ST + LIVONIA,245,40.48883,-79.93305
+WEEK-ANY-MINIMUM,lost,0.11,"Churchill borough (Allegheny, PA)",1,,CHURCHILL RD + HOLLAND,270,40.44383,-79.84151
+WEEK-ANY-MINIMUM,lost,0.1,"New Kensington city (Westmoreland, PA)",1,,4TH AVE + 7TH,291,40.56013,-79.76456
+WEEK-ANY-MINIMUM,gained,3.52,unplaced,1,,Perry Hwy + Bonnie View SB,269,40.62286,-80.05693
+WEEK-ANY-MINIMUM,gained,3.39,"East Deer township (Allegheny, PA)",4,"Tarentum borough (Allegheny, PA);New Kensington city (Westmoreland, PA);unplaced",Freeport Rd + Drey St,162,40.58169,-79.75949
+WEEK-ANY-MINIMUM,gained,1.93,"West View borough (Allegheny, PA)",2,"Ross township (Allegheny, PA)",Perry Hwy + Saint John's,126,40.53422,-80.03469
+WEEK-ANY-MINIMUM,gained,1.88,"McKeesport city (Allegheny, PA)",1,,Riverview Ave + Powers St,242,40.33988,-79.84108
+WEEK-ANY-MINIMUM,gained,1.7,"Penn Hills township (Allegheny, PA)",3,"Churchill borough (Allegheny, PA);Wilkins township (Allegheny, PA)",Newport Dr + Duff Rd,67,40.4522,-79.82566
+WEEK-ANY-MINIMUM,gained,1.33,"Robinson township (Allegheny, PA)",1,,Campbells Run Rd + Settlers Ridge,120,40.43864,-80.15114
+WEEK-ANY-MINIMUM,gained,1.21,"Ross township (Allegheny, PA)",4,"Millvale borough (Allegheny, PA);Shaler township (Allegheny, PA);Reserve township (Allegheny, PA)",Babcock Blvd + Shop and Save,37,40.49888,-79.97995
+WEEK-ANY-MINIMUM,gained,1.09,"Hampton township (Allegheny, PA)",1,,Duncan Ave + Kirk Ave (FS),7,40.5599,-79.96364
+WEEK-ANY-MINIMUM,gained,0.99,"Brackenridge borough (Allegheny, PA)",3,"Tarentum borough (Allegheny, PA);Harrison township (Allegheny, PA)",Morgan St + Brackenridge Ave,29,40.60468,-79.73899
+WEEK-ANY-MINIMUM,gained,0.75,"Scott township (Allegheny, PA)",3,"Carnegie borough (Allegheny, PA);Green Tree borough (Allegheny, PA)",Forsythe Rd opp Woodridge Dr,171,40.40507,-80.07268
+WEEK-ANY-MINIMUM,gained,0.58,Squirrel Hill South,2,Swisshelm Park,Nine Mile Run - Frick Park,83,40.42627,-79.90726
+WEEK-ANY-MINIMUM,gained,0.53,South Oakland,4,"Central Oakland;Squirrel Hill South;Findlay township (Allegheny, PA)",PANTHER HOLLOW RD + SCHENLEY PARK POOL,12,40.43458,-79.94852
+WEEK-ANY-MINIMUM,gained,0.52,Highland Park,1,,WASHINGTON BLVD + ALLEGHENY RIVER BLVD,8,40.48324,-79.90799
+WEEK-ANY-MINIMUM,gained,0.47,"Moon township (Allegheny, PA)",1,,Business 376 + Airside Dr,28,40.49989,-80.2191
+WEEK-ANY-MINIMUM,gained,0.39,"Monroeville municipality (Allegheny, PA)",1,,Wyngate Dr + Belmont Blvd,181,40.43105,-79.77694
+WEEK-ANY-MINIMUM,gained,0.35,Ridgemont,2,"West Mifflin borough (Allegheny, PA)",LEBANON SCHOOL RD AT CAMP HOLLOW RD,247,40.34145,-79.91772
+WEEK-ANY-MINIMUM,gained,0.33,"Ross township (Allegheny, PA)",1,,MCKNIGHT RD + BROOKVIEW LN,202,40.51031,-80.00213
+WEEK-ANY-MINIMUM,gained,0.31,"Millvale borough (Allegheny, PA)",2,"Ross township (Allegheny, PA)",NORTH AVE + GRANT,169,40.48027,-79.97636
+WEEK-ANY-MINIMUM,gained,0.29,"Robinson township (Allegheny, PA)",1,,Robinson Town Centre Blvd + Park Manor Blvd,299,40.45767,-80.16503
+WEEK-ANY-MINIMUM,gained,0.28,"Harrison township (Allegheny, PA)",1,,Sheldon Park + Bldg 28,250,40.62036,-79.72067
+WEEK-ANY-MINIMUM,gained,0.25,"McCandless township (Allegheny, PA)",1,,Blazier Dr + Ashton Commons SB,170,40.58735,-80.02304
+WEEK-ANY-MINIMUM,gained,0.22,"Monroeville municipality (Allegheny, PA)",1,,WM PENN HWY + JADENS II,189,40.43052,-79.72915
+WEEK-ANY-MINIMUM,gained,0.21,Banksville,5,"Green Tree borough (Allegheny, PA);Mount Lebanon township (Allegheny, PA);Dormont borough (Allegheny, PA)",McMonagle Ave + N Meadowcroft Ave,142,40.40134,-80.05035
+WEEK-ANY-MINIMUM,gained,0.17,"West Mifflin borough (Allegheny, PA)",1,,KENNYWOOD BLVD + #4000,238,40.39518,-79.87074
+WEEK-ANY-MINIMUM,gained,0.17,"Harrison township (Allegheny, PA)",1,,Highlands Mall Walmart,246,40.64639,-79.71519
+WEEK-ANY-MINIMUM,gained,0.15,"North Fayette township (Allegheny, PA)",1,,MCKEE RD + CCAC WEST,240,40.43835,-80.18914
+WEEK-ANY-MINIMUM,gained,0.14,Brookline,2,"Dormont borough (Allegheny, PA)",Pioneer Ave + Dorchester Ave,243,40.39206,-80.02806
+WEEK-ANY-MINIMUM,gained,0.12,"Baldwin borough (Allegheny, PA)",2,"Pleasant Hills borough (Allegheny, PA)",Curry Hollow Center,269,40.33382,-79.97774
+WEEK-ANY-MINIMUM,gained,0.11,"East McKeesport borough (Allegheny, PA)",2,"North Versailles township (Allegheny, PA)",Chicora St + 5th Ave,287,40.38504,-79.80931
+WEEK-ANY-MINIMUM,gained,0.1,Overbrook,2,Brookline,Glenbury St + Aaron Ave,241,40.38496,-80.00302
+WEEKDAYS-ANY-MINIMUM,lost,12.01,"McCandless township (Allegheny, PA)",3,"Ross township (Allegheny, PA);Hampton township (Allegheny, PA)",MCINTYRE DR + THOMPSON RUN FS,627,40.55772,-79.99571
+WEEKDAYS-ANY-MINIMUM,lost,7.77,"Plum borough (Allegheny, PA)",3,"Penn Hills township (Allegheny, PA);Monroeville municipality (Allegheny, PA)",UNITY TRESTLE RD + ASHLAND DR,589,40.48208,-79.77576
+WEEKDAYS-ANY-MINIMUM,lost,5.67,"Baldwin borough (Allegheny, PA)",3,"South Park township (Allegheny, PA);Whitehall borough (Allegheny, PA)",CURRY RD + HORNING,416,40.33647,-79.99621
+WEEKDAYS-ANY-MINIMUM,lost,4.94,"Kennedy township (Allegheny, PA)",2,"Neville township (Allegheny, PA)",CORAOPOLIS RD + HWY RT 51,209,40.49165,-80.11413
+WEEKDAYS-ANY-MINIMUM,lost,4.9,"Mount Lebanon township (Allegheny, PA)",2,"Bethel Park municipality (Allegheny, PA)",GALLERIA STOREFRONT + SOUTHEAST ENTRANCE,374,40.35546,-80.05617
+WEEKDAYS-ANY-MINIMUM,lost,4.65,"Baldwin borough (Allegheny, PA)",3,"Carrick;Brentwood borough (Allegheny, PA)",CHURCHVIEW AVE + VILLAGE DR,480,40.39032,-79.96256
+WEEKDAYS-ANY-MINIMUM,lost,4.49,"Reserve township (Allegheny, PA)",4,"Ross township (Allegheny, PA);Spring Garden;Summer Hill",MT TROY RD + #3222,213,40.48641,-79.99419
+WEEKDAYS-ANY-MINIMUM,lost,2.37,"North Versailles township (Allegheny, PA)",1,,LINCOLN HWY + MCKEE,23,40.37322,-79.79263
+WEEKDAYS-ANY-MINIMUM,lost,2.08,"Scott township (Allegheny, PA)",3,"Bridgeville borough (Allegheny, PA);Collier township (Allegheny, PA)",BOWER HILL RD AT BEDNERS FARM MARKET,352,40.36372,-80.09303
+WEEKDAYS-ANY-MINIMUM,lost,1.94,"West Mifflin borough (Allegheny, PA)",2,"McKeesport city (Allegheny, PA)",HOMEVILLE RD AT DUQUESNE VILLAGE ENTRANCE #1,187,40.36857,-79.8718
+WEEKDAYS-ANY-MINIMUM,lost,1.79,"Trafford borough (Westmoreland, PA)",2,"Trafford borough (Allegheny, PA)",FOREST AVE + 7TH ST,224,40.38825,-79.75477
+WEEKDAYS-ANY-MINIMUM,lost,1.78,"Oakmont borough (Allegheny, PA)",1,,HULTON RD + THE FAIRWAYS,230,40.52536,-79.82436
+WEEKDAYS-ANY-MINIMUM,lost,1.43,"Penn Hills township (Allegheny, PA)",1,,CHASKE ST + BRAMBLE,69,40.47378,-79.86571
+WEEKDAYS-ANY-MINIMUM,lost,1.38,"Scott township (Allegheny, PA)",2,"Mount Lebanon township (Allegheny, PA)",LINDSAY RD + CHERRYTREE,235,40.38472,-80.07659
+WEEKDAYS-ANY-MINIMUM,lost,1.25,"McCandless township (Allegheny, PA)",2,"Ross township (Allegheny, PA)",PERRY HWY OPP WASHINGTON BLVD,82,40.55186,-80.0382
+WEEKDAYS-ANY-MINIMUM,lost,1.17,"White Oak borough (Allegheny, PA)",1,,LONG RUN RD + SUNSET,97,40.3354,-79.8104
+WEEKDAYS-ANY-MINIMUM,lost,0.97,"McCandless township (Allegheny, PA)",1,,PERRY HWY AT CUMBERLAND RD,290,40.56922,-80.03746
+WEEKDAYS-ANY-MINIMUM,lost,0.95,"Harrison township (Allegheny, PA)",1,,FREEPORT RD + OAK MANOR,252,40.65341,-79.70771
+WEEKDAYS-ANY-MINIMUM,lost,0.9,"Harrison township (Allegheny, PA)",1,,BAKERSTOWN RD + BP ENTRANCE FS,208,40.66734,-79.70942
+WEEKDAYS-ANY-MINIMUM,lost,0.85,"McKeesport city (Allegheny, PA)",2,"Versailles borough (Allegheny, PA)",LONG RUN RD + LOU WASHOWICH WAY,209,40.32262,-79.82332
+WEEKDAYS-ANY-MINIMUM,lost,0.81,"Plum borough (Allegheny, PA)",1,,FIESTA DR + RIVIERA,139,40.47393,-79.70784
+WEEKDAYS-ANY-MINIMUM,lost,0.78,"Neville township (Allegheny, PA)",2,"Coraopolis borough (Allegheny, PA)",LEWIS AVE + #1236,126,40.50548,-80.14097
+WEEKDAYS-ANY-MINIMUM,lost,0.7,Bon Air,3,Knoxville;Beltzhoover,CAMFIELD ST + CALLE,62,40.40837,-79.99867
+WEEKDAYS-ANY-MINIMUM,lost,0.68,"Kennedy township (Allegheny, PA)",2,"McKees Rocks borough (Allegheny, PA)",CHARTIERS AVE EXT + #1536,79,40.46753,-80.08251
+WEEKDAYS-ANY-MINIMUM,lost,0.68,"McCandless township (Allegheny, PA)",1,,BLAZIER DR + TARGET ENTRANCE DRIVE,119,40.5858,-80.03979
+WEEKDAYS-ANY-MINIMUM,lost,0.67,"North Versailles township (Allegheny, PA)",1,,JACKS RUN RD + MCKEESPORT SPORTSMENS ASSOC,89,40.35938,-79.7859
+WEEKDAYS-ANY-MINIMUM,lost,0.65,Lincoln-Lemington-Belmar,1,,HIGHLAND DR + JOB CORPS DR,109,40.47725,-79.89883
+WEEKDAYS-ANY-MINIMUM,lost,0.62,"White Oak borough (Allegheny, PA)",1,,JACKS RUN RD + #3030,70,40.34443,-79.79744
+WEEKDAYS-ANY-MINIMUM,lost,0.6,"Penn Hills township (Allegheny, PA)",1,,HULTON RD + HULTON ESTATES,18,40.51348,-79.80362
+WEEKDAYS-ANY-MINIMUM,lost,0.55,"Ross township (Allegheny, PA)",1,,JACKS RUN RD EXT + YORK,103,40.49907,-80.03109
+WEEKDAYS-ANY-MINIMUM,lost,0.52,"Sewickley borough (Allegheny, PA)",2,"Edgeworth borough (Allegheny, PA)",UNIVERSITY BLVD + STOOPS FERRY RD,11,40.53786,-80.20032
+WEEKDAYS-ANY-MINIMUM,lost,0.48,"West Mifflin borough (Allegheny, PA)",1,,HWY RT 885 + HUSTON,67,40.33775,-79.9374
+WEEKDAYS-ANY-MINIMUM,lost,0.48,"Brackenridge borough (Allegheny, PA)",3,"Tarentum borough (Allegheny, PA);Harrison township (Allegheny, PA)",PROSPECT ST + RESERVOIR DR,249,40.6122,-79.74882
+WEEKDAYS-ANY-MINIMUM,lost,0.46,"Sewickley borough (Allegheny, PA)",1,,SEWICKLEY BRIDGE RAMP + KRAMER,99,40.53602,-80.18604
+WEEKDAYS-ANY-MINIMUM,lost,0.45,"Mount Lebanon township (Allegheny, PA)",2,"Scott township (Allegheny, PA)",COCHRAN + ROBINWOOD,26,40.39118,-80.05958
+WEEKDAYS-ANY-MINIMUM,lost,0.45,"Monroeville municipality (Allegheny, PA)",1,,MOSSIDE BLVD + MACBETH DR,39,40.42528,-79.75483
+WEEKDAYS-ANY-MINIMUM,lost,0.4,"Whitehall borough (Allegheny, PA)",1,,PROVOST RD + WHITEHILL CIR,185,40.36778,-79.99154
+WEEKDAYS-ANY-MINIMUM,lost,0.36,"Scott township (Allegheny, PA)",2,"Carnegie borough (Allegheny, PA)",CAROTHERS AVE + HILL,280,40.40062,-80.09159
+WEEKDAYS-ANY-MINIMUM,lost,0.36,"Monroeville municipality (Allegheny, PA)",1,,MONROEVILLE BLVD AT IVANHOE DR,146,40.43268,-79.7643
+WEEKDAYS-ANY-MINIMUM,lost,0.35,Chartiers City,2,Windgap,CHARTIERS AVE + KRUPP,72,40.45776,-80.07159
+WEEKDAYS-ANY-MINIMUM,lost,0.35,"Monroeville municipality (Allegheny, PA)",1,,BEATTY RD + BEATTY POINTE VILLAGE,119,40.44645,-79.74635
+WEEKDAYS-ANY-MINIMUM,lost,0.29,Chateau,1,,BRANCHPORT ST + PREBLE,250,40.45887,-80.03636
+WEEKDAYS-ANY-MINIMUM,lost,0.28,"Ross township (Allegheny, PA)",1,,EVERGREEN RD + PEOPLES TWP,142,40.50505,-79.99699
+WEEKDAYS-ANY-MINIMUM,lost,0.24,Chateau,1,,BEAVER AVE + NORTH POINTE,62,40.44906,-80.02687
+WEEKDAYS-ANY-MINIMUM,lost,0.23,Squirrel Hill South,1,,BEECHWOOD BLVD + FOREST GLEN,172,40.43319,-79.91074
+WEEKDAYS-ANY-MINIMUM,lost,0.23,"Monroeville municipality (Allegheny, PA)",2,"Wilkins township (Allegheny, PA)",MONROEVILLE PARK AND RIDE,172,40.42725,-79.79982
+WEEKDAYS-ANY-MINIMUM,lost,0.22,"Braddock borough (Allegheny, PA)",2,"North Braddock borough (Allegheny, PA)",VERONA ST + MAPLEVIEW DR,222,40.399,-79.86109
+WEEKDAYS-ANY-MINIMUM,lost,0.21,Brookline,1,,CHELTON AVE + FREEDOM,208,40.38675,-80.01392
+WEEKDAYS-ANY-MINIMUM,lost,0.21,"North Versailles township (Allegheny, PA)",1,,CLYDE AVE + PORT PERRY RD,191,40.385,-79.83466
+WEEKDAYS-ANY-MINIMUM,lost,0.18,"McCandless township (Allegheny, PA)",1,,INGOMAR RD + SARATOGA DR,232,40.582,-80.02794
+WEEKDAYS-ANY-MINIMUM,lost,0.18,Point Breeze,1,,REYNOLDS ST + HOMEWOOD,227,40.44461,-79.90445
+WEEKDAYS-ANY-MINIMUM,lost,0.18,"Penn Hills township (Allegheny, PA)",1,,MT CARMEL + MASON RD,190,40.46382,-79.87874
+WEEKDAYS-ANY-MINIMUM,lost,0.17,"Sewickley borough (Allegheny, PA)",1,,HILL ST + LOCUST,252,40.5434,-80.17613
+WEEKDAYS-ANY-MINIMUM,lost,0.15,"North Fayette township (Allegheny, PA)",1,,CCAC WEST,228,40.43554,-80.19607
+WEEKDAYS-ANY-MINIMUM,lost,0.14,"Bridgeville borough (Allegheny, PA)",1,,WASHINGTON AVE + JAMES ST,256,40.35523,-80.11635
+WEEKDAYS-ANY-MINIMUM,lost,0.14,"Swissvale borough (Allegheny, PA)",2,Swisshelm Park,WHIPPLE ST + AURELIUS,244,40.42607,-79.89846
+WEEKDAYS-ANY-MINIMUM,lost,0.11,"Sharpsburg borough (Allegheny, PA)",2,Morningside,BUTLER ST + LIVONIA,245,40.48883,-79.93305
+WEEKDAYS-ANY-MINIMUM,lost,0.11,"Churchill borough (Allegheny, PA)",1,,CHURCHILL RD + HOLLAND,270,40.44383,-79.84151
+WEEKDAYS-ANY-MINIMUM,lost,0.1,"New Kensington city (Westmoreland, PA)",1,,4TH AVE + 7TH,291,40.56013,-79.76456
+WEEKDAYS-ANY-MINIMUM,gained,3.52,unplaced,1,,Perry Hwy + Bonnie View SB,269,40.62286,-80.05693
+WEEKDAYS-ANY-MINIMUM,gained,3.39,"East Deer township (Allegheny, PA)",4,"Tarentum borough (Allegheny, PA);New Kensington city (Westmoreland, PA);unplaced",Freeport Rd + Drey St,162,40.58169,-79.75949
+WEEKDAYS-ANY-MINIMUM,gained,1.93,"West View borough (Allegheny, PA)",2,"Ross township (Allegheny, PA)",Perry Hwy + Saint John's,126,40.53422,-80.03469
+WEEKDAYS-ANY-MINIMUM,gained,1.88,"McKeesport city (Allegheny, PA)",1,,Riverview Ave + Powers St,242,40.33988,-79.84108
+WEEKDAYS-ANY-MINIMUM,gained,1.7,"Penn Hills township (Allegheny, PA)",3,"Churchill borough (Allegheny, PA);Wilkins township (Allegheny, PA)",Newport Dr + Duff Rd,67,40.4522,-79.82566
+WEEKDAYS-ANY-MINIMUM,gained,1.33,"Robinson township (Allegheny, PA)",1,,Campbells Run Rd + Settlers Ridge,120,40.43864,-80.15114
+WEEKDAYS-ANY-MINIMUM,gained,1.21,"Ross township (Allegheny, PA)",4,"Millvale borough (Allegheny, PA);Shaler township (Allegheny, PA);Reserve township (Allegheny, PA)",Babcock Blvd + Shop and Save,37,40.49888,-79.97995
+WEEKDAYS-ANY-MINIMUM,gained,1.09,"Hampton township (Allegheny, PA)",1,,Duncan Ave + Kirk Ave (FS),7,40.5599,-79.96364
+WEEKDAYS-ANY-MINIMUM,gained,0.99,"Brackenridge borough (Allegheny, PA)",3,"Tarentum borough (Allegheny, PA);Harrison township (Allegheny, PA)",Morgan St + Brackenridge Ave,29,40.60468,-79.73899
+WEEKDAYS-ANY-MINIMUM,gained,0.75,"Scott township (Allegheny, PA)",3,"Carnegie borough (Allegheny, PA);Green Tree borough (Allegheny, PA)",Forsythe Rd opp Woodridge Dr,171,40.40507,-80.07268
+WEEKDAYS-ANY-MINIMUM,gained,0.58,Squirrel Hill South,2,Swisshelm Park,Nine Mile Run - Frick Park,83,40.42627,-79.90726
+WEEKDAYS-ANY-MINIMUM,gained,0.53,South Oakland,4,"Central Oakland;Squirrel Hill South;Findlay township (Allegheny, PA)",PANTHER HOLLOW RD + SCHENLEY PARK POOL,12,40.43458,-79.94852
+WEEKDAYS-ANY-MINIMUM,gained,0.52,Highland Park,1,,WASHINGTON BLVD + ALLEGHENY RIVER BLVD,8,40.48324,-79.90799
+WEEKDAYS-ANY-MINIMUM,gained,0.47,"Moon township (Allegheny, PA)",1,,Business 376 + Airside Dr,28,40.49989,-80.2191
+WEEKDAYS-ANY-MINIMUM,gained,0.39,"Monroeville municipality (Allegheny, PA)",1,,Wyngate Dr + Belmont Blvd,181,40.43105,-79.77694
+WEEKDAYS-ANY-MINIMUM,gained,0.35,Ridgemont,2,"West Mifflin borough (Allegheny, PA)",LEBANON SCHOOL RD AT CAMP HOLLOW RD,247,40.34145,-79.91772
+WEEKDAYS-ANY-MINIMUM,gained,0.33,"Ross township (Allegheny, PA)",1,,MCKNIGHT RD + BROOKVIEW LN,202,40.51031,-80.00213
+WEEKDAYS-ANY-MINIMUM,gained,0.31,"Millvale borough (Allegheny, PA)",2,"Ross township (Allegheny, PA)",NORTH AVE + GRANT,169,40.48027,-79.97636
+WEEKDAYS-ANY-MINIMUM,gained,0.29,"Robinson township (Allegheny, PA)",1,,Robinson Town Centre Blvd + Park Manor Blvd,299,40.45767,-80.16503
+WEEKDAYS-ANY-MINIMUM,gained,0.28,"Harrison township (Allegheny, PA)",1,,Sheldon Park + Bldg 28,250,40.62036,-79.72067
+WEEKDAYS-ANY-MINIMUM,gained,0.25,"McCandless township (Allegheny, PA)",1,,Blazier Dr + Ashton Commons SB,170,40.58735,-80.02304
+WEEKDAYS-ANY-MINIMUM,gained,0.22,"Monroeville municipality (Allegheny, PA)",1,,WM PENN HWY + JADENS II,189,40.43052,-79.72915
+WEEKDAYS-ANY-MINIMUM,gained,0.21,Banksville,5,"Green Tree borough (Allegheny, PA);Mount Lebanon township (Allegheny, PA);Dormont borough (Allegheny, PA)",McMonagle Ave + N Meadowcroft Ave,142,40.40134,-80.05035
+WEEKDAYS-ANY-MINIMUM,gained,0.19,St. Clair,1,,KOHNE ST + FISHER ST,191,40.41031,-79.97152
+WEEKDAYS-ANY-MINIMUM,gained,0.17,"West Mifflin borough (Allegheny, PA)",1,,KENNYWOOD BLVD + #4000,238,40.39518,-79.87074
+WEEKDAYS-ANY-MINIMUM,gained,0.17,"Harrison township (Allegheny, PA)",1,,Highlands Mall Walmart,246,40.64639,-79.71519
+WEEKDAYS-ANY-MINIMUM,gained,0.15,"North Fayette township (Allegheny, PA)",1,,MCKEE RD + CCAC WEST,240,40.43835,-80.18914
+WEEKDAYS-ANY-MINIMUM,gained,0.14,Brookline,2,"Dormont borough (Allegheny, PA)",Pioneer Ave + Dorchester Ave,243,40.39206,-80.02806
+WEEKDAYS-ANY-MINIMUM,gained,0.12,"Baldwin borough (Allegheny, PA)",2,"Pleasant Hills borough (Allegheny, PA)",Curry Hollow Center,269,40.33382,-79.97774
+WEEKDAYS-ANY-MINIMUM,gained,0.11,"East McKeesport borough (Allegheny, PA)",2,"North Versailles township (Allegheny, PA)",Chicora St + 5th Ave,287,40.38504,-79.80931
+WEEKDAYS-ANY-MINIMUM,gained,0.1,Overbrook,2,Brookline,Glenbury St + Aaron Ave,241,40.38496,-80.00302
+WEEKENDS-ANY-MINIMUM,lost,9.39,"Shaler township (Allegheny, PA)",4,"McCandless township (Allegheny, PA);Hampton township (Allegheny, PA);Etna borough (Allegheny, PA)",MT ROYAL BLVD + HARTLE,374,40.54143,-79.97675
+WEEKENDS-ANY-MINIMUM,lost,4.94,"Kennedy township (Allegheny, PA)",2,"Neville township (Allegheny, PA)",CORAOPOLIS RD + HWY RT 51,209,40.49165,-80.11413
+WEEKENDS-ANY-MINIMUM,lost,4.9,"Mount Lebanon township (Allegheny, PA)",2,"Bethel Park municipality (Allegheny, PA)",GALLERIA STOREFRONT + SOUTHEAST ENTRANCE,374,40.35546,-80.05617
+WEEKENDS-ANY-MINIMUM,lost,3.88,"Jefferson Hills borough (Allegheny, PA)",2,"Clairton city (Allegheny, PA)",HWY RT 51 + WRAY LARGE (OPP LARGE VFD),67,40.29989,-79.92211
+WEEKENDS-ANY-MINIMUM,lost,3.33,"Reserve township (Allegheny, PA)",4,"Spring Garden;Ross township (Allegheny, PA);Summer Hill",MT TROY RD + GARDENVIEW,38,40.48537,-79.99216
+WEEKENDS-ANY-MINIMUM,lost,2.71,"Whitehall borough (Allegheny, PA)",3,"Overbrook;Baldwin borough (Allegheny, PA)",PROVOST RD + BAPTIST,125,40.36006,-79.99123
+WEEKENDS-ANY-MINIMUM,lost,2.09,Banksville,2,Beechview,BANKSVILLE RD + #1593,179,40.41111,-80.0332
+WEEKENDS-ANY-MINIMUM,lost,2.08,"Scott township (Allegheny, PA)",3,"Bridgeville borough (Allegheny, PA);Collier township (Allegheny, PA)",BOWER HILL RD AT BEDNERS FARM MARKET,352,40.36372,-80.09303
+WEEKENDS-ANY-MINIMUM,lost,1.79,"Trafford borough (Westmoreland, PA)",2,"Trafford borough (Allegheny, PA)",FOREST AVE + 7TH ST,224,40.38825,-79.75477
+WEEKENDS-ANY-MINIMUM,lost,1.43,"Penn Hills township (Allegheny, PA)",1,,CHASKE ST + BRAMBLE,69,40.47378,-79.86571
+WEEKENDS-ANY-MINIMUM,lost,1.39,"North Fayette township (Allegheny, PA)",1,,SUMMIT PARK DR + #35,184,40.45212,-80.18953
+WEEKENDS-ANY-MINIMUM,lost,1.38,"Scott township (Allegheny, PA)",2,"Mount Lebanon township (Allegheny, PA)",LINDSAY RD + CHERRYTREE,235,40.38472,-80.07659
+WEEKENDS-ANY-MINIMUM,lost,0.79,"Mount Lebanon township (Allegheny, PA)",2,"Scott township (Allegheny, PA)",COCHRAN + ROBINWOOD,212,40.39049,-80.05662
+WEEKENDS-ANY-MINIMUM,lost,0.78,"Neville township (Allegheny, PA)",2,"Coraopolis borough (Allegheny, PA)",LEWIS AVE + #1236,126,40.50548,-80.14097
+WEEKENDS-ANY-MINIMUM,lost,0.7,Bon Air,3,Knoxville;Beltzhoover,CAMFIELD ST + CALLE,62,40.40837,-79.99867
+WEEKENDS-ANY-MINIMUM,lost,0.68,"Kennedy township (Allegheny, PA)",2,"McKees Rocks borough (Allegheny, PA)",CHARTIERS AVE EXT + #1536,79,40.46753,-80.08251
+WEEKENDS-ANY-MINIMUM,lost,0.68,"McCandless township (Allegheny, PA)",1,,BLAZIER DR + TARGET ENTRANCE DRIVE,119,40.5858,-80.03979
+WEEKENDS-ANY-MINIMUM,lost,0.65,Lincoln-Lemington-Belmar,1,,HIGHLAND DR + JOB CORPS DR,109,40.47725,-79.89883
+WEEKENDS-ANY-MINIMUM,lost,0.55,"Ross township (Allegheny, PA)",1,,JACKS RUN RD EXT + YORK,103,40.49907,-80.03109
+WEEKENDS-ANY-MINIMUM,lost,0.52,"Sewickley borough (Allegheny, PA)",2,"Edgeworth borough (Allegheny, PA)",UNIVERSITY BLVD + STOOPS FERRY RD,11,40.53786,-80.20032
+WEEKENDS-ANY-MINIMUM,lost,0.52,"North Fayette township (Allegheny, PA)",1,,CCAC WEST,13,40.43653,-80.19367
+WEEKENDS-ANY-MINIMUM,lost,0.52,"Elizabeth borough (Allegheny, PA)",1,,THIRD AT RT 51 OVERPASS - ELIZABETH PARK AND RIDE,9,40.27303,-79.88556
+WEEKENDS-ANY-MINIMUM,lost,0.48,"West Mifflin borough (Allegheny, PA)",1,,HWY RT 885 + HUSTON,67,40.33775,-79.9374
+WEEKENDS-ANY-MINIMUM,lost,0.47,"West Mifflin borough (Allegheny, PA)",1,,SOUTH CAMPUS DRVWY + LIBRARY ENTRANCE,38,40.33046,-79.9233
+WEEKENDS-ANY-MINIMUM,lost,0.46,"Sewickley borough (Allegheny, PA)",1,,SEWICKLEY BRIDGE RAMP + KRAMER,99,40.53602,-80.18604
+WEEKENDS-ANY-MINIMUM,lost,0.36,"Monroeville municipality (Allegheny, PA)",1,,MONROEVILLE BLVD AT IVANHOE DR,146,40.43268,-79.7643
+WEEKENDS-ANY-MINIMUM,lost,0.35,Chartiers City,2,Windgap,CHARTIERS AVE + KRUPP,72,40.45776,-80.07159
+WEEKENDS-ANY-MINIMUM,lost,0.32,Greenfield,1,,GREENFIELD AVE + YODER FS,96,40.42597,-79.94684
+WEEKENDS-ANY-MINIMUM,lost,0.31,"Duquesne city (Allegheny, PA)",2,"West Mifflin borough (Allegheny, PA)",COMMONWEALTH AVE + MILLER AVE,237,40.37829,-79.86361
+WEEKENDS-ANY-MINIMUM,lost,0.27,"Pleasant Hills borough (Allegheny, PA)",1,,HWY RT 51 + GLENBURN,126,40.33783,-79.9603
+WEEKENDS-ANY-MINIMUM,lost,0.24,Chateau,1,,BEAVER AVE + NORTH POINTE,62,40.44906,-80.02687
+WEEKENDS-ANY-MINIMUM,lost,0.23,"Monroeville municipality (Allegheny, PA)",2,"Wilkins township (Allegheny, PA)",MONROEVILLE PARK AND RIDE,172,40.42725,-79.79982
+WEEKENDS-ANY-MINIMUM,lost,0.22,"Braddock borough (Allegheny, PA)",2,"North Braddock borough (Allegheny, PA)",VERONA ST + MAPLEVIEW DR,222,40.399,-79.86109
+WEEKENDS-ANY-MINIMUM,lost,0.21,Brookline,1,,CHELTON AVE + FREEDOM,208,40.38675,-80.01392
+WEEKENDS-ANY-MINIMUM,lost,0.21,"North Versailles township (Allegheny, PA)",1,,CLYDE AVE + PORT PERRY RD,191,40.385,-79.83466
+WEEKENDS-ANY-MINIMUM,lost,0.18,Point Breeze,1,,REYNOLDS ST + HOMEWOOD,227,40.44461,-79.90445
+WEEKENDS-ANY-MINIMUM,lost,0.18,"Penn Hills township (Allegheny, PA)",1,,MT CARMEL + MASON RD,190,40.46382,-79.87874
+WEEKENDS-ANY-MINIMUM,lost,0.17,"Sewickley borough (Allegheny, PA)",1,,HILL ST + LOCUST,252,40.5434,-80.17613
+WEEKENDS-ANY-MINIMUM,lost,0.14,"Bridgeville borough (Allegheny, PA)",1,,WASHINGTON AVE + JAMES ST,256,40.35523,-80.11635
+WEEKENDS-ANY-MINIMUM,lost,0.14,"Ross township (Allegheny, PA)",1,,FELICITY RD + KANE CTR (STAFF ENTRANCE),230,40.54965,-80.01229
+WEEKENDS-ANY-MINIMUM,lost,0.13,Summer Hill,2,"Reserve township (Allegheny, PA)",COLBY ST + FABER,249,40.48776,-80.00302
+WEEKENDS-ANY-MINIMUM,lost,0.11,"Churchill borough (Allegheny, PA)",1,,CHURCHILL RD + HOLLAND,270,40.44383,-79.84151
+WEEKENDS-ANY-MINIMUM,lost,0.1,"New Kensington city (Westmoreland, PA)",1,,4TH AVE + 7TH,291,40.56013,-79.76456
+WEEKENDS-ANY-MINIMUM,gained,9.71,"Harrison township (Allegheny, PA)",6,"Tarentum borough (Allegheny, PA);East Deer township (Allegheny, PA);Brackenridge borough (Allegheny, PA)",9TH AVE + PENN ST,293,40.60739,-79.73922
+WEEKENDS-ANY-MINIMUM,gained,5.23,"Penn Hills township (Allegheny, PA)",3,"Oakmont borough (Allegheny, PA);Verona borough (Allegheny, PA)",VERONA RD + 2ND ST,245,40.50072,-79.8404
+WEEKENDS-ANY-MINIMUM,gained,2.57,"Ross township (Allegheny, PA)",4,"Millvale borough (Allegheny, PA);Shaler township (Allegheny, PA);Reserve township (Allegheny, PA)",Babcock Blvd + Church Rd,213,40.50426,-79.9876
+WEEKENDS-ANY-MINIMUM,gained,2.3,"West View borough (Allegheny, PA)",3,"Ross township (Allegheny, PA);McCandless township (Allegheny, PA)",Perry Hwy + Atlantic Ave,216,40.53628,-80.03419
+WEEKENDS-ANY-MINIMUM,gained,1.88,"McKeesport city (Allegheny, PA)",1,,Riverview Ave + Powers St,242,40.33988,-79.84108
+WEEKENDS-ANY-MINIMUM,gained,1.88,"Penn Hills township (Allegheny, PA)",3,"Churchill borough (Allegheny, PA);Wilkins township (Allegheny, PA)",Duff Rd + Newport Dr,34,40.45323,-79.82536
+WEEKENDS-ANY-MINIMUM,gained,1.44,"Penn Hills township (Allegheny, PA)",1,,SALTSBURG RD + CHANTICLEER DR,155,40.4765,-79.79247
+WEEKENDS-ANY-MINIMUM,gained,1.33,"Robinson township (Allegheny, PA)",1,,Campbells Run Rd + Settlers Ridge,120,40.43864,-80.15114
+WEEKENDS-ANY-MINIMUM,gained,1.31,Swisshelm Park,3,"Squirrel Hill South;Swissvale borough (Allegheny, PA)",COMMERCIAL ST + HOMESTEAD,330,40.42345,-79.90338
+WEEKENDS-ANY-MINIMUM,gained,0.97,"Penn Hills township (Allegheny, PA)",2,"Wilkinsburg borough (Allegheny, PA)",LAKETON RD + GRAHAM BLVD NS,302,40.45466,-79.85458
+WEEKENDS-ANY-MINIMUM,gained,0.75,"Scott township (Allegheny, PA)",3,"Carnegie borough (Allegheny, PA);Green Tree borough (Allegheny, PA)",Forsythe Rd opp Woodridge Dr,171,40.40507,-80.07268
+WEEKENDS-ANY-MINIMUM,gained,0.53,South Oakland,4,"Central Oakland;Squirrel Hill South;Findlay township (Allegheny, PA)",PANTHER HOLLOW RD + SCHENLEY PARK POOL,12,40.43458,-79.94852
+WEEKENDS-ANY-MINIMUM,gained,0.52,Highland Park,1,,WASHINGTON BLVD + ALLEGHENY RIVER BLVD,8,40.48324,-79.90799
+WEEKENDS-ANY-MINIMUM,gained,0.48,Highland Park,3,Lincoln-Lemington-Belmar;Larimer,WASHINGTON BLVD + HIGHLAND,19,40.47444,-79.90856
+WEEKENDS-ANY-MINIMUM,gained,0.39,"Monroeville municipality (Allegheny, PA)",1,,Wyngate Dr + Belmont Blvd,181,40.43105,-79.77694
+WEEKENDS-ANY-MINIMUM,gained,0.35,Ridgemont,2,"West Mifflin borough (Allegheny, PA)",LEBANON SCHOOL RD AT CAMP HOLLOW RD,247,40.34145,-79.91772
+WEEKENDS-ANY-MINIMUM,gained,0.34,"McCandless township (Allegheny, PA)",1,,Blazier Dr + Ashton Commons SB,115,40.58673,-80.02354
+WEEKENDS-ANY-MINIMUM,gained,0.31,"Millvale borough (Allegheny, PA)",2,"Ross township (Allegheny, PA)",NORTH AVE + GRANT,169,40.48027,-79.97636
+WEEKENDS-ANY-MINIMUM,gained,0.31,"Penn Hills township (Allegheny, PA)",1,,COAL HOLLOW + OLD COAL HOLLOW,117,40.46775,-79.84651
+WEEKENDS-ANY-MINIMUM,gained,0.29,"Robinson township (Allegheny, PA)",1,,Robinson Town Centre Blvd + Park Manor Blvd,299,40.45767,-80.16503
+WEEKENDS-ANY-MINIMUM,gained,0.21,Banksville,5,"Green Tree borough (Allegheny, PA);Mount Lebanon township (Allegheny, PA);Dormont borough (Allegheny, PA)",McMonagle Ave + N Meadowcroft Ave,142,40.40134,-80.05035
+WEEKENDS-ANY-MINIMUM,gained,0.19,"McCandless township (Allegheny, PA)",1,,MCKNIGHT RD + DUNCAN,155,40.56799,-80.02563
+WEEKENDS-ANY-MINIMUM,gained,0.17,"West Mifflin borough (Allegheny, PA)",1,,KENNYWOOD BLVD + #4000,238,40.39518,-79.87074
+WEEKENDS-ANY-MINIMUM,gained,0.17,"Harmar township (Allegheny, PA)",1,,HARMAR PNR - STOP 2,232,40.54271,-79.8347
+WEEKENDS-ANY-MINIMUM,gained,0.14,Brookline,2,"Dormont borough (Allegheny, PA)",Pioneer Ave + Dorchester Ave,243,40.39206,-80.02806
+WEEKENDS-ANY-MINIMUM,gained,0.14,"North Versailles township (Allegheny, PA)",1,,LINCOLN HWY + CLYDE,255,40.39122,-79.83134
+WEEKENDS-ANY-MINIMUM,gained,0.12,"Baldwin borough (Allegheny, PA)",2,"Pleasant Hills borough (Allegheny, PA)",Curry Hollow Center,269,40.33382,-79.97774
+WEEKENDS-ANY-MINIMUM,gained,0.1,Overbrook,2,Brookline,Glenbury St + Aaron Ave,241,40.38496,-80.00302
+WEEK-ANY-HOURLY,lost,6.28,"Mount Lebanon township (Allegheny, PA)",2,"Bethel Park municipality (Allegheny, PA)",GILKESON RD + OLD GILKESON,474,40.36182,-80.05557
+WEEK-ANY-HOURLY,lost,4.94,"Kennedy township (Allegheny, PA)",2,"Neville township (Allegheny, PA)",CORAOPOLIS RD + HWY RT 51,209,40.49165,-80.11413
+WEEK-ANY-HOURLY,lost,3.88,"Jefferson Hills borough (Allegheny, PA)",2,"Clairton city (Allegheny, PA)",HWY RT 51 + WRAY LARGE (OPP LARGE VFD),67,40.29989,-79.92211
+WEEK-ANY-HOURLY,lost,3.26,"Reserve township (Allegheny, PA)",4,"Ross township (Allegheny, PA);Spring Garden;Summer Hill",MT TROY RD + #3222,37,40.48574,-79.99229
+WEEK-ANY-HOURLY,lost,3.14,"Emsworth borough (Allegheny, PA)",4,"Ben Avon borough (Allegheny, PA);Avalon borough (Allegheny, PA);Bellevue borough (Allegheny, PA)",OHIO RIVER BLVD + BRIGHTON (#7139),173,40.5034,-80.08384
+WEEK-ANY-HOURLY,lost,2.9,"Forest Hills borough (Allegheny, PA)",4,"Turtle Creek borough (Allegheny, PA);North Braddock borough (Allegheny, PA);East Pittsburgh borough (Allegheny, PA)",ARDMORE BLVD + SUMNER,55,40.41677,-79.84782
+WEEK-ANY-HOURLY,lost,2.71,"Glen Osborne borough (Allegheny, PA)",3,"Sewickley borough (Allegheny, PA);Haysville borough (Allegheny, PA)",BEAVER ST + DAVIS LANE,123,40.53427,-80.17208
+WEEK-ANY-HOURLY,lost,2.32,"Green Tree borough (Allegheny, PA)",1,,GREENTREE RD + POCONO FS,138,40.41588,-80.04656
+WEEK-ANY-HOURLY,lost,2.27,"Plum borough (Allegheny, PA)",2,"Monroeville municipality (Allegheny, PA)",CENTER RD + WIMBLEDON DR FS,205,40.46581,-79.75877
+WEEK-ANY-HOURLY,lost,2.09,Banksville,2,Beechview,BANKSVILLE RD + #1593,179,40.41111,-80.0332
+WEEK-ANY-HOURLY,lost,1.94,"Penn Hills township (Allegheny, PA)",1,,FRANKSTOWN RD + SPRING GROVE RD,313,40.47717,-79.82115
+WEEK-ANY-HOURLY,lost,1.79,"Trafford borough (Westmoreland, PA)",2,"Trafford borough (Allegheny, PA)",FOREST AVE + 7TH ST,224,40.38825,-79.75477
+WEEK-ANY-HOURLY,lost,1.75,"Wilmerding borough (Allegheny, PA)",2,"Turtle Creek borough (Allegheny, PA)",MIDDLE ST + MAPLE,75,40.39609,-79.80964
+WEEK-ANY-HOURLY,lost,1.53,"Monroeville municipality (Allegheny, PA)",1,,OLD WM PENN HWY + BAYHILL DR,220,40.44239,-79.74718
+WEEK-ANY-HOURLY,lost,1.43,"Penn Hills township (Allegheny, PA)",1,,CHASKE ST + BRAMBLE,69,40.47378,-79.86571
+WEEK-ANY-HOURLY,lost,1.39,"North Fayette township (Allegheny, PA)",1,,SUMMIT PARK DR + #35,184,40.45212,-80.18953
+WEEK-ANY-HOURLY,lost,0.86,"Monroeville municipality (Allegheny, PA)",1,,BROADWAY BLVD + VALLEY NS,60,40.39737,-79.79171
+WEEK-ANY-HOURLY,lost,0.78,"Neville township (Allegheny, PA)",2,"Coraopolis borough (Allegheny, PA)",LEWIS AVE + #1236,126,40.50548,-80.14097
+WEEK-ANY-HOURLY,lost,0.76,"Kennedy township (Allegheny, PA)",2,"McKees Rocks borough (Allegheny, PA)",CHARTIERS AVE EXT + #1536,35,40.46736,-80.08196
+WEEK-ANY-HOURLY,lost,0.72,"Edgeworth borough (Allegheny, PA)",2,"Leetsdale borough (Allegheny, PA)",BEAVER RD + CHURCH,14,40.55613,-80.19685
+WEEK-ANY-HOURLY,lost,0.68,"McCandless township (Allegheny, PA)",1,,BLAZIER DR + TARGET ENTRANCE DRIVE,119,40.5858,-80.03979
+WEEK-ANY-HOURLY,lost,0.65,Lincoln-Lemington-Belmar,1,,HIGHLAND DR + JOB CORPS DR,109,40.47725,-79.89883
+WEEK-ANY-HOURLY,lost,0.55,"Ross township (Allegheny, PA)",1,,JACKS RUN RD EXT + YORK,103,40.49907,-80.03109
+WEEK-ANY-HOURLY,lost,0.52,"Elizabeth borough (Allegheny, PA)",1,,THIRD AT RT 51 OVERPASS - ELIZABETH PARK AND RIDE,9,40.27303,-79.88556
+WEEK-ANY-HOURLY,lost,0.51,"Monroeville municipality (Allegheny, PA)",2,"Pitcairn borough (Allegheny, PA)",BROADWAY BLVD + WALL,58,40.40194,-79.78
+WEEK-ANY-HOURLY,lost,0.49,Brookline,1,,EBEN ST + SHIRE PL,232,40.38685,-80.01015
+WEEK-ANY-HOURLY,lost,0.48,"West Mifflin borough (Allegheny, PA)",2,"Pleasant Hills borough (Allegheny, PA)",HWY RT 885 + HUSTON,77,40.3376,-79.93755
+WEEK-ANY-HOURLY,lost,0.46,"Glenfield borough (Allegheny, PA)",1,,OHIO RIVER BLVD + KILBUCK (I-79 ENT),59,40.51839,-80.13084
+WEEK-ANY-HOURLY,lost,0.46,"Scott township (Allegheny, PA)",2,"Mount Lebanon township (Allegheny, PA)",GREENTREE RD + MANORVIEW,48,40.39432,-80.06661
+WEEK-ANY-HOURLY,lost,0.45,"McCandless township (Allegheny, PA)",1,,BABCOCK BLVD + FAIRFIELD RD,132,40.56318,-80.02039
+WEEK-ANY-HOURLY,lost,0.45,"Monroeville municipality (Allegheny, PA)",1,,MOSSIDE BLVD + MACBETH DR,39,40.42528,-79.75483
+WEEK-ANY-HOURLY,lost,0.35,Chartiers City,2,Windgap,CHARTIERS AVE + KRUPP,72,40.45776,-80.07159
+WEEK-ANY-HOURLY,lost,0.34,"Pleasant Hills borough (Allegheny, PA)",1,,HWY RT 51 + GLENBURN,134,40.33787,-79.96136
+WEEK-ANY-HOURLY,lost,0.31,"Duquesne city (Allegheny, PA)",2,"West Mifflin borough (Allegheny, PA)",COMMONWEALTH AVE + MILLER AVE,237,40.37829,-79.86361
+WEEK-ANY-HOURLY,lost,0.3,"Ambridge borough (Beaver, PA)",1,,MERCHANT ST + 3RD FS,113,40.58286,-80.22463
+WEEK-ANY-HOURLY,lost,0.27,"Monroeville municipality (Allegheny, PA)",2,"Wilkins township (Allegheny, PA)",MONROEVILLE PARK AND RIDE,157,40.42743,-79.80015
+WEEK-ANY-HOURLY,lost,0.26,"Leetsdale borough (Allegheny, PA)",1,,BEAVER RD + CAMP MEETING,36,40.56415,-80.20529
+WEEK-ANY-HOURLY,lost,0.24,Chateau,1,,BEAVER AVE + NORTH POINTE,62,40.44906,-80.02687
+WEEK-ANY-HOURLY,lost,0.23,"Robinson township (Allegheny, PA)",1,,STEUBENVILLE PIKE + MCKEES ROCK RD,163,40.44951,-80.11727
+WEEK-ANY-HOURLY,lost,0.22,"Leetsdale borough (Allegheny, PA)",1,,BEAVER RD + #305,69,40.56825,-80.21212
+WEEK-ANY-HOURLY,lost,0.22,"Braddock borough (Allegheny, PA)",2,"North Braddock borough (Allegheny, PA)",VERONA ST + MAPLEVIEW DR,222,40.399,-79.86109
+WEEK-ANY-HOURLY,lost,0.21,Greenfield,1,,GREENFIELD AVE + HAYWORTH,74,40.42495,-79.94619
+WEEK-ANY-HOURLY,lost,0.18,"Leetsdale borough (Allegheny, PA)",1,,BEAVER RD + VALLEY,14,40.56099,-80.20245
+WEEK-ANY-HOURLY,lost,0.18,"Bridgeville borough (Allegheny, PA)",1,,WASHINGTON AVE + JAMES ST,230,40.35588,-80.11628
+WEEK-ANY-HOURLY,lost,0.18,"Penn Hills township (Allegheny, PA)",1,,MT CARMEL + MASON RD,190,40.46382,-79.87874
+WEEK-ANY-HOURLY,lost,0.16,"North Fayette township (Allegheny, PA)",1,,CCAC WEST,227,40.43551,-80.19603
+WEEK-ANY-HOURLY,lost,0.15,"Edgeworth borough (Allegheny, PA)",2,"Sewickley borough (Allegheny, PA)",BEAVER RD + MEADOW,53,40.54651,-80.18891
+WEEK-ANY-HOURLY,lost,0.15,Brighton Heights,1,,OHIO RIVER BLVD + MILLERTON,250,40.48177,-80.0489
+WEEK-ANY-HOURLY,lost,0.15,"Ross township (Allegheny, PA)",1,,FELICITY RD + KANE CTR (STAFF ENTRANCE),222,40.54956,-80.01238
+WEEK-ANY-HOURLY,lost,0.15,"Tarentum borough (Allegheny, PA)",1,,CORBET ST + 10TH AVE AVE NS (FREEPORT),121,40.60514,-79.75536
+WEEK-ANY-HOURLY,lost,0.14,Summer Hill,2,"Reserve township (Allegheny, PA)",COLBY ST + FABER,242,40.48779,-80.00319
+WEEK-ANY-HOURLY,lost,0.14,Bon Air,3,Knoxville;Beltzhoover,ALICE ST + CAMFIELD,188,40.41201,-79.99779
+WEEK-ANY-HOURLY,lost,0.12,"New Kensington city (Westmoreland, PA)",1,,7TH ST + NEW KEN HOSPITAL,284,40.56004,-79.76515
+WEEK-ANY-HOURLY,lost,0.11,"Churchill borough (Allegheny, PA)",1,,CHURCHILL RD + HOLLAND,270,40.44383,-79.84151
+WEEK-ANY-HOURLY,lost,0.11,"Wilkins township (Allegheny, PA)",1,,RODI RD + PENN CENTER BLVD,260,40.43191,-79.81929
+WEEK-ANY-HOURLY,lost,0.1,"McKeesport city (Allegheny, PA)",2,"White Oak borough (Allegheny, PA)",WALNUT ST + 1ST EVANGELICAL FREE CHURCH,286,40.3449,-79.82311
+WEEK-ANY-HOURLY,gained,5.97,"Neville township (Allegheny, PA)",3,"Coraopolis borough (Allegheny, PA);Moon township (Allegheny, PA)",GRAND AVE + IDAHO,122,40.51305,-80.13914
+WEEK-ANY-HOURLY,gained,5.35,"Jefferson Hills borough (Allegheny, PA)",5,"Clairton city (Allegheny, PA);West Mifflin borough (Allegheny, PA);Moon township (Allegheny, PA)",HWY RT 885 + WRAY DR,391,40.31391,-79.91281
+WEEK-ANY-HOURLY,gained,4.96,"Penn Hills township (Allegheny, PA)",3,"Oakmont borough (Allegheny, PA);Verona borough (Allegheny, PA)",VERONA RD + 2ND ST,274,40.50019,-79.84042
+WEEK-ANY-HOURLY,gained,4.17,"McKeesport city (Allegheny, PA)",1,,Jenny Lind St + Packer St,301,40.34151,-79.84756
+WEEK-ANY-HOURLY,gained,3.53,"Monroeville municipality (Allegheny, PA)",3,"Turtle Creek borough (Allegheny, PA);Wilkins township (Allegheny, PA)",JAMES ST + SPEELMAN,178,40.42042,-79.80184
+WEEK-ANY-HOURLY,gained,3.52,unplaced,1,,Perry Hwy + Bonnie View SB,269,40.62286,-80.05693
+WEEK-ANY-HOURLY,gained,3.08,"Munhall borough (Allegheny, PA)",3,"Lincoln Place;Homestead borough (Allegheny, PA)",MAIN ST + MARION,234,40.38908,-79.9043
+WEEK-ANY-HOURLY,gained,2.9,"Millvale borough (Allegheny, PA)",4,"Shaler township (Allegheny, PA);Ross township (Allegheny, PA);Etna borough (Allegheny, PA)",SEAVEY RD + ELBE DR FS,134,40.49034,-79.96871
+WEEK-ANY-HOURLY,gained,2.66,"Glassport borough (Allegheny, PA)",1,,MONONGAHELA AVE + 4TH ST,143,40.32868,-79.89081
+WEEK-ANY-HOURLY,gained,2.06,"Moon township (Allegheny, PA)",2,unplaced,UNIVERSITY BLVD + TIGER TRAIL,229,40.51122,-80.22203
+WEEK-ANY-HOURLY,gained,1.92,Ridgemont,2,"West Mifflin borough (Allegheny, PA)",CAMP HOLLOW RD OPP BEVERLY DR,107,40.34362,-79.91885
+WEEK-ANY-HOURLY,gained,1.57,"Dormont borough (Allegheny, PA)",3,Beechview;Brookline,WEST LIBERTY AVE + LASALLE,124,40.39779,-80.03134
+WEEK-ANY-HOURLY,gained,1.56,"Harrison township (Allegheny, PA)",1,,Olive Ave,167,40.64045,-79.71209
+WEEK-ANY-HOURLY,gained,1.43,"Stowe township (Allegheny, PA)",2,"Avalon borough (Allegheny, PA)",ISLAND AVE + #1470,131,40.48798,-80.0758
+WEEK-ANY-HOURLY,gained,1.41,Swisshelm Park,3,"Squirrel Hill South;Swissvale borough (Allegheny, PA)",Nine Mile Run - Frick Park,325,40.42377,-79.90429
+WEEK-ANY-HOURLY,gained,1.34,"Braddock Hills borough (Allegheny, PA)",3,"Forest Hills borough (Allegheny, PA);Edgewood borough (Allegheny, PA)",BRINTON RD + MCKELVEY,51,40.42502,-79.86945
+WEEK-ANY-HOURLY,gained,1.33,"Robinson township (Allegheny, PA)",1,,Campbells Run Rd + Settlers Ridge,120,40.43864,-80.15114
+WEEK-ANY-HOURLY,gained,1.04,Stanton Heights,4,Central Lawrenceville;Morningside;Garfield,STANTON AVE + WOODBINE ST FS,124,40.47905,-79.94217
+WEEK-ANY-HOURLY,gained,0.98,"Bridgeville borough (Allegheny, PA)",2,"Upper St. Clair township (Allegheny, PA)",BANK ST + #1060,34,40.35152,-80.10496
+WEEK-ANY-HOURLY,gained,0.97,"Penn Hills township (Allegheny, PA)",2,"Wilkinsburg borough (Allegheny, PA)",LAKETON RD + GRAHAM BLVD NS,302,40.45466,-79.85458
+WEEK-ANY-HOURLY,gained,0.91,Mt. Oliver,3,"St. Clair;Mount Oliver borough (Allegheny, PA)",MOUNTAIN ST + SCHULER ST,90,40.41045,-79.97691
+WEEK-ANY-HOURLY,gained,0.85,"Pleasant Hills borough (Allegheny, PA)",2,"Baldwin borough (Allegheny, PA)",Curry Hollow Center,197,40.33625,-79.97483
+WEEK-ANY-HOURLY,gained,0.83,"Versailles borough (Allegheny, PA)",1,,WALNUT ST + CENTER,16,40.31566,-79.83191
+WEEK-ANY-HOURLY,gained,0.81,"Harrison township (Allegheny, PA)",1,,Pacific Ave + Liberty Ave,189,40.62156,-79.72486
+WEEK-ANY-HOURLY,gained,0.8,"North Braddock borough (Allegheny, PA)",3,"East Pittsburgh borough (Allegheny, PA);Braddock Hills borough (Allegheny, PA)",BRINTON AVE + QUARRY,316,40.40289,-79.84671
+WEEK-ANY-HOURLY,gained,0.79,"North Versailles township (Allegheny, PA)",1,,LINCOLN HWY + LINCOLN SQ SR CITIZEN HOME,42,40.38666,-79.8274
+WEEK-ANY-HOURLY,gained,0.75,"Scott township (Allegheny, PA)",3,"Carnegie borough (Allegheny, PA);Green Tree borough (Allegheny, PA)",Forsythe Rd opp Woodridge Dr,171,40.40507,-80.07268
+WEEK-ANY-HOURLY,gained,0.73,"Tarentum borough (Allegheny, PA)",2,"Brackenridge borough (Allegheny, PA)",E 1st Ave + Bridge St,25,40.60221,-79.74532
+WEEK-ANY-HOURLY,gained,0.63,Garfield,1,,SCHENLEY AVE + PACIFIC AVE,71,40.47138,-79.93914
+WEEK-ANY-HOURLY,gained,0.54,"Neville township (Allegheny, PA)",1,,NEVILLE RD + GULF OIL ENTRANCE,15,40.49773,-80.09156
+WEEK-ANY-HOURLY,gained,0.53,South Oakland,4,"Central Oakland;Squirrel Hill South;Findlay township (Allegheny, PA)",PANTHER HOLLOW RD + SCHENLEY PARK POOL,12,40.43458,-79.94852
+WEEK-ANY-HOURLY,gained,0.52,Highland Park,1,,WASHINGTON BLVD + ALLEGHENY RIVER BLVD,8,40.48324,-79.90799
+WEEK-ANY-HOURLY,gained,0.51,"Clairton city (Allegheny, PA)",1,,STATE ST + MAPLE AVE,28,40.29837,-79.875
+WEEK-ANY-HOURLY,gained,0.5,"Moon township (Allegheny, PA)",1,,HWY RT 51 + VALLEY AMBULANCE,11,40.52734,-80.18529
+WEEK-ANY-HOURLY,gained,0.48,Highland Park,3,Lincoln-Lemington-Belmar;Larimer,WASHINGTON BLVD + HIGHLAND,19,40.47444,-79.90856
+WEEK-ANY-HOURLY,gained,0.47,"Penn Hills township (Allegheny, PA)",1,,Aldi - Universal Plaza,6,40.47747,-79.78591
+WEEK-ANY-HOURLY,gained,0.44,"Ross township (Allegheny, PA)",1,,ROSS PARK OUTER PARKING LOT + SHELTER,27,40.54583,-80.00597
+WEEK-ANY-HOURLY,gained,0.4,"Monroeville municipality (Allegheny, PA)",1,,Mosside Blvd + Northern Pike NS,31,40.43412,-79.75305
+WEEK-ANY-HOURLY,gained,0.37,"Mount Lebanon township (Allegheny, PA)",1,,SHADY AVE + MT LEBANON STATION,55,40.38138,-80.0429
+WEEK-ANY-HOURLY,gained,0.34,"McCandless township (Allegheny, PA)",1,,Blazier Dr + Ashton Commons SB,115,40.58673,-80.02354
+WEEK-ANY-HOURLY,gained,0.3,"Ross township (Allegheny, PA)",1,,MCKNIGHT RD + STEVENS DR,180,40.51016,-80.00251
+WEEK-ANY-HOURLY,gained,0.3,"Baldwin borough (Allegheny, PA)",1,,BROWNSVILLE RD + HOLLOWHAVEN FS,83,40.34277,-79.98543
+WEEK-ANY-HOURLY,gained,0.29,"Robinson township (Allegheny, PA)",1,,Robinson Town Centre Blvd + Park Manor Blvd,299,40.45767,-80.16503
+WEEK-ANY-HOURLY,gained,0.28,"Penn Hills township (Allegheny, PA)",1,,COAL HOLLOW + OLD COAL HOLLOW,90,40.46752,-79.84661
+WEEK-ANY-HOURLY,gained,0.21,"McCandless township (Allegheny, PA)",1,,MCKNIGHT RD + DUNCAN,155,40.5686,-80.02584
+WEEK-ANY-HOURLY,gained,0.2,"Clairton city (Allegheny, PA)",1,,RAVENSBURG BLVD + CLAIRTON MUNICIPAL COMPLEX,169,40.29733,-79.89353
+WEEK-ANY-HOURLY,gained,0.17,"West Mifflin borough (Allegheny, PA)",1,,KENNYWOOD BLVD + #4000,238,40.39518,-79.87074
+WEEK-ANY-HOURLY,gained,0.17,"Harmar township (Allegheny, PA)",1,,HARMAR PNR - STOP 2,232,40.54271,-79.8347
+WEEK-ANY-HOURLY,gained,0.14,"North Fayette township (Allegheny, PA)",1,,MCKEE RD + CCAC WEST,251,40.43819,-80.18886
+WEEK-ANY-HOURLY,gained,0.14,Beltzhoover,1,,CHALFONT ST + DELMONT AVE,116,40.41554,-80.00428
+WEEK-ANY-HOURLY,gained,0.13,"Collier township (Allegheny, PA)",1,,CHARTIERS VALLEY SHOPPING CENTER DR + GIANT EAGLE,268,40.36863,-80.11199
+WEEKEND-ANY-HOURLY,lost,4.39,"Whitehall borough (Allegheny, PA)",4,"Overbrook;Brentwood borough (Allegheny, PA);Brookline",PROVOST RD + WEYMAN RD,175,40.37461,-79.99242
+WEEKEND-ANY-HOURLY,lost,4.07,"Neville township (Allegheny, PA)",3,"Coraopolis borough (Allegheny, PA);Moon township (Allegheny, PA)",GRAND AVE + 4TH,43,40.51062,-80.12723
+WEEKEND-ANY-HOURLY,lost,4.02,Sheraden,7,"Windgap;Fairywood;Ingram borough (Allegheny, PA)",LADOGA ST + MIDDLETOWN,319,40.45363,-80.0722
+WEEKEND-ANY-HOURLY,lost,2.12,"Pleasant Hills borough (Allegheny, PA)",3,"West Mifflin borough (Allegheny, PA);Jefferson Hills borough (Allegheny, PA)",HWY RT 51 + MONROE MUFFLER,131,40.33021,-79.94627
+WEEKEND-ANY-HOURLY,lost,1.43,"North Versailles township (Allegheny, PA)",4,"Turtle Creek borough (Allegheny, PA);East Pittsburgh borough (Allegheny, PA);North Braddock borough (Allegheny, PA)",GREENSBURG PIKE + LLOYD AVE,416,40.3979,-79.82602
+WEEKEND-ANY-HOURLY,lost,1.17,"Mount Lebanon township (Allegheny, PA)",2,"Dormont borough (Allegheny, PA)",BOWER HILL RD + MARLIN,78,40.38556,-80.05123
+WEEKEND-ANY-HOURLY,lost,1.11,"Stowe township (Allegheny, PA)",1,,ISLAND AVE + FLEMING,142,40.48638,-80.07459
+WEEKEND-ANY-HOURLY,lost,0.76,"Coraopolis borough (Allegheny, PA)",1,,5TH AVE + WOOD FS,119,40.51892,-80.16829
+WEEKEND-ANY-HOURLY,lost,0.68,"McCandless township (Allegheny, PA)",1,,BLAZIER DR + TARGET ENTRANCE DRIVE,119,40.5858,-80.03979
+WEEKEND-ANY-HOURLY,lost,0.67,Mount Washington,1,,BOGGS AVE AT #304,32,40.42534,-80.00869
+WEEKEND-ANY-HOURLY,lost,0.64,Beechview,3,"Brookline;Dormont borough (Allegheny, PA)",WEST LIBERTY AVE + PAULINE,299,40.40384,-80.02453
+WEEKEND-ANY-HOURLY,lost,0.64,Lincoln-Lemington-Belmar,1,,HIGHLAND DR + JOB CORPS DR,102,40.47731,-79.89879
+WEEKEND-ANY-HOURLY,lost,0.62,Crafton Heights,2,Elliott,CHARTIERS AVE + CORLISS,148,40.449,-80.04514
+WEEKEND-ANY-HOURLY,lost,0.58,"Forest Hills borough (Allegheny, PA)",2,"North Braddock borough (Allegheny, PA)",ARDMORE BLVD OPP AVE B- FOREST HILLS PARK AND RIDE,141,40.41447,-79.84522
+WEEKEND-ANY-HOURLY,lost,0.53,"Ross township (Allegheny, PA)",1,,JACKS RUN RD EXT + YORK,115,40.49901,-80.03093
+WEEKEND-ANY-HOURLY,lost,0.51,Brookline,2,Bon Air,SOUTH BUSWAY + EDGEBROOK SHELTER,5,40.40303,-80.00221
+WEEKEND-ANY-HOURLY,lost,0.51,"West Mifflin borough (Allegheny, PA)",1,,SOUTH CAMPUS DRVWY + LIBRARY ENTRANCE,14,40.33027,-79.92356
+WEEKEND-ANY-HOURLY,lost,0.5,"Neville township (Allegheny, PA)",1,,NEVILLE RD + GULF OIL ENTRANCE,12,40.49772,-80.09186
+WEEKEND-ANY-HOURLY,lost,0.46,"McCandless township (Allegheny, PA)",1,,BABCOCK BLVD + FAIRFIELD RD,135,40.56323,-80.0205
+WEEKEND-ANY-HOURLY,lost,0.41,Homewood North,2,Lincoln-Lemington-Belmar,STRANAHAN ST + BRUSHTON,62,40.46189,-79.8886
+WEEKEND-ANY-HOURLY,lost,0.37,"Bridgeville borough (Allegheny, PA)",1,,RAILROAD ST + #435 (STATION),55,40.35865,-80.11073
+WEEKEND-ANY-HOURLY,lost,0.36,"Ross township (Allegheny, PA)",1,,MCKNIGHT RD + BABCOCK RAMP FS,78,40.51438,-80.00446
+WEEKEND-ANY-HOURLY,lost,0.29,"Monroeville municipality (Allegheny, PA)",2,"Wilkins township (Allegheny, PA)",MONROEVILLE PARK AND RIDE,178,40.42722,-79.79929
+WEEKEND-ANY-HOURLY,lost,0.23,South Oakland,2,West Oakland,SECOND AVE + TECHNOLOGY DR,245,40.43326,-79.96822
+WEEKEND-ANY-HOURLY,lost,0.22,"Braddock borough (Allegheny, PA)",2,"North Braddock borough (Allegheny, PA)",VERONA ST + MAPLEVIEW DR,222,40.399,-79.86109
+WEEKEND-ANY-HOURLY,lost,0.17,"Ross township (Allegheny, PA)",1,,FELICITY RD + KANE CTR (STAFF ENTRANCE),198,40.54958,-80.01267
+WEEKEND-ANY-HOURLY,lost,0.17,Point Breeze,1,,REYNOLDS ST + HOMEWOOD,218,40.44469,-79.90441
+WEEKEND-ANY-HOURLY,lost,0.14,Summer Hill,2,"Reserve township (Allegheny, PA)",COLBY ST + FABER,242,40.48779,-80.00319
+WEEKEND-ANY-HOURLY,lost,0.14,"O'Hara township (Allegheny, PA)",1,,OLD FREEPORT RD + #1380,288,40.48683,-79.87047
+WEEKEND-ANY-HOURLY,lost,0.13,Beltzhoover,1,,CHALFONT ST + DELMONT AVE,51,40.41611,-80.00402
+WEEKEND-ANY-HOURLY,lost,0.13,"Whitehall borough (Allegheny, PA)",2,"Baldwin borough (Allegheny, PA)",BROWNSVILLE RD + STREETS RUN,136,40.34562,-79.98631
+WEEKEND-ANY-HOURLY,lost,0.12,"New Kensington city (Westmoreland, PA)",1,,7TH ST + NEW KEN HOSPITAL,284,40.56004,-79.76515
+WEEKEND-ANY-HOURLY,lost,0.1,Greenfield,2,Hazelwood,GREENFIELD AVE + SYLVAN,48,40.42521,-79.94966
+WEEKEND-ANY-HOURLY,lost,0.1,"Tarentum borough (Allegheny, PA)",1,,9TH ST + CORBET,53,40.60523,-79.75394
+WEEKEND-ANY-HOURLY,gained,11.41,"Penn Hills township (Allegheny, PA)",8,"Wilkinsburg borough (Allegheny, PA);East Hills;Churchill borough (Allegheny, PA)",LAKETON RD + DOYLE FS,140,40.457,-79.859
+WEEKEND-ANY-HOURLY,gained,5.8,"Monroeville municipality (Allegheny, PA)",2,"Wilkins township (Allegheny, PA)",OXFORD DR + RACQUET CLUB APTS,182,40.43251,-79.78617
+WEEKEND-ANY-HOURLY,gained,4.99,"Penn Hills township (Allegheny, PA)",3,"Oakmont borough (Allegheny, PA);Verona borough (Allegheny, PA)",VERONA RD + 2ND ST,273,40.50022,-79.84043
+WEEKEND-ANY-HOURLY,gained,3.02,"Ambridge borough (Beaver, PA)",2,"Leetsdale borough (Allegheny, PA)",MERCHANT ST + PA JOB SERVICE,41,40.58038,-80.22196
+WEEKEND-ANY-HOURLY,gained,2.89,"Millvale borough (Allegheny, PA)",4,"Shaler township (Allegheny, PA);Ross township (Allegheny, PA);Etna borough (Allegheny, PA)",SEAVEY RD + ELBE DR FS,135,40.49034,-79.96866
+WEEKEND-ANY-HOURLY,gained,2.81,"West Mifflin borough (Allegheny, PA)",4,"Munhall borough (Allegheny, PA);Whitaker borough (Allegheny, PA);Duquesne city (Allegheny, PA)",ELIZA ST + FRANK (#3932),165,40.39109,-79.87898
+WEEKEND-ANY-HOURLY,gained,2.69,"Collier township (Allegheny, PA)",4,"Scott township (Allegheny, PA);Heidelberg borough (Allegheny, PA);Bridgeville borough (Allegheny, PA)",WASHINGTON PIKE + STEEN,175,40.37581,-80.09982
+WEEKEND-ANY-HOURLY,gained,2.43,"Robinson township (Allegheny, PA)",2,"Crafton borough (Allegheny, PA)",STEUBENVILLE PIKE + #4460,324,40.44305,-80.09366
+WEEKEND-ANY-HOURLY,gained,1.93,Squirrel Hill South,3,"Swisshelm Park;Swissvale borough (Allegheny, PA)",Nine Mile Run - Frick Park,158,40.42529,-79.9076
+WEEKEND-ANY-HOURLY,gained,1.83,"Duquesne city (Allegheny, PA)",2,"West Mifflin borough (Allegheny, PA)",KENNEDY AVE + DELL,206,40.36531,-79.85532
+WEEKEND-ANY-HOURLY,gained,1.4,"Glen Osborne borough (Allegheny, PA)",3,"Haysville borough (Allegheny, PA);Sewickley borough (Allegheny, PA)",BEAVER ST + #1449,67,40.52964,-80.16485
+WEEKEND-ANY-HOURLY,gained,1.4,Brookline,1,,Brookline Blvd + Merrick Ave,81,40.39254,-80.01404
+WEEKEND-ANY-HOURLY,gained,1.39,"Edgeworth borough (Allegheny, PA)",2,"Leetsdale borough (Allegheny, PA)",BEAVER RD + LITTLE SEWICKLEY,37,40.55903,-80.20011
+WEEKEND-ANY-HOURLY,gained,1.32,"Robinson township (Allegheny, PA)",1,,Campbells Run Rd + Settlers Ridge,117,40.43864,-80.15121
+WEEKEND-ANY-HOURLY,gained,1.3,"Moon township (Allegheny, PA)",1,,UNIVERSITY BLVD + PATTON DR,76,40.50705,-80.22365
+WEEKEND-ANY-HOURLY,gained,1.26,Lincoln-Lemington-Belmar,3,Larimer;Highland Park,WASHINGTON BLVD + NEGLEY RUN FS,124,40.47103,-79.90804
+WEEKEND-ANY-HOURLY,gained,1.25,Greenfield,2,Hazelwood,WINTERBURN AVE + FARNSWORTH,140,40.42205,-79.93894
+WEEKEND-ANY-HOURLY,gained,1.23,"Robinson township (Allegheny, PA)",1,,SILVER LANE + FALCK FS,160,40.46202,-80.13783
+WEEKEND-ANY-HOURLY,gained,1.21,"McKeesport city (Allegheny, PA)",3,"White Oak borough (Allegheny, PA);West Mifflin borough (Allegheny, PA)",EDEN PARK BLVD + ONEIL,171,40.34828,-79.83065
+WEEKEND-ANY-HOURLY,gained,1.09,"Bellevue borough (Allegheny, PA)",2,"Avalon borough (Allegheny, PA)",OHIO RIVER BLVD + RIVERVIEW,93,40.49129,-80.06239
+WEEKEND-ANY-HOURLY,gained,1.01,"Ben Avon borough (Allegheny, PA)",3,"Emsworth borough (Allegheny, PA);Avalon borough (Allegheny, PA)",OHIO RIVER BLVD + BRIGHTON (#7139),49,40.5046,-80.08417
+WEEKEND-ANY-HOURLY,gained,0.99,"North Braddock borough (Allegheny, PA)",3,"East Pittsburgh borough (Allegheny, PA);Braddock Hills borough (Allegheny, PA)",WOLFE AVE + PALLAS,213,40.40432,-79.84726
+WEEKEND-ANY-HOURLY,gained,0.98,"Sewickley borough (Allegheny, PA)",1,,BEAVER ST + BROAD,60,40.54036,-80.18073
+WEEKEND-ANY-HOURLY,gained,0.89,"Bridgeville borough (Allegheny, PA)",2,"Upper St. Clair township (Allegheny, PA)",BANK ST + #1060,61,40.35143,-80.10463
+WEEKEND-ANY-HOURLY,gained,0.85,"Robinson township (Allegheny, PA)",1,,STEUBENVILLE PIKE + MCCORMICK,64,40.44973,-80.12537
+WEEKEND-ANY-HOURLY,gained,0.79,"North Versailles township (Allegheny, PA)",1,,LINCOLN HWY + LINCOLN SQ SR CITIZEN HOME,42,40.38666,-79.8274
+WEEKEND-ANY-HOURLY,gained,0.77,South Oakland,4,"Central Oakland;Squirrel Hill South;Findlay township (Allegheny, PA)",PANTHER HOLLOW RD + SCHENLEY PARK POOL,168,40.4348,-79.95039
+WEEKEND-ANY-HOURLY,gained,0.73,"Tarentum borough (Allegheny, PA)",2,"Brackenridge borough (Allegheny, PA)",E 1st Ave + Bridge St,25,40.60221,-79.74532
+WEEKEND-ANY-HOURLY,gained,0.68,"Robinson township (Allegheny, PA)",1,,CLEVER RD + FIELD CLUB,100,40.46877,-80.12518
+WEEKEND-ANY-HOURLY,gained,0.66,Mount Washington,1,,VIRGINIA AVE + BIGHAM,79,40.43269,-80.01538
+WEEKEND-ANY-HOURLY,gained,0.65,"Carnegie borough (Allegheny, PA)",2,"Scott township (Allegheny, PA)",Chestnut St + E Main St NS,80,40.4095,-80.08235
+WEEKEND-ANY-HOURLY,gained,0.63,Garfield,1,,SCHENLEY AVE + PACIFIC AVE,71,40.47138,-79.93914
+WEEKEND-ANY-HOURLY,gained,0.6,"Harrison township (Allegheny, PA)",1,,Highlands Mall Walmart,71,40.64562,-79.71227
+WEEKEND-ANY-HOURLY,gained,0.55,"Robinson township (Allegheny, PA)",1,,Robinson Center Dr + Mall Dr,173,40.45595,-80.1609
+WEEKEND-ANY-HOURLY,gained,0.52,"Kennedy township (Allegheny, PA)",1,,CLEVER RD + PITCHFORK,13,40.46508,-80.1096
+WEEKEND-ANY-HOURLY,gained,0.52,Highland Park,1,,WASHINGTON BLVD + ALLEGHENY RIVER BLVD,8,40.48324,-79.90799
+WEEKEND-ANY-HOURLY,gained,0.51,"Churchill borough (Allegheny, PA)",2,"Wilkins township (Allegheny, PA)",WM PENN HWY + RODI FS,13,40.43849,-79.83092
+WEEKEND-ANY-HOURLY,gained,0.46,"North Fayette township (Allegheny, PA)",1,,Walmart North Fayette,28,40.44773,-80.17568
+WEEKEND-ANY-HOURLY,gained,0.44,"Ross township (Allegheny, PA)",1,,ROSS PARK OUTER PARKING LOT + SHELTER,27,40.54583,-80.00597
+WEEKEND-ANY-HOURLY,gained,0.44,"Forest Hills borough (Allegheny, PA)",2,"Braddock Hills borough (Allegheny, PA)",ARDMORE BLVD + BRADDOCK,173,40.42348,-79.86101
+WEEKEND-ANY-HOURLY,gained,0.43,"Crafton borough (Allegheny, PA)",4,"Ingram borough (Allegheny, PA);Crafton Heights;Westwood",NOBLE AVE + SIDNEY,168,40.43729,-80.06141
+WEEKEND-ANY-HOURLY,gained,0.43,Duquesne Heights,3,West End;Mount Washington,REPUBLIC ST + GREENLEAF,139,40.43783,-80.02666
+WEEKEND-ANY-HOURLY,gained,0.42,Squirrel Hill South,2,"Findlay township (Allegheny, PA)",GREENFIELD RD AT OVERLOOK DR,30,40.43306,-79.9375
+WEEKEND-ANY-HOURLY,gained,0.39,Troy Hill,2,"Reserve township (Allegheny, PA)",TROY HILL LOOP + LOWRIE,64,40.46984,-79.97856
+WEEKEND-ANY-HOURLY,gained,0.34,"Kennedy township (Allegheny, PA)",2,"Stowe township (Allegheny, PA)",PINE HOLLOW RD + #1625 (Mickeys Place),125,40.47568,-80.08725
+WEEKEND-ANY-HOURLY,gained,0.34,"McCandless township (Allegheny, PA)",1,,Blazier Dr + Ashton Commons SB,115,40.58673,-80.02354
+WEEKEND-ANY-HOURLY,gained,0.32,"West Mifflin borough (Allegheny, PA)",1,,LEBANON CHURCH RD + CURRY HOLLOW,290,40.35175,-79.92142
+WEEKEND-ANY-HOURLY,gained,0.22,Perry South,1,,WILSON ST + CHARLES,224,40.46968,-80.01665
+WEEKEND-ANY-HOURLY,gained,0.21,"Emsworth borough (Allegheny, PA)",1,,OHIO RIVER BLVD + ORCHARD,6,40.51059,-80.09785
+WEEKEND-ANY-HOURLY,gained,0.19,"Harmar township (Allegheny, PA)",1,,HARMAR PNR - STOP 2,218,40.5426,-79.83465
+WEEKEND-ANY-HOURLY,gained,0.19,"Monroeville municipality (Allegheny, PA)",2,"Trafford borough (Westmoreland, PA)",HAYMAKER VILLAGE (SHOP N SAVE),186,40.3878,-79.76736
+WEEKEND-ANY-HOURLY,gained,0.18,"Bellevue borough (Allegheny, PA)",1,,OHIO RIVER BLVD + KENDALL,209,40.48458,-80.0528
+WEEKEND-ANY-HOURLY,gained,0.18,North Oakland,2,Polish Hill,CRAIG ST + BIGELOW BLVD,146,40.45789,-79.95488
+WEEKEND-ANY-HOURLY,gained,0.17,Squirrel Hill North,1,,WILKINS AVE + BELLEROCK,128,40.44379,-79.93018
+WEEKEND-ANY-HOURLY,gained,0.15,"Edgeworth borough (Allegheny, PA)",2,"Sewickley borough (Allegheny, PA)",BEAVER RD + MEADOW,53,40.54651,-80.18891
+WEEKEND-ANY-HOURLY,gained,0.14,"Baldwin borough (Allegheny, PA)",1,,KNOEDLER RD + BROWNSVILLE,250,40.3415,-79.98776
+WEEKEND-ANY-HOURLY,gained,0.13,"Turtle Creek borough (Allegheny, PA)",1,,JAMES ST + MONROEVILLE,72,40.40878,-79.81959
+WEEKEND-ANY-HOURLY,gained,0.12,Elliott,2,Westwood,NOBLESTOWN RD + WEAVER FS,246,40.43533,-80.03824
+WEEKEND-ANY-HOURLY,gained,0.1,"Kennedy township (Allegheny, PA)",1,,CLEVER RD + PATRICIA PARK,265,40.46815,-80.10419

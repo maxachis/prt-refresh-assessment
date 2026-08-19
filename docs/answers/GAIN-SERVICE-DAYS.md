@@ -46,8 +46,8 @@ trips), so the corridor keeps all three day types.
 
 Day types are a coarse measure and this list is short. The plan's weekend
 investment shows up as frequency instead: summed across locations, **Saturday
-trips rise 15.6% and Sunday 17.1%**, and 342 locations at least double their
-Saturday service against 123 that lose half of it
+trips rise 15.3% and Sunday 16.8%**, and 331 locations at least double their
+Saturday service against 125 that lose half of it
 ([GAIN-FREQUENCY-DOUBLE.md](GAIN-FREQUENCY-DOUBLE.md)). Twelve of the fourteen
 new routes run all three day types from day one
 ([NEW-ROUTE.md](NEW-ROUTE.md)).

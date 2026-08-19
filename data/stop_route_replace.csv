@@ -1,357 +1,372 @@
 stop_id,stop_name,id_name_mismatch,muni,hood,weekday_boardings,cur_weekday_trips,prop_weekday_trips,pct_change,routes_lost,routes_gained,current_routes,proposed_routes
-15851,WALMART + SHELTER (N VERSAILLES),0,"North Versailles township (Allegheny, PA)",,141.1,102,102,0.0,55;59,66;68,55;59;P76,66;68;76L
+15851,WALMART + SHELTER (N VERSAILLES),0,"North Versailles township (Allegheny, PA)",,141.1,103,102,-1.0,55;59,66;68,55;59;P76,66;68;76L
 3822,PARK MANOR BLVD + IKEA,0,"Robinson township (Allegheny, PA)",,90.0,181,166,-8.3,28X,25,24;28X;29,24;25;29;29S
 9263,BUTLER ST + 52ND ST,0,"Pittsburgh city (Allegheny, PA)",Upper Lawrenceville,86.24,214,206,-3.7,87;93,81;92,87;91;93,81;91;92
-20692,PARK MANOR DR + ROBINSON PLAZA,0,"Robinson township (Allegheny, PA)",,84.14,181,196,8.3,28X,25,24;28X;29,24;25;29;29S
-9994,BROWNSVILLE RD + WYNOKA ST,0,"Pittsburgh city (Allegheny, PA)",Carrick,73.81,279,258,-7.5,51L;54,45,51;51L;54,45;51;51S
-9996,BROWNSVILLE RD + MCKINLEY ST,0,"Mount Oliver borough (Allegheny, PA)",,68.9,279,258,-7.5,51L;54,45,51;51L;54,45;51;51S
+20692,PARK MANOR DR + ROBINSON PLAZA,0,"Robinson township (Allegheny, PA)",,84.14,182,196,7.7,28X,25,24;28X;29,24;25;29;29S
+9994,BROWNSVILLE RD + WYNOKA ST,0,"Pittsburgh city (Allegheny, PA)",Carrick,73.81,283,259,-8.5,51L;54,45,51;51L;54,45;51;51S
+9996,BROWNSVILLE RD + MCKINLEY ST,0,"Mount Oliver borough (Allegheny, PA)",,68.9,285,258,-9.5,51L;54,45,51;51L;54,45;51;51S
 809,PERRYSVILLE AVE + PERRY ACADEMY,0,"Pittsburgh city (Allegheny, PA)",Perry North,67.29,167,164,-1.8,15,6,15;8,6;8
-17168,PARK MANOR DR + ROBINSON CENTER DR,0,"Robinson township (Allegheny, PA)",,66.9,181,196,8.3,28X,25,24;28X;29,24;25;29;29S
-20401,CHARTIERS AVE + MCKEES ROCKS PLAZA NS,0,"McKees Rocks borough (Allegheny, PA)",,65.95,183,201,9.8,20,27,20;21;22;24,21;22;24;27
-2247,CHARTIERS AVE OPP MCKEES ROCKS PLAZA,0,"McKees Rocks borough (Allegheny, PA)",,61.33,183,201,9.8,20,27,20;21;22;24,21;22;24;27
-14967,BUTLER ST + 51ST (STANTON),0,"Pittsburgh city (Allegheny, PA)",Upper Lawrenceville,61.0,214,206,-3.7,87;93,81;92,87;91;93,81;91;92
-1534,BRIGHTON RD + WOODS RUN,0,"Pittsburgh city (Allegheny, PA)",Brighton Heights,60.52,176,166,-5.7,17,14,16;17,14;16
-1536,BRIGHTON RD + SCHIMMER,0,"Pittsburgh city (Allegheny, PA)",Marshall-Shadeland,58.9,176,166,-5.7,17,14,16;17,14;16
-1528,BRIGHTON RD + BENTON,0,"Pittsburgh city (Allegheny, PA)",Brighton Heights,57.38,176,166,-5.7,17,14,16;17,14;16
-4817,E CARSON ST + 14TH ST,0,"Pittsburgh city (Allegheny, PA)",South Side Flats,55.52,395,412,4.3,54,45;57,48;51;54,45;48;51;51S;57
+17168,PARK MANOR DR + ROBINSON CENTER DR,0,"Robinson township (Allegheny, PA)",,66.9,185,196,5.9,28X,25,24;28X;29,24;25;29;29S
+20401,CHARTIERS AVE + MCKEES ROCKS PLAZA NS,0,"McKees Rocks borough (Allegheny, PA)",,65.95,184,202,9.8,20,27,20;21;22;24,21;22;24;27
+14967,BUTLER ST + 51ST (STANTON),0,"Pittsburgh city (Allegheny, PA)",Upper Lawrenceville,61.0,216,207,-4.2,87;93,81;92,87;91;93,81;91;92
+1534,BRIGHTON RD + WOODS RUN,0,"Pittsburgh city (Allegheny, PA)",Brighton Heights,60.52,178,167,-6.2,17,14,16;17,14;16
+1536,BRIGHTON RD + SCHIMMER,0,"Pittsburgh city (Allegheny, PA)",Marshall-Shadeland,58.9,178,169,-5.1,17,14,16;17,14;16
+1528,BRIGHTON RD + BENTON,0,"Pittsburgh city (Allegheny, PA)",Brighton Heights,57.38,177,166,-6.2,17,14,16;17,14;16
+4817,E CARSON ST + 14TH ST,0,"Pittsburgh city (Allegheny, PA)",South Side Flats,55.52,399,414,3.8,54,45;57,48;51;54,45;48;51;51S;57
 9704,HWY RT 51 + GREENLEE,0,"Brentwood borough (Allegheny, PA)",,53.48,92,88,-4.3,46L;Y1,34,Y1;Y46;Y49,34;49
-9978,BROWNSVILLE RD + CHURCHVIEW AVE,0,"Pittsburgh city (Allegheny, PA)",Carrick,50.14,266,258,-3.0,44;51L,45,44;51;51L,45;51;51S
-7629,PENN AVE + BRADDOCK,0,"Pittsburgh city (Allegheny, PA)",Point Breeze North,49.19,222,234,5.4,67;69;80X,58;70;88,67;69;71C,58;70;88
-2667,BROWNSVILLE RD + MCKINLEY ST,0,"Pittsburgh city (Allegheny, PA)",Knoxville,46.14,279,258,-7.5,51L;54,45,51;51L;54,45;51;51S
-7051,HAWKINS AVE + 4TH,0,"North Braddock borough (Allegheny, PA)",,46.1,172,166,-3.5,59;60X,62X,59;61A,62X
-2666,BROWNSVILLE RD + KNOX AVE,0,"Pittsburgh city (Allegheny, PA)",Knoxville,45.9,321,324,0.9,51L;54,45,44;51;51L;54,44;45;51;51S
-1530,BRIGHTON RD + DAVIS,0,"Pittsburgh city (Allegheny, PA)",Brighton Heights,41.76,176,166,-5.7,17,14,16;17,14;16
-18308,BRIGHTON RD + MARSHALL NS,0,"Pittsburgh city (Allegheny, PA)",Marshall-Shadeland,41.76,176,166,-5.7,17,14,16;17,14;16
-8312,FIFTH AVE + HIGHLAND,0,"Pittsburgh city (Allegheny, PA)",Shadyside,39.81,394,424,7.6,28X,45;74,28X;64;71B;71D,45;64;71X;72;74
-135,MCKNIGHT RD + ROSS TOWNE CENTER,0,"Ross township (Allegheny, PA)",,39.24,104,107,2.9,2,18;9,12;2;O12,12;12L;18;9
+9978,BROWNSVILLE RD + CHURCHVIEW AVE,0,"Pittsburgh city (Allegheny, PA)",Carrick,50.14,270,258,-4.4,44;51L,45,44;51;51L,45;51;51S
+7629,PENN AVE + BRADDOCK,0,"Pittsburgh city (Allegheny, PA)",Point Breeze North,49.19,225,234,4.0,67;69;80X,58;70;88,67;69;71C,58;70;88
+2667,BROWNSVILLE RD + MCKINLEY ST,0,"Pittsburgh city (Allegheny, PA)",Knoxville,46.14,285,259,-9.1,51L;54,45,51;51L;54,45;51;51S
+7051,HAWKINS AVE + 4TH,0,"North Braddock borough (Allegheny, PA)",,46.1,173,167,-3.5,59;60X,62X,59;61A,62X
+2666,BROWNSVILLE RD + KNOX AVE,0,"Pittsburgh city (Allegheny, PA)",Knoxville,45.9,328,325,-0.9,51L;54,45,44;51;51L;54,44;45;51;51S
+1530,BRIGHTON RD + DAVIS,0,"Pittsburgh city (Allegheny, PA)",Brighton Heights,41.76,178,168,-5.6,17,14,16;17,14;16
+18308,BRIGHTON RD + MARSHALL NS,0,"Pittsburgh city (Allegheny, PA)",Marshall-Shadeland,41.76,178,166,-6.7,17,14,16;17,14;16
+8312,FIFTH AVE + HIGHLAND,0,"Pittsburgh city (Allegheny, PA)",Shadyside,39.81,400,427,6.8,28X,45;74,28X;64;71B;71D,45;64;71X;72;74
+135,MCKNIGHT RD + ROSS TOWNE CENTER,0,"Ross township (Allegheny, PA)",,39.24,104,108,3.8,2,18;9,12;2;O12,12;12L;18;9
 579,PERRYSVILLE AVE + FRANKLIN,0,"Pittsburgh city (Allegheny, PA)",Perry North,38.38,167,164,-1.8,15,6,15;8,6;8
-14969,BUTLER ST + 48TH,0,"Pittsburgh city (Allegheny, PA)",Central Lawrenceville,38.33,214,206,-3.7,87;93,81;92,87;91;93,81;91;92
+14969,BUTLER ST + 48TH,0,"Pittsburgh city (Allegheny, PA)",Central Lawrenceville,38.33,217,208,-4.1,87;93,81;92,87;91;93,81;91;92
 577,PERRYSVILLE AVE + BASCOM,0,"Pittsburgh city (Allegheny, PA)",Perry North,38.1,172,164,-4.7,17,6,17;8,6;8
-3140,HIGHLAND AVE + 5TH,0,"Pittsburgh city (Allegheny, PA)",Shadyside,36.52,394,424,7.6,28X,45;74,28X;64;71B;71D,45;64;71X;72;74
-8317,FIFTH AVE + SHADY,0,"Pittsburgh city (Allegheny, PA)",Squirrel Hill North,34.76,394,358,-9.1,28X,45;74,28X;64;71B;71D,45;64;71X;72;74
-3991,PARK MANOR BLVD + ROBINSON LN,0,"Robinson township (Allegheny, PA)",,34.62,181,196,8.3,28X,25,24;28X;29,24;25;29;29S
-1539,BRIGHTON RD + WOODLAND,0,"Pittsburgh city (Allegheny, PA)",Marshall-Shadeland,33.62,176,166,-5.7,17,14,16;17,14;16
-2531,MCKINLEY AVE + BROWNSVILLE,0,"Pittsburgh city (Allegheny, PA)",Knoxville,30.05,279,258,-7.5,51L;54,45,51;51L;54,45;51;51S
-6999,BELTZHOOVER AVE + WARRINGTON AVE FS,0,"Pittsburgh city (Allegheny, PA)",Beltzhoover,30.0,208,206,-1.0,43;54,40,43;44;48;54,40;44;48
-4767,WARRINGTON AVE + ESTELLA AVE,0,"Pittsburgh city (Allegheny, PA)",Beltzhoover,29.33,208,206,-1.0,43;54,40,43;44;48;54,40;44;48
-1535,BRIGHTON RD + WADLOW,0,"Pittsburgh city (Allegheny, PA)",Marshall-Shadeland,29.1,176,166,-5.7,17,14,16;17,14;16
-3138,HIGHLAND AVE + WALNUT,0,"Pittsburgh city (Allegheny, PA)",Shadyside,28.57,394,424,7.6,28X,45;74,28X;64;71B;71D,45;64;71X;72;74
-12152,MIFFLIN RD + INTERBORO FS,0,"Pittsburgh city (Allegheny, PA)",Lincoln Place,27.57,92,88,-4.3,53L,53,53L;56,53;56
-1862,SHADELAND AVE + WOODLAND,0,"Pittsburgh city (Allegheny, PA)",Marshall-Shadeland,26.86,176,166,-5.7,17,14,16;17,14;16
-3139,HIGHLAND AVE + HOWE,0,"Pittsburgh city (Allegheny, PA)",Shadyside,26.29,394,424,7.6,28X,45;74,28X;64;71B;71D,45;64;71X;72;74
-18397,DUQUESNE BLVD + HERMAN FS,0,"Duquesne city (Allegheny, PA)",,26.24,197,212,7.6,P7,52L,59;61C;P7,52L;59;61X
-7035,BESSEMER AVE + GRANDVIEW,0,"East Pittsburgh borough (Allegheny, PA)",,25.24,109,102,-6.4,59,66,59;P68;P76,66;68;76L
-21447,WARRINGTON AVE + BELTZHOOVER AVE,0,"Pittsburgh city (Allegheny, PA)",Beltzhoover,24.29,208,206,-1.0,43;54,40,43;44;48;54,40;44;48
-815,PERRYSVILLE AVE + WATSON BLVD FS,0,"Pittsburgh city (Allegheny, PA)",Perry North,23.81,216,223,3.2,15,18;6,12;15;8,12;18;6;8
-1608,BRIGHTON RD + WOODS RUN,0,"Pittsburgh city (Allegheny, PA)",Marshall-Shadeland,22.33,176,166,-5.7,17,14,16;17,14;16
-2608,BAUSMAN ST + BROWNSVILLE RD,0,"Pittsburgh city (Allegheny, PA)",Knoxville,22.19,399,367,-8.0,54,45,44;48;51;54,44;45;48;51;51S
-1529,BRIGHTON RD + TERMON,0,"Pittsburgh city (Allegheny, PA)",Brighton Heights,21.95,176,166,-5.7,17,14,16;17,14;16
-4850,E CARSON ST + 14TH ST,0,"Pittsburgh city (Allegheny, PA)",South Side Flats,21.86,395,412,4.3,54,45;57,48;51;54,45;48;51;51S;57
-8179,NEGLEY AVE + JACKSON,0,"Pittsburgh city (Allegheny, PA)",Highland Park,21.57,270,296,9.6,87,92,71A;75;87,75;85;92
-1540,BRIGHTON RD + HIGHWOOD,0,"Pittsburgh city (Allegheny, PA)",Marshall-Shadeland,20.1,176,166,-5.7,17,14,16;17,14;16
-10033,BROWNSVILLE RD + MAYTIDE ST,0,"Pittsburgh city (Allegheny, PA)",Carrick,19.67,266,258,-3.0,44;51L,45,44;51;51L,45;51;51S
-18513,GRANDVIEW AVE + BESSEMER NS,0,"East Pittsburgh borough (Allegheny, PA)",,19.1,109,102,-6.4,59,66,59;P68;P76,66;68;76L
-2665,BROWNSVILLE RD + MARLAND AVE,0,"Pittsburgh city (Allegheny, PA)",Knoxville,19.1,321,324,0.9,51L;54,45,44;51;51L;54,44;45;51;51S
-8316,FIFTH AVE + HIGHLAND,0,"Pittsburgh city (Allegheny, PA)",Squirrel Hill North,18.95,394,424,7.6,28X,45;74,28X;64;71B;71D,45;64;71X;72;74
+3140,HIGHLAND AVE + 5TH,0,"Pittsburgh city (Allegheny, PA)",Shadyside,36.52,400,427,6.8,28X,45;74,28X;64;71B;71D,45;64;71X;72;74
+8317,FIFTH AVE + SHADY,0,"Pittsburgh city (Allegheny, PA)",Squirrel Hill North,34.76,398,360,-9.5,28X,45;74,28X;64;71B;71D,45;64;71X;72;74
+3991,PARK MANOR BLVD + ROBINSON LN,0,"Robinson township (Allegheny, PA)",,34.62,183,196,7.1,28X,25,24;28X;29,24;25;29;29S
+1539,BRIGHTON RD + WOODLAND,0,"Pittsburgh city (Allegheny, PA)",Marshall-Shadeland,33.62,177,168,-5.1,17,14,16;17,14;16
+2531,MCKINLEY AVE + BROWNSVILLE,0,"Pittsburgh city (Allegheny, PA)",Knoxville,30.05,285,258,-9.5,51L;54,45,51;51L;54,45;51;51S
+6999,BELTZHOOVER AVE + WARRINGTON AVE FS,0,"Pittsburgh city (Allegheny, PA)",Beltzhoover,30.0,208,210,1.0,43;54,40,43;44;48;54,40;44;48
+7901,PENN AVE + FINDLEY DR WEST (BEACON HILL),0,"Wilkinsburg borough (Allegheny, PA)",,29.52,86,94,9.3,P67,73L,67;P16;P67,67;73L;77L
+4767,WARRINGTON AVE + ESTELLA AVE,0,"Pittsburgh city (Allegheny, PA)",Beltzhoover,29.33,209,208,-0.5,43;54,40,43;44;48;54,40;44;48
+1535,BRIGHTON RD + WADLOW,0,"Pittsburgh city (Allegheny, PA)",Marshall-Shadeland,29.1,178,168,-5.6,17,14,16;17,14;16
+3138,HIGHLAND AVE + WALNUT,0,"Pittsburgh city (Allegheny, PA)",Shadyside,28.57,395,427,8.1,28X,45;74,28X;64;71B;71D,45;64;71X;72;74
+12152,MIFFLIN RD + INTERBORO FS,0,"Pittsburgh city (Allegheny, PA)",Lincoln Place,27.57,92,89,-3.3,53L,53,53L;56,53;56
+1862,SHADELAND AVE + WOODLAND,0,"Pittsburgh city (Allegheny, PA)",Marshall-Shadeland,26.86,176,169,-4.0,17,14,16;17,14;16
+3139,HIGHLAND AVE + HOWE,0,"Pittsburgh city (Allegheny, PA)",Shadyside,26.29,398,426,7.0,28X,45;74,28X;64;71B;71D,45;64;71X;72;74
+18397,DUQUESNE BLVD + HERMAN FS,0,"Duquesne city (Allegheny, PA)",,26.24,201,214,6.5,P7,52L,59;61C;P7,52L;59;61X
+7035,BESSEMER AVE + GRANDVIEW,0,"East Pittsburgh borough (Allegheny, PA)",,25.24,110,102,-7.3,59,66,59;P68;P76,66;68;76L
+21447,WARRINGTON AVE + BELTZHOOVER AVE,0,"Pittsburgh city (Allegheny, PA)",Beltzhoover,24.29,208,210,1.0,43;54,40,43;44;48;54,40;44;48
+815,PERRYSVILLE AVE + WATSON BLVD FS,0,"Pittsburgh city (Allegheny, PA)",Perry North,23.81,218,224,2.8,15,18;6,12;15;8,12;18;6;8
+1608,BRIGHTON RD + WOODS RUN,0,"Pittsburgh city (Allegheny, PA)",Marshall-Shadeland,22.33,178,167,-6.2,17,14,16;17,14;16
+2608,BAUSMAN ST + BROWNSVILLE RD,0,"Pittsburgh city (Allegheny, PA)",Knoxville,22.19,401,367,-8.5,54,45,44;48;51;54,44;45;48;51;51S
+1529,BRIGHTON RD + TERMON,0,"Pittsburgh city (Allegheny, PA)",Brighton Heights,21.95,177,166,-6.2,17,14,16;17,14;16
+4850,E CARSON ST + 14TH ST,0,"Pittsburgh city (Allegheny, PA)",South Side Flats,21.86,399,414,3.8,54,45;57,48;51;54,45;48;51;51S;57
+8179,NEGLEY AVE + JACKSON,0,"Pittsburgh city (Allegheny, PA)",Highland Park,21.57,273,296,8.4,87,92,71A;75;87,75;85;92
+1540,BRIGHTON RD + HIGHWOOD,0,"Pittsburgh city (Allegheny, PA)",Marshall-Shadeland,20.1,177,167,-5.6,17,14,16;17,14;16
+10033,BROWNSVILLE RD + MAYTIDE ST,0,"Pittsburgh city (Allegheny, PA)",Carrick,19.67,269,258,-4.1,44;51L,45,44;51;51L,45;51;51S
+18513,GRANDVIEW AVE + BESSEMER NS,0,"East Pittsburgh borough (Allegheny, PA)",,19.1,110,102,-7.3,59,66,59;P68;P76,66;68;76L
+2665,BROWNSVILLE RD + MARLAND AVE,0,"Pittsburgh city (Allegheny, PA)",Knoxville,19.1,326,325,-0.3,51L;54,45,44;51;51L;54,44;45;51;51S
+8316,FIFTH AVE + HIGHLAND,0,"Pittsburgh city (Allegheny, PA)",Squirrel Hill North,18.95,400,427,6.8,28X,45;74,28X;64;71B;71D,45;64;71X;72;74
 9702,HWY RT 51 + MARYLEA,0,"Brentwood borough (Allegheny, PA)",,17.14,92,88,-4.3,46L;Y1,34,Y1;Y46;Y49,34;49
-20807,WASHINGTON RD + BOWER HILL RD FS,0,"Mount Lebanon township (Allegheny, PA)",,17.0,74,80,8.1,38,34;36L,38;41,34;35;35S;36L
-10890,DUQUESNE BLVD + COMMONWEALTH,0,"Duquesne city (Allegheny, PA)",,16.86,197,212,7.6,P7,52L,59;61C;P7,52L;59;61X
-7052,HAWKINS AVE + OVERLAND,0,"North Braddock borough (Allegheny, PA)",,16.0,172,166,-3.5,59;60X,62X,59;61A,62X
-134,MCKNIGHT RD + TOYOTA DEALERSHIP,0,"Ross township (Allegheny, PA)",,14.57,110,107,-2.7,2;2L,18;9,12;2;O12;P13,12;12L;18;9
-18882,BELTZHOOVER AVE + WARRINGTON NS,0,"Pittsburgh city (Allegheny, PA)",Allentown,14.57,208,206,-1.0,43;54,40,43;44;48;54,40;44;48
-7630,PENN AVE + CARNEGIE,0,"Pittsburgh city (Allegheny, PA)",Point Breeze North,14.38,272,288,5.9,67;69;80X,58;70;88,67;69;71C;74,58;70;74;88
+20807,WASHINGTON RD + BOWER HILL RD FS,0,"Mount Lebanon township (Allegheny, PA)",,17.0,75,80,6.7,38,34;36L,38;41,34;35;35S;36L
+10890,DUQUESNE BLVD + COMMONWEALTH,0,"Duquesne city (Allegheny, PA)",,16.86,201,214,6.5,P7,52L,59;61C;P7,52L;59;61X
+7052,HAWKINS AVE + OVERLAND,0,"North Braddock borough (Allegheny, PA)",,16.0,172,167,-2.9,59;60X,62X,59;61A,62X
+7946,PENN AVE + BRITTANY APTS (#1717),0,"Wilkinsburg borough (Allegheny, PA)",,14.71,86,94,9.3,P67,73L,67;P16;P67,67;73L;77L
+134,MCKNIGHT RD + TOYOTA DEALERSHIP,0,"Ross township (Allegheny, PA)",,14.57,110,110,0.0,2;2L,18;9,12;2;O12;P13,12;12L;18;9
+18882,BELTZHOOVER AVE + WARRINGTON NS,0,"Pittsburgh city (Allegheny, PA)",Allentown,14.57,208,210,1.0,43;54,40,43;44;48;54,40;44;48
+7630,PENN AVE + CARNEGIE,0,"Pittsburgh city (Allegheny, PA)",Point Breeze North,14.38,275,288,4.7,67;69;80X,58;70;88,67;69;71C;74,58;70;74;88
 906,PERRYSVILLE AVE + EAST ST,0,"Pittsburgh city (Allegheny, PA)",Perry North,14.33,167,164,-1.8,15,6,15;8,6;8
-22668,LEBANON CHURCH RD + CLOVERLEAF TOWERS,1,"Pittsburgh city (Allegheny, PA)",Crawford-Roberts,14.0,180,170,-5.6,Y1;Y47,49,51;Y1;Y46;Y47,46L;49;51
-20191,DUQUESNE BLVD + MILLER,0,"Duquesne city (Allegheny, PA)",,13.86,197,212,7.6,P7,52L,59;61C;P7,52L;59;61X
-9737,HWY RT 51 + OLD LEBANON CHURCH,0,"Pleasant Hills borough (Allegheny, PA)",,13.67,180,170,-5.6,Y1;Y47,49,51;Y1;Y46;Y47,46L;49;51
-7170,HAWKINS AVE + 4TH,0,"North Braddock borough (Allegheny, PA)",,12.76,172,166,-3.5,59;60X,62X,59;61A,62X
-3570,RIVER AVE + MARINA,0,"McKees Rocks borough (Allegheny, PA)",,12.14,209,228,9.1,20,27,20;21;22;24,21;22;24;27
+22668,LEBANON CHURCH RD + CLOVERLEAF TOWERS,1,"Pittsburgh city (Allegheny, PA)",Crawford-Roberts,14.0,182,172,-5.5,Y1;Y47,49,51;Y1;Y46;Y47,46L;49;51
+20191,DUQUESNE BLVD + MILLER,0,"Duquesne city (Allegheny, PA)",,13.86,202,214,5.9,P7,52L,59;61C;P7,52L;59;61X
+9737,HWY RT 51 + OLD LEBANON CHURCH,0,"Pleasant Hills borough (Allegheny, PA)",,13.67,182,171,-6.0,Y1;Y47,49,51;Y1;Y46;Y47,46L;49;51
+7170,HAWKINS AVE + 4TH,0,"North Braddock borough (Allegheny, PA)",,12.76,173,167,-3.5,59;60X,62X,59;61A,62X
+3570,RIVER AVE + MARINA,0,"McKees Rocks borough (Allegheny, PA)",,12.14,210,230,9.5,20,27,20;21;22;24,21;22;24;27
 578,PERRYSVILLE AVE + WALDORF,0,"Pittsburgh city (Allegheny, PA)",Perry North,12.05,167,164,-1.8,15,6,15;8,6;8
-7526,MAIN ST + MAPLE,0,"East Pittsburgh borough (Allegheny, PA)",,11.86,109,102,-6.4,59,66,59;P68;P76,66;68;76L
-229,EVERGREEN RD + BAYTREE ST,0,"Pittsburgh city (Allegheny, PA)",Summer Hill,11.81,122,125,2.5,15;7,18;6,12;15;7,12;18;6
-9264,STANTON AVE + BUTLER ST FS,0,"Pittsburgh city (Allegheny, PA)",Central Lawrenceville,11.71,214,206,-3.7,87;93,81;92,87;91;93,81;91;92
-9288,STANTON AVE + EUCLID AVE,0,"Pittsburgh city (Allegheny, PA)",East Liberty,11.38,394,428,8.6,87,92,71A;71B;75;87,71X;75;85;92
-7698,PENN AVE + EAST END,0,"Pittsburgh city (Allegheny, PA)",Point Breeze,11.29,222,234,5.4,67;69;80X,58;70;88,67;69;71C,58;70;88
-10881,DUQUESNE BLVD + CENTER,0,"Duquesne city (Allegheny, PA)",,11.1,197,212,7.6,P7,52L,59;61C;P7,52L;59;61X
-1537,BRIGHTON RD + MCDOWELL,0,"Pittsburgh city (Allegheny, PA)",Marshall-Shadeland,10.9,176,166,-5.7,17,14,16;17,14;16
-19420,HIGHLAND AVE + 5TH FS,0,"Pittsburgh city (Allegheny, PA)",Shadyside,10.52,394,424,7.6,28X,45;74,28X;64;71B;71D,45;64;71X;72;74
-11153,GRANDVIEW AVE + CENTER,0,"East Pittsburgh borough (Allegheny, PA)",,10.43,109,102,-6.4,59,66,59;P68;P76,66;68;76L
-7523,MAIN ST + CENTER,0,"East Pittsburgh borough (Allegheny, PA)",,10.33,109,102,-6.4,59,66,59;P68;P76,66;68;76L
+7526,MAIN ST + MAPLE,0,"East Pittsburgh borough (Allegheny, PA)",,11.86,111,104,-6.3,59,66,59;P68;P76,66;68;76L
+229,EVERGREEN RD + BAYTREE ST,0,"Pittsburgh city (Allegheny, PA)",Summer Hill,11.81,122,127,4.1,15;7,18;6,12;15;7,12;18;6
+9264,STANTON AVE + BUTLER ST FS,0,"Pittsburgh city (Allegheny, PA)",Central Lawrenceville,11.71,216,207,-4.2,87;93,81;92,87;91;93,81;91;92
+9288,STANTON AVE + EUCLID AVE,0,"Pittsburgh city (Allegheny, PA)",East Liberty,11.38,399,428,7.3,87,92,71A;71B;75;87,71X;75;85;92
+7698,PENN AVE + EAST END,0,"Pittsburgh city (Allegheny, PA)",Point Breeze,11.29,225,234,4.0,67;69;80X,58;70;88,67;69;71C,58;70;88
+10881,DUQUESNE BLVD + CENTER,0,"Duquesne city (Allegheny, PA)",,11.1,200,213,6.5,P7,52L,59;61C;P7,52L;59;61X
+1537,BRIGHTON RD + MCDOWELL,0,"Pittsburgh city (Allegheny, PA)",Marshall-Shadeland,10.9,176,170,-3.4,17,14,16;17,14;16
+19420,HIGHLAND AVE + 5TH FS,0,"Pittsburgh city (Allegheny, PA)",Shadyside,10.52,400,427,6.8,28X,45;74,28X;64;71B;71D,45;64;71X;72;74
+11646,WEST ST + 18TH,0,"Munhall borough (Allegheny, PA)",,10.48,38,35,-7.9,53L,53,53L,53
+11153,GRANDVIEW AVE + CENTER,0,"East Pittsburgh borough (Allegheny, PA)",,10.43,110,102,-7.3,59,66,59;P68;P76,66;68;76L
+7523,MAIN ST + CENTER,0,"East Pittsburgh borough (Allegheny, PA)",,10.33,110,102,-7.3,59,66,59;P68;P76,66;68;76L
 9324,BUTLER ST + 52ND ST,0,"Pittsburgh city (Allegheny, PA)",Upper Lawrenceville,10.19,214,206,-3.7,87;93,81;92,87;91;93,81;91;92
-6720,BELTZHOOVER AVE + WARRINGTON,0,"Pittsburgh city (Allegheny, PA)",Mount Washington,10.14,208,206,-1.0,43;54,40,43;44;48;54,40;44;48
-1607,BRIGHTON RD + WADLOW,0,"Pittsburgh city (Allegheny, PA)",Marshall-Shadeland,9.95,176,166,-5.7,17,14,16;17,14;16
-1532,BRIGHTON RD + ACACIA,0,"Pittsburgh city (Allegheny, PA)",Brighton Heights,9.71,176,166,-5.7,17,14,16;17,14;16
-2605,BAUSMAN AVE + GRIMES,0,"Pittsburgh city (Allegheny, PA)",Knoxville,9.67,307,324,5.5,54,45,44;51;54,44;45;51;51S
-7074,EDGEWOOD AVE + MAPLE,0,"Edgewood borough (Allegheny, PA)",,9.62,143,139,-2.8,P7,52L,61A;P7,52L;60X
-1854,SHADELAND AVE + DAVIS FS,0,"Pittsburgh city (Allegheny, PA)",Brighton Heights,9.52,176,166,-5.7,17,14,16;17,14;16
-1606,BRIGHTON RD + WESTBORN,0,"Pittsburgh city (Allegheny, PA)",Marshall-Shadeland,9.43,176,166,-5.7,17,14,16;17,14;16
-7642,WILKINS AVE + BEECHWOOD,0,"Pittsburgh city (Allegheny, PA)",Point Breeze,9.38,219,222,1.4,67;69,70,64;67;69;74,64;70;74
-1616,BRIGHTON RD + BENTON,0,"Pittsburgh city (Allegheny, PA)",Brighton Heights,9.33,176,166,-5.7,17,14,16;17,14;16
-2733,RIALTO ST + LEY,0,"Pittsburgh city (Allegheny, PA)",Troy Hill,9.29,155,160,3.2,1;2,2L;5,1;2;4;7,2L;4;5;7
-19350,SHADELAND AVE + COMPLETE FS,0,"Pittsburgh city (Allegheny, PA)",Marshall-Shadeland,9.24,176,166,-5.7,17,14,16;17,14;16
-21653,4TH AVE + HAWKINS AVE,0,"North Braddock borough (Allegheny, PA)",,9.19,172,166,-3.5,59;60X,62X,59;61A,62X
-1602,BRIGHTON RD + HIGHWOOD,0,"Pittsburgh city (Allegheny, PA)",Perry South,9.14,176,166,-5.7,17,14,16;17,14;16
-20920,CURRY HOLLOW RD + GREEN DR,0,"Pleasant Hills borough (Allegheny, PA)",,8.9,180,170,-5.6,Y1;Y47,49,51;Y1;Y46;Y47,46L;49;51
-14983,BUTLER ST + 50TH,0,"Pittsburgh city (Allegheny, PA)",Central Lawrenceville,8.57,214,206,-3.7,87;93,81;92,87;91;93,81;91;92
-15734,WARREN DR + WAL MART DRWY,0,"North Versailles township (Allegheny, PA)",,8.48,102,102,0.0,55;59,66;68,55;59;P76,66;68;76L
-19351,SHADELAND AVE + OAKHILL FS,0,"Pittsburgh city (Allegheny, PA)",Marshall-Shadeland,8.48,176,166,-5.7,17,14,16;17,14;16
-2315,STANHOPE ST + W CARSON FS,0,"Pittsburgh city (Allegheny, PA)",Esplen,8.48,209,228,9.1,20,27,20;21;22;24,21;22;24;27
-2548,S 18TH ST + MARY ST,0,"Pittsburgh city (Allegheny, PA)",South Side Flats,8.19,395,412,4.3,54,45;57,48;51;54,45;48;51;51S;57
-1863,WOODLAND AVE + STAYTON,0,"Pittsburgh city (Allegheny, PA)",Marshall-Shadeland,8.0,176,166,-5.7,17,14,16;17,14;16
-6702,BELTZHOOVER AVE + EDGEMONT,0,"Pittsburgh city (Allegheny, PA)",Mount Washington,7.95,208,206,-1.0,43;54,40,43;44;48;54,40;44;48
+11645,WEST ST + MUNHALL BORO BLDG,0,"Munhall borough (Allegheny, PA)",,10.19,38,35,-7.9,53L,53,53L,53
+6720,BELTZHOOVER AVE + WARRINGTON,0,"Pittsburgh city (Allegheny, PA)",Mount Washington,10.14,208,210,1.0,43;54,40,43;44;48;54,40;44;48
+1607,BRIGHTON RD + WADLOW,0,"Pittsburgh city (Allegheny, PA)",Marshall-Shadeland,9.95,178,168,-5.6,17,14,16;17,14;16
+1532,BRIGHTON RD + ACACIA,0,"Pittsburgh city (Allegheny, PA)",Brighton Heights,9.71,177,168,-5.1,17,14,16;17,14;16
+2605,BAUSMAN AVE + GRIMES,0,"Pittsburgh city (Allegheny, PA)",Knoxville,9.67,309,324,4.9,54,45,44;51;54,44;45;51;51S
+7074,EDGEWOOD AVE + MAPLE,0,"Edgewood borough (Allegheny, PA)",,9.62,144,140,-2.8,P7,52L,61A;P7,52L;60X
+1854,SHADELAND AVE + DAVIS FS,0,"Pittsburgh city (Allegheny, PA)",Brighton Heights,9.52,178,168,-5.6,17,14,16;17,14;16
+1606,BRIGHTON RD + WESTBORN,0,"Pittsburgh city (Allegheny, PA)",Marshall-Shadeland,9.43,178,169,-5.1,17,14,16;17,14;16
+7642,WILKINS AVE + BEECHWOOD,0,"Pittsburgh city (Allegheny, PA)",Point Breeze,9.38,221,224,1.4,67;69,70,64;67;69;74,64;70;74
+1616,BRIGHTON RD + BENTON,0,"Pittsburgh city (Allegheny, PA)",Brighton Heights,9.33,177,166,-6.2,17,14,16;17,14;16
+2733,RIALTO ST + LEY,0,"Pittsburgh city (Allegheny, PA)",Troy Hill,9.29,156,161,3.2,1;2,2L;5,1;2;4;7,2L;4;5;7
+19350,SHADELAND AVE + COMPLETE FS,0,"Pittsburgh city (Allegheny, PA)",Marshall-Shadeland,9.24,178,168,-5.6,17,14,16;17,14;16
+21653,4TH AVE + HAWKINS AVE,0,"North Braddock borough (Allegheny, PA)",,9.19,173,167,-3.5,59;60X,62X,59;61A,62X
+1602,BRIGHTON RD + HIGHWOOD,0,"Pittsburgh city (Allegheny, PA)",Perry South,9.14,177,166,-6.2,17,14,16;17,14;16
+20920,CURRY HOLLOW RD + GREEN DR,0,"Pleasant Hills borough (Allegheny, PA)",,8.9,182,170,-6.6,Y1;Y47,49,51;Y1;Y46;Y47,46L;49;51
+11641,MAIN ST + HOMESTEAD DUQUESNE,0,"Munhall borough (Allegheny, PA)",,8.71,38,35,-7.9,53L,53,53L,53
+14983,BUTLER ST + 50TH,0,"Pittsburgh city (Allegheny, PA)",Central Lawrenceville,8.57,216,207,-4.2,87;93,81;92,87;91;93,81;91;92
+15734,WARREN DR + WAL MART DRWY,0,"North Versailles township (Allegheny, PA)",,8.48,103,102,-1.0,55;59,66;68,55;59;P76,66;68;76L
+19351,SHADELAND AVE + OAKHILL FS,0,"Pittsburgh city (Allegheny, PA)",Marshall-Shadeland,8.48,178,170,-4.5,17,14,16;17,14;16
+2315,STANHOPE ST + W CARSON FS,0,"Pittsburgh city (Allegheny, PA)",Esplen,8.48,210,230,9.5,20,27,20;21;22;24,21;22;24;27
+2548,S 18TH ST + MARY ST,0,"Pittsburgh city (Allegheny, PA)",South Side Flats,8.19,399,416,4.3,54,45;57,48;51;54,45;48;51;51S;57
+1863,WOODLAND AVE + STAYTON,0,"Pittsburgh city (Allegheny, PA)",Marshall-Shadeland,8.0,177,169,-4.5,17,14,16;17,14;16
+6702,BELTZHOOVER AVE + EDGEMONT,0,"Pittsburgh city (Allegheny, PA)",Mount Washington,7.95,208,210,1.0,43;54,40,43;44;48;54,40;44;48
 3825,PARK MANOR BLVD + IKEA,0,"Robinson township (Allegheny, PA)",,7.76,181,166,-8.3,28X,25,24;28X;29,24;25;29;29S
-2316,STANHOPE ST + CHARTIERS,0,"Pittsburgh city (Allegheny, PA)",Esplen,7.71,183,201,9.8,20,27,20;21;22;24,21;22;24;27
-10981,DUQUESNE BLVD + COMMONWEALTH,0,"Duquesne city (Allegheny, PA)",,7.38,197,212,7.6,P7,52L,59;61C;P7,52L;59;61X
-11622,INTERBORO AVE + LEASIDE #1 (MIFFLIN),0,"Pittsburgh city (Allegheny, PA)",Lincoln Place,7.38,92,88,-4.3,53L,53,53L;56,53;56
-2742,LOWRIE ST + CLAIM,0,"Pittsburgh city (Allegheny, PA)",Troy Hill,7.33,155,160,3.2,1;2,2L;5,1;2;4;7,2L;4;5;7
-6701,BELTZHOOVER AVE + EUREKA,0,"Pittsburgh city (Allegheny, PA)",Mount Washington,7.29,208,206,-1.0,43;54,40,43;44;48;54,40;44;48
-18529,WILKINS AVE + SHADY,0,"Pittsburgh city (Allegheny, PA)",Squirrel Hill North,7.14,219,222,1.4,67;69,70,64;67;69;74,64;70;74
-14968,BUTLER ST + 49TH,0,"Pittsburgh city (Allegheny, PA)",Central Lawrenceville,7.0,214,206,-3.7,87;93,81;92,87;91;93,81;91;92
-11081,SHADY AVE + WILKINS,0,"Pittsburgh city (Allegheny, PA)",Squirrel Hill North,7.0,219,222,1.4,67;69,70,64;67;69;74,64;70;74
+2316,STANHOPE ST + CHARTIERS,0,"Pittsburgh city (Allegheny, PA)",Esplen,7.71,184,202,9.8,20,27,20;21;22;24,21;22;24;27
+10981,DUQUESNE BLVD + COMMONWEALTH,0,"Duquesne city (Allegheny, PA)",,7.38,201,214,6.5,P7,52L,59;61C;P7,52L;59;61X
+11622,INTERBORO AVE + LEASIDE #1 (MIFFLIN),0,"Pittsburgh city (Allegheny, PA)",Lincoln Place,7.38,92,89,-3.3,53L,53,53L;56,53;56
+2742,LOWRIE ST + CLAIM,0,"Pittsburgh city (Allegheny, PA)",Troy Hill,7.33,156,161,3.2,1;2,2L;5,1;2;4;7,2L;4;5;7
+6701,BELTZHOOVER AVE + EUREKA,0,"Pittsburgh city (Allegheny, PA)",Mount Washington,7.29,208,209,0.5,43;54,40,43;44;48;54,40;44;48
+18529,WILKINS AVE + SHADY,0,"Pittsburgh city (Allegheny, PA)",Squirrel Hill North,7.14,220,224,1.8,67;69,70,64;67;69;74,64;70;74
+14968,BUTLER ST + 49TH,0,"Pittsburgh city (Allegheny, PA)",Central Lawrenceville,7.0,217,208,-4.1,87;93,81;92,87;91;93,81;91;92
+11081,SHADY AVE + WILKINS,0,"Pittsburgh city (Allegheny, PA)",Squirrel Hill North,7.0,220,224,1.8,67;69,70,64;67;69;74,64;70;74
 20579,EAST PITTSBURGH MCKEESPORT BLVD + MARYLAND AVE,0,"North Versailles township (Allegheny, PA)",,6.95,35,38,8.6,55,66,55,66
-1858,SHADELAND AVE + GEYER,0,"Pittsburgh city (Allegheny, PA)",Marshall-Shadeland,6.9,176,166,-5.7,17,14,16;17,14;16
-1864,WOODLAND AVE + BRIGHTON,0,"Pittsburgh city (Allegheny, PA)",Marshall-Shadeland,6.81,176,166,-5.7,17,14,16;17,14;16
-21248,REED ST + ADDISON ST,0,"Pittsburgh city (Allegheny, PA)",Terrace Village,6.76,232,240,3.4,83,84,81;82;83,81;82;84
-10032,BROWNSVILLE RD + CHURCHVIEW AVE,0,"Pittsburgh city (Allegheny, PA)",Carrick,6.71,266,258,-3.0,44;51L,45,44;51;51L,45;51;51S
-11179,LINCOLN HWY + CENTER,0,"East Pittsburgh borough (Allegheny, PA)",,6.67,109,102,-6.4,59,66,59;P68;P76,66;68;76L
-1857,SHADELAND AVE + STOKES WAY,0,"Pittsburgh city (Allegheny, PA)",Brighton Heights,6.62,176,166,-5.7,17,14,16;17,14;16
-21245,REED ST + ADDISON ST,0,"Pittsburgh city (Allegheny, PA)",Terrace Village,6.52,232,240,3.4,83,84,81;82;83,81;82;84
+1858,SHADELAND AVE + GEYER,0,"Pittsburgh city (Allegheny, PA)",Marshall-Shadeland,6.9,178,168,-5.6,17,14,16;17,14;16
+1864,WOODLAND AVE + BRIGHTON,0,"Pittsburgh city (Allegheny, PA)",Marshall-Shadeland,6.81,177,168,-5.1,17,14,16;17,14;16
+21248,REED ST + ADDISON ST,0,"Pittsburgh city (Allegheny, PA)",Terrace Village,6.76,235,243,3.4,83,84,81;82;83,81;82;84
+10032,BROWNSVILLE RD + CHURCHVIEW AVE,0,"Pittsburgh city (Allegheny, PA)",Carrick,6.71,270,258,-4.4,44;51L,45,44;51;51L,45;51;51S
+11179,LINCOLN HWY + CENTER,0,"East Pittsburgh borough (Allegheny, PA)",,6.67,111,102,-8.1,59,66,59;P68;P76,66;68;76L
+1857,SHADELAND AVE + STOKES WAY,0,"Pittsburgh city (Allegheny, PA)",Brighton Heights,6.62,177,166,-6.2,17,14,16;17,14;16
+21245,REED ST + ADDISON ST,0,"Pittsburgh city (Allegheny, PA)",Terrace Village,6.52,235,243,3.4,83,84,81;82;83,81;82;84
 20850,MONONGAHELA BLVD + #1224,0,"Whitaker borough (Allegheny, PA)",,6.48,174,170,-2.3,59,66,59;61C,61X;66
-1861,SHADELAND AVE + CASEMENT,0,"Pittsburgh city (Allegheny, PA)",Marshall-Shadeland,6.33,176,166,-5.7,17,14,16;17,14;16
-18764,STANHOPE ST + CHARTIERS FS (SUNOCO),0,"Pittsburgh city (Allegheny, PA)",Esplen,6.24,183,201,9.8,20,27,20;21;22;24,21;22;24;27
-21246,REED ST + ELMORE ST,0,"Pittsburgh city (Allegheny, PA)",Terrace Village,6.05,232,240,3.4,83,84,81;82;83,81;82;84
-2529,ALICE ST + GEORGIA,0,"Pittsburgh city (Allegheny, PA)",Knoxville,6.0,279,258,-7.5,51L;54,45,51;51L;54,45;51;51S
-14981,BUTLER ST + 48TH,0,"Pittsburgh city (Allegheny, PA)",Central Lawrenceville,5.95,214,206,-3.7,87;93,81;92,87;91;93,81;91;92
-7697,PENN AVE + BRADDOCK,0,"Pittsburgh city (Allegheny, PA)",Point Breeze,5.86,222,234,5.4,67;69;80X,58;70;88,67;69;71C,58;70;88
+1861,SHADELAND AVE + CASEMENT,0,"Pittsburgh city (Allegheny, PA)",Marshall-Shadeland,6.33,176,169,-4.0,17,14,16;17,14;16
+18764,STANHOPE ST + CHARTIERS FS (SUNOCO),0,"Pittsburgh city (Allegheny, PA)",Esplen,6.24,184,202,9.8,20,27,20;21;22;24,21;22;24;27
+21246,REED ST + ELMORE ST,0,"Pittsburgh city (Allegheny, PA)",Terrace Village,6.05,235,243,3.4,83,84,81;82;83,81;82;84
+2529,ALICE ST + GEORGIA,0,"Pittsburgh city (Allegheny, PA)",Knoxville,6.0,281,258,-8.2,51L;54,45,51;51L;54,45;51;51S
+14981,BUTLER ST + 48TH,0,"Pittsburgh city (Allegheny, PA)",Central Lawrenceville,5.95,217,208,-4.1,87;93,81;92,87;91;93,81;91;92
+7697,PENN AVE + BRADDOCK,0,"Pittsburgh city (Allegheny, PA)",Point Breeze,5.86,225,234,4.0,67;69;80X,58;70;88,67;69;71C,58;70;88
 21496,HARTMAN ST + CAMP ST,0,"McKeesport city (Allegheny, PA)",,5.81,89,92,3.4,55,66,55;56,56;66
-10888,DUQUESNE BLVD + OAKMONT,0,"Duquesne city (Allegheny, PA)",,5.71,197,212,7.6,P7,52L,59;61C;P7,52L;59;61X
-22764,COMMONWEALTH AVE + OVERLAND AVE,1,"Rankin borough (Allegheny, PA)",,5.71,197,212,7.6,P7,52L,59;61C;P7,52L;59;61X
-21250,ELMORE ST + ROSE ST FS,0,"Pittsburgh city (Allegheny, PA)",Terrace Village,5.67,232,240,3.4,83,84,81;82;83,81;82;84
+10888,DUQUESNE BLVD + OAKMONT,0,"Duquesne city (Allegheny, PA)",,5.71,199,212,6.5,P7,52L,59;61C;P7,52L;59;61X
+22764,COMMONWEALTH AVE + OVERLAND AVE,1,"Rankin borough (Allegheny, PA)",,5.71,201,214,6.5,P7,52L,59;61C;P7,52L;59;61X
+21250,ELMORE ST + ROSE ST FS,0,"Pittsburgh city (Allegheny, PA)",Terrace Village,5.67,235,243,3.4,83,84,81;82;83,81;82;84
 633,PERRYSVILLE AVE + FRANKLIN FS,0,"Pittsburgh city (Allegheny, PA)",Perry North,5.52,167,164,-1.8,15,6,15;8,6;8
-11079,SHADY AVE + NORTHUMBERLAND,0,"Pittsburgh city (Allegheny, PA)",Squirrel Hill North,5.48,219,222,1.4,67;69,70,64;67;69;74,64;70;74
-6989,CLIMAX ST + BELTZHOOVER,0,"Pittsburgh city (Allegheny, PA)",Beltzhoover,5.48,208,206,-1.0,43;54,40,43;44;48;54,40;44;48
-21234,GREENSBURG PIKE + VERSAILLES CASTLE APT,0,"North Versailles township (Allegheny, PA)",,5.38,102,102,0.0,55;59,66;68,55;59;P76,66;68;76L
-1613,BRIGHTON RD + DAVIS,0,"Pittsburgh city (Allegheny, PA)",Brighton Heights,5.29,176,166,-5.7,17,14,16;17,14;16
-19570,BESSEMER AVE + MAIN,0,"East Pittsburgh borough (Allegheny, PA)",,5.19,109,102,-6.4,59,66,59;P68;P76,66;68;76L
-900,PERRYSVILLE AVE + WATSON BLVD,0,"Pittsburgh city (Allegheny, PA)",Perry North,5.19,216,223,3.2,15,18;6,12;15;8,12;18;6;8
+11079,SHADY AVE + NORTHUMBERLAND,0,"Pittsburgh city (Allegheny, PA)",Squirrel Hill North,5.48,221,224,1.4,67;69,70,64;67;69;74,64;70;74
+6989,CLIMAX ST + BELTZHOOVER,0,"Pittsburgh city (Allegheny, PA)",Beltzhoover,5.48,208,210,1.0,43;54,40,43;44;48;54,40;44;48
+21234,GREENSBURG PIKE + VERSAILLES CASTLE APT,0,"North Versailles township (Allegheny, PA)",,5.38,103,102,-1.0,55;59,66;68,55;59;P76,66;68;76L
+1613,BRIGHTON RD + DAVIS,0,"Pittsburgh city (Allegheny, PA)",Brighton Heights,5.29,178,168,-5.6,17,14,16;17,14;16
+19570,BESSEMER AVE + MAIN,0,"East Pittsburgh borough (Allegheny, PA)",,5.19,110,102,-7.3,59,66,59;P68;P76,66;68;76L
+900,PERRYSVILLE AVE + WATSON BLVD,0,"Pittsburgh city (Allegheny, PA)",Perry North,5.19,218,224,2.8,15,18;6,12;15;8,12;18;6;8
 22754,BOWMAN AVE OPP CHESTNUT AVE,1,"Pittsburgh city (Allegheny, PA)",Hazelwood,5.19,35,38,8.6,55,66,55,66
-576,PERRY HWY + PERRY VIEW,1,"Pittsburgh city (Allegheny, PA)",Perry North,5.14,172,164,-4.7,17,6,17;8,6;8
+576,PERRY HWY + PERRY VIEW,1,"Pittsburgh city (Allegheny, PA)",Perry North,5.14,174,164,-5.7,17,6,17;8,6;8
 21235,GREENSBURG PIKE + CENTRAL AVE FS,0,"North Versailles township (Allegheny, PA)",,5.0,52,54,3.8,59,68,59,68
-7683,WILKINS AVE + SHADY FS,0,"Pittsburgh city (Allegheny, PA)",Squirrel Hill North,5.0,219,222,1.4,67;69,70,64;67;69;74,64;70;74
-10982,DUQUESNE BLVD + FAIRMONT,0,"Duquesne city (Allegheny, PA)",,5.0,197,212,7.6,P7,52L,59;61C;P7,52L;59;61X
-2249,STANHOPE ST + W CARSON,0,"Pittsburgh city (Allegheny, PA)",Esplen,4.95,209,228,9.1,20,27,20;21;22;24,21;22;24;27
-7545,COREY AVE + AJAX WAY,0,"Braddock borough (Allegheny, PA)",,4.9,172,166,-3.5,59;60X,62X,59;61A,62X
-1603,BRIGHTON RD + WOODLAND,0,"Pittsburgh city (Allegheny, PA)",Perry South,4.86,176,166,-5.7,17,14,16;17,14;16
+7683,WILKINS AVE + SHADY FS,0,"Pittsburgh city (Allegheny, PA)",Squirrel Hill North,5.0,220,224,1.8,67;69,70,64;67;69;74,64;70;74
+10982,DUQUESNE BLVD + FAIRMONT,0,"Duquesne city (Allegheny, PA)",,5.0,201,212,5.5,P7,52L,59;61C;P7,52L;59;61X
+2249,STANHOPE ST + W CARSON,0,"Pittsburgh city (Allegheny, PA)",Esplen,4.95,210,230,9.5,20,27,20;21;22;24,21;22;24;27
+7545,COREY AVE + AJAX WAY,0,"Braddock borough (Allegheny, PA)",,4.9,173,166,-4.0,59;60X,62X,59;61A,62X
+1603,BRIGHTON RD + WOODLAND,0,"Pittsburgh city (Allegheny, PA)",Perry South,4.86,177,167,-5.6,17,14,16;17,14;16
 12031,BUTTERMILK HOLLOW RD + THOMPSON RUN FS,0,"West Mifflin borough (Allegheny, PA)",,4.81,92,88,-4.3,53L,53,53L;56,53;56
-3261,HIGHLAND AVE + HOWE,0,"Pittsburgh city (Allegheny, PA)",Shadyside,4.76,394,424,7.6,28X,45;74,28X;64;71B;71D,45;64;71X;72;74
-12033,MIFFLIN RD + MOHRBACH FS,0,"Pittsburgh city (Allegheny, PA)",Lincoln Place,4.62,92,88,-4.3,53L,53,53L;56,53;56
+3261,HIGHLAND AVE + HOWE,0,"Pittsburgh city (Allegheny, PA)",Shadyside,4.76,399,427,7.0,28X,45;74,28X;64;71B;71D,45;64;71X;72;74
+12033,MIFFLIN RD + MOHRBACH FS,0,"Pittsburgh city (Allegheny, PA)",Lincoln Place,4.62,93,89,-4.3,53L,53,53L;56,53;56
 4231,MIDDLETOWN RD + #2847,0,"Ingram borough (Allegheny, PA)",,4.52,60,54,-10.0,27,26,27,26
-9791,HWY RT 51 + OLD CLAIRTON FS,0,"Pleasant Hills borough (Allegheny, PA)",,4.48,180,170,-5.6,Y1;Y47,49,51;Y1;Y46;Y47,46L;49;51
-7000,BELTZHOOVER AVE + CLIMAX,0,"Pittsburgh city (Allegheny, PA)",Beltzhoover,4.43,208,206,-1.0,43;54,40,43;44;48;54,40;44;48
-20093,MAIN ST + HOWARD,0,"East Pittsburgh borough (Allegheny, PA)",,4.33,109,102,-6.4,59,66,59;P68;P76,66;68;76L
-1855,SHADELAND AVE + #3475,0,"Pittsburgh city (Allegheny, PA)",Brighton Heights,4.33,176,166,-5.7,17,14,16;17,14;16
+9791,HWY RT 51 + OLD CLAIRTON FS,0,"Pleasant Hills borough (Allegheny, PA)",,4.48,182,171,-6.0,Y1;Y47,49,51;Y1;Y46;Y47,46L;49;51
+7000,BELTZHOOVER AVE + CLIMAX,0,"Pittsburgh city (Allegheny, PA)",Beltzhoover,4.43,208,210,1.0,43;54,40,43;44;48;54,40;44;48
+20093,MAIN ST + HOWARD,0,"East Pittsburgh borough (Allegheny, PA)",,4.33,110,103,-6.4,59,66,59;P68;P76,66;68;76L
+1855,SHADELAND AVE + #3475,0,"Pittsburgh city (Allegheny, PA)",Brighton Heights,4.33,177,168,-5.1,17,14,16;17,14;16
 20567,EAST PITTSBURGH MCKEESPORT BLVD + MARYLAND AVE,0,"North Versailles township (Allegheny, PA)",,4.24,35,38,8.6,55,66,55,66
-2513,MCKINLEY AVE + BROWNSVILLE FS,0,"Pittsburgh city (Allegheny, PA)",Knoxville,4.19,279,258,-7.5,51L;54,45,51;51L;54,45;51;51S
+2513,MCKINLEY AVE + BROWNSVILLE FS,0,"Pittsburgh city (Allegheny, PA)",Knoxville,4.19,285,259,-9.1,51L;54,45,51;51L;54,45;51;51S
 11016,LEBANON CHURCH RD + BUTTERMILK HOLLOW,0,"West Mifflin borough (Allegheny, PA)",,4.14,144,154,6.9,53L,53,53L;56;59,53;56;59
 9652,HWY RT 51 + DELCO,0,"Brentwood borough (Allegheny, PA)",,4.1,92,88,-4.3,46L;Y1,34,Y1;Y46;Y49,34;49
-9297,STANTON AVE + EUCLID AVE,0,"Pittsburgh city (Allegheny, PA)",Highland Park,4.05,394,428,8.6,87,92,71A;71B;75;87,71X;75;85;92
-19557,CALIFORNIA AVE + PERROTT,0,"Pittsburgh city (Allegheny, PA)",Brighton Heights,4.05,254,236,-7.1,17,14,13;16;17,13;14;16
-21573,CHURCHVIEW AVE + SANKEY AVE,0,"Pittsburgh city (Allegheny, PA)",Carrick,4.05,266,258,-3.0,44;51L,45,44;51;51L,45;51;51S
-20184,LOWRIE ST + LEY,0,"Pittsburgh city (Allegheny, PA)",Troy Hill,3.81,155,160,3.2,1;2,2L;5,1;2;4;7,2L;4;5;7
-10889,DUQUESNE BLVD + FAIRMONT,0,"Duquesne city (Allegheny, PA)",,3.81,197,212,7.6,P7,52L,59;61C;P7,52L;59;61X
+9297,STANTON AVE + EUCLID AVE,0,"Pittsburgh city (Allegheny, PA)",Highland Park,4.05,399,428,7.3,87,92,71A;71B;75;87,71X;75;85;92
+19557,CALIFORNIA AVE + PERROTT,0,"Pittsburgh city (Allegheny, PA)",Brighton Heights,4.05,255,237,-7.1,17,14,13;16;17,13;14;16
+21573,CHURCHVIEW AVE + SANKEY AVE,0,"Pittsburgh city (Allegheny, PA)",Carrick,4.05,269,258,-4.1,44;51L,45,44;51;51L,45;51;51S
+20184,LOWRIE ST + LEY,0,"Pittsburgh city (Allegheny, PA)",Troy Hill,3.81,156,161,3.2,1;2,2L;5,1;2;4;7,2L;4;5;7
+10889,DUQUESNE BLVD + FAIRMONT,0,"Duquesne city (Allegheny, PA)",,3.81,201,212,5.5,P7,52L,59;61C;P7,52L;59;61X
 20849,MONONGAHELA BLVD + #1224,0,"Whitaker borough (Allegheny, PA)",,3.81,174,170,-2.3,59,66,59;61C,61X;66
 20582,EAST PITTSBURGH-MCKEESPORT BLVD + THE LANE,0,"North Versailles township (Allegheny, PA)",,3.81,35,38,8.6,55,66,55,66
-11548,CHURCHVIEW AVE + SANKEY AVE,0,"Pittsburgh city (Allegheny, PA)",Carrick,3.81,266,258,-3.0,44;51L,45,44;51;51L,45;51;51S
-18691,MCKNIGHT RD + PATRICK PL FS,0,"Ross township (Allegheny, PA)",,3.71,104,107,2.9,2,18;9,12;2;O12,12;12L;18;9
+11548,CHURCHVIEW AVE + SANKEY AVE,0,"Pittsburgh city (Allegheny, PA)",Carrick,3.81,269,258,-4.1,44;51L,45,44;51;51L,45;51;51S
+19131,WM PENN HWY + GRAHAM FS,0,"Wilkinsburg borough (Allegheny, PA)",,3.71,86,94,9.3,P67,73L,67;P16;P67,67;73L;77L
+18691,MCKNIGHT RD + PATRICK PL FS,0,"Ross township (Allegheny, PA)",,3.71,104,108,3.8,2,18;9,12;2;O12,12;12L;18;9
 18684,MCKNIGHT RD + SEIBERT NS,0,"Ross township (Allegheny, PA)",,3.67,104,107,2.9,2,18;9,12;2;O12,12;12L;18;9
-9596,HWY RT 51 + CLOVERLEAF TOWERS,0,"Baldwin borough (Allegheny, PA)",,3.67,180,170,-5.6,Y1;Y47,49,51;Y1;Y46;Y47,46L;49;51
-1868,SHADELAND AVE + DICKSON,0,"Pittsburgh city (Allegheny, PA)",Marshall-Shadeland,3.57,176,166,-5.7,17,14,16;17,14;16
+9596,HWY RT 51 + CLOVERLEAF TOWERS,0,"Baldwin borough (Allegheny, PA)",,3.67,182,171,-6.0,Y1;Y47,49,51;Y1;Y46;Y47,46L;49;51
+1868,SHADELAND AVE + DICKSON,0,"Pittsburgh city (Allegheny, PA)",Marshall-Shadeland,3.57,176,169,-4.0,17,14,16;17,14;16
 11623,INTERBORO AVE + LEASIDE #2,0,"Pittsburgh city (Allegheny, PA)",Lincoln Place,3.52,92,88,-4.3,53L,53,53L;56,53;56
-11101,SHADY AVE + WILKINS,0,"Pittsburgh city (Allegheny, PA)",Squirrel Hill North,3.52,219,222,1.4,67;69,70,64;67;69;74,64;70;74
-21244,REED ST + ELMORE ST,0,"Pittsburgh city (Allegheny, PA)",Terrace Village,3.52,232,240,3.4,83,84,81;82;83,81;82;84
-12032,BUTTERMILK HOLLOW RD + NAUGLE,0,"Pittsburgh city (Allegheny, PA)",Lincoln Place,3.52,92,88,-4.3,53L,53,53L;56,53;56
+11101,SHADY AVE + WILKINS,0,"Pittsburgh city (Allegheny, PA)",Squirrel Hill North,3.52,220,224,1.8,67;69,70,64;67;69;74,64;70;74
+21244,REED ST + ELMORE ST,0,"Pittsburgh city (Allegheny, PA)",Terrace Village,3.52,236,243,3.0,83,84,81;82;83,81;82;84
+12032,BUTTERMILK HOLLOW RD + NAUGLE,0,"Pittsburgh city (Allegheny, PA)",Lincoln Place,3.52,93,88,-5.4,53L,53,53L;56,53;56
 16233,EAST PITTSBURGH-MCKEESPORT BLVD + THE LANE,0,"North Versailles township (Allegheny, PA)",,3.52,35,38,8.6,55,66,55,66
-3556,RIVER AVE + W CARSON NS,0,"McKees Rocks borough (Allegheny, PA)",,3.43,209,228,9.1,20,27,20;21;22;24,21;22;24;27
-18682,MCKNIGHT RD + MCKNIGHT CIR (OPP ROSS PARK MALL DR),0,"Ross township (Allegheny, PA)",,3.33,110,107,-2.7,2;2L,18;9,12;2;O12;P13,12;12L;18;9
+3556,RIVER AVE + W CARSON NS,0,"McKees Rocks borough (Allegheny, PA)",,3.43,210,230,9.5,20,27,20;21;22;24,21;22;24;27
+18682,MCKNIGHT RD + MCKNIGHT CIR (OPP ROSS PARK MALL DR),0,"Ross township (Allegheny, PA)",,3.33,110,109,-0.9,2;2L,18;9,12;2;O12;P13,12;12L;18;9
 22672,EAST PITTSBURGHMCKEESPORT BLVD + #920,1,"Pittsburgh city (Allegheny, PA)",Larimer,3.33,35,38,8.6,55,66,55,66
 136,MCKNIGHT RD + OLD MCKNIGHT RD,0,"Ross township (Allegheny, PA)",,3.29,104,107,2.9,2,18;9,12;2;O12,12;12L;18;9
-11080,SHADY AVE + SOLWAY,0,"Pittsburgh city (Allegheny, PA)",Squirrel Hill North,3.29,219,222,1.4,67;69,70,64;67;69;74,64;70;74
-15835,BELTZHOOVER + CEDARHURST,0,"Pittsburgh city (Allegheny, PA)",Beltzhoover,3.29,208,206,-1.0,43;54,40,43;44;48;54,40;44;48
-20183,LEY ST + FROMAN,0,"Pittsburgh city (Allegheny, PA)",Troy Hill,3.24,155,160,3.2,1;2,2L;5,1;2;4;7,2L;4;5;7
-7169,HAWKINS AVE + OVERLAND,0,"North Braddock borough (Allegheny, PA)",,3.19,172,166,-3.5,59;60X,62X,59;61A,62X
-4886,WARRINGTON AVE + BELTZHOOVER,0,"Pittsburgh city (Allegheny, PA)",Allentown,3.19,208,206,-1.0,43;54,40,43;44;48;54,40;44;48
-6987,CLIMAX ST + ESTELLA,0,"Pittsburgh city (Allegheny, PA)",Beltzhoover,3.14,208,206,-1.0,43;54,40,43;44;48;54,40;44;48
-7648,WILKINS AVE + BELLEROCK,0,"Pittsburgh city (Allegheny, PA)",Squirrel Hill North,3.1,97,98,1.0,67;69,70,67;69,70
-10983,DUQUESNE BLVD + OAKMONT,0,"Duquesne city (Allegheny, PA)",,3.0,197,212,7.6,P7,52L,59;61C;P7,52L;59;61X
+11080,SHADY AVE + SOLWAY,0,"Pittsburgh city (Allegheny, PA)",Squirrel Hill North,3.29,221,224,1.4,67;69,70,64;67;69;74,64;70;74
+15835,BELTZHOOVER + CEDARHURST,0,"Pittsburgh city (Allegheny, PA)",Beltzhoover,3.29,208,208,0.0,43;54,40,43;44;48;54,40;44;48
+20183,LEY ST + FROMAN,0,"Pittsburgh city (Allegheny, PA)",Troy Hill,3.24,156,161,3.2,1;2,2L;5,1;2;4;7,2L;4;5;7
+7169,HAWKINS AVE + OVERLAND,0,"North Braddock borough (Allegheny, PA)",,3.19,172,167,-2.9,59;60X,62X,59;61A,62X
+4886,WARRINGTON AVE + BELTZHOOVER,0,"Pittsburgh city (Allegheny, PA)",Allentown,3.19,208,210,1.0,43;54,40,43;44;48;54,40;44;48
+6987,CLIMAX ST + ESTELLA,0,"Pittsburgh city (Allegheny, PA)",Beltzhoover,3.14,209,208,-0.5,43;54,40,43;44;48;54,40;44;48
+7648,WILKINS AVE + BELLEROCK,0,"Pittsburgh city (Allegheny, PA)",Squirrel Hill North,3.1,98,99,1.0,67;69,70,67;69,70
+10983,DUQUESNE BLVD + OAKMONT,0,"Duquesne city (Allegheny, PA)",,3.0,201,212,5.5,P7,52L,59;61C;P7,52L;59;61X
+11032,WEST ST + 17TH,0,"Homestead borough (Allegheny, PA)",,3.0,38,35,-7.9,53L,53,53L,53
 12154,MIFFLIN RD + GLENHURST,0,"Pittsburgh city (Allegheny, PA)",Lincoln Place,2.95,92,88,-4.3,53L,53,53L;56,53;56
-7645,WILKINS AVE + MURRAY,0,"Pittsburgh city (Allegheny, PA)",Squirrel Hill North,2.95,219,222,1.4,67;69,70,64;67;69;74,64;70;74
+7645,WILKINS AVE + MURRAY,0,"Pittsburgh city (Allegheny, PA)",Squirrel Hill North,2.95,219,224,2.3,67;69,70,64;67;69;74,64;70;74
 18686,MCKNIGHT RD + BABCOCK RAMP FS,0,"Ross township (Allegheny, PA)",,2.9,68,70,2.9,12L,6;9,12;O12,12;6;9
-9414,HWY RT 51 + CLOVERLEAF TOWERS,0,"Pleasant Hills borough (Allegheny, PA)",,2.9,180,170,-5.6,Y1;Y47,49,51;Y1;Y46;Y47,46L;49;51
-7681,WILKINS AVE + MURRAY,0,"Pittsburgh city (Allegheny, PA)",Squirrel Hill North,2.86,219,222,1.4,67;69,70,64;67;69;74,64;70;74
-2735,LOWRIE ST + FLECK,0,"Pittsburgh city (Allegheny, PA)",Troy Hill,2.81,155,160,3.2,1;2,2L;5,1;2;4;7,2L;4;5;7
-1867,WOODLAND AVE + SHADELAND,0,"Pittsburgh city (Allegheny, PA)",Marshall-Shadeland,2.81,176,166,-5.7,17,14,16;17,14;16
+9414,HWY RT 51 + CLOVERLEAF TOWERS,0,"Pleasant Hills borough (Allegheny, PA)",,2.9,182,171,-6.0,Y1;Y47,49,51;Y1;Y46;Y47,46L;49;51
+7681,WILKINS AVE + MURRAY,0,"Pittsburgh city (Allegheny, PA)",Squirrel Hill North,2.86,219,224,2.3,67;69,70,64;67;69;74,64;70;74
+2735,LOWRIE ST + FLECK,0,"Pittsburgh city (Allegheny, PA)",Troy Hill,2.81,156,161,3.2,1;2,2L;5,1;2;4;7,2L;4;5;7
+1867,WOODLAND AVE + SHADELAND,0,"Pittsburgh city (Allegheny, PA)",Marshall-Shadeland,2.81,176,169,-4.0,17,14,16;17,14;16
 20558,BOWMAN AVE + JARVIS ST,0,"McKeesport city (Allegheny, PA)",,2.81,89,92,3.4,55,66,55;56,56;66
 20946,EBEN ST + SHIRE PL,0,"Pittsburgh city (Allegheny, PA)",Brookline,2.81,38,38,0.0,39,34,39,34
-1610,BRIGHTON RD + ACACIA,0,"Pittsburgh city (Allegheny, PA)",Brighton Heights,2.76,176,166,-5.7,17,14,16;17,14;16
+7970,PENN AVE + FAIRMONT,0,"Wilkinsburg borough (Allegheny, PA)",,2.76,86,94,9.3,P67,73L,67;P16;P67,67;73L;77L
+1610,BRIGHTON RD + ACACIA,0,"Pittsburgh city (Allegheny, PA)",Brighton Heights,2.76,177,168,-5.1,17,14,16;17,14;16
 11624,INTERBORO AVE + PLAPORT,0,"Pittsburgh city (Allegheny, PA)",Lincoln Place,2.67,65,61,-6.2,53L,53,53L;56,53;56
-810,PERRYSVILLE AVE + #3835,0,"Pittsburgh city (Allegheny, PA)",Perry North,2.62,167,164,-1.8,15,6,15;8,6;8
-2606,BAUSMAN AVE + ROMEYN,0,"Pittsburgh city (Allegheny, PA)",Knoxville,2.52,334,324,-3.0,54,45,44;51;54,44;45;51;51S
-7524,MAIN ST + FRANKLIN,0,"East Pittsburgh borough (Allegheny, PA)",,2.48,109,102,-6.4,59,66,59;P68;P76,66;68;76L
+810,PERRYSVILLE AVE + #3835,0,"Pittsburgh city (Allegheny, PA)",Perry North,2.62,169,164,-3.0,15,6,15;8,6;8
+7902,PENN AVE + BEACON HILL DR FS,0,"Wilkinsburg borough (Allegheny, PA)",,2.62,86,94,9.3,P67,73L,67;P16;P67,67;73L;77L
+2606,BAUSMAN AVE + ROMEYN,0,"Pittsburgh city (Allegheny, PA)",Knoxville,2.52,336,324,-3.6,54,45,44;51;54,44;45;51;51S
+7524,MAIN ST + FRANKLIN,0,"East Pittsburgh borough (Allegheny, PA)",,2.48,110,102,-7.3,59,66,59;P68;P76,66;68;76L
 4232,MIDDLETOWN RD + MARSHALL,0,"Ingram borough (Allegheny, PA)",,2.43,60,54,-10.0,27,26,27,26
-12590,AJAX WAY + COREY AVE,0,"Braddock borough (Allegheny, PA)",,2.38,172,166,-3.5,59;60X,62X,59;61A,62X
-11100,SHADY AVE + HASTINGS,0,"Pittsburgh city (Allegheny, PA)",Squirrel Hill North,2.29,219,222,1.4,67;69,70,64;67;69;74,64;70;74
+12590,AJAX WAY + COREY AVE,0,"Braddock borough (Allegheny, PA)",,2.38,173,166,-4.0,59;60X,62X,59;61A,62X
+11100,SHADY AVE + HASTINGS,0,"Pittsburgh city (Allegheny, PA)",Squirrel Hill North,2.29,221,225,1.8,67;69,70,64;67;69;74,64;70;74
 12043,BUTTERMILK HOLLOW RD + THOMPSON RUN,0,"West Mifflin borough (Allegheny, PA)",,2.29,92,88,-4.3,53L,53,53L;56,53;56
-249,MCKNIGHT RD + ROSS PARK MALL DR,0,"Ross township (Allegheny, PA)",,2.24,110,107,-2.7,2;2L,18;9,12;2;O12;P13,12;12L;18;9
-2515,MCKINLEY AVE + ALICE,0,"Pittsburgh city (Allegheny, PA)",Knoxville,2.24,279,258,-7.5,51L;54,45,51;51L;54,45;51;51S
-16611,BROWNSVILLE RD + TOWN SQUARE,0,"Brentwood borough (Allegheny, PA)",,2.24,190,194,2.1,46L;51L,34,51;51L;Y46;Y49,34;49;51
-19876,HWY RT 51 RAMP + HWY RT 51 (STEPS),0,"Pleasant Hills borough (Allegheny, PA)",,2.24,180,170,-5.6,Y1;Y47,49,51;Y1;Y46;Y47,46L;49;51
-2741,LOWRIE ST + SUNDEMAN,0,"Pittsburgh city (Allegheny, PA)",Troy Hill,2.19,155,160,3.2,1;2,2L;5,1;2;4;7,2L;4;5;7
-8666,ELMORE ST + ROSE ST,0,"Pittsburgh city (Allegheny, PA)",Terrace Village,2.14,232,240,3.4,83,84,81;82;83,81;82;84
+249,MCKNIGHT RD + ROSS PARK MALL DR,0,"Ross township (Allegheny, PA)",,2.24,110,109,-0.9,2;2L,18;9,12;2;O12;P13,12;12L;18;9
+2515,MCKINLEY AVE + ALICE,0,"Pittsburgh city (Allegheny, PA)",Knoxville,2.24,283,258,-8.8,51L;54,45,51;51L;54,45;51;51S
+16611,BROWNSVILLE RD + TOWN SQUARE,0,"Brentwood borough (Allegheny, PA)",,2.24,191,196,2.6,46L;51L,34,51;51L;Y46;Y49,34;49;51
+19876,HWY RT 51 RAMP + HWY RT 51 (STEPS),0,"Pleasant Hills borough (Allegheny, PA)",,2.24,182,171,-6.0,Y1;Y47,49,51;Y1;Y46;Y47,46L;49;51
+2741,LOWRIE ST + SUNDEMAN,0,"Pittsburgh city (Allegheny, PA)",Troy Hill,2.19,156,161,3.2,1;2,2L;5,1;2;4;7,2L;4;5;7
+8666,ELMORE ST + ROSE ST,0,"Pittsburgh city (Allegheny, PA)",Terrace Village,2.14,234,242,3.4,83,84,81;82;83,81;82;84
 10975,KENNYWOOD BLVD + MIFFLIN,0,"Whitaker borough (Allegheny, PA)",,2.05,145,146,0.7,P7,52L,61C;P7,52L;61X
-11082,SHADY AVE + HASTINGS,0,"Pittsburgh city (Allegheny, PA)",Point Breeze,2.0,219,222,1.4,67;69,70,64;67;69;74,64;70;74
+11082,SHADY AVE + HASTINGS,0,"Pittsburgh city (Allegheny, PA)",Point Breeze,2.0,221,225,1.8,67;69,70,64;67;69;74,64;70;74
 11015,LEBANON CHURCH RD + POLK,0,"West Mifflin borough (Allegheny, PA)",,1.95,144,154,6.9,53L,53,53L;56;59,53;56;59
-10748,LINCOLN HWY + LINCOLN SQ SR CITIZEN HOME,0,"North Versailles township (Allegheny, PA)",,1.95,102,102,0.0,55;59,66;68,55;59;P76,66;68;76L
-1615,BRIGHTON RD + TERMON,0,"Pittsburgh city (Allegheny, PA)",Brighton Heights,1.95,176,166,-5.7,17,14,16;17,14;16
+10748,LINCOLN HWY + LINCOLN SQ SR CITIZEN HOME,0,"North Versailles township (Allegheny, PA)",,1.95,104,102,-1.9,55;59,66;68,55;59;P76,66;68;76L
+1615,BRIGHTON RD + TERMON,0,"Pittsburgh city (Allegheny, PA)",Brighton Heights,1.95,177,166,-6.2,17,14,16;17,14;16
 10932,LEBANON CHURCH RD + POLK,0,"West Mifflin borough (Allegheny, PA)",,1.9,144,154,6.9,53L,53,53L;56;59,53;56;59
-22765,COMMONWEALTH AVE AT OVERLAND AVE,1,"Rankin borough (Allegheny, PA)",,1.9,197,212,7.6,P7,52L,59;61C;P7,52L;59;61X
-7053,HAWKINS AVE + 2ND,0,"North Braddock borough (Allegheny, PA)",,1.86,172,166,-3.5,59;60X,62X,59;61A,62X
-7570,MAIN ST + HOWARD,0,"East Pittsburgh borough (Allegheny, PA)",,1.86,109,102,-6.4,59,66,59;P68;P76,66;68;76L
-12013,CRAWFORD ST + 5TH,0,"Duquesne city (Allegheny, PA)",,1.86,197,212,7.6,P7,52L,59;61C;P7,52L;59;61X
-19548,BAUSMAN AVE + GRIMES,0,"Pittsburgh city (Allegheny, PA)",Knoxville,1.86,307,324,5.5,54,45,44;51;54,44;45;51;51S
-636,PERRY HWY + #4146,0,"Pittsburgh city (Allegheny, PA)",Perry North,1.81,172,164,-4.7,17,6,17;8,6;8
-19491,ADELAIDE ST + IOWA,0,"Pittsburgh city (Allegheny, PA)",Upper Hill,1.76,280,274,-2.1,86;93,81;9,77;82;83;93,81;82;83;9
-7684,WILKINS AVE + BEECHWOOD,0,"Pittsburgh city (Allegheny, PA)",Squirrel Hill North,1.76,219,222,1.4,67;69,70,64;67;69;74,64;70;74
-1872,SHADELAND AVE + GEYER,0,"Pittsburgh city (Allegheny, PA)",Marshall-Shadeland,1.76,176,166,-5.7,17,14,16;17,14;16
-18490,MIFFLIN RD + INTERBORO,0,"Pittsburgh city (Allegheny, PA)",Lincoln Place,1.71,92,88,-4.3,53L,53,53L;56,53;56
-21539,CHURCHVIEW AVE + WAIDLER AVE,0,"Baldwin borough (Allegheny, PA)",,1.71,266,258,-3.0,44;51L,45,44;51;51L,45;51;51S
-7678,WILKINS AVE + BELLEROCK,0,"Pittsburgh city (Allegheny, PA)",Squirrel Hill North,1.67,97,98,1.0,67;69,70,67;69,70
-21249,REED ST + ELMORE ST,0,"Pittsburgh city (Allegheny, PA)",Terrace Village,1.67,232,240,3.4,83,84,81;82;83,81;82;84
-1605,BRIGHTON RD + MCDOWELL,0,"Pittsburgh city (Allegheny, PA)",Marshall-Shadeland,1.67,176,166,-5.7,17,14,16;17,14;16
-2651,S 18TH ST + EDWARDS WAY,0,"Pittsburgh city (Allegheny, PA)",South Side Flats,1.62,395,412,4.3,54,45;57,48;51;54,45;48;51;51S;57
-11373,SPENCER AVE + BEAU,0,"Pittsburgh city (Allegheny, PA)",Carrick,1.57,259,258,-0.4,44;51L,45,44;51;51L,45;51;51S
-7186,CENTER ST + GRANDVIEW,0,"East Pittsburgh borough (Allegheny, PA)",,1.57,109,102,-6.4,59,66,59;P68;P76,66;68;76L
-1882,CALIFORNIA AVE + PERROTT ST,0,"Pittsburgh city (Allegheny, PA)",Brighton Heights,1.52,254,236,-7.1,17,14,13;16;17,13;14;16
-1866,WOODLAND AVE + STAYTON,0,"Pittsburgh city (Allegheny, PA)",Marshall-Shadeland,1.52,176,166,-5.7,17,14,16;17,14;16
+22765,COMMONWEALTH AVE AT OVERLAND AVE,1,"Rankin borough (Allegheny, PA)",,1.9,201,214,6.5,P7,52L,59;61C;P7,52L;59;61X
+7053,HAWKINS AVE + 2ND,0,"North Braddock borough (Allegheny, PA)",,1.86,172,167,-2.9,59;60X,62X,59;61A,62X
+7570,MAIN ST + HOWARD,0,"East Pittsburgh borough (Allegheny, PA)",,1.86,110,103,-6.4,59,66,59;P68;P76,66;68;76L
+12013,CRAWFORD ST + 5TH,0,"Duquesne city (Allegheny, PA)",,1.86,201,213,6.0,P7,52L,59;61C;P7,52L;59;61X
+19548,BAUSMAN AVE + GRIMES,0,"Pittsburgh city (Allegheny, PA)",Knoxville,1.86,309,324,4.9,54,45,44;51;54,44;45;51;51S
+636,PERRY HWY + #4146,0,"Pittsburgh city (Allegheny, PA)",Perry North,1.81,174,164,-5.7,17,6,17;8,6;8
+19491,ADELAIDE ST + IOWA,0,"Pittsburgh city (Allegheny, PA)",Upper Hill,1.76,281,275,-2.1,86;93,81;9,77;82;83;93,81;82;83;9
+7684,WILKINS AVE + BEECHWOOD,0,"Pittsburgh city (Allegheny, PA)",Squirrel Hill North,1.76,221,224,1.4,67;69,70,64;67;69;74,64;70;74
+1872,SHADELAND AVE + GEYER,0,"Pittsburgh city (Allegheny, PA)",Marshall-Shadeland,1.76,178,168,-5.6,17,14,16;17,14;16
+18490,MIFFLIN RD + INTERBORO,0,"Pittsburgh city (Allegheny, PA)",Lincoln Place,1.71,92,89,-3.3,53L,53,53L;56,53;56
+21539,CHURCHVIEW AVE + WAIDLER AVE,0,"Baldwin borough (Allegheny, PA)",,1.71,268,258,-3.7,44;51L,45,44;51;51L,45;51;51S
+7678,WILKINS AVE + BELLEROCK,0,"Pittsburgh city (Allegheny, PA)",Squirrel Hill North,1.67,98,99,1.0,67;69,70,67;69,70
+21249,REED ST + ELMORE ST,0,"Pittsburgh city (Allegheny, PA)",Terrace Village,1.67,236,243,3.0,83,84,81;82;83,81;82;84
+1605,BRIGHTON RD + MCDOWELL,0,"Pittsburgh city (Allegheny, PA)",Marshall-Shadeland,1.67,176,170,-3.4,17,14,16;17,14;16
+2651,S 18TH ST + EDWARDS WAY,0,"Pittsburgh city (Allegheny, PA)",South Side Flats,1.62,398,416,4.5,54,45;57,48;51;54,45;48;51;51S;57
+11373,SPENCER AVE + BEAU,0,"Pittsburgh city (Allegheny, PA)",Carrick,1.57,261,258,-1.1,44;51L,45,44;51;51L,45;51;51S
+7186,CENTER ST + GRANDVIEW,0,"East Pittsburgh borough (Allegheny, PA)",,1.57,110,102,-7.3,59,66,59;P68;P76,66;68;76L
+1882,CALIFORNIA AVE + PERROTT ST,0,"Pittsburgh city (Allegheny, PA)",Brighton Heights,1.52,256,237,-7.4,17,14,13;16;17,13;14;16
+1866,WOODLAND AVE + STAYTON,0,"Pittsburgh city (Allegheny, PA)",Marshall-Shadeland,1.52,177,169,-4.5,17,14,16;17,14;16
 10984,DUQUESNE BLVD + OVERLAND,0,"Duquesne city (Allegheny, PA)",,1.52,197,212,7.6,P7,52L,59;61C;P7,52L;59;61X
 20221,WARREN DR + LINCOLN HWY FS,0,"North Versailles township (Allegheny, PA)",,1.48,102,102,0.0,55;59,66;68,55;59;P76,66;68;76L
-12041,MIFFLIN RD + MOHRBACH FS,0,"Pittsburgh city (Allegheny, PA)",Lincoln Place,1.38,92,88,-4.3,53L,53,53L;56,53;56
+17736,MAIN + 22ND,0,"Munhall borough (Allegheny, PA)",,1.48,38,35,-7.9,53L,53,53L,53
+12041,MIFFLIN RD + MOHRBACH FS,0,"Pittsburgh city (Allegheny, PA)",Lincoln Place,1.38,93,89,-4.3,53L,53,53L;56,53;56
 21237,GREENSBURG PIKE + KLINE AVE,0,"North Versailles township (Allegheny, PA)",,1.38,52,54,3.8,59,68,59,68
-8529,SHADY AVE + NORTHUMBERLAND,0,"Pittsburgh city (Allegheny, PA)",Squirrel Hill North,1.38,219,222,1.4,67;69,70,64;67;69;74,64;70;74
+8529,SHADY AVE + NORTHUMBERLAND,0,"Pittsburgh city (Allegheny, PA)",Squirrel Hill North,1.38,221,224,1.4,67;69,70,64;67;69;74,64;70;74
 16227,BOWMAN AVE + LIME,0,"McKeesport city (Allegheny, PA)",,1.38,35,38,8.6,55,66,55,66
-3262,HIGHLAND AVE + WALNUT,0,"Pittsburgh city (Allegheny, PA)",Shadyside,1.33,394,424,7.6,28X,45;74,28X;64;71B;71D,45;64;71X;72;74
-1876,SHADELAND AVE + DAVIS,0,"Pittsburgh city (Allegheny, PA)",Brighton Heights,1.33,176,166,-5.7,17,14,16;17,14;16
-12039,MIFFLIN RD + MCBRIDE,0,"Pittsburgh city (Allegheny, PA)",Lincoln Place,1.33,92,88,-4.3,53L,53,53L;56,53;56
+3262,HIGHLAND AVE + WALNUT,0,"Pittsburgh city (Allegheny, PA)",Shadyside,1.33,396,427,7.8,28X,45;74,28X;64;71B;71D,45;64;71X;72;74
+1876,SHADELAND AVE + DAVIS,0,"Pittsburgh city (Allegheny, PA)",Brighton Heights,1.33,178,168,-5.6,17,14,16;17,14;16
+12039,MIFFLIN RD + MCBRIDE,0,"Pittsburgh city (Allegheny, PA)",Lincoln Place,1.33,92,89,-3.3,53L,53,53L;56,53;56
 22759,SHIRE PL + BREINING ST,1,"Bridgeville borough (Allegheny, PA)",,1.33,38,38,0.0,39,34,39,34
-11180,LINCOLN HWY + CENTER,0,"East Pittsburgh borough (Allegheny, PA)",,1.29,109,102,-6.4,59,66,59;P68;P76,66;68;76L
-7569,MAIN ST + RIDGE,0,"East Pittsburgh borough (Allegheny, PA)",,1.29,109,102,-6.4,59,66,59;P68;P76,66;68;76L
-10994,DUQUESNE BLVD + CENTER,0,"Duquesne city (Allegheny, PA)",,1.29,197,212,7.6,P7,52L,59;61C;P7,52L;59;61X
-2761,LOWRIE ST + FROMAN (LEY),0,"Pittsburgh city (Allegheny, PA)",Troy Hill,1.24,155,160,3.2,1;2,2L;5,1;2;4;7,2L;4;5;7
-11057,INTERBORO AVE + MIFFLIN,0,"Pittsburgh city (Allegheny, PA)",Lincoln Place,1.24,92,88,-4.3,53L,53,53L;56,53;56
+11180,LINCOLN HWY + CENTER,0,"East Pittsburgh borough (Allegheny, PA)",,1.29,111,102,-8.1,59,66,59;P68;P76,66;68;76L
+7569,MAIN ST + RIDGE,0,"East Pittsburgh borough (Allegheny, PA)",,1.29,111,104,-6.3,59,66,59;P68;P76,66;68;76L
+10994,DUQUESNE BLVD + CENTER,0,"Duquesne city (Allegheny, PA)",,1.29,201,214,6.5,P7,52L,59;61C;P7,52L;59;61X
+11034,WEST ST + MUNHALL BORO BLDG,0,"Munhall borough (Allegheny, PA)",,1.29,38,35,-7.9,53L,53,53L,53
+7905,WM PENN HWY + GRAHAM,0,"Wilkinsburg borough (Allegheny, PA)",,1.24,86,94,9.3,P67,73L,67;P16;P67,67;73L;77L
+2761,LOWRIE ST + FROMAN (LEY),0,"Pittsburgh city (Allegheny, PA)",Troy Hill,1.24,156,161,3.2,1;2,2L;5,1;2;4;7,2L;4;5;7
+11057,INTERBORO AVE + MIFFLIN,0,"Pittsburgh city (Allegheny, PA)",Lincoln Place,1.24,92,89,-3.3,53L,53,53L;56,53;56
 4262,MIDDLETOWN RD + STRAKA FS,0,"Pittsburgh city (Allegheny, PA)",Crafton Heights,1.24,60,54,-10.0,27,26,27,26
-7050,HAWKINS AVE + #509,0,"North Braddock borough (Allegheny, PA)",,1.19,272,270,-0.7,59,66,59;61A;61B,60X;62X;66
+7050,HAWKINS AVE + #509,0,"North Braddock borough (Allegheny, PA)",,1.19,275,270,-1.8,59,66,59;61A;61B,60X;62X;66
 20559,BOWMAN AVE + POPLAR ST,0,"McKeesport city (Allegheny, PA)",,1.19,89,92,3.4,55,66,55;56,56;66
 20587,BOWMAN AVE + POPLAR ST,0,"McKeesport city (Allegheny, PA)",,1.14,62,65,4.8,55,66,55;56,56;66
-1870,SHADELAND AVE + RANCHERIA,0,"Pittsburgh city (Allegheny, PA)",Marshall-Shadeland,1.1,176,166,-5.7,17,14,16;17,14;16
-9808,CURRY HOLLOW RD + GREEN,0,"Pleasant Hills borough (Allegheny, PA)",,1.1,180,170,-5.6,Y1;Y47,49,51;Y1;Y46;Y47,46L;49;51
-18401,WOODSTOCK AVE + WILKINS F S,0,"Swissvale borough (Allegheny, PA)",,1.05,172,166,-3.5,59;60X,62X,59;61A,62X
-9695,HWY RT 51 + #2859,0,"Whitehall borough (Allegheny, PA)",,1.05,89,88,-1.1,46L;Y1,34,Y1;Y46;Y49,34;49
-7168,HAWKINS AVE + 2ND,0,"North Braddock borough (Allegheny, PA)",,1.05,172,166,-3.5,59;60X,62X,59;61A,62X
-3824,PARK MANOR BLVD + ROBINSON LN,0,"Robinson township (Allegheny, PA)",,1.05,181,196,8.3,28X,25,24;28X;29,24;25;29;29S
-18542,PENN AVE + CARNEGIE FS,0,"Pittsburgh city (Allegheny, PA)",Point Breeze,1.0,272,288,5.9,67;69;80X,58;70;88,67;69;71C;74,58;70;74;88
-10035,LEBANON CHURCH RD + OTT DR FS,0,"Pleasant Hills borough (Allegheny, PA)",,1.0,180,170,-5.6,Y1;Y47,49,51;Y1;Y46;Y47,46L;49;51
-21717,ROBINSON CENTER DR + # 6000 (OLIVE GARDEN),0,"Robinson township (Allegheny, PA)",,1.0,181,196,8.3,28X,25,24;28X;29,24;25;29;29S
+1870,SHADELAND AVE + RANCHERIA,0,"Pittsburgh city (Allegheny, PA)",Marshall-Shadeland,1.1,177,171,-3.4,17,14,16;17,14;16
+9808,CURRY HOLLOW RD + GREEN,0,"Pleasant Hills borough (Allegheny, PA)",,1.1,182,170,-6.6,Y1;Y47,49,51;Y1;Y46;Y47,46L;49;51
+11038,MAIN ST + HOMESTEAD-DUQUESNE,0,"Munhall borough (Allegheny, PA)",,1.1,38,35,-7.9,53L,53,53L,53
+18401,WOODSTOCK AVE + WILKINS F S,0,"Swissvale borough (Allegheny, PA)",,1.05,173,167,-3.5,59;60X,62X,59;61A,62X
+9695,HWY RT 51 + #2859,0,"Whitehall borough (Allegheny, PA)",,1.05,90,89,-1.1,46L;Y1,34,Y1;Y46;Y49,34;49
+7168,HAWKINS AVE + 2ND,0,"North Braddock borough (Allegheny, PA)",,1.05,172,167,-2.9,59;60X,62X,59;61A,62X
+3824,PARK MANOR BLVD + ROBINSON LN,0,"Robinson township (Allegheny, PA)",,1.05,183,196,7.1,28X,25,24;28X;29,24;25;29;29S
+18542,PENN AVE + CARNEGIE FS,0,"Pittsburgh city (Allegheny, PA)",Point Breeze,1.0,275,288,4.7,67;69;80X,58;70;88,67;69;71C;74,58;70;74;88
+10035,LEBANON CHURCH RD + OTT DR FS,0,"Pleasant Hills borough (Allegheny, PA)",,1.0,182,172,-5.5,Y1;Y47,49,51;Y1;Y46;Y47,46L;49;51
+21717,ROBINSON CENTER DR + # 6000 (OLIVE GARDEN),0,"Robinson township (Allegheny, PA)",,1.0,184,196,6.5,28X,25,24;28X;29,24;25;29;29S
 12026,BUTTERMILK HOLLOW RD + #5055,0,"West Mifflin borough (Allegheny, PA)",,0.95,144,154,6.9,53L,53,53L;56;59,53;56;59
-9651,HWY RT 51 + #3500,0,"Brentwood borough (Allegheny, PA)",,0.95,92,88,-4.3,46L;Y1,34,Y1;Y46;Y49,34;49
+9651,HWY RT 51 + #3500,0,"Brentwood borough (Allegheny, PA)",,0.95,93,88,-5.4,46L;Y1,34,Y1;Y46;Y49,34;49
+11033,WEST ST + 18TH,0,"Munhall borough (Allegheny, PA)",,0.95,38,35,-7.9,53L,53,53L,53
 19332,PERRYSVILLE AVE + WALDORF FS,0,"Pittsburgh city (Allegheny, PA)",Perry North,0.9,167,164,-1.8,15,6,15;8,6;8
 22753,BOWMAN AVE AT CHESTUT AVE,1,"West Mifflin borough (Allegheny, PA)",,0.9,35,38,8.6,55,66,55,66
-19563,CALIFORNIA AVE + BENTON FS,0,"Pittsburgh city (Allegheny, PA)",Brighton Heights,0.86,254,236,-7.1,17,14,13;16;17,13;14;16
-7167,WOODSTOCK AVE + WILKINS,0,"Swissvale borough (Allegheny, PA)",,0.81,172,166,-3.5,59;60X,62X,59;61A,62X
-1871,SHADELAND AVE + SCHIMMER,0,"Pittsburgh city (Allegheny, PA)",Marshall-Shadeland,0.81,176,166,-5.7,17,14,16;17,14;16
-20913,DUQUESNE BLVD + WYLIE AVE,0,"Duquesne city (Allegheny, PA)",,0.76,197,212,7.6,P7,52L,59;61C;P7,52L;59;61X
+19563,CALIFORNIA AVE + BENTON FS,0,"Pittsburgh city (Allegheny, PA)",Brighton Heights,0.86,255,236,-7.5,17,14,13;16;17,13;14;16
+7167,WOODSTOCK AVE + WILKINS,0,"Swissvale borough (Allegheny, PA)",,0.81,173,167,-3.5,59;60X,62X,59;61A,62X
+1871,SHADELAND AVE + SCHIMMER,0,"Pittsburgh city (Allegheny, PA)",Marshall-Shadeland,0.81,178,169,-5.1,17,14,16;17,14;16
+20913,DUQUESNE BLVD + WYLIE AVE,0,"Duquesne city (Allegheny, PA)",,0.76,199,214,7.5,P7,52L,59;61C;P7,52L;59;61X
 20586,BOWMAN AVE + LIME ST,0,"McKeesport city (Allegheny, PA)",,0.71,35,38,8.6,55,66,55,66
-14982,BUTLER ST + 49TH,0,"Pittsburgh city (Allegheny, PA)",Central Lawrenceville,0.71,214,206,-3.7,87;93,81;92,87;91;93,81;91;92
-7572,MAIN ST + CENTER,0,"East Pittsburgh borough (Allegheny, PA)",,0.71,109,102,-6.4,59,66,59;P68;P76,66;68;76L
-8528,SHADY AVE + SOLWAY,0,"Pittsburgh city (Allegheny, PA)",Squirrel Hill North,0.71,219,222,1.4,67;69,70,64;67;69;74,64;70;74
-905,PERRYSVILLE AVE + #3820,0,"Pittsburgh city (Allegheny, PA)",Perry North,0.71,167,164,-1.8,15,6,15;8,6;8
+14982,BUTLER ST + 49TH,0,"Pittsburgh city (Allegheny, PA)",Central Lawrenceville,0.71,217,208,-4.1,87;93,81;92,87;91;93,81;91;92
+7572,MAIN ST + CENTER,0,"East Pittsburgh borough (Allegheny, PA)",,0.71,110,102,-7.3,59,66,59;P68;P76,66;68;76L
+8528,SHADY AVE + SOLWAY,0,"Pittsburgh city (Allegheny, PA)",Squirrel Hill North,0.71,221,224,1.4,67;69,70,64;67;69;74,64;70;74
+905,PERRYSVILLE AVE + #3820,0,"Pittsburgh city (Allegheny, PA)",Perry North,0.71,169,164,-3.0,15,6,15;8,6;8
 20583,EAST PITTSBURGH-MCKEESPORT BLVD + ORRIS RD,0,"North Versailles township (Allegheny, PA)",,0.71,35,38,8.6,55,66,55,66
-22698,B DR AT D DR,1,"Pittsburgh city (Allegheny, PA)",Ridgemont,0.71,35,34,-2.9,55,53,55,53
-19354,WOODLAND AVE + BRIGHTON FS,0,"Pittsburgh city (Allegheny, PA)",Marshall-Shadeland,0.67,176,166,-5.7,17,14,16;17,14;16
-11972,5TH ST + CRAWFORD,0,"Duquesne city (Allegheny, PA)",,0.67,197,212,7.6,P7,52L,59;61C;P7,52L;59;61X
-9649,HWY RT 51 + #2850,0,"Whitehall borough (Allegheny, PA)",,0.67,89,88,-1.1,46L;Y1,34,Y1;Y46;Y49,34;49
-2530,MCKINLEY AVE + GROGAN,0,"Pittsburgh city (Allegheny, PA)",Knoxville,0.62,279,258,-7.5,51L;54,45,51;51L;54,45;51;51S
+22698,B DR AT D DR,1,"Pittsburgh city (Allegheny, PA)",Ridgemont,0.71,36,34,-5.6,55,53,55,53
+19354,WOODLAND AVE + BRIGHTON FS,0,"Pittsburgh city (Allegheny, PA)",Marshall-Shadeland,0.67,177,168,-5.1,17,14,16;17,14;16
+11972,5TH ST + CRAWFORD,0,"Duquesne city (Allegheny, PA)",,0.67,201,213,6.0,P7,52L,59;61C;P7,52L;59;61X
+9649,HWY RT 51 + #2850,0,"Whitehall borough (Allegheny, PA)",,0.67,90,89,-1.1,46L;Y1,34,Y1;Y46;Y49,34;49
+2530,MCKINLEY AVE + GROGAN,0,"Pittsburgh city (Allegheny, PA)",Knoxville,0.62,283,258,-8.8,51L;54,45,51;51L;54,45;51;51S
 18622,WM PENN HWY + NORTHERN PIKE,0,"Monroeville municipality (Allegheny, PA)",,0.62,96,98,2.1,68,89,67;P68,67;89
 20588,BOWMAN AVE + JARVIS ST,0,"McKeesport city (Allegheny, PA)",,0.62,89,92,3.4,55,66,55;56,56;66
-7188,LINDEN AVE + BESSEMER FS,0,"East Pittsburgh borough (Allegheny, PA)",,0.57,109,102,-6.4,59,66,59;P68;P76,66;68;76L
-7571,MAIN ST + FRANKLIN,0,"East Pittsburgh borough (Allegheny, PA)",,0.57,109,102,-6.4,59,66,59;P68;P76,66;68;76L
-1875,SHADELAND AVE + ETOLA St FS,0,"Pittsburgh city (Allegheny, PA)",Brighton Heights,0.57,176,166,-5.7,17,14,16;17,14;16
-1873,SHADELAND AVE + HARBISON FS,0,"Pittsburgh city (Allegheny, PA)",Brighton Heights,0.57,176,166,-5.7,17,14,16;17,14;16
-2514,MCKINLEY AVE + GROGAN,0,"Pittsburgh city (Allegheny, PA)",Knoxville,0.57,279,258,-7.5,51L;54,45,51;51L;54,45;51;51S
-12042,MIFFLIN RD + NAUGLE,0,"Pittsburgh city (Allegheny, PA)",Lincoln Place,0.57,92,88,-4.3,53L,53,53L;56,53;56
-12044,BUTTERMILK HOLLOW RD + PGH-MCKPT BLVD,0,"West Mifflin borough (Allegheny, PA)",,0.52,92,88,-4.3,53L,53,53L;56,53;56
-19586,WASHINGTON RD + FLORENCE,0,"Mount Lebanon township (Allegheny, PA)",,0.52,74,68,-8.1,38,36L,38;41,35;35S;36L
-12028,BUTTERMILK HOLLOW RD + WALNUT,0,"West Mifflin borough (Allegheny, PA)",,0.52,144,154,6.9,53L,53,53L;56;59,53;56;59
-2762,LEY ST + COWLEY,0,"Pittsburgh city (Allegheny, PA)",Troy Hill,0.52,155,160,3.2,1;2,2L;5,1;2;4;7,2L;4;5;7
-7644,WILKINS AVE + WOODLAND,0,"Pittsburgh city (Allegheny, PA)",Squirrel Hill North,0.52,219,222,1.4,67;69,70,64;67;69;74,64;70;74
-7682,WILKINS AVE + WOODLAND,0,"Pittsburgh city (Allegheny, PA)",Squirrel Hill North,0.52,219,222,1.4,67;69,70,64;67;69;74,64;70;74
+7188,LINDEN AVE + BESSEMER FS,0,"East Pittsburgh borough (Allegheny, PA)",,0.57,110,102,-7.3,59,66,59;P68;P76,66;68;76L
+7571,MAIN ST + FRANKLIN,0,"East Pittsburgh borough (Allegheny, PA)",,0.57,110,102,-7.3,59,66,59;P68;P76,66;68;76L
+1875,SHADELAND AVE + ETOLA St FS,0,"Pittsburgh city (Allegheny, PA)",Brighton Heights,0.57,178,168,-5.6,17,14,16;17,14;16
+1873,SHADELAND AVE + HARBISON FS,0,"Pittsburgh city (Allegheny, PA)",Brighton Heights,0.57,177,166,-6.2,17,14,16;17,14;16
+2514,MCKINLEY AVE + GROGAN,0,"Pittsburgh city (Allegheny, PA)",Knoxville,0.57,283,258,-8.8,51L;54,45,51;51L;54,45;51;51S
+12042,MIFFLIN RD + NAUGLE,0,"Pittsburgh city (Allegheny, PA)",Lincoln Place,0.57,93,88,-5.4,53L,53,53L;56,53;56
+12044,BUTTERMILK HOLLOW RD + PGH-MCKPT BLVD,0,"West Mifflin borough (Allegheny, PA)",,0.52,93,88,-5.4,53L,53,53L;56,53;56
+19586,WASHINGTON RD + FLORENCE,0,"Mount Lebanon township (Allegheny, PA)",,0.52,75,68,-9.3,38,36L,38;41,35;35S;36L
+12028,BUTTERMILK HOLLOW RD + WALNUT,0,"West Mifflin borough (Allegheny, PA)",,0.52,145,154,6.2,53L,53,53L;56;59,53;56;59
+2762,LEY ST + COWLEY,0,"Pittsburgh city (Allegheny, PA)",Troy Hill,0.52,156,161,3.2,1;2,2L;5,1;2;4;7,2L;4;5;7
+7644,WILKINS AVE + WOODLAND,0,"Pittsburgh city (Allegheny, PA)",Squirrel Hill North,0.52,220,224,1.8,67;69,70,64;67;69;74,64;70;74
+7682,WILKINS AVE + WOODLAND,0,"Pittsburgh city (Allegheny, PA)",Squirrel Hill North,0.52,220,224,1.8,67;69,70,64;67;69;74,64;70;74
 22673,EAST PITTSURGH MCKEESPORT BLVD + #920,1,"Ambridge borough (Beaver, PA)",,0.52,35,38,8.6,55,66,55,66
-4888,WARRINGTON AVE + ESTELLA AVE,0,"Pittsburgh city (Allegheny, PA)",Beltzhoover,0.52,208,206,-1.0,43;54,40,43;44;48;54,40;44;48
+11036,22ND AVE + MAIN,0,"Munhall borough (Allegheny, PA)",,0.52,38,35,-7.9,53L,53,53L,53
+4888,WARRINGTON AVE + ESTELLA AVE,0,"Pittsburgh city (Allegheny, PA)",Beltzhoover,0.52,209,208,-0.5,43;54,40,43;44;48;54,40;44;48
 21241,GREENSBURG PIKE + CENTRAL AVE FS,0,"North Versailles township (Allegheny, PA)",,0.48,52,54,3.8,59,68,59,68
-2764,RIALTO ST + WICKLINES,0,"Pittsburgh city (Allegheny, PA)",Troy Hill,0.48,155,160,3.2,1;2,2L;5,1;2;4;7,2L;4;5;7
-19653,BELTZHOOVER AVE + EUREKA,0,"Pittsburgh city (Allegheny, PA)",Allentown,0.48,208,206,-1.0,43;54,40,43;44;48;54,40;44;48
-12046,BUTTERMILK HOLLOW RD + WALNUT,0,"West Mifflin borough (Allegheny, PA)",,0.43,144,154,6.9,53L,53,53L;56;59,53;56;59
-19011,NEGLEY AVE + JACKSON NS,0,"Pittsburgh city (Allegheny, PA)",Highland Park,0.43,270,296,9.6,87,92,71A;75;87,75;85;92
-21572,SPENCER AVE + BEAU ST,0,"Pittsburgh city (Allegheny, PA)",Carrick,0.43,259,258,-0.4,44;51L,45,44;51;51L,45;51;51S
-12030,BUTTERMILK HOLLOW RD + PGH-MCKPT BLVD,0,"West Mifflin borough (Allegheny, PA)",,0.38,92,88,-4.3,53L,53,53L;56,53;56
-7001,CLIMAX ST + CURTIN,0,"Pittsburgh city (Allegheny, PA)",Beltzhoover,0.38,208,206,-1.0,43;54,40,43;44;48;54,40;44;48
+2764,RIALTO ST + WICKLINES,0,"Pittsburgh city (Allegheny, PA)",Troy Hill,0.48,155,161,3.9,1;2,2L;5,1;2;4;7,2L;4;5;7
+19653,BELTZHOOVER AVE + EUREKA,0,"Pittsburgh city (Allegheny, PA)",Allentown,0.48,208,210,1.0,43;54,40,43;44;48;54,40;44;48
+12046,BUTTERMILK HOLLOW RD + WALNUT,0,"West Mifflin borough (Allegheny, PA)",,0.43,145,154,6.2,53L,53,53L;56;59,53;56;59
+19011,NEGLEY AVE + JACKSON NS,0,"Pittsburgh city (Allegheny, PA)",Highland Park,0.43,273,296,8.4,87,92,71A;75;87,75;85;92
+21572,SPENCER AVE + BEAU ST,0,"Pittsburgh city (Allegheny, PA)",Carrick,0.43,261,258,-1.1,44;51L,45,44;51;51L,45;51;51S
+12030,BUTTERMILK HOLLOW RD + PGH-MCKPT BLVD,0,"West Mifflin borough (Allegheny, PA)",,0.38,93,88,-5.4,53L,53,53L;56,53;56
+7001,CLIMAX ST + CURTIN,0,"Pittsburgh city (Allegheny, PA)",Beltzhoover,0.38,208,208,0.0,43;54,40,43;44;48;54,40;44;48
 16231,EAST PITTSBURGH-MCKEESPORT BLVD + ORRIS,0,"North Versailles township (Allegheny, PA)",,0.38,35,38,8.6,55,66,55,66
-2732,RIALTO ST + TOURS,0,"Pittsburgh city (Allegheny, PA)",Troy Hill,0.33,155,160,3.2,1;2,2L;5,1;2;4;7,2L;4;5;7
-8477,MURRAY AVE + SOLWAY ST,0,"Pittsburgh city (Allegheny, PA)",Squirrel Hill North,0.33,219,222,1.4,67;69,70,64;67;69;74,64;70;74
-21242,GREENSBURG PIKE + PATRICIA LN,0,"North Versailles township (Allegheny, PA)",,0.33,102,102,0.0,55;59,66;68,55;59;P76,66;68;76L
-3102,MCKNIGHT RD + PEEBLES RD,0,"McCandless township (Allegheny, PA)",,0.33,89,92,3.4,2;2L,17,12;2;O12;P13,12;12L;17
-4263,MIDDLETOWN RD + BERRY,0,"Pittsburgh city (Allegheny, PA)",Crafton Heights,0.33,60,54,-10.0,27,26,27,26
+2732,RIALTO ST + TOURS,0,"Pittsburgh city (Allegheny, PA)",Troy Hill,0.33,156,161,3.2,1;2,2L;5,1;2;4;7,2L;4;5;7
+8477,MURRAY AVE + SOLWAY ST,0,"Pittsburgh city (Allegheny, PA)",Squirrel Hill North,0.33,220,224,1.8,67;69,70,64;67;69;74,64;70;74
+21242,GREENSBURG PIKE + PATRICIA LN,0,"North Versailles township (Allegheny, PA)",,0.33,103,102,-1.0,55;59,66;68,55;59;P76,66;68;76L
+3102,MCKNIGHT RD + PEEBLES RD,0,"McCandless township (Allegheny, PA)",,0.33,90,92,2.2,2;2L,17,12;2;O12;P13,12;12L;17
 16198,E PGH-MCKSPT BLVD + OVERHILL,0,"North Versailles township (Allegheny, PA)",,0.29,35,38,8.6,55,66,55,66
 20565,EAST PITTSBURGH-MCKEESPORT BLVD + BROWN PL,0,"North Versailles township (Allegheny, PA)",,0.29,35,38,8.6,55,66,55,66
-2760,LOWRIE ST + CLAIM,0,"Pittsburgh city (Allegheny, PA)",Troy Hill,0.29,155,160,3.2,1;2,2L;5,1;2;4;7,2L;4;5;7
-1869,SHADELAND AVE + CASEMENT,0,"Pittsburgh city (Allegheny, PA)",Marshall-Shadeland,0.29,176,166,-5.7,17,14,16;17,14;16
+2760,LOWRIE ST + CLAIM,0,"Pittsburgh city (Allegheny, PA)",Troy Hill,0.29,156,161,3.2,1;2,2L;5,1;2;4;7,2L;4;5;7
+1869,SHADELAND AVE + CASEMENT,0,"Pittsburgh city (Allegheny, PA)",Marshall-Shadeland,0.29,176,169,-4.0,17,14,16;17,14;16
 11056,INTERBORO AVE + LEASIDE,0,"Pittsburgh city (Allegheny, PA)",Lincoln Place,0.29,92,88,-4.3,53L,53,53L;56,53;56
-21574,CHURCHVIEW AVE + WAIDLER AVE FS,0,"Brentwood borough (Allegheny, PA)",,0.29,266,258,-3.0,44;51L,45,44;51;51L,45;51;51S
-8370,MURRAY AVE + WILKINS,0,"Pittsburgh city (Allegheny, PA)",Squirrel Hill North,0.24,219,222,1.4,67;69,70,64;67;69;74,64;70;74
-20717,MURRAY AVE + WILKINS AVE FS,0,"Pittsburgh city (Allegheny, PA)",Squirrel Hill North,0.24,219,222,1.4,67;69,70,64;67;69;74,64;70;74
-2763,RIALTO ST + TOURS,0,"Pittsburgh city (Allegheny, PA)",Troy Hill,0.24,155,160,3.2,1;2,2L;5,1;2;4;7,2L;4;5;7
+21574,CHURCHVIEW AVE + WAIDLER AVE FS,0,"Brentwood borough (Allegheny, PA)",,0.29,268,258,-3.7,44;51L,45,44;51;51L,45;51;51S
+8370,MURRAY AVE + WILKINS,0,"Pittsburgh city (Allegheny, PA)",Squirrel Hill North,0.24,220,224,1.8,67;69,70,64;67;69;74,64;70;74
+20717,MURRAY AVE + WILKINS AVE FS,0,"Pittsburgh city (Allegheny, PA)",Squirrel Hill North,0.24,220,224,1.8,67;69,70,64;67;69;74,64;70;74
+2763,RIALTO ST + TOURS,0,"Pittsburgh city (Allegheny, PA)",Troy Hill,0.24,156,161,3.2,1;2,2L;5,1;2;4;7,2L;4;5;7
 18484,MIFFLIN RD + #1236,0,"Pittsburgh city (Allegheny, PA)",Lincoln Place,0.19,92,88,-4.3,53L,53,53L;56,53;56
-8369,MURRAY AVE + SOLWAY,0,"Pittsburgh city (Allegheny, PA)",Squirrel Hill North,0.19,219,222,1.4,67;69,70,64;67;69;74,64;70;74
+8369,MURRAY AVE + SOLWAY,0,"Pittsburgh city (Allegheny, PA)",Squirrel Hill North,0.19,220,224,1.8,67;69,70,64;67;69;74,64;70;74
 11017,LEBANON CHURCH RD + VINDALE RD FS,0,"West Mifflin borough (Allegheny, PA)",,0.19,144,154,6.9,53L,53,53L;56;59,53;56;59
-22699,BLACKBERRY DR AT #847,1,"Pittsburgh city (Allegheny, PA)",Ridgemont,0.19,35,34,-2.9,55,53,55,53
-22697,B DR AT #532 (SHED),1,"Green Tree borough (Allegheny, PA)",,0.19,35,34,-2.9,55,53,55,53
-7527,MAIN ST + RIDGE,0,"East Pittsburgh borough (Allegheny, PA)",,0.14,109,102,-6.4,59,66,59;P68;P76,66;68;76L
+22699,BLACKBERRY DR AT #847,1,"Pittsburgh city (Allegheny, PA)",Ridgemont,0.19,36,34,-5.6,55,53,55,53
+22697,B DR AT #532 (SHED),1,"Green Tree borough (Allegheny, PA)",,0.19,36,34,-5.6,55,53,55,53
+7527,MAIN ST + RIDGE,0,"East Pittsburgh borough (Allegheny, PA)",,0.14,111,104,-6.3,59,66,59;P68;P76,66;68;76L
 21239,GREENSBURG PIKE + KLINE AVE FS,0,"North Versailles township (Allegheny, PA)",,0.14,52,54,3.8,59,68,59,68
-15736,WARREN DR + WAL MART DRWY,0,"North Versailles township (Allegheny, PA)",,0.14,102,102,0.0,55;59,66;68,55;59;P76,66;68;76L
-1915,MARSHALL AVE + STAYTON ST,0,"Pittsburgh city (Allegheny, PA)",Marshall-Shadeland,0.14,176,166,-5.7,17,14,16;17,14;16
-12034,MIFFLIN RD + #5419,0,"Pittsburgh city (Allegheny, PA)",Lincoln Place,0.1,92,88,-4.3,53L,53,53L;56,53;56
+15736,WARREN DR + WAL MART DRWY,0,"North Versailles township (Allegheny, PA)",,0.14,103,102,-1.0,55;59,66;68,55;59;P76,66;68;76L
+1915,MARSHALL AVE + STAYTON ST,0,"Pittsburgh city (Allegheny, PA)",Marshall-Shadeland,0.14,178,167,-6.2,17,14,16;17,14;16
+12034,MIFFLIN RD + #5419,0,"Pittsburgh city (Allegheny, PA)",Lincoln Place,0.1,92,89,-3.3,53L,53,53L;56,53;56
 12186,MIFFLIN RD + GLENHURST,0,"Pittsburgh city (Allegheny, PA)",Lincoln Place,0.1,73,71,-2.7,53L,53,53L;56,53;56
 12047,BUTTERMILK HOLLOW RD + REMNANT WORLD,0,"West Mifflin borough (Allegheny, PA)",,0.1,144,154,6.9,53L,53,53L;56;59,53;56;59
-20911,DUQUESNE BLVD + WYLIE AVE,0,"Duquesne city (Allegheny, PA)",,0.1,197,212,7.6,P7,52L,59;61C;P7,52L;59;61X
-22696,B DR AT MANAGEMENT OFFICE,1,"McCandless township (Allegheny, PA)",,0.1,35,34,-2.9,55,53,55,53
+20911,DUQUESNE BLVD + WYLIE AVE,0,"Duquesne city (Allegheny, PA)",,0.1,198,213,7.6,P7,52L,59;61C;P7,52L;59;61X
+22696,B DR AT MANAGEMENT OFFICE,1,"McCandless township (Allegheny, PA)",,0.1,36,34,-5.6,55,53,55,53
 16229,EAST PITTSBURGH-MCKEESPORT + FAIRMONT,0,"McKeesport city (Allegheny, PA)",,0.05,35,38,8.6,55,66,55,66
-919,CONNIE DR + OLD CONNIE,0,"Ross township (Allegheny, PA)",,0.05,172,164,-4.7,17,6,17;8,6;8
+919,CONNIE DR + OLD CONNIE,0,"Ross township (Allegheny, PA)",,0.05,174,164,-5.7,17,6,17;8,6;8
 21236,GREENSBURG PIKE + LLOYD AVE,0,"North Versailles township (Allegheny, PA)",,0.05,52,54,3.8,59,68,59,68
 7812,ARDMORE BLVD + NEWPORT,0,"Forest Hills borough (Allegheny, PA)",,0.05,71,77,8.5,P69,68,69;P69;P76,68;69;69S;76L
 11055,INTERBORO AVE + PLAPORT,0,"Pittsburgh city (Allegheny, PA)",Lincoln Place,0.05,65,61,-6.2,53L,53,53L;56,53;56
 20918,CHURCHILL RD + HOLLAND,0,"Churchill borough (Allegheny, PA)",,0.05,73,80,9.6,P67,73L,67;P16;P67,67;73L;77L
-9322,STANTON AVE + CARNEGIE,0,"Pittsburgh city (Allegheny, PA)",Upper Lawrenceville,0.05,214,206,-3.7,87;93,81;92,87;91;93,81;91;92
-15838,BELTZHOOVER + FREELAND,0,"Pittsburgh city (Allegheny, PA)",Allentown,0.05,208,206,-1.0,43;54,40,43;44;48;54,40;44;48
+9322,STANTON AVE + CARNEGIE,0,"Pittsburgh city (Allegheny, PA)",Upper Lawrenceville,0.05,216,207,-4.2,87;93,81;92,87;91;93,81;91;92
+15838,BELTZHOOVER + FREELAND,0,"Pittsburgh city (Allegheny, PA)",Allentown,0.05,208,208,0.0,43;54,40,43;44;48;54,40;44;48
 12187,MIFFLIN RD + #1236,0,"Pittsburgh city (Allegheny, PA)",Lincoln Place,0.05,92,88,-4.3,53L,53,53L;56,53;56
 20585,EAST PITTSBURGH-MCKEESPORT BLVD + FAIRMONT ST,0,"North Versailles township (Allegheny, PA)",,0.05,35,38,8.6,55,66,55,66
 20566,EAST PITTSBURGH-MCKEESPORT BLVD + OVERHILL DR,0,"North Versailles township (Allegheny, PA)",,0.0,35,38,8.6,55,66,55,66
 16230,EAST PITTSBURGH-MCKEESPORT BLVD + AULT,0,"North Versailles township (Allegheny, PA)",,0.0,35,38,8.6,55,66,55,66
 21240,GREENSBURG PIKE + LLOYD AVE,0,"North Versailles township (Allegheny, PA)",,0.0,52,54,3.8,59,68,59,68
-19349,CONNIE DR + OLD CONNIE,0,"Ross township (Allegheny, PA)",,0.0,172,164,-4.7,17,6,17;8,6;8
+19349,CONNIE DR + OLD CONNIE,0,"Ross township (Allegheny, PA)",,0.0,174,164,-5.7,17,6,17;8,6;8
 20584,EAST PITTSBURGH-MCKEESPORT BLVD + AULT ST,0,"North Versailles township (Allegheny, PA)",,0.0,35,38,8.6,55,66,55,66
-12040,MIFFLIN RD + #5419,0,"Pittsburgh city (Allegheny, PA)",Lincoln Place,0.0,92,88,-4.3,53L,53,53L;56,53;56
-15836,BELTZHOOVER + FREELAND,0,"Pittsburgh city (Allegheny, PA)",Beltzhoover,0.0,208,206,-1.0,43;54,40,43;44;48;54,40;44;48
-899,PERRYSVILLE AVE + #3436,0,"Pittsburgh city (Allegheny, PA)",Perry North,0.0,216,223,3.2,15,18;6,12;15;8,12;18;6;8
-20205,BELTZHOOVER AVE + CLIMAX,0,"Pittsburgh city (Allegheny, PA)",Allentown,0.0,208,206,-1.0,43;54,40,43;44;48;54,40;44;48
-19547,BAUSMAN AVE + ROMEYN,0,"Pittsburgh city (Allegheny, PA)",Knoxville,0.0,334,324,-3.0,54,45,44;51;54,44;45;51;51S
+20268,22ND AVE + WEST,0,"Munhall borough (Allegheny, PA)",,0.0,38,35,-7.9,53L,53,53L,53
+12040,MIFFLIN RD + #5419,0,"Pittsburgh city (Allegheny, PA)",Lincoln Place,0.0,92,89,-3.3,53L,53,53L;56,53;56
+15836,BELTZHOOVER + FREELAND,0,"Pittsburgh city (Allegheny, PA)",Beltzhoover,0.0,208,208,0.0,43;54,40,43;44;48;54,40;44;48
+7969,PENN AVE + SUMMIT,0,"Wilkinsburg borough (Allegheny, PA)",,0.0,86,94,9.3,P67,73L,67;P16;P67,67;73L;77L
+899,PERRYSVILLE AVE + #3436,0,"Pittsburgh city (Allegheny, PA)",Perry North,0.0,218,224,2.8,15,18;6,12;15;8,12;18;6;8
+20205,BELTZHOOVER AVE + CLIMAX,0,"Pittsburgh city (Allegheny, PA)",Allentown,0.0,208,210,1.0,43;54,40,43;44;48;54,40;44;48
+19547,BAUSMAN AVE + ROMEYN,0,"Pittsburgh city (Allegheny, PA)",Knoxville,0.0,336,324,-3.6,54,45,44;51;54,44;45;51;51S
 4261,MIDDLETOWN RD + JUSTINE,0,"Pittsburgh city (Allegheny, PA)",Crafton Heights,0.0,60,54,-10.0,27,26,27,26
-6002,WASHINGTON RD + FLORENCE PL,0,"Mount Lebanon township (Allegheny, PA)",,0.0,74,68,-8.1,38,36L,38;41,35;35S;36L
-22695,A DR AT B DR,1,"McCandless township (Allegheny, PA)",,0.0,35,34,-2.9,55,53,55,53
+6002,WASHINGTON RD + FLORENCE PL,0,"Mount Lebanon township (Allegheny, PA)",,0.0,75,68,-9.3,38,36L,38;41,35;35S;36L
+22695,A DR AT B DR,1,"McCandless township (Allegheny, PA)",,0.0,36,34,-5.6,55,53,55,53

@@ -60,7 +60,7 @@ are not in a GTFS, so this is a floor on platform hours and emphatically not a
 cost figure -- do not compare it to PRT's own service-hour budget.
 
 Both sides come from real timetables: the current published feed and the
-proposed feed PRT supplied (see gtfs.py). The Frequency & Hours PDFs cannot
+proposed feed obtained from PRT (see gtfs.py). The Frequency & Hours PDFs cannot
 answer this question at all -- a headway divided into a span gives trips, but
 nothing in the PDFs gives trip duration.
 

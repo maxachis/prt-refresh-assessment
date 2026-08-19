@@ -2,6 +2,30 @@
 
 > What is the status of Outer Chartiers in the redesign?
 
+> **Proposed-side figures below were re-derived from the proposed network's own
+> GTFS** (`data/raw/proposed_gtfs/`, see
+> [../METHOD-coverage.md](../METHOD-coverage.md)) after this file was written
+> against headway estimates. **Every conclusion holds** — both segments still go
+> from service to zero (Chartiers Ave hillside 60 → 0 weekday trips, the Extension
+> 36 → 0) — but the place-level percentages move, and the gains are larger than
+> reported:
+>
+> | Place | Weekday | Saturday | Sunday | was |
+> |---|---|---|---|---|
+> | Chartiers City | 422 → 54 (−87%) | 240 → 34 | 220 → 28 | −88% |
+> | Windgap | 1,485 → 1,026 (−31%) | 848 → 646 | 754 → 532 | −38% |
+> | Sheraden | 5,440 → 4,212 (−23%) | 3,471 → 2,960 | 3,068 → 2,552 | −27% |
+> | Esplen | 1,097 → 1,119 (+2%) | 710 → 740 | 556 → 568 | −5% |
+> | McKees Rocks borough | 4,291 → 4,535 (**+6%**) | 2,804 → 2,973 | 2,140 → 2,308 | −1% |
+> | Stowe township | 3,630 → 3,650 (+1%) | 2,322 → 2,394 | 1,692 → 1,836 | −6% |
+> | Kennedy township | 4,272 → 2,886 (−32%) | 2,880 → 1,946 | 1,926 → 1,452 | −38% |
+> | Crafton borough | 5,488 → 7,793 (**+42%**) | 3,846 → 6,120 | 3,248 → 4,928 | +25% |
+>
+> Caveat 5's stop-id collision is now handled in `analyze_coverage_change.py`
+> (`id_name_mismatch`), and the route-level table has been re-derived from both
+> networks' timetables — which raised three of its four surviving routes, the 22
+> from −4.8% to +3.8%.
+
 **Not a BASE_CAMP question ID.** It is a place question, and it feeds
 `COVERAGE-CHANGE`, `REGION-LOSS` and `LOSE-ONE-SEAT-DOWNTOWN` rather than
 standing alone.
@@ -83,16 +107,25 @@ Middletown Rd, Jeffers and Allendale into Windgap and Sheraden, running Downtown
 ↔ Crafton–Ingram. That reroute, plus the 20's removal, is what drives Sheraden's
 −27% and Windgap's −38%.
 
-Route totals, all measured against the current GTFS on a real weekday date:
+Route totals, now counted from **both** networks' timetables via
+`analyze_route_hours.py` rather than estimated from the frequency PDFs:
 
 | Route | Category | Current wkdy trips | Proposed | Change |
 |---|---|---:|---:|---:|
 | 20 Kennedy | Discontinued | 36 | 0 | **−100%** |
-| 21 Coraopolis | Modified | 60 | 51 | −15.0% |
-| 22 McCoy | Modified | 52 | 49.5 | −4.8% |
-| 24 West Park | Modified | 62 | 63 | +1.6% |
-| 26 Chartiers | Modified | 62 | 49.5 | −20.2% |
-| 27 Fairywood | Modified | 60 | 49.5 | −17.5% |
+| 21 Coraopolis | Modified | 60 | 54 | −10.0% |
+| 22 McCoy | Modified | 52 | 54 | **+3.8%** |
+| 24 West Park | Modified | 62 | 66 | +6.5% |
+| 26 Chartiers | Modified | 62 | 54 | −12.9% |
+| 27 Fairywood | Modified | 60 | 54 | −10.0% |
+
+**These figures replace PDF-derived ones and they moved the answer.** The
+proposed feed puts all four surviving routes at 54 weekday trips where span ÷
+headway gave 49.5–51, so the earlier table overstated the corridor's route-level
+losses: the 22 flips from −4.8% to **+3.8%**, the 26 from −20.2% to −12.9%, the
+27 from −17.5% to −10.0%. Nothing above this table changes — the stranded
+segments are location-level findings from `coverage_change.csv` and never
+depended on these numbers.
 
 ## Report the gains too
 
@@ -121,17 +154,20 @@ Extension pay for it.
    thin — 60 weekday trips on the hillside, 36 on the Extension. The same
    argument `FINDINGS.md` makes about stop closures applies.
 3. **Route-level percentages come from `data/route_frequency_change.csv`, which
-   no script in the repo currently regenerates** (see the status table in
-   `../README.md`). The six routes above are *not* among the 16 hit by the
-   8–11pm header-drift bug (`FINDINGS.md` caveat 9), and the proposed figures
-   were re-derived by hand from `data/service_levels.csv` — 26 and 27 both come
-   to 49.5 weekday trips. The current-side figures were re-counted from GTFS
-   `trips.txt` on 2026-09-09, 09-12 and 09-13. Both sides check out.
-4. **`data/raw/remix_project.json` carries 10 `onDemandZones` polygons** that no
-   answer in this repo yet accounts for. If any covers the Chartiers City
-   hillside or the far Extension, the losses above overstate the outcome — those
-   riders would be offered microtransit rather than nothing. **This should be
-   checked before this file is quoted publicly.**
+   `analyze_route_hours.py` now regenerates from both timetables**
+   ([LOSE-SERVICE-HOURS.md](../LOSE-SERVICE-HOURS.md)). That retires the caveat
+   this entry used to carry — the figures are no longer hand-derived from
+   `service_levels.csv`, and the 8–11pm header-drift bug (`FINDINGS.md` caveat 9)
+   cannot reach them at all. Read them as **corridor groups**, not routes: the
+   six above happen to be one-to-one or discontinued, so route and group coincide
+   here, which is not true generally.
+4. **The 10 proposed on-demand zones do not cover this corridor — checked.**
+   `analyze_coverage_area.py` now rasterises `remix_project.json`'s
+   `onDemandZones`, and neither the Chartiers City hillside nor the far
+   Extension falls inside one. The nearest is the McKees Rocks zone, which
+   covers McKees Rocks borough, Stowe, Bellevue, Brighton Heights and two Esplen
+   stops, and only 0.4 km² of ground losing all service sits inside it. The
+   losses above are not softened by microtransit.
 5. **One row in the corridor profile is spurious and should be ignored:**
    `CHARTIERS AVE AT ST JOHN ST`, which plots at longitude −79.85, in Turtle
    Creek. This is not the known `HOOD`/`MUNI` labelling error — it is a

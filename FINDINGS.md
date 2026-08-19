@@ -1,25 +1,25 @@
 # Service change under the PRT Bus Line Refresh
 
-Three questions, deliberately kept apart, because they have different answers:
+Five questions, deliberately kept apart, because they have different answers:
 
 - **A.** Which stops lose their bus entirely? — `analyze_service_loss.py`
 - **B.** Which riders lose the route they use? — `analyze_route_ridership.py`
 - **C.** Where service is kept, how much of it is kept? — `analyze_frequency_change.py`
+- **D.** Which services gain and lose hours? — `analyze_route_hours.py`
+- **E.** How much ground keeps a bus at all? — `analyze_coverage_area.py`
 
 C is the one that changes the picture. A and B describe about 1–5% of the
-system. C describes all of it.
+system. C describes all of it. E is the one that shows what the extra service in
+C and D was paid for with: **the network covers 12% less ground.**
 
-> **Section C's proposed-side numbers are superseded.** They derive proposed
-> service from published headways, because no timetable for the proposed network
-> was available when this was written. One now is —
-> `data/raw/proposed_gtfs/`, with 698,865 real `stop_times` rows — and counting
-> both sides from GTFS puts the summed weekday change at **+3.7%**, not −0.9%,
-> with **Saturday +15.6% and Sunday +17.1%**. The estimate was not far off in
-> aggregate (within 1.4% system-wide) but it dropped the S-variants entirely and
-> doubled the peak-only limiteds. Rebuild `analyze_frequency_change.py` on the
-> feed before quoting §C; the day-of-week and coverage-tier answers already are,
-> in [`docs/answers/COVERAGE-CHANGE.md`](docs/answers/COVERAGE-CHANGE.md) and
-> [`docs/answers/METHOD-coverage.md`](docs/answers/METHOD-coverage.md).
+> **Section C has been rebuilt on the proposed GTFS.** `analyze_frequency_change.py`
+> now counts both networks from real `stop_times` by identical code (see
+> `gtfs.py`). The summed weekday change is **+3.3%**. The estimate it replaces
+> was close in aggregate — 5,480 modelled weekday trips against 5,559 real,
+> +1.4% — but it misallocated service across the day, and **the previous
+> night-service finding does not survive the real timetable and is withdrawn**;
+> see "Correction" below. Section A is rebuilt too, and the "unverifiable" tier
+> is retired. Section D is new.
 
 ---
 
@@ -37,94 +37,110 @@ and a new route 45 at 30 minutes over the same corridor, which combine to about
 nothing changes. Exhibit A, which must disclose any >30% service reduction, does
 not list the 51.
 
-So the unit is a **location**, and both sides are measured identically: sum, over
-every (route, direction) stopping within 400 m, of that route-direction's trips.
-Current trips are counted from GTFS; proposed trips are (minutes of the period
-inside the route's span ÷ its published headway). Measuring both sides over the
+So the unit is a **location**, and both networks are measured by identical code:
+sum, over every (route, direction) stopping within 400 m, of that
+route-direction's trips, counted from GTFS `stop_times` on both sides and taken
+as the maximum across the stops in the cluster. Measuring both sides over the
 same radius makes the result immune to stop renumbering, stop consolidation, and
 corridor re-splitting alike.
 
 ### Result
 
 5,747 locations, 67,619 weekday boardings. Summed across locations, trips change
-by **+1.2%** (**+5.0%** once short-turn variants are credited). This is close to
-a service-neutral redesign, and the interesting question is who wins and loses
-inside that near-zero total.
+by **+3.3%**. This is close to a service-neutral redesign, and the interesting
+question is who wins and loses inside that near-zero total.
 
 | Change in weekday trips at the stop | Stops | Boardings | Share |
 |---|---:|---:|---:|
-| Loses all service | 592 | 478 | 0.7% |
-| Loses 50–99% | 197 | 682 | 1.0% |
-| Loses 25–50% | 614 | 4,174 | 6.2% |
-| Loses 10–25% | 944 | 9,830 | 14.5% |
-| About the same (±10%) | 1,364 | 29,871 | 44.2% |
-| Gains 10–25% | 665 | 10,513 | 15.5% |
-| Gains 25–50% | 745 | 8,338 | 12.3% |
-| Gains >50% | 626 | 3,733 | 5.5% |
+| Loses all service | 593 | 488 | 0.7% |
+| Loses 50–99% | 279 | 813 | 1.2% |
+| Loses 25–50% | 567 | 3,337 | 4.9% |
+| Loses 10–25% | 730 | 7,161 | 10.6% |
+| About the same (±10%) | 1,468 | 29,222 | 43.2% |
+| Gains 10–25% | 769 | 14,050 | 20.8% |
+| Gains 25–50% | 671 | 8,808 | 13.0% |
+| Gains >50% | 670 | 3,741 | 5.5% |
 
-**33% of boardings sit where service grows by 10% or more; 23% where it shrinks
-by 10% or more.** Weighted by boardings the average location gains **+6.7%**;
-unweighted it gains **+1.7%**. The gains land where riders already are — this is
-a textbook ridership-over-coverage redesign, and it is worth saying so plainly
-rather than treating every reduction as a loss.
+**39% of boardings sit where service grows by 10% or more; 18% where it shrinks
+by 10% or more.** Weighted by boardings the average location gains **+8.6%**;
+unweighted the average location is **flat (−0.0%)**. The gains land where riders
+already are — this is a textbook ridership-over-coverage redesign, and it is
+worth saying so plainly rather than treating every reduction as a loss.
 
-### The cut lands after 11pm
+### The real shape of the change: peaks to all-day
 
 | Period | Current | Proposed | Change |
 |---|---:|---:|---:|
-| Early 4–6a | 45,243 | 68,973 | **+52.4%** |
-| AM peak 6–9a | 225,405 | 240,582 | +6.7% |
-| Midday 9a–3p | 355,919 | 380,319 | +6.9% |
-| PM peak 3–6p | 237,291 | 240,344 | +1.3% |
-| Evening 6–8p | 118,065 | 112,015 | −5.1% |
-| Late 8–11p | 129,111 | 102,912 | **−20.3%** |
-| Owl 11p–4a | 63,544 | 43,268 | **−31.9%** |
+| Early 4–6a | 45,243 | 34,469 | **−23.8%** |
+| AM peak 6–9a | 225,405 | 213,629 | −5.2% |
+| Midday 9a–3p | 355,919 | 388,530 | +9.2% |
+| PM peak 3–6p | 237,291 | 216,858 | −8.6% |
+| Evening 6–8p | 118,065 | 135,693 | **+14.9%** |
+| Late 8–11p | 129,111 | 131,209 | +1.6% |
+| Owl 11p–4a | 63,544 | 93,131 | **+46.6%** |
 
 (Summed stop-visits across locations; read as ratios, not bus counts.)
 
-The two night periods are structurally different, and the difference is the
-finding:
+This is the finding. **The plan moves service out of the commute peaks and the
+pre-dawn hour, and into the midday, evening and overnight.** It is a coherent
+strategy — a network useful all day rather than twice a day — and it is a real
+trade-off for peak commuters, who see 5–9% fewer buses when they travel.
 
-- **8–11pm is a headway stretch, not a withdrawal.** 62 routes run today and
-  only **two lose it entirely** — 36 and Y46, both peak-only Flyers whose
-  proposed span ends at 6pm. What happens to the other 60 is a **flat hourly
-  floor**: 17 routes are cut by more than a quarter, and in almost every case
-  that is 4.5–6 trips per direction becoming exactly 3 — the 3-hour period at a
-  published 60-minute headway. The routes are 4, 8, 13, 38, 39, 40, 48, 54, 61D,
-  71D, 74, 75, 79, 81, 86, 91, G2. Evening service gets slower and more uniform;
-  it does not disappear.
-- **11pm–4am is a withdrawal.** 45 routes run today and **23 lose it entirely**
-  — half. The survivors mostly keep or improve what they have (5 are cut >25%).
-  Losing all owl service: 6, 14, 21, 26, 27, 31, 39, 40, 41, 44, 55, 56, 59,
-  61D, 67, 69, 79, 81, 83, 86, G2, Y46, Y49.
+Very few routes lose a time period outright, and those that do are overwhelmingly
+routes being discontinued altogether rather than routes being trimmed:
 
-So the plan concentrates *overnight* service onto a smaller trunk network while
-flattening the late evening to hourly. That is a real structural change and it is
-not what the "14 new routes" framing conveys — but it is a narrower claim than
-"routes lose their night service," which is what an earlier version of this
-document said on the strength of a parser bug (see caveat 9).
+| Period | Routes running today | Lose it entirely |
+|---|---:|---:|
+| Early 4–6a | 83 | 17 |
+| AM peak | 94 | 17 |
+| Midday | 78 | 12 |
+| PM peak | 94 | 17 |
+| Evening 6–8p | 76 | 8 |
+| Late 8–11p | 70 | 8 |
+| Owl 11p–4a | 50 | 7 |
 
-Four more routes — 29, 55, 69 and P78 — keep 8–11pm service **only through
-their "S" variants**, table rows named "(weekend service)" that nonetheless
-carry weekday spans of exactly 8:00–11:00pm. Those variants have no geometry in
-the Remix map, so the stop-level columns above exclude them: at stop level those
-four corridors still read as losing their evening service, and the
-`_with_variants` column is where they reappear. What these rows actually
-represent is worth confirming with PRT during the comment period.
+Of the seven routes losing owl service, four (15, 2, 43, 53L) are discontinued
+outright. The genuine overnight withdrawals from surviving corridors are the
+**55**, the **69** and the **Y46** (as the 46L). Only two surviving services lose
+8–11pm: the **36** (as the 36L) and the **Y46**, both peak-only Flyers.
+
+### Correction, 2026-08-17: the night-service finding is withdrawn
+
+An earlier version of this document reported that late-evening service falls
+**−20.3%** and overnight service **−31.9%**, with "23 routes losing owl service
+entirely". Those figures came from modelling the proposal as *span ÷ published
+headway*. The real timetable contradicts them: late evening is **+1.6%** and
+overnight is **+46.6%**.
+
+Two modelling errors produced it, both now measurable against the feed
+(`verify_proposed_gtfs.py` prints all of this):
+
+1. **The published span end is not the end of service.** It is the last
+   departure from the route's anchor; the feed's last departure is later on
+   **all 240 route-days**, by a median of **96 minutes**. Modelling therefore cut
+   the end of every route's day.
+2. **Span × headway cannot express a midday gap**, so peak-only routes were run
+   all day by the model — ten "L" routes were modelled at 28 weekday trips and
+   actually run 14.
+
+Whole-network daily totals were barely affected (+1.4%), which is why the error
+survived earlier checks: it misallocated service across the day rather than
+inventing or destroying it. **Any citation of the night-service claim should be
+withdrawn.**
 
 ### Walk distance is doing real work — check the radius
 
-At 150 m instead of 400 m, 907 stops carrying **11,271 boardings (17%)** look
+At 150 m instead of 400 m, 896 stops carrying **10,170 boardings (15%)** look
 materially worse. Their service is not being cut; it is being **consolidated
 onto a stop 150–400 m away**. The change those riders face is a longer walk.
 
 | Stop | 150 m | 400 m |
 |---|---:|---:|
-| Fifth Ave at Chesterfield Rd (West Oakland) | −96% | +6% |
-| Forbes Ave at Atwood St (Central Oakland) | −48% | +6% |
-| 7th St at Ft Duquesne Blvd (Downtown) | −52% | −9% |
-| Centre Ave at Negley Ave (Shadyside) | −18% | +10% |
-| Penn Ave at Highland Ave (East Liberty) | +11% | +40% |
+| Fifth Ave at Chesterfield Rd (West Oakland) | −96% | +11% |
+| Forbes Ave at Atwood St (Central Oakland) | −46% | +12% |
+| 7th St at Ft Duquesne Blvd (Downtown) | −52% | −5% |
+| Fifth Ave at Atwood Station (West Oakland) | −46% | +12% |
+| Smithfield St at Third Ave (Downtown) | −14% | +24% |
 
 Fifth & Chesterfield is the archetype: the proposal keeps the stop but routes
 nothing through it, while a 17-route "PRTX" station sits 219 m away. At 150 m
@@ -137,49 +153,26 @@ deserve individual review rather than a flat radius.
 
 | Boardings | Stop | Place | Trips |
 |---:|---|---|---|
-| 113.3 | Fifth Ave at Negley Ave | Shadyside | 399 → 294 (−26%) |
-| 83.8 | North Ave at Sandusky St (AGH) | Central Northside | 719 → 532 (−26%) |
-| 79.3 | Fifth Ave at Shady Ave | Shadyside | 398 → 284 (−29%) |
-| 76.3 | North Ave at Brighton Rd | Allegheny Center | 450 → 326 (−28%) |
-| 75.0 | South Busway at South Hills Jct | Mount Washington | 521 → 374 (−28%) |
-| 63.1 | Reedsdale St at Boyce St | Chateau | 181 → 96 (−47%) |
-| 54.9 | Perrysville Ave at Burgess St | Perry South | 195 → 146 (−25%) |
-| 45.0 | Waterfront Dr at AMC Theatre | West Homestead | 265 → 132 (−50%) |
+| 83.8 | North Ave at Sandusky St (AGH) | Central Northside | 719 → 536 (−26%) |
+| 79.3 | Fifth Ave at Shady Ave | Shadyside | 398 → 294 (−26%) |
+| 76.3 | North Ave at Brighton Rd | Allegheny Center | 450 → 335 (−26%) |
+| 75.0 | South Busway at South Hills Jct | Mount Washington | 521 → 379 (−27%) |
+| 63.1 | Reedsdale St at Boyce St | Chateau | 181 → 99 (−45%) |
+| 45.0 | Waterfront Dr at AMC Theatre | West Homestead | 265 → 136 (−49%) |
+| 42.4 | 6th St at Braddock Ave | Braddock | 295 → 172 (−42%) |
+| 39.7 | 8th Ave at Dickson St | Homestead | 469 → 237 (−50%) |
 
 ### Method validation
 
-The obvious worry is that counting real GTFS trips against published headways is
-unfair to the proposal, because real schedules add trippers and taper within a
-period while a published headway is flat. Tested directly: for each current
-route, count its GTFS weekday trips per direction in the period each trip starts
-in, and compare that against the headway-derived trips per direction summed over
-every proposed route the frequency table lists as its successor.
+The proposed feed is checked against the documents PRT actually published, by
+`verify_proposed_gtfs.py`: all 95 bus routes appear in both, the day types each
+route runs agree for all 95, and service start times match on 229 of 240
+route-days. That agreement is the basis for treating a feed PRT did not publish
+as the Proposed Final Network.
 
-| Period | Routes | Loses all | Cut >25% | Within ±25% | Better | Median ratio |
-|---|---:|---:|---:|---:|---:|---:|
-| Early 4–6a | 68 | 4 | 23 | 25 | 16 | 0.78 |
-| AM peak | 73 | 0 | 7 | 44 | 22 | 1.09 |
-| Midday | 65 | 5 | 6 | 38 | 16 | **1.00** |
-| PM peak | 73 | 0 | 6 | 48 | 19 | **1.00** |
-| Evening 6–8p | 64 | 4 | 4 | 43 | 13 | **1.00** |
-| Late 8–11p | 62 | 2 | 17 | 38 | 5 | 0.86 |
-| Owl | 45 | 23 | 5 | 12 | 5 | 0.00 |
-
-A median ratio of exactly 1.00 across the midday, PM peak and evening periods,
-with winners and losers either side, is what an unbiased method looks like in the
-periods that carry most of the ridership. The two night rows behave differently
-from each other in the way section C describes: 8–11pm is a broad stretch toward
-hourly (median 0.86, only 2 withdrawals), while the owl median of 0.00 simply
-records that more than half of the routes running tonight will not run at all.
-
-Two rows deserve scepticism rather than citation. **Early 4–6a** is volatile
-because both sides count very few trips — a route starting at 5:00am today and
-5:30am under the proposal swings the ratio hard — so its 0.78 median sits oddly
-beside the +52.4% system total, which is dominated by a handful of frequent trunk
-routes. And the whole table is a **re-derivation**: no script in this repo
-produces it (see `docs/answers/README.md` on the missing route-level rollup), and
-these numbers do not reproduce the ones published here previously, so the method
-above — not the earlier table — is what these figures mean.
+An earlier version of this section carried a hand-derived route-level table
+comparing GTFS trips to published headways. It is superseded by that script and
+by section D, both of which are reproducible.
 
 ---
 
@@ -198,10 +191,14 @@ more than three quarters.
 
 | | Stops | Weekday boardings |
 |---|---:|---:|
-| Kept, same stop id | 4,568 | 64,444 |
-| Kept, stop within 150 m (renumbered/shifted) | 344 | 5,294 |
-| **Lose all service** | **854** | **936** (1.3%) |
-| Unverifiable | 16 | 211 |
+| Kept, same stop id | 4,497 | 64,061 |
+| Kept, stop within 150 m (renumbered/shifted) | 405 | 5,623 |
+| **Lose all service** | **880** | **1,200** (1.7%) |
+
+**The "unverifiable" tier is gone.** It existed because the proposed network was
+read from the Remix map, whose base feed is 2023: a stop served today and absent
+from Remix might have been built after 2023 rather than dropped. PRT's own feed
+settles it, and all 16 stops formerly parked there are genuine losses.
 
 The affected stops are overwhelmingly low-ridership; the worst carries 30
 boardings a day. Distance to the nearest remaining stop matters more than the
@@ -209,12 +206,12 @@ boardings total:
 
 | Distance | Stops |
 |---|---:|
-| 150–250 m | 171 |
-| 250–400 m | 133 |
-| 400–800 m | 223 |
-| **over 800 m** | **343** |
+| 150–250 m | 178 |
+| 250–400 m | 134 |
+| 400–800 m | 224 |
+| **over 800 m** | **344** |
 
-Median 641 m, 90th percentile 1,688 m, max 3,338 m. **343 stops end up more than
+Median 636 m, 90th percentile 1,678 m, max 3,338 m. **344 stops end up more than
 800 m from any remaining service.** Low ridership at a stop is partly a
 *consequence* of thin service, so 936 boardings understates the harm.
 
@@ -259,6 +256,96 @@ natural audience for comment-period outreach.
 
 ---
 
+## D. Service hours by corridor group
+
+`analyze_route_hours.py` answers BASE_CAMP's LOSE/GAIN-SERVICE-HOURS. It groups
+current route numbers with the proposed numbers PRT maps them to, so renumbering
+does not read as a route vanishing, and compares trips and in-service hours.
+
+| Day | Trips now | Proposed | Change | Hours now | Proposed | Change |
+|---|---:|---:|---:|---:|---:|---:|
+| Weekday | 5,266 | 5,559 | **+5.6%** | 4,253 | 4,360 | +2.5% |
+| Saturday | 3,513 | 4,107 | **+16.9%** | 2,609 | 3,078 | **+18.0%** |
+| Sunday | 2,611 | 3,143 | **+20.4%** | 1,969 | 2,278 | **+15.7%** |
+
+**Weekend service grows substantially** — about a sixth more trips and hours on
+both Saturday and Sunday. That belongs next to the weekend *losses* that
+`analyze_coverage_change.py` finds at specific locations: the system runs more
+weekend service overall while particular places lose theirs.
+
+Two cautions on this table:
+
+- **Revenue hours are in-service time only** — first stop to last, summed over
+  trips. Layover, deadhead and pull-in/pull-out are not in a GTFS. This is a
+  floor on platform hours and is **not** comparable to PRT's service-hour budget.
+- **A group is not a corridor.** Where the plan covers a corridor with a route
+  PRT records as NEW, the new route forms its own group and the incumbent's
+  looks cut. Carrick again: today's 51 groups with the proposed 51 and 51S and
+  reads as −10% weekday trips, while the new route 45 — 70 weekday trips over
+  much of the same corridor — sits in a separate group. Section C is the
+  authority on whether a *place* gains or loses buses; this section is the
+  authority on what happened to a *service*.
+
+Only two surviving groups lose half or more of their weekday trips: **Y46 → 46L**
+(50 → 14, −72%) and **36 → 36L** (40 → 14, −65%), both peak-only Flyers becoming
+limited-stop services. Two groups at least double: **7** (12 → 34) and **11**
+(25 → 54).
+
+Hours and trips can move in opposite directions within a group, because the plan
+shortens some routes and lengthens others: route 59 averages 129 in-service
+minutes per trip today and 67 proposed, over 52 trips then and 66 now. That is a
+route split in half, not a service cut. System-wide the average trip length is
+near-flat (−2.9% weekday).
+
+---
+
+## E. How much ground keeps a bus
+
+Sections A and C are measured at stops that exist today, which cannot answer
+"how much of the county keeps a bus" and cannot see ground the plan adds one to.
+`analyze_coverage_area.py` measures the union of 400 m walk radii around every
+served stop in each network, on a 100 m lattice, applying the *same* cluster and
+maximum-gap tests at every point instead of at every stop.
+
+| Coverage criterion | Now | Proposed | Change |
+|---|---:|---:|---:|
+| Any bus, any day | 460.4 km² | 405.1 km² | **−55.4 (−12.0%)** |
+| Any bus, weekends | 381.4 km² | 364.1 km² | −17.4 (−4.6%) |
+| Hourly or better, weekday | 313.3 km² | 321.4 km² | **+8.1 (+2.6%)** |
+| Hourly or better, weekend | 204.4 km² | 246.9 km² | **+42.4 (+20.8%)** |
+
+**80.1 km² loses all fixed-route service; 24.8 km² gains it.** Those are
+different places, so the −55.4 net is the smaller of the two true statements.
+Area falls faster than the stop count does — 17.4% of ground against 10.3% of
+locations — because the ground being dropped is where stops are furthest apart:
+cul-de-sac loops and hill roads, not corridors.
+
+Read against section D, this is the plan's actual trade. More trips and more
+hours, run over an eighth less territory, with the frequent-service footprint
+growing as the any-service footprint shrinks. Neither "the Refresh is a cut" nor
+"the Refresh adds service" survives this table alone.
+
+The lattice is not doing the work: 200/100/50/25 m give 459.0/460.4/460.5/460.5
+km² today and −12.0% at every pitch. At a strict 150 m radius the loss is
+−13.5%.
+
+**23% of the lost area (18.3 km²) falls inside one of the 10 proposed on-demand
+microtransit zones** — mostly the McCandless zone, 8.5 km². Each zone runs
+7am–9pm weekdays and 8am–8pm weekends on 1–3 vehicles for the whole zone, so
+they are reported beside the loss and never subtracted from it. They come from
+the Remix project file, which flags all ten `isHidden`; nothing here verifies
+PRT has committed to them.
+
+Two limits specific to this section. **Area is unweighted land** — Hays Woods,
+the rivers and the airfield count like Brookline, and a population-weighted
+version needs census geography this repo does not carry, so read area as extent
+and section C as who is standing in it. And the **walk radius is straight-line**,
+which flatters both networks equally. Blocks, municipal totals and the zone
+table are in `data/coverage_area_blocks.csv`, `_places.csv` and `_ondemand.csv`;
+the write-up is [docs/answers/COVERAGE-CHANGE.md](docs/answers/COVERAGE-CHANGE.md).
+
+---
+
 ## Caveats — read before citing
 
 1. **Stop-level boardings are May 2025** and have not been refreshed since.
@@ -268,22 +355,29 @@ natural audience for comment-period outreach.
    30%". Treat section A and C boardings as relative weights, not counts.
 3. **Alightings have not been published since September 2023**, so everything
    here is boardings-only and understates alight-heavy stops.
-4. **The Remix map is built on a 2023 base feed.** Stop identity carries three
-   years of drift; 16 stops served today are absent from it and are flagged
-   `unverifiable` rather than counted.
+4. **The proposed GTFS is not published anywhere.** Its own
+   `feed_info.txt` names PRT as publisher and is stamped 2026-08-11, six days
+   before the Proposed Final Network was published; it exists at no URL and
+   cannot be re-fetched. **How it reached this repo is not yet recorded in
+   `DATA_SOURCES.md` and must be before publication.** `verify_proposed_gtfs.py`
+   checks it against what PRT *did* publish. That is the basis for treating it as
+   the final plan; it is not the same as PRT publishing it.
 5. **The walk radius is a flat-earth proxy.** 400 m of map distance across a
    Pittsburgh hillside, busway, or river is not 400 m of walking. Both radii are
    reported precisely because the answer moves.
-6. **Six routes have published headways but no geometry** (29S, 35S, 51S, 55S,
-   69S, 78S — short-turn and school variants). They are excluded from the
-   stop-level proposed counts and shown as a `_with_variants` sensitivity, which
-   moves the system total from +1.2% to +5.0%. Corridors 29, 35, 51, 55, 69 and
-   78 are understated in the main columns.
-7. **The Remix map holds exactly one pattern per route-direction.** Real
-   networks have short-turns and branches, so proposed service is an upper bound
-   on outer segments of any route that will in practice run variants.
-8. **No proposed timetables exist**, so headway × span is the best available
-   proxy. It cannot capture trippers, school specials, or within-period tapering.
+6. **The two feeds describe different years.** The current feed is sampled on
+   2026-09-16/19/20, the proposed feed on 2027-09-15/18/19 — each a holiday-free
+   week inside its own validity window.
+7. **The current feed contains two holiday calendars that look like day types.**
+   Service 4 has `monday=1` but runs only on Labor Day; service 1 is the same
+   for July 4. Counting either as a day type credits 70 routes with a schedule
+   they do not run, so day types are resolved for real dates. The proposed feed
+   has no such trap.
+8. **Comparisons exclude rail and the inclines** on both sides — they are
+   outside the Refresh. The proposed feed does contain them.
+   *Three caveats carried here previously — the Remix 2023 base feed, the six
+   S-variants with no geometry, and the absence of proposed timetables — are all
+   retired by PRT's feed.*
 9. **Correction, 2026-08-17.** The weekday frequency PDF repeats its column
    header on each of its four pages at a slightly different offset, and the
    parser measured the columns once on page 1. On page 3 the drift pushed the
@@ -303,9 +397,12 @@ natural audience for comment-period outreach.
 
 ```bash
 python3 ingest_blr.py               # sources -> data/*.csv
+python3 verify_proposed_gtfs.py     # proposed feed vs PRT's published tables
 python3 analyze_service_loss.py     # -> data/stop_service_change.csv       (A)
 python3 analyze_route_ridership.py  # -> data/discontinued_route_*.csv      (B)
 python3 analyze_frequency_change.py # -> data/stop_frequency_change.csv     (C)
+python3 analyze_route_hours.py      # -> data/route_frequency_change.csv    (D)
+python3 analyze_coverage_area.py    # -> data/coverage_area*.csv            (E)
 ```
 
 `data/stop_frequency_change.csv` has one row per location with current and

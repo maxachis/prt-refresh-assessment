@@ -133,6 +133,23 @@ inclines, and reused numbers), and all 10,464 sequence rows resolve to a stop.
 - This is an undocumented internal API for a public map. It can change without
   notice; `data/raw/` caches every response so analysis stays reproducible.
 
+### The on-demand zones — the one thing only Remix has
+
+`/api/projects/82ea6210` (cached as `data/raw/remix_project.json`) carries
+`scenarios[0].onDemandZones`: **10 microtransit zone polygons** — McCandless,
+Penn Hills, South Hilltop, McKeesport, McKees Rocks, Robinson, South Side,
+Airport Area, Highlands Area, USC-BP — each with a weekday and two weekend
+service entries giving hours (7am–9pm weekdays, 8am–8pm weekends) and a vehicle
+count (`supply`, 1–3 per zone). No GTFS can express them: an on-demand zone has
+no stops and no timetable.
+
+`analyze_coverage_area.py` is the only consumer, and it rasterises the polygons
+onto the same lattice as the coverage tiers to ask how much of the lost
+fixed-route area they cover — 23%. Two cautions before citing them: all ten
+carry `isHidden: true` in the project file, and nothing here checks them against
+a published PRT document, so treat them as what the plan file says rather than
+as a commitment. They are reported beside the losses, never netted off.
+
 ## The WPRDC stop-usage package: what its removal actually costs
 
 `data.wprdc.org/dataset/prt-transit-stop-usage` now returns
@@ -202,6 +219,7 @@ python3 analyze_frequency_change.py # -> data/stop_frequency_change.csv
 python3 analyze_one_seat.py         # -> data/oneseat_change.csv
 python3 analyze_coverage_change.py  # -> data/route_service_days.csv,
                                     #    data/coverage_change.csv
+python3 analyze_coverage_area.py    # -> data/coverage_area*.csv
 ```
 
 See `FINDINGS.md` for results.
@@ -229,7 +247,11 @@ Outputs, all in `data/`:
 | `oneseat_change.csv` | 369 | place × anchor: gains / keeps / loses a one-seat ride, with the routes responsible |
 | `route_service_days.csv` | 74 | per modified route: day types now vs proposed, by number and with variants credited, days lost / gained, riders by day type |
 | `coverage_change.csv` | 5,751 | per stop: the five BASE_CAMP coverage tiers for both networks, at 400 m and 150 m, trips by day type, route lists, `id_name_mismatch` |
-| `stop_route_replace.csv` | 356 | stops where one route replaces another at comparable service |
+| `stop_route_replace.csv` | 371 | stops where one route replaces another at comparable service |
+| `coverage_area.csv` | 10 | radius × tier: covered land area now vs proposed, km² lost / gained / retained |
+| `coverage_area_blocks.csv` | 450 | each contiguous block of lost or gained coverage over 0.1 km², with place, nearest stop and centroid |
+| `coverage_area_places.csv` | 452 | net km² gained or lost per municipality / neighbourhood, per tier |
+| `coverage_area_ondemand.csv` | 10 | per proposed on-demand zone: zone area, fixed-route coverage now vs proposed inside it, lost area inside it, vehicles and hours |
 
 Raw downloads are cached in `data/raw/` and reused.
 

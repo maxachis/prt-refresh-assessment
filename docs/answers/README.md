@@ -21,15 +21,16 @@ the same caveats as everything below.
 | GAIN-OTHER / LOSE-OTHER | Not started — editorial | `data/exhibit_a.txt`, route pages |
 | NEW-ROUTE | **Answered** — 14 routes | [doc](NEW-ROUTE.md), `data/route_crosswalk.csv` |
 | LOST-ROUTE | **Answered** — 20 routes, plus the 77 | [doc](LOST-ROUTE.md), `data/discontinued_route_ridership_202604.csv` |
-| COVERAGE-CHANGE | **Answered for all 5 criteria**; area in km² not built | [doc](COVERAGE-CHANGE.md), `data/coverage_change.csv` |
+| COVERAGE-CHANGE | **Answered in full** — 5 criteria, by location and by area | [doc](COVERAGE-CHANGE.md), `data/coverage_change.csv`, `data/coverage_area*.csv` |
 | RIDERSHIP-PROJECTIONS | Deferred by decision | to be a bounded scenario range, assumptions stated inline |
 | LOSE-SERVICE-DAYS | **Answered** | [doc](LOSE-SERVICE-DAYS.md), `data/route_service_days.csv` |
 | GAIN-SERVICE-DAYS | **Answered** | [doc](GAIN-SERVICE-DAYS.md), `data/route_service_days.csv` |
-| LOSE/GAIN-SERVICE-HOURS | Not answered | needs a route-level rollup no script writes; `data/route_frequency_change.csv` is orphaned and predates both the 8–11pm headway fix (caveat 8) and the proposed GTFS (caveat 10) — **do not cite it** |
-| LOSE-FREQUENCY-HALF | **Answered** | [doc](LOSE-FREQUENCY-HALF.md), `data/coverage_change.csv`: 282 locations keep service and lose ≥half their weekday trips |
-| GAIN-FREQUENCY-DOUBLE | **Answered** | [doc](GAIN-FREQUENCY-DOUBLE.md), `data/coverage_change.csv`: 221 double on weekdays, 342 on Saturday |
+| LOSE-SERVICE-HOURS | **Answered** | [doc](LOSE-SERVICE-HOURS.md), `data/route_frequency_change.csv`: hours rise system-wide; 24 groups keep service and lose ≥10% of weekday hours, 17 of them losing trips too |
+| GAIN-SERVICE-HOURS | **Answered** | [doc](GAIN-SERVICE-HOURS.md), `data/route_frequency_change.csv`: +2.5% weekday hours, +18.0% Saturday, +15.7% Sunday; 26 groups gain ≥10% on weekdays plus 14 new groups |
+| LOSE-FREQUENCY-HALF | **Answered** | [doc](LOSE-FREQUENCY-HALF.md), `data/coverage_change.csv`: 284 locations keep service and lose ≥half their weekday trips |
+| GAIN-FREQUENCY-DOUBLE | **Answered** | [doc](GAIN-FREQUENCY-DOUBLE.md), `data/coverage_change.csv`: 217 double on weekdays, 331 on Saturday |
 | STOP-LOST-SERVICE | **Answered for all 5 criteria** | [doc](STOP-LOST-SERVICE.md), `data/coverage_change.csv`, `data/stop_service_change.csv` |
-| STOP-ROUTE-REPLACE | **Answered** | [doc](STOP-ROUTE-REPLACE.md), `data/stop_route_replace.csv`: 356 locations |
+| STOP-ROUTE-REPLACE | **Answered** | [doc](STOP-ROUTE-REPLACE.md), `data/stop_route_replace.csv`: 371 locations |
 
 ## Location-level answers
 
@@ -39,6 +40,7 @@ question the comment period actually generates.
 | Place | Status | Output |
 |---|---|---|
 | OUTER-CHARTIERS | **Answered** | [doc](locations/OUTER-CHARTIERS.md), `data/coverage_change.csv` |
+| ROUTE-51 | **Answered** — two corridors, opposite directions | [doc](locations/ROUTE-51.md), `data/coverage_change.csv`, `data/stop_service_change.csv` |
 
 ## Days of service and coverage tiers
 
@@ -46,9 +48,8 @@ question the comment period actually generates.
 other script is weekday-only, so a place that keeps its weekday buses and loses
 Saturday and Sunday reads as untouched everywhere else. It writes
 `data/route_service_days.csv`, `data/coverage_change.csv` and
-`data/stop_route_replace.csv`, and it is the only analysis here built on the
-**proposed network's own GTFS** (`data/raw/proposed_gtfs/`) rather than on the
-Remix map plus the frequency PDFs — see
+`data/stop_route_replace.csv`, counting both networks from their own GTFS
+timetables through the shared `gtfs.py` loader — see
 [METHOD-coverage.md](METHOD-coverage.md). Headline results:
 
 - **Two corridors lose a day type**: Banksville (the 36 becomes the peak-only
@@ -61,15 +62,33 @@ Remix map plus the frequency PDFs — see
   (18). The mechanism in all three is an all-week flyer becoming a peak-only
   weekday limited.
 - **Weekend service grows**: summed across locations, Saturday trips are up
-  15.6% and Sunday 17.1%, and weekend hourly-or-better coverage is net **+415
-  locations**. Weekdays are +3.7% and roughly neutral on the hourly tier (−28).
+  15.3% and Sunday 16.8%, and weekend hourly-or-better coverage is net **+415
+  locations**. Weekdays are +3.3% — the same figure `FINDINGS.md` §C reports — and roughly
+  neutral on the hourly tier (−28).
 - **490 locations drop below hourly-or-better on weekdays** — no gap over 60
   minutes anywhere between 6am and 6pm — and 462 rise to it.
 
-What is still missing for COVERAGE-CHANGE is only the fifth tier's units:
-**coverage as an area in square kilometres**. That needs no new source — both
-networks' stop coordinates are already in `data/`, so it is a buffer union over
-the same tiers this script already computes per location.
+## Coverage as area
+
+`analyze_coverage_area.py` answers the same five tiers in square kilometres,
+which the per-location tiers structurally cannot: they are measured at stops
+that exist today, so ground the plan adds a bus to is invisible to them. It
+rasterises the union of walk-radius discs on a 100 m lattice — the same cluster
+and gap tests as above, applied at every point rather than at every stop — and
+writes `data/coverage_area.csv`, `coverage_area_blocks.csv`,
+`coverage_area_places.csv` and `coverage_area_ondemand.csv`.
+
+- **The footprint shrinks 12.0%**: 460.4 → 405.1 km² within 400 m of a bus on
+  any day. 80.1 km² loses all fixed-route service and 24.8 km² gains it.
+- **The ground within reach of an hourly-or-better bus grows** — +2.6% on
+  weekdays, **+20.8% on weekends**. Coverage traded for frequency, quantified.
+- **Area falls faster than the stop list** (17.4% of ground lost against 10.3%
+  of locations), because what is dropped is where stops are furthest apart.
+- **The largest single losses**: McCandless/Ross/Hampton 12.0 km², Plum 7.8,
+  Baldwin 5.7 + 4.7, Kennedy 4.9, Mount Lebanon 4.9, Reserve 4.5.
+- **The largest single gain is ground with no PRT stop today** — 3.5 km² up
+  Perry Hwy past AHN Wexford, which no location-based method can see.
+- **23% of the lost area falls inside a proposed on-demand zone** (see below).
 
 ## The one blocked question
 
@@ -99,10 +118,10 @@ These apply to every answer here, and each has bitten at least once:
 
 1. **The Remix map is built on a 2023 base feed**, so proposed stop inventory
    drifts against the 2026 current GTFS.
-2. **The Remix map carries no timetables**, so any answer built on it takes *how
-   much* service from the frequency PDFs. This is no longer the only option — see
-   caveat 9 — but it is still true of every script except
-   `analyze_coverage_change.py`.
+2. **The Remix map carries no timetables**, which is why proposed service was
+   originally taken from the frequency PDFs. Superseded by caveat 9: the analyses
+   now count both networks from GTFS, and the PDFs serve as a published
+   cross-check. Remix remains the only source for the microtransit zones.
 3. **Boardings are May 2025 weekday averages**, unlinked and unweighted, and
    alightings are unavailable.
 4. **PRT's `HOOD`/`MUNI` labels contain gross errors** — stops mislabelled by up
@@ -128,17 +147,19 @@ These apply to every answer here, and each has bitten at least once:
    halving/doubling — inherits that file, so re-run the chain after any change to
    `ingest_blr.py` rather than trusting a cached CSV.
 9. **A GTFS for the proposed network now exists, and it supersedes the PDFs and
-    the Remix map wherever the two disagree.** `data/raw/proposed_gtfs/` has real
-    timetables — 14,488 trips, 698,865 `stop_times` rows. Only
-    `analyze_coverage_change.py` uses it so far. Two things it fixes were changing
-    answers: the S-variants (29S, 53S, 55S, 69S, 78S, 89S) are absent from the
-    Remix map, so Remix-based analysis silently drops the weekend service on their
-    corridors; and span ÷ headway doubles the peak-only limiteds, which run one
-    direction. In aggregate the PDF estimate is good — within 1.4% of the feed
-    system-wide — so the older outputs are not junk, but any *proposed-side*
-    figure they carry should be re-derived from the feed before publication. This
-    includes `FINDINGS.md` §C's −0.9% weekday change, which the feed puts at
-    **+3.7%**. See [METHOD-coverage.md](METHOD-coverage.md).
+   the Remix map wherever the two disagree.** `data/raw/proposed_gtfs/` has real
+   timetables — 14,488 trips, 698,865 `stop_times` rows — and `gtfs.py` loads
+   either network through the same code, so "measure both sides identically" is
+   now structural rather than a convention. Two things it fixes were changing
+   answers: the S-variants (29S, 53S, 55S, 69S, 78S, 89S) are absent from the
+   Remix map, so Remix-based analysis silently drops the weekend service on their
+   corridors; and span ÷ headway doubles the peak-only limiteds, which run one
+   direction. In aggregate the PDF estimate was good — within 1.4% of the feed
+   system-wide — but it misallocated service across the day, which is why the
+   earlier night-service finding was withdrawn (`FINDINGS.md` §C). **No
+   PDF-derived proposed-side figure remains in `data/`**: the last one was
+   `route_frequency_change.csv`, now regenerated from both timetables by
+   `analyze_route_hours.py` ([LOSE-SERVICE-HOURS.md](LOSE-SERVICE-HOURS.md)).
 10. **Stop ids collide between the usage extract and the GTFS.** They are not
     one namespace: for **119 of the 5,751 rows in `data/coverage_change.csv`**
     the two feeds disagree entirely about which stop an id names. The affected
@@ -159,15 +180,27 @@ These apply to every answer here, and each has bitten at least once:
     nearly their whole route list because the 61A–D become the 60X/61X/62X and the
     P-flyers become L-limiteds. Any stop-level route comparison has to translate
     through `route_crosswalk.csv` first and fold the S-variants into their
-    parents: doing so cuts the STOP-ROUTE-REPLACE candidate set from 903 stops to
-    751, and to **356** once stops carrying more than four routes today are
+    parents: doing so cuts the STOP-ROUTE-REPLACE candidate set from 901 stops to
+    749, and to **371** once stops carrying more than four routes today are
     excluded as well, since a Downtown stop with 38 routes is never a clean
     substitution ([STOP-ROUTE-REPLACE.md](STOP-ROUTE-REPLACE.md)).
 
+12. **The 10 on-demand zones are counted in area, and nowhere else.**
+    `data/raw/remix_project.json`'s `onDemandZones` polygons are the proposed
+    microtransit areas, and `analyze_coverage_area.py` is the first thing here
+    to measure them: **18.3 of the 80.1 km² losing all fixed-route service —
+    23% — falls inside one**, concentrated in the McCandless zone (8.5 km²) and
+    South Hilltop (5.0). Each zone runs all week, 7am–9pm weekdays and 8am–8pm
+    weekends, on **1 to 3 vehicles for the whole zone**, so a zone is a fallback
+    and not a replacement; the figures are reported beside losses and never
+    netted off them. Two limits on this: every *location-level* answer here
+    (REGION-LOSS, STOP-LOST-SERVICE, the `locations/` files) still ignores the
+    zones and so may overstate loss where one applies; and the zones come from
+    the Remix project file, which flags all ten `isHidden` — nothing verifies
+    PRT has published or committed to them.
+
 ## Not yet reflected here
 
-`data/raw/remix_project.json` contains **10 `onDemandZones` polygons** — the
-proposed microtransit areas. No answer currently accounts for them, which means
-REGION-LOSS may overstate losses in places slated for on-demand service instead
-of fixed route. This should be resolved before any coverage or region finding is
-published.
+The zones above are counted only in the area answer. Folding them into the
+location-level answers — flagging each affected stop rather than each square
+kilometre — is the obvious next step, and needs no new source.

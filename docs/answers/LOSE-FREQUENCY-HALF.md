@@ -2,9 +2,9 @@
 
 > What routes are seeing frequency halve or worse?
 
-**282 locations keep a bus and lose at least half their weekday trips**, carrying
-822 weekday boardings. On weekends the picture reverses: 123 locations lose half
-their Saturday trips while 342 at least double them.
+**284 locations keep a bus and lose at least half their weekday trips**, carrying
+829 weekday boardings. On weekends the picture reverses: 125 locations lose half
+their Saturday trips while 331 at least double them.
 
 The question asks about routes; the answer has to be given by location. The plan
 re-splits corridors, so "route 51 halves" is an artifact of the 51 being divided
@@ -20,9 +20,9 @@ those that double:
 
 | Day | Halved or worse | Boardings | Doubled or better | Boardings |
 |---|---:|---:|---:|---:|
-| Weekday | **282** | 822 | 221 | 917 |
-| Saturday | **123** | 291 | 342 | 1,404 |
-| Sunday | **112** | 198 | 373 | 905 |
+| Weekday | **284** | 829 | 217 | 912 |
+| Saturday | **125** | 256 | 331 | 1,381 |
+| Sunday | **113** | 198 | 373 | 905 |
 
 Detail in `data/coverage_change.csv` — compare `cur_{day}_trips` against
 `prop_{day}_trips`.
@@ -34,9 +34,9 @@ Detail in `data/coverage_change.csv` — compare `cur_{day}_trips` against
 | 32.6 | THIRD AVE AT RT 51 OVERPASS | Elizabeth | 50 → 14 | Y46 → 46L |
 | 30.7 | BOYCE CAMPUS EAST PKG LOT | Monroeville | 102 → 32 | 67, 77 → 89 |
 | 27.5 | ARDMORE BLVD + SUMNER | Forest Hills | 123 → 50 | 59, 69, P69, P76 → 69, 69S, 76L |
-| 24.1 | ARDMORE BLVD AT AVE B | Forest Hills | 123 → 50 | 59, 69, P69, P76 → 69, 69S, 76L |
-| 22.3 | YOST BLVD + ARDMORE | Forest Hills | 123 → 50 | 59, 69, P69, P76 → 69, 69S, 76L |
-| 22.2 | OLD FREEPORT TERMINUS + FREEPORT | O'Hara | 178 → 89 | 1, 91 → 1L, 91 |
+| 24.1 | ARDMORE BLVD AT AVE B | Forest Hills | 124 → 50 | 59, 69, P69, P76 → 69, 69S, 76L |
+| 22.3 | YOST BLVD + ARDMORE | Forest Hills | 124 → 50 | 59, 69, P69, P76 → 69, 69S, 76L |
+| 22.2 | OLD FREEPORT TERMINUS + FREEPORT | O'Hara | 181 → 89 | 1, 91 → 1L, 91 |
 | 20.9 | WASHINGTON AVE + JAMES ST | Bridgeville | 110 → 54 | 31, 41, G31 → 31 |
 | 19.4 | RAILROAD ST + #435 (STATION) | Bridgeville | 110 → 54 | 31, 41, G31 → 31 |
 
@@ -45,7 +45,7 @@ shape — a stop served by several overlapping routes today, served by one or tw
 tomorrow:
 
 - **Ardmore Blvd / Yost Blvd, Forest Hills** — four routes (59, 69, P69, P76)
-  become two plus a variant. 123 weekday trips to 50, and these locations also
+  become two plus a variant. 124 weekday trips to 50, and these locations also
   drop below hourly on both weekdays and weekends.
 - **Bridgeville** — the 31, 41 and G31 become the 31 alone: 110 trips to 54 on
   Washington Ave and at the station.
@@ -55,9 +55,9 @@ tomorrow:
 
 ## Put it beside the gains
 
-System-wide, trips **rise**: +3.7% on weekdays, +15.6% Saturday, +17.1% Sunday
+System-wide, trips **rise**: +3.3% on weekdays, +15.3% Saturday, +16.8% Sunday
 ([COVERAGE-CHANGE.md](COVERAGE-CHANGE.md)). On weekends, locations that double
-outnumber those that halve by nearly three to one. These 282 weekday locations are
+outnumber those that halve by nearly three to one. These 284 weekday locations are
 real losses inside a plan that adds service overall, and they are worth raising
 in the comment period precisely because they are exceptions — not because they
 represent the plan's direction.
@@ -67,10 +67,12 @@ represent the plan's direction.
 **"Trips" counts scheduled bus departures in both directions at the location,
 combined across routes.** It is not revenue-hours and not seat-miles; a corridor
 losing four 40-foot buses and gaining two articulated ones would read as a cut.
-`LOSE-SERVICE-HOURS` remains unanswered for that reason — see
-[README.md](README.md).
+The revenue-hours reading of the same change is
+[LOSE-SERVICE-HOURS.md](LOSE-SERVICE-HOURS.md), by corridor group rather than by
+location — and it shows why hours alone mislead: seven groups lose hours while
+running *more* trips, because their route got shorter.
 
-A halving from 8 trips to 4 and one from 120 to 58 are both in the 282, and they
+A halving from 8 trips to 4 and one from 120 to 58 are both in the 284, and they
 are not comparable harms. Filter `data/coverage_change.csv` by
 `cur_weekday_trips` before quoting the count.
 

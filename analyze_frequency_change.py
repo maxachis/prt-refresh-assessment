@@ -22,10 +22,10 @@ So the unit of analysis is a LOCATION, and both sides are measured the same way:
 
 Both sides are now counted from real GTFS stop_times by the same code -- the
 current network from PRT's published feed, the proposed network from the feed
-PRT supplied on 2026-08-11 (see proposed_gtfs.py). In each case a trip is
-counted at the stop it calls at, in the period containing its departure time
-there, and the count is taken as the MAX over the stops in the cluster so that
-consolidating two stops into one is not read as a cut.
+obtained from PRT (see gtfs.py). In each case a trip is counted at the stop it
+calls at, in the period containing its departure time there, and the count is
+taken as the MAX over the stops in the cluster, so that consolidating two stops
+into one is not read as a cut.
 
 That symmetry is new. The proposed side used to be modelled from the Frequency
 & Hours PDFs as `minutes of the period inside the span / published headway`,

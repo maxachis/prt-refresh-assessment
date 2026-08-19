@@ -78,32 +78,18 @@ Run ingest_blr.py first.  Usage: python3 analyze_coverage_change.py
 """
 
 import csv
-import io
 import re
-import zipfile
 from collections import defaultdict
-from datetime import date, timedelta
 from pathlib import Path
 
+import gtfs
+from gtfs import DAYS, SAMPLE
 from analyze_frequency_change import (PERIODS, PKEYS, PRIMARY, RADII, Grid,
                                       period_of, to_axis)
 from analyze_service_loss import MONTH, fnum, load_usage
 
 DATA = Path("data")
 RAW = DATA / "raw"
-PROPOSED_GTFS = RAW / "proposed_gtfs"
-
-DAYS = ["weekday", "saturday", "sunday"]
-
-# A holiday-free week inside each feed's validity window. Service ids are
-# resolved for these dates rather than read off calendar.txt columns, so
-# calendar_dates exceptions apply and holiday calendars stay out.
-SAMPLE = {"current": {"weekday": date(2026, 9, 16),    # Wednesday
-                      "saturday": date(2026, 9, 19),
-                      "sunday": date(2026, 9, 20)},
-          "proposed": {"weekday": date(2027, 9, 15),   # Wednesday
-                       "saturday": date(2027, 9, 18),
-                       "sunday": date(2027, 9, 19)}}
 
 BOARDINGS = {"weekday": f"B_W_{MONTH}",
              "saturday": f"B_S_{MONTH}",
@@ -112,14 +98,6 @@ BOARDINGS = {"weekday": f"B_W_{MONTH}",
 # The hourly tier's window, in minutes on the 4:00-28:00 axis: 6am to 6pm.
 HOURLY_LO, HOURLY_HI = 6 * 60, 18 * 60
 MAX_GAP = 60
-
-DOWS = ["monday", "tuesday", "wednesday", "thursday", "friday",
-        "saturday", "sunday"]
-
-# A calendar operating on no more than this many dates in its own window is
-# holiday or special service, not a day type. Service 4 (Labor Day) and service
-# 1 (July 4) are the two in the current feed.
-OCCASIONAL_MAX_DATES = 3
 
 TIERS = [
     ("WEEK-ANY-MINIMUM", DAYS, False),
@@ -137,137 +115,13 @@ TIER_WEIGHT = {"WEEK-ANY-MINIMUM": ["weekday"],
 
 
 # --------------------------------------------------------------------------
-# reading a GTFS, whether zipped or a directory
+# stop names, the one thing gtfs.py does not carry
 # --------------------------------------------------------------------------
 
-class Feed:
-    """Minimal GTFS reader over either a .zip or an unpacked directory."""
 
-    def __init__(self, path):
-        self.path = Path(path)
-        self.zip = zipfile.ZipFile(path) if self.path.suffix == ".zip" else None
-
-    def rows(self, name):
-        if self.zip:
-            with self.zip.open(name) as f:
-                yield from csv.DictReader(io.TextIOWrapper(f, "utf-8-sig"))
-        else:
-            with open(self.path / name, encoding="utf-8-sig") as f:
-                yield from csv.DictReader(f)
-
-    def has(self, name):
-        if self.zip:
-            return name in self.zip.namelist()
-        return (self.path / name).exists()
-
-
-def parse_date(s):
-    return date(int(s[:4]), int(s[4:6]), int(s[6:8]))
-
-
-def runs_on(row, exc, d):
-    ds = d.strftime("%Y%m%d")
-    on = row["start_date"] <= ds <= row["end_date"] and row[DOWS[d.weekday()]] == "1"
-    e = exc[row["service_id"]].get(ds)
-    return True if e == "1" else (False if e == "2" else on)
-
-
-def resolve_calendars(feed, samples):
-    """(day type -> service ids on that day's sample date, occasional ids).
-
-    Occasional calendars are found by counting the dates each one actually
-    operates on, which is the only way to tell Labor Day service from a Monday
-    schedule: both have monday=1.
-    """
-    cal = list(feed.rows("calendar.txt"))
-    exc = defaultdict(dict)
-    if feed.has("calendar_dates.txt"):
-        for r in feed.rows("calendar_dates.txt"):
-            exc[r["service_id"]][r["date"]] = r["exception_type"]
-
-    by_day = {day: {row["service_id"] for row in cal if runs_on(row, exc, d)}
-              for day, d in samples.items()}
-
-    occasional, dates_run = set(), {}
-    for row in cal:
-        d, end = parse_date(row["start_date"]), parse_date(row["end_date"])
-        n = 0
-        while d <= end:
-            n += runs_on(row, exc, d)
-            d += timedelta(days=1)
-        dates_run[row["service_id"]] = n
-        if n <= OCCASIONAL_MAX_DATES:
-            occasional.add(row["service_id"])
-
-    nominal = {row["service_id"]: {d for d in DAYS
-                                  if (row["saturday"] == "1" if d == "saturday"
-                                      else row["sunday"] == "1" if d == "sunday"
-                                      else any(row[x] == "1" for x in DOWS[:5]))}
-               for row in cal}
-    return by_day, occasional, nominal, dates_run
-
-
-def feed_service(feed, samples, label):
-    """Departure times per day type: {day: {stop: {(route, dir): [minutes]}}}.
-
-    Also returns stop coordinates, the day types each route runs, and the day
-    types a route only reaches on a holiday calendar.
-    """
-    by_day, occasional, nominal, dates_run = resolve_calendars(feed, samples)
-    print(f"  {label}: operating dates per calendar "
-          + ", ".join(f"{k}={v}" for k, v in sorted(dates_run.items())))
-    if occasional:
-        print(f"    holiday/special calendars, excluded: {sorted(occasional)}")
-    for day in DAYS:
-        print(f"    {day:9s} sample {samples[day]}  "
-              f"service_ids={sorted(by_day[day])}")
-
-    routes = {r["route_id"]: r for r in feed.rows("routes.txt")}
-    bus = {rid for rid, r in routes.items() if r["route_type"] == "3"}
-
-    keep, route_days, holiday_routes = {}, defaultdict(set), defaultdict(set)
-    for t in feed.rows("trips.txt"):
-        if t["route_id"] not in bus:
-            continue
-        if t["service_id"] in occasional:
-            holiday_routes[t["route_id"]] |= nominal.get(t["service_id"], set())
-            continue
-        days = [d for d in DAYS if t["service_id"] in by_day[d]]
-        if days:
-            keep[t["trip_id"]] = (t["route_id"], t["direction_id"], days)
-            route_days[t["route_id"]].update(days)
-
-    counts = {d: defaultdict(lambda: defaultdict(list)) for d in DAYS}
-    for st in feed.rows("stop_times.txt"):
-        rd = keep.get(st["trip_id"])
-        if not rd:
-            continue
-        t = st["departure_time"] or st["arrival_time"]
-        try:
-            h, m, _ = t.split(":")
-        except ValueError:
-            continue
-        axis = to_axis(int(h) * 60 + int(m))
-        route, direction, days = rd
-        for day in days:
-            counts[day][st["stop_id"]][(route, direction)].append(axis)
-
-    coords, names = {}, {}
-    for s in feed.rows("stops.txt"):
-        try:
-            coords[s["stop_id"]] = (float(s["stop_lat"]), float(s["stop_lon"]))
-            names[s["stop_id"]] = s["stop_name"]
-        except (ValueError, KeyError):
-            pass
-
-    holiday_only = {rt: days - route_days.get(rt, set())
-                    for rt, days in holiday_routes.items()
-                    if days - route_days.get(rt, set())}
-    for rt in holiday_routes:
-        route_days.setdefault(rt, set())
-    print(f"    routes={len(bus)}  stops={len(coords):,}  "
-          f"trips kept={len(keep):,}")
-    return counts, coords, names, route_days, holiday_only
+def stop_names(feed):
+    """stop_id -> stop_name, for the id-collision check below."""
+    return {s["stop_id"]: s["stop_name"] for s in feed.rows("stops.txt")}
 
 
 # --------------------------------------------------------------------------
@@ -517,6 +371,27 @@ def hourly(by_dir):
     return False
 
 
+def cluster_trips(counts_day, stop_ids):
+    """{period: trips} at a location, per-period max across the cluster.
+
+    The same aggregation `analyze_frequency_change.py` uses, so trip counts here
+    and in FINDINGS.md are the same statistic. Taking the maximum per period
+    rather than per day matters where a cluster's stops carry different patterns:
+    one stop may hold a route's morning trips and its neighbour the afternoon's,
+    and the rider on that corner has both. Choosing one stop for the whole day
+    understates it -- by 0.4 percentage points on the system-wide weekday total.
+    """
+    best = defaultdict(float)
+    for sid in sorted(stop_ids):
+        for (rt, dr, per), n in counts_day[sid].items():
+            if n > best[(rt, dr, per)]:
+                best[(rt, dr, per)] = n
+    out = {k: 0.0 for k in PKEYS}
+    for (_rt, _dr, per), n in best.items():
+        out[per] += n
+    return out
+
+
 def period_trips(by_dir):
     """{period: departures}, summed over directions -- for the CSV, not a tier."""
     out = {k: 0 for k in PKEYS}
@@ -537,14 +412,22 @@ def tier_value(day_flags, days, want_hourly):
 def main():
     print("Loading sources...")
     usage = load_usage()
-    cur_counts, cur_coords, cur_names, cur_days, holiday_only = feed_service(
-        Feed(RAW / "current_gtfs.zip"), SAMPLE["current"], "current")
-    if not PROPOSED_GTFS.exists():
-        raise SystemExit(f"missing {PROPOSED_GTFS} -- see DATA_SOURCES.md")
-    prop_counts, prop_coords, _, prop_days, _ = feed_service(
-        Feed(PROPOSED_GTFS), SAMPLE["proposed"], "proposed")
+    # Both feeds through gtfs.load_service, so this analysis and
+    # analyze_frequency_change.py cannot drift apart on sample dates, holiday
+    # calendars, the time axis or the bus-only filter.
+    cur_feed = gtfs.current()
+    cur = gtfs.load_service(cur_feed, SAMPLE["current"],
+                            period_of=period_of, to_axis=to_axis)
+    prop = gtfs.load_service(gtfs.proposed(), SAMPLE["proposed"],
+                             period_of=period_of, to_axis=to_axis)
+    cur_counts, prop_counts = cur.times, prop.times
+    cur_coords, prop_coords = cur.coords, prop.coords
+    cur_days, prop_days = cur.route_days, prop.route_days
+    cur_names = stop_names(cur_feed)
+    cur_period_counts = {d: cur.counts(d, period_of) for d in DAYS}
+    prop_period_counts = {d: prop.counts(d, period_of) for d in DAYS}
 
-    route_days_report(cur_days, prop_days, holiday_only)
+    route_days_report(cur_days, prop_days, cur.holiday_only)
 
     totals = {r["stop_code"]: r for r in usage
               if r["route_code"] == "All Routes" and r["mode"] == "BUS"}
@@ -589,20 +472,25 @@ def main():
 
             cur_flags, prop_flags = {}, {}
             for day in DAYS:
+                # Trip totals use the per-period cluster maximum, matching
+                # analyze_frequency_change.py; the hourly tier needs a time
+                # series, so it reads departures for one stop per route-direction.
+                cper = cluster_trips(cur_period_counts[day], cur_ids)
+                pper = cluster_trips(prop_period_counts[day], prop_ids)
                 cd = departures_by_direction(cur_counts[day], cur_ids)
                 pd = departures_by_direction(prop_counts[day], prop_ids)
-                cur_flags[day] = (sum(len(t) for t in cd.values()), hourly(cd))
-                prop_flags[day] = (sum(len(t) for t in pd.values()), hourly(pd))
+                cur_flags[day] = (sum(cper.values()), hourly(cd))
+                prop_flags[day] = (sum(pper.values()), hourly(pd))
                 if radius == PRIMARY:
-                    row[f"cur_{day}_trips"] = cur_flags[day][0]
-                    row[f"prop_{day}_trips"] = prop_flags[day][0]
+                    row[f"cur_{day}_trips"] = round(cur_flags[day][0])
+                    row[f"prop_{day}_trips"] = round(prop_flags[day][0])
                     row[f"cur_{day}_hourly"] = int(cur_flags[day][1])
                     row[f"prop_{day}_hourly"] = int(prop_flags[day][1])
                     if day == "weekday":
-                        for k, v in period_trips(cd).items():
-                            row[f"cur_{k}"] = v
-                        for k, v in period_trips(pd).items():
-                            row[f"prop_{k}"] = v
+                        for k, v in cper.items():
+                            row[f"cur_{k}"] = round(v)
+                        for k, v in pper.items():
+                            row[f"prop_{k}"] = round(v)
                         # Route lists carry STOP-ROUTE-REPLACE and let the
                         # frequency questions be answered off counted trips
                         # rather than headways divided into a span.

@@ -2,10 +2,9 @@
 """
 One GTFS reader for both networks, so both sides are measured by the same code.
 
-A GTFS for the proposed network came from PRT directly rather than from a URL --
-its `feed_info.txt` names PRT as publisher and is stamped 2026-08-11 -- but *how*
-it reached this repo is not recorded, and must be before the feed is cited
-publicly. It is committed verbatim under `data/raw/proposed_gtfs/`;
+A GTFS for the proposed network exists at no URL -- its `feed_info.txt` names PRT
+as publisher and is stamped 2026-08-11 -- but *how* it reached this repo is not
+recorded, and must be before the feed is cited publicly. It is committed verbatim under `data/raw/proposed_gtfs/`;
 `ingest_blr.py` cannot re-fetch it. See DATA_SOURCES.md for what is and is not
 known about where it came from, and `verify_proposed_gtfs.py` for the check that
 it describes the plan PRT published.

@@ -31,11 +31,15 @@ For where each source comes from and what it is authoritative for, see
 | `stop_service_change.csv` | 5,782 | `analyze_service_loss.py` | per stop: keeps / loses all service, distance to nearest proposed stop |
 | `stop_frequency_change.csv` | 5,747 | `analyze_frequency_change.py` | per location: weekday trips now vs proposed, by period, at 400 m and 150 m |
 | `coverage_change.csv` | 5,751 | `analyze_coverage_change.py` | per location: the five coverage tiers for both networks, at 400 m and 150 m, plus trips by day type |
-| `stop_route_replace.csv` | 356 | `analyze_coverage_change.py` | locations where a different route provides comparable service |
+| `stop_route_replace.csv` | 371 | `analyze_coverage_change.py` | locations where a different route provides comparable service |
 | `route_service_days.csv` | 74 | `analyze_coverage_change.py` | per route: day types now vs proposed, days lost / gained |
+| `coverage_area.csv` | 10 | `analyze_coverage_area.py` | radius × tier: covered land area now vs proposed, km² lost / gained / retained |
+| `coverage_area_blocks.csv` | 450 | `analyze_coverage_area.py` | every contiguous block of lost or gained coverage over 0.1 km², with place, nearest stop, centroid |
+| `coverage_area_places.csv` | 452 | `analyze_coverage_area.py` | net km² gained or lost per municipality / neighbourhood, per tier |
+| `coverage_area_ondemand.csv` | 10 | `analyze_coverage_area.py` | per proposed on-demand zone: area, fixed-route coverage inside it now vs proposed, lost area, vehicles, hours |
 | `oneseat_change.csv` | 369 | `analyze_one_seat.py` | place × anchor: gains / keeps / loses a one-seat ride |
 | `discontinued_route_ridership_202604.csv` | 20 | `analyze_route_ridership.py` | riders on each discontinued route, Apr 2026 |
-| `route_frequency_change.csv` | 107 | **nothing — orphan** | see the warning below before quoting it |
+| `route_frequency_change.csv` | 108 | `analyze_route_hours.py` | per corridor group: trips and in-service hours now vs proposed, per day type |
 
 ### From `ingest_blr.py` (run this first; everything else reads its output)
 
@@ -130,16 +134,60 @@ first; they mislabel some stops by up to 40 km.
 for each of the 20 discontinued routes, April 2026. Preferred over stop-level
 sums for any route total: official, weighted, and eleven months fresher.
 
-### ⚠️ `route_frequency_change.csv` — orphan, stale
+### The `coverage_area*.csv` set — the same tiers, measured as ground
 
-**No script in this repo writes this file.** It is a route-to-route trip
-comparison from an earlier iteration, and it predates both the 8–11pm headway
-column fix (`FINDINGS.md` caveat 9, which had 16 routes' late-evening headway
-wrong) and the proposed GTFS. `docs/answers/locations/OUTER-CHARTIERS.md` cites
-it with that caveat attached; `LOSE/GAIN-SERVICE-HOURS` is marked blocked in
-`docs/answers/README.md` pending a re-added route-level rollup. Do not quote it
-without the caveat, and do not use it to compare route N to route N — the plan
-re-splits corridors, so that comparison is invalid regardless of vintage.
+`analyze_coverage_area.py` writes four files. They answer the half of
+`COVERAGE-CHANGE` that asks for area, and they are the only files here whose
+denominator is not a stop: the union of walk-radius discs around every served
+stop, rasterised on a 100 m lattice.
+
+**`coverage_area.csv`** — 10 rows, one per radius × tier. `current_km2`,
+`proposed_km2`, `net_km2`, `net_pct`, `lost_km2`, `gained_km2`, `retained_km2`.
+Lost and gained are different ground, so they do not net out; `net_km2` is the
+smaller statement and `lost_km2` the more useful one.
+
+**`coverage_area_blocks.csv`** — one row per contiguous block of change over
+0.1 km². `place` is the commonest label among the block's cells and `also` the
+runners-up, because a block is ground and ground crosses municipal lines.
+`nearest_stop` is the nearest stop in whichever network *has* the service — the
+stop being lost for a lost block, added for a gained one — so it names the road.
+
+**`coverage_area_places.csv`** — net km² per municipality or neighbourhood per
+tier, by nearest labelled stop within 2 km. Indicative: a cell midway between two
+places goes to whichever stop is nearer, and the HOOD/MUNI labels are
+outlier-filtered but still imperfect. `unplaced` is ground over 2 km from any
+labelled stop, which is where genuinely new coverage shows up.
+
+**`coverage_area_ondemand.csv`** — the 10 proposed on-demand zones from
+`raw/remix_project.json`, the only part of the plan no GTFS can express.
+`lost_km2_inside` is the headline: 18.3 of the 80.1 km² losing all fixed-route
+service sits inside a zone. Read `vehicles_weekday` beside it — 1 to 3 vans for
+the whole zone — and `hidden_in_remix`, which is 1 for all ten.
+
+### `route_frequency_change.csv` — read the unit before quoting it
+
+**`analyze_route_hours.py` writes this file**, from real timetables on both sides
+via `gtfs.py`. It answers `LOSE/GAIN-SERVICE-HOURS`
+([LOSE](../docs/answers/LOSE-SERVICE-HOURS.md),
+[GAIN](../docs/answers/GAIN-SERVICE-HOURS.md)). It replaced an orphaned
+route-to-route file of the same name that predated both the 8–11pm headway column
+fix and the proposed GTFS; nothing PDF-derived survives in it.
+
+One row is a **corridor group** — the connected component joining current route
+numbers to the proposed numbers PRT maps them to, plus the S-variants the
+crosswalk omits — never a route compared to itself. Two things to know before
+quoting a row:
+
+- **Hours are in-service time only**, first stop to last. Layover, deadhead and
+  pull-in/pull-out are not in a GTFS, so this is a floor on platform hours and is
+  not comparable to PRT's service-hour budget.
+- **A group is not a corridor.** Where a route PRT records as NEW covers an
+  incumbent's corridor, the two sit in separate groups and nothing adds them
+  together — route 45 against the 51 in Carrick is the case to know. Location
+  questions belong to `coverage_change.csv`, not this file.
+
+`riders_weekday` sums WPRDC averages for the group's *current* routes, so new
+groups are 0 by construction and the column is not a projection.
 
 ## `data/raw/` — cached sources
 
@@ -183,6 +231,8 @@ python3 analyze_route_ridership.py
 python3 analyze_frequency_change.py
 python3 analyze_one_seat.py
 python3 analyze_coverage_change.py
+python3 analyze_coverage_area.py    # optional lattice size in metres, default 100
+python3 analyze_route_hours.py
 python3 verify_proposed_gtfs.py     # checks the supplied feed against the PDFs
 ```
 

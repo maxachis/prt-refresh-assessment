@@ -3,18 +3,21 @@
 Shared method for `LOSE-SERVICE-DAYS`, `GAIN-SERVICE-DAYS`, `COVERAGE-CHANGE`,
 `STOP-LOST-SERVICE`, `LOSE-FREQUENCY-HALF`, `GAIN-FREQUENCY-DOUBLE` and
 `STOP-ROUTE-REPLACE`. Full version in the `analyze_coverage_change.py` module
-docstring, which is the primary method documentation.
+docstring — and, for the area half of `COVERAGE-CHANGE`, in
+`analyze_coverage_area.py`'s. Those docstrings are the primary method
+documentation.
 
 ## There is now a GTFS for the proposed network
 
 `data/raw/proposed_gtfs/` is a real feed — `Future_BLR_Service-Weekday/-Sa/-Su`
 calendars over 2027, 5,515 stops with coordinates, 14,488 trips, 698,865
 `stop_times` rows, `feed_version` "Updated: Aug 11, 2026". Every answer here is
-counted from it.
+counted from it, and both networks are read through the shared `gtfs.py` loader,
+so neither side can drift from the other.
 
-That matters because the rest of this repo predates it and derives proposed
-service from the Frequency & Hours PDFs instead. Two things were wrong as a
-result, and both changed answers:
+That matters because these answers were first drafted against the Frequency &
+Hours PDFs, as the rest of the repo was. Two things were wrong as a result, and
+both changed answers:
 
 1. **The S-variants had no geometry.** 29S, 53S, 55S, 69S, 78S and 89S are in
    the PDFs but absent from the Remix map, so a Remix-based analysis drops them
@@ -45,12 +48,49 @@ consolidation and corridor re-splitting alike.
                         the most of them
 
 Max, not sum, over the cluster: adjacent stop ids on a corridor are the same bus
-passing once, and consolidating two stops into one must not read as a cut.
+passing once, and consolidating two stops into one must not read as a cut. The
+maximum is taken **per period**, matching `analyze_frequency_change.py`, because a
+cluster's stops can carry different patterns — one holding a route's morning trips
+and its neighbour the afternoon's, both of which the rider on that corner has.
+Choosing one stop for the whole day understates the total by 0.4 percentage points
+system-wide, which is exactly the gap between this file's earlier +3.7% and the
++3.3% in `FINDINGS.md` §C. The hourly tier still reads one stop per
+route-direction, because a gap test needs a single coherent timetable.
 
 **400 m carries the headline** (the standard quarter-mile bus access distance)
 and **150 m is reported as a sensitivity**, because the plan consolidates stops
 into "PRTX" stations and the two radii genuinely disagree there. A location that
 loses a tier at 150 m but not at 400 m is facing a longer walk, not fewer buses.
+
+## Area is the same test at every point, not only at stops
+
+`analyze_coverage_area.py` answers the same five tiers in square kilometres.
+The covered region of a network is the **union** of walk-radius discs around the
+stops meeting a tier — union, not sum, because overlapping discs are one place,
+which is exactly why area cannot be got at by counting stops.
+
+There is no geometry library here and no third-party package is wanted, so the
+union is rasterised: a square lattice, and a cell counts when its **centre** is
+covered. Centre-sampling a union of discs is unbiased and converges as the cell
+shrinks, and the script prints the same figure at 200/100/50/25 m so that is
+visible rather than asserted — 459.0 / 460.4 / 460.5 / 460.5 km² today, −12.0%
+at every pitch. 100 m carries the published numbers.
+
+**The service test at a cell is the location test, unchanged**: the same cluster
+rule, the same 6am–6pm maximum-gap definition of hourly, the same 400 m headline
+and 150 m sensitivity. A cell is a location that happens to have no stop on it,
+which is the whole point — a rider stands in a place and walks to whatever is
+within reach, so hourly-or-better belongs to the ground, not to a stop id.
+
+Two differences from the location tiers are deliberate:
+
+- **Every served stop counts, not only stops with a ridership record.** The
+  location denominator can only measure change where a bus stops today; the area
+  method sees the 24.8 km² the plan adds a bus to, including 3.5 km² up Perry
+  Hwy past AHN Wexford where PRT has no stop at all today.
+- **Ground is weighted by ground.** A downtown block and a mile of Route 51
+  count alike. That cuts both ways and is the reason the area answer is
+  published beside the location answer rather than instead of it.
 
 ## Hourly means a maximum gap
 
@@ -121,12 +161,19 @@ attached to the wrong stop, so they are excluded from every example table in
   2023, so destination-side effects are invisible.
 - **A thin ridership base partly reflects thin service.** Weekend boardings at a
   stop with two Saturday buses are not evidence that nobody wants the trip.
-- The proposed feed's provenance is not recorded in this repo; it is not
-  published at `rideprt.org/developerresources`. Note where it came from before
-  citing it publicly.
-- `data/raw/remix_project.json` holds **10 `onDemandZones` polygons** — proposed
-  microtransit areas. No answer here accounts for them, so losses in places
-  slated for on-demand service may be overstated.
+- **The proposed feed's provenance is unrecorded.** `feed_info.txt` names PRT as
+  publisher and stamps it 2026-08-11, and `verify_proposed_gtfs.py` confirms it
+  describes the plan PRT published — but how it reached this repo is not written
+  down anywhere. Treat it as not-yet-citable until someone records that in
+  `DATA_SOURCES.md`.
+- **The 10 `onDemandZones` polygons in `data/raw/remix_project.json`** — proposed
+  microtransit areas — are now counted, but only by
+  [COVERAGE-CHANGE.md](COVERAGE-CHANGE.md): 23% of the area losing all
+  fixed-route service falls inside one, at 1–3 vehicles per zone. The
+  location-level answers here still ignore them, so a loss listed in
+  [STOP-LOST-SERVICE.md](STOP-LOST-SERVICE.md) may be offered on-demand service
+  instead of nothing. The zones come from the Remix project file, are flagged
+  `isHidden` in it, and are reported beside losses rather than netted off them.
 
 ## Reproduce
 
@@ -135,4 +182,5 @@ python3 ingest_blr.py               # must run first
 python3 analyze_coverage_change.py  # -> data/coverage_change.csv,
                                     #    data/route_service_days.csv,
                                     #    data/stop_route_replace.csv
+python3 analyze_coverage_area.py    # -> data/coverage_area*.csv (the area half)
 ```

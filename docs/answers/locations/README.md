@@ -17,6 +17,7 @@ the nearest replacement is.
 | Place | Headline | Backing data |
 |---|---|---|
 | [OUTER-CHARTIERS](OUTER-CHARTIERS.md) | Two segments of the Chartiers Ave corridor go to zero service — the Chartiers City hillside and the far Chartiers Ave Extension — while the through-corridor keeps a bus at ~20% fewer trips | `data/coverage_change.csv`, `data/stop_service_change.csv`, `data/route_frequency_change.csv` |
+| [ROUTE-51](ROUTE-51.md) | Two corridors share the number and move in opposite directions: Brownsville Rd gains (+7.8% weekday, +36% Sunday, plus a new one-seat ride to Oakland) while PA Route 51 south loses (−15.2% weekday, −26.2% Saturday) as three flyers end and the fourth goes peak-only | `data/coverage_change.csv`, `data/stop_service_change.csv`, `data/route_frequency_change.csv`, both GTFS feeds via `gtfs.py` |
 
 ## Conventions these files follow
 
