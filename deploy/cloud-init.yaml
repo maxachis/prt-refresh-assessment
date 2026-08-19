@@ -1,0 +1,19 @@
+#cloud-config
+# Base-image prep for the prt-refresh web app. Idempotent and secret-free --
+# Hetzner user-data is readable to anyone with access to the project, and this
+# deployment has no secrets anyway (public repo, public data, no credentials).
+#
+# Everything after this is done by provision.sh over SSH: clone the repo, sync
+# deps, build the database, install the unit.
+package_update: true
+package_upgrade: true
+packages:
+  - git
+  - curl
+  - unattended-upgrades   # keep security patches flowing on a long-lived box
+runcmd:
+  # System user that runs the service; its home is the app/uv root.
+  - useradd --system --create-home --home-dir /opt/prt-refresh --shell /bin/bash prtrefresh
+  - install -d -o prtrefresh -g prtrefresh /opt/prt-refresh/app /var/lib/prt-refresh
+  # uv, installed as the prtrefresh user -> /opt/prt-refresh/.local/bin/uv
+  - su - prtrefresh -c 'curl -LsSf https://astral.sh/uv/install.sh | sh'

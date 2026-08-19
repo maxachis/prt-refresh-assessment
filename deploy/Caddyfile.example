@@ -1,0 +1,22 @@
+# Caddy reverse proxy for the prt-refresh map. Caddy fetches and auto-renews a
+# Let's Encrypt cert for the hostname and serves the app openly -- no auth gate.
+# Generated on the box by setup-caddy.sh; this file is the shape it writes, kept
+# here so the config is reviewable in the repo. Edit setup-caddy.sh, not this.
+
+prt-refresh.example.org {
+    encode zstd gzip
+
+    # Every API response is a pure function of two frozen GTFS feeds, so it can
+    # only change when a deploy rebuilds the database. An hour of caching costs
+    # nothing in freshness and takes the repeat cost of the two big layers --
+    # the citywide change layer (~300 KB) and the 100 m surface (~1.3 MB) -- off
+    # the box entirely for anyone who pans back to a view they have seen.
+    @api path /api/*
+    header @api Cache-Control "public, max-age=3600"
+
+    # index.html and app.js are NOT cached here on purpose: they are what a
+    # deploy changes, and a stale bundle against a new API is the one way this
+    # can break for a reader who cannot tell why. Their ETags still make repeat
+    # loads a 304.
+    reverse_proxy 127.0.0.1:8000
+}

@@ -1,0 +1,42 @@
+[Unit]
+Description=PRT Bus Line Refresh — before/after map (FastAPI/uvicorn, localhost-only)
+After=network-online.target
+Wants=network-online.target
+# A flapping service must not give up and stay down.
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+User=prtrefresh
+Group=prtrefresh
+WorkingDirectory=/opt/prt-refresh/app
+# Call the venv console script directly: no `uv run` means no runtime cache or
+# lock writes under /opt, so ProtectSystem=strict can keep it read-only.
+#
+# The database is a build artifact, not repo content, so it lives in
+# /var/lib/prt-refresh rather than the checkout -- a `git pull` never has to
+# step around it, and a rebuild is a write to one file outside the repo.
+ExecStart=/opt/prt-refresh/app/.venv/bin/refresh serve --db /var/lib/prt-refresh/refresh.db --host 127.0.0.1 --port 8000
+Restart=always
+RestartSec=5
+# Everything about this app is Eastern-time transit service; pin the clock so
+# logs read the way the data does.
+Environment=TZ=America/New_York
+
+# No MemoryMax / CPUWeight here, deliberately. pgh-ghost-bus caps its dashboard
+# because a runaway web tier there could starve the 20s poller, and realtime
+# data missed is data lost forever. Nothing on this box collects anything: the
+# app is the only workload, and capping it below its real working set is how you
+# get a service that stalls at memory.high instead of one that just works. If
+# this ever shares a box with something that matters more, add the caps then.
+
+# Hardening. The app opens SQLite read-only and the database never changes
+# between deploys, so the state dir can stay read-only at the filesystem level
+# too -- provision.sh, not the service, is what writes refresh.db.
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
