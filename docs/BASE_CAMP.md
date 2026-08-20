@@ -26,6 +26,12 @@ LOST-ROUTE: What routes are completely removed?
 LOSE-OTHER: What other notable losses are occuring which are not otherwise described?
 COVERAGE-CHANGE: What is the total change in coverage, in terms of area, and by several different coverage criteria.
 RIDERSHIP-PROJECTIONS: Can we make projections about the change in total ridership from the changes, under different scenarios?
+EQUITY-RACE: How has service access changed depending on race and ethnicity?
+EQUITY-AGE: How has service access changed depending on age?
+EQUITY-INCOME: How has service access changed depending on income?
+EQUITY-VEHICLE: How has service access changed depending on vehicle access?
+EQUITY-DISABILITY: How has service access changed depending on disability status?
+EQUITY-LANGUAGE: How has service access changed depending on language?
 
 ## Route-by-Route
 

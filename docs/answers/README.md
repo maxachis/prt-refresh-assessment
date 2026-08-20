@@ -22,6 +22,12 @@ the same caveats as everything below.
 | NEW-ROUTE | **Answered** — 14 routes | [doc](NEW-ROUTE.md), `data/route_crosswalk.csv` |
 | LOST-ROUTE | **Answered** — 20 routes, plus the 77 | [doc](LOST-ROUTE.md), `data/discontinued_route_ridership_202604.csv` |
 | COVERAGE-CHANGE | **Answered in full** — 5 criteria, by location and by area | [doc](COVERAGE-CHANGE.md), `data/coverage_change.csv`, `data/coverage_area*.csv` |
+| EQUITY-RACE | **Answered** | [doc](EQUITY-RACE.md), `data/equity_change.csv`: coverage losses fall on white residents (1.11× the county rate), frequency gains on Black residents (+8.4pp weekend hourly) |
+| EQUITY-AGE | **Answered** | [doc](EQUITY-AGE.md), `data/equity_change.csv`: residents 65+ lose coverage at 1.14× and regain at 0.89× — the one group losing more and gaining less |
+| EQUITY-INCOME | **Answered** | [doc](EQUITY-INCOME.md), `data/equity_change.csv`: progressive on every tier; under-$25k households gain weekday hourly at 1.33×, over-$100k at 0.70× |
+| EQUITY-VEHICLE | **Answered** | [doc](EQUITY-VEHICLE.md), `data/equity_change.csv`: car-free households lose all service at 0.65× the county rate; 21% still have no bus after the plan |
+| EQUITY-DISABILITY | **Answered** — tract geography | [doc](EQUITY-DISABILITY.md), `data/equity_change.csv`: loss ratios at 1.00, weekday-hourly gain at 1.31× |
+| EQUITY-LANGUAGE | **Answered** — smallest universe | [doc](EQUITY-LANGUAGE.md), `data/equity_change.csv`: not singled out for cuts, but gain ratios below 1 on every tier |
 | RIDERSHIP-PROJECTIONS | Deferred by decision | to be a bounded scenario range, assumptions stated inline |
 | LOSE-SERVICE-DAYS | **Answered** | [doc](LOSE-SERVICE-DAYS.md), `data/route_service_days.csv` |
 | GAIN-SERVICE-DAYS | **Answered** | [doc](GAIN-SERVICE-DAYS.md), `data/route_service_days.csv` |
@@ -67,6 +73,33 @@ timetables through the shared `gtfs.py` loader — see
   neutral on the hourly tier (−28).
 - **490 locations drop below hourly-or-better on weekdays** — no gap over 60
   minutes anywhere between 6am and 6pm — and 462 rise to it.
+
+## Coverage as population — the equity questions
+
+`analyze_equity_change.py` answers the same five tiers a third way: as people.
+It measures coverage at the interior point of all 33,131 populated 2020 census
+blocks in the three counties and weights each by who lives there, from ACS
+2024 5-year tables. Method, denominators and the eight caveats that travel with
+every figure are in [METHOD-equity.md](METHOD-equity.md); the six question files
+above carry the numbers.
+
+The headline, on the Allegheny County denominator at 400 m:
+
+- **53.3% of residents have a bus within 400 m of home today, 49.4% under the
+  plan** — 68,989 lose all bus service near home, 20,095 gain it.
+- **Hourly service goes the other way**: +1.9 points on weekdays and +4.1 on
+  weekends, a net 50,218 residents gaining an hourly weekend bus.
+- The trade is **progressive**. Losses concentrate on white, higher-income and
+  older residents; gains concentrate on Black, lower-income, car-free and
+  disabled residents. Black residents gain weekend hourly service +8.4 points
+  against the county's +4.1.
+- **Residents aged 65+ are the exception** and the sharpest negative finding:
+  they lose coverage at 1.14× the county rate and regain it at 0.89×, the only
+  group both losing more and gaining less.
+
+Read beside the location and area figures, never alone — the plan is roughly
+neutral by location, loses 12% of covered ground, and loses about 7% of covered
+residents. All three are true.
 
 ## Coverage as area
 

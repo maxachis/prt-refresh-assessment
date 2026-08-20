@@ -35,6 +35,8 @@ request, and PPT passed it to this repo's author** — see the section below.
 | [WPRDC route ridership](https://data.wprdc.org/dataset/prt-monthly-average-ridership-by-route) | CKAN DataStore SQL | Average riders by route × day type, monthly, **Jan 2017 – Apr 2026**. Public, official, and the freshest ridership PRT publishes. Resource `12bb84ed-397e-435c-8d1b-8ce543108698`. |
 | [WPRDC OTP](https://data.wprdc.org/dataset/port-authority-monthly-average-on-time-performance-by-route) | CSV / API | Monthly on-time performance by route. |
 | `PRT_Bus_Stop_Usage_Unweighted` [FeatureServer](https://services3.arcgis.com/544gNI3xxlFIWuTc/arcgis/rest/services/PRT_Bus_Stop_Usage_Unweighted/FeatureServer/0) | ArcGIS REST | **Stop-level boardings**, 19,854 stop×route rows over 7,076 stops, 13 months from Sep 2019. Latest populated month is **May 2025**. See the note below. |
+| [2020 Centers of Population, PA block groups](https://www2.census.gov/geo/docs/reference/cenpop2020/blkgrp/CenPop2020_Mean_BG42.txt) | CSV, no key | The population-weighted centre and 2020 count of every block group. 1,464 rows in Allegheny/Beaver/Westmoreland, 1,773,456 people. No block-level equivalent is published. |
+| [ACS 5-year, `api.census.gov`](https://api.census.gov/data/2024/acs/acs5) | JSON, **key required** | Race (B03002), age (B01001), income (B19001), vehicles (B25044) at block group; disability (B18101) and language (C16002) at tract only. Feeds every `EQUITY-*` answer. |
 | [`PRT_Current_Shelter_Locations`](https://services3.arcgis.com/544gNI3xxlFIWuTc/arcgis/rest/services/PRT_Current_Shelter_Locations/FeatureServer/0) | ArcGIS REST | Stop amenities: shelters, bike racks, TVMs, real-time screens, ADA platforms. |
 
 ## The proposed-network GTFS (`data/raw/proposed_gtfs/`)

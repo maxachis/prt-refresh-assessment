@@ -392,6 +392,65 @@ under *Streets* ([docs/WEBAPP.md](docs/WEBAPP.md)).
 
 ---
 
+## G. Who is standing there
+
+Sections C, E and F measure stops, ground and pavement. None can say who lives
+in the place that changed. `analyze_equity_change.py` measures the same five
+tiers a fourth way — at the interior point of all **33,131 populated 2020
+census blocks** in the three counties PRT stops in, each weighted by its
+residents, with race, age, income, vehicle access, disability and language
+attached from ACS 2024 5-year tables.
+
+Coverage is a fraction, not a flag: a block group contributes the share of its
+residents living in a block that clears the tier. Method, the three
+denominators, and the eight caveats every figure here travels with are in
+[docs/answers/METHOD-equity.md](docs/answers/METHOD-equity.md).
+
+On the Allegheny County denominator, at 400 m:
+
+| Tier | Residents now | Proposed | Lose it | Gain it | Net |
+|---|---:|---:|---:|---:|---:|
+| WEEK-ANY-MINIMUM | 53.3% | 49.4% | 68,989 | 20,095 | **−48,895** |
+| WEEKENDS-ANY-MINIMUM | 47.3% | 46.5% | 49,568 | 38,977 | −10,591 |
+| WEEK-ANY-HOURLY | 39.9% | 41.8% | 55,964 | 79,400 | **+23,437** |
+| WEEKEND-ANY-HOURLY | 30.2% | 34.2% | 36,605 | 86,823 | **+50,218** |
+
+Same trade as everywhere else in this document, now in people: about 49,000
+Allegheny residents net lose a bus near home, and about 50,000 net gain an
+hourly one on weekends.
+
+**The trade runs progressive.** Losses concentrate on white, higher-income and
+older residents; gains on Black, lower-income, car-free and disabled ones:
+
+| Group | Any bus | Weekday hourly | Weekend hourly |
+|---|---:|---:|---:|
+| All residents | −3.9pp | +1.9pp | +4.1pp |
+| Black | −1.4 | +4.4 | **+8.4** |
+| White | **−4.6** | +1.5 | +3.5 |
+| Households under $25k | −2.5 | **+4.4** | +6.4 |
+| Households over $100k | −4.5 | +0.2 | +3.3 |
+| Car-free households | −2.2 | +3.9 | +5.8 |
+| With a disability | −3.9 | +3.8 | +5.0 |
+| **Age 65+** | **−4.9** | +1.8 | +4.4 |
+
+No disparate impact on race appears on any tier — the reverse. Black Allegheny
+residents lose all bus service at **0.57×** the county rate and car-free
+households at **0.65×**, while white residents lose it at 1.11×.
+
+**The one clear negative is age.** Residents 65 and over lose coverage at 1.14×
+the county rate and regain it at 0.89× — the only group in the analysis both
+losing more than average and gaining less. Limited-English households are a
+milder version of the same shape.
+
+Two things must travel with any of these numbers. First, a **high loss ratio is
+not automatically harm**: Black residents lose weekend hourly service at 1.40×
+the county rate *and* gain it at 1.79×, netting the largest increase of any
+group — the plan is doing more to their neighbourhoods in both directions.
+Second, this is an **ecological** measure: it describes the places a group
+lives, not its members.
+
+---
+
 ## Caveats — read before citing
 
 1. **Stop-level boardings are May 2025** and have not been refreshed since.

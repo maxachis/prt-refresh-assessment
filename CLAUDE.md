@@ -45,6 +45,21 @@ python3 analyze_corridor_change.py  # -> data/corridor_change.csv
 python3 build_webdb.py              # -> data/refresh.db, for the web app only
 ```
 
+**The equity questions** are a second, independent ingest-then-analyse pair,
+because they read the census rather than PRT:
+
+```bash
+python3 ingest_census.py            # -> data/census_blocks.csv, census_block_groups.csv
+python3 analyze_equity_change.py    # -> data/equity_*.csv
+```
+
+`ingest_census.py` is the only script that ever wants a credential: the Census
+API now rejects unauthenticated requests. Every response is cached under
+`data/raw/census/` and committed, so a clone reproduces every published number
+with no key; a key (`CENSUS_API_KEY` in the environment or `.env`) is needed
+only to fetch something not already cached. The centre-of-population file needs
+none at any time.
+
 **The web app** is the only part with dependencies, and they are an optional
 extra so the pipeline install stays empty. `build_webdb.py` is deliberately a
 pipeline script rather than a CLI subcommand — putting it behind the package
@@ -57,7 +72,7 @@ uv sync --extra web && npm install   # one-time
 npm run build                        # frontend/*.ts -> static/app.js
 uv run refresh serve                 # http://127.0.0.1:8000
 
-uv run pytest                        # 49 tests, incl. served == published
+uv run pytest                        # 86 tests, incl. served == published
 npx vitest run && npx tsc --noEmit   # 37 frontend tests
 ```
 
@@ -72,7 +87,10 @@ that printed report is the draft material for `FINDINGS.md` and `docs/answers/`.
 
 `analyze_one_seat.py` reads only raw sources, so it runs independently of the
 other analyses. The cross-script imports are few and deliberate:
-`analyze_frequency_change.py` takes `MONTH`, `fnum` and `load_usage` from
+`analyze_equity_change.py` takes the tiers and the whole location test from
+`analyze_coverage_change.py` and the dimension definitions from
+`ingest_census.py`, so a rider's coverage is decided the same way at a house as
+at a stop. Otherwise: `analyze_frequency_change.py` takes `MONTH`, `fnum` and `load_usage` from
 `analyze_service_loss.py`; `analyze_coverage_change.py` takes the periods, radii
 and `Grid` from `analyze_frequency_change.py`; and `analyze_coverage_area.py`
 takes the tier list and the hourly test from `analyze_coverage_change.py` plus
@@ -101,6 +119,7 @@ The five upstream sources, and what each is the authority for:
 | Current GTFS (`rideprt.org`) | The before-side baseline, including real `stop_times` trip counts |
 | ArcGIS `PRT_Bus_Stop_Usage_Unweighted` | Stop-level boardings, May 2025, boardings-only |
 | WPRDC route ridership (CKAN SQL) | Route-level riders, current through Apr 2026 — preferred over stop-level for route totals |
+| Census: 2020 blocks + centres of population + ACS 5-year (`census.gov`) | Who lives where. The population denominator behind every `EQUITY-*` answer, and the only source in the repo that is not about transit. Blocks say where inside a block group people live; ACS says who they are |
 
 `DATA_SOURCES.md` is the full inventory, with live-verified endpoints, per-file
 row counts, and the PDF parsing traps. Read it before touching `ingest_blr.py`.
@@ -182,6 +201,18 @@ changes published findings.
     a larger-sounding number than the 12% area loss and it measures something
     narrower; quoting it without the access figures beside it would be the
     same error convention 10 forbids, one unit further down.
+
+12. **Population is a third denominator, and it needs its own scope stated.**
+    `analyze_equity_change.py` runs the identical location test at the
+    population-weighted centre of every census block group, so the five tiers
+    can be reported as people rather than stops or square kilometres. Two
+    traps. First, *which people*: two thirds of the three-county population
+    lives where PRT has never run a bus, so dividing by all of it makes every
+    change look small; Allegheny County is the headline denominator and the
+    script writes all three so the choice is visible. Second, it is an
+    **ecological** measure — it describes the places a group lives, not its
+    members — and a block group is covered or not at a single point. Quote it
+    beside the location and area figures, per convention 10, never alone.
 
 State data vintage and PRT's own accuracy disclaimer (stop figures are
 "unadjusted, unofficial totals" that may understate ridership by up to 30%)
