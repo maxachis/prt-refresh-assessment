@@ -97,6 +97,15 @@ The headline, on the Allegheny County denominator at 400 m:
   they lose coverage at 1.14× the county rate and regain it at 0.89×, the only
   group both losing more and gaining less.
 
+**Where it happened**, from `analyze_equity_places.py`: 182 of Allegheny's
+1,062 block groups lose coverage, a hundred of them hold 90% of the loss, and
+the places holding it are overwhelmingly suburban — Baldwin, Ross, McCandless,
+Mount Lebanon, Kennedy, Scott, Bethel Park. That is the same geography as the
+age finding, not a separate result. Twenty-five places hold 88% of the 2,376
+car-free households losing every bus. Per block group in
+`data/equity_places.csv`; charted, with the ratio scatter that separates churn
+from harm, in [../equity-brief.html](../equity-brief.html).
+
 Read beside the location and area figures, never alone — the plan is roughly
 neutral by location, loses 12% of covered ground, and loses about 7% of covered
 residents. All three are true.

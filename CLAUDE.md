@@ -51,6 +51,8 @@ because they read the census rather than PRT:
 ```bash
 python3 ingest_census.py            # -> data/census_blocks.csv, census_block_groups.csv
 python3 analyze_equity_change.py    # -> data/equity_*.csv
+python3 analyze_equity_places.py    # -> data/equity_places.csv (needs PRT stop labels)
+python3 build_equity_brief.py       # -> docs/equity-brief.html, the charts
 ```
 
 `ingest_census.py` is the only script that ever wants a credential: the Census
@@ -87,6 +89,13 @@ that printed report is the draft material for `FINDINGS.md` and `docs/answers/`.
 
 `analyze_one_seat.py` reads only raw sources, so it runs independently of the
 other analyses. The cross-script imports are few and deliberate:
+`analyze_equity_places.py` takes the HOOD/MUNI labels and the outlier filter
+from `analyze_one_seat.py`, so a block group is named by the same cleaned
+labels the place-level one-seat answer uses (convention 6); it therefore has to
+run after `ingest_blr.py` and `analyze_service_loss.py`, unlike the rest of the
+equity pair. `build_equity_brief.py` reads only published CSVs and re-uses
+`analyze_equity_places.by_place`, so the charts cannot drift from the files
+`docs/answers/` cites.
 `analyze_equity_change.py` takes the tiers and the whole location test from
 `analyze_coverage_change.py` and the dimension definitions from
 `ingest_census.py`, so a rider's coverage is decided the same way at a house as

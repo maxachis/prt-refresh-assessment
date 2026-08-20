@@ -44,9 +44,27 @@ The weekend-hourly loss ratio of 1.21 comes with a gain ratio of 1.28 and a net
 of +5.8 points: churn, not harm (method caveat 6).
 
 Still, **2,376 car-free households lose all bus service near home** and 2,654
-lose weekday hourly service. Those are the households with no fallback, and they
-are worth locating individually rather than leaving as a total — the
-per-block-group detail in `data/equity_block_groups.csv` supports that.
+lose weekday hourly service. Those are the households with no fallback, and
+`analyze_equity_places.py` now puts them on named ground rather than leaving
+them as a total: **twenty-five places hold 88% of them**, and they are suburban
+almost without exception.
+
+| Place | Car-free households losing every bus | Gaining one |
+|---|---:|---:|
+| Kennedy township | 198 | 0 |
+| Scott township | 178 | 7 |
+| Bridgeville borough | 149 | 0 |
+| Bethel Park municipality | 148 | 0 |
+| Baldwin borough | 135 | 0 |
+| McCandless township | 121 | 4 |
+| Carrick | 111 | 0 |
+| Ross township | 108 | 111 |
+
+Read both columns. Ross township is on this list and comes out level; Kennedy,
+Bridgeville and Bethel Park do not. Full list, block group by block group, in
+`data/equity_places.csv`, with the distance from each block group's centre to
+the stop that named it — PRT's HOOD/MUNI labels are only as good as convention
+6 allows, so a name from over a kilometre away should be discounted.
 
 ## Service volume
 

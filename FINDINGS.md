@@ -449,6 +449,42 @@ group — the plan is doing more to their neighbourhoods in both directions.
 Second, this is an **ecological** measure: it describes the places a group
 lives, not its members.
 
+### Where it happened: the coverage being trimmed is suburban
+
+The county totals do not say where any of this is. `analyze_equity_places.py`
+puts them on named ground: 182 of Allegheny's 1,062 block groups lose coverage
+and 75 gain it, **a hundred of them hold 90% of the loss**, and the places
+holding it are almost all outer and inner-ring suburbs.
+
+| Losing every bus | Residents | | Gaining a bus | Residents |
+|---|---:|---|---|---:|
+| Baldwin borough | 9,613 | | McKeesport city | 3,222 |
+| Ross township | 6,508 | | Ross township | 2,581 |
+| McCandless township | 6,291 | | Penn Hills township | 2,397 |
+| Mount Lebanon township | 4,514 | | West View borough | 1,598 |
+| Kennedy township | 3,904 | | Brackenridge borough | 978 |
+
+Of the twenty-five places holding the largest losses, only Carrick, Brookline,
+Bon Air, Chartiers City and Summer Hill are city neighbourhoods. **This is the
+same geography as the age finding and the white-residents finding above** —
+Allegheny County's over-65 population is more suburban than its population as a
+whole — and the three should be presented as one result seen through three
+variables, not as three independent findings.
+
+The car-free losses are more concentrated still: **twenty-five places hold 88%
+of the 2,376 car-free households that lose every bus**, led by Kennedy (198),
+Scott (178), Bridgeville (149) and Bethel Park (148). Those are the households
+with no fallback, and they are now locatable rather than a county total —
+`data/equity_places.csv` has all 261 changed block groups.
+
+Read the loss column beside the gain column in every case. Ross township loses
+108 car-free households and gains 111 back; Penn Hills loses 98 and gains 32.
+Naming a place on the losing list without its gaining column would be the same
+error convention 10 forbids, one unit down.
+
+Both charted, with the ratio scatter that separates churn from harm, in
+[docs/equity-brief.html](docs/equity-brief.html) — `build_equity_brief.py`.
+
 ---
 
 ## Caveats — read before citing
@@ -463,8 +499,9 @@ lives, not its members.
 4. **The proposed GTFS is not published anywhere.** Its own
    `feed_info.txt` names PRT as publisher and is stamped 2026-08-11, six days
    before the Proposed Final Network was published; it exists at no URL and
-   cannot be re-fetched. **How it reached this repo is not yet recorded in
-   `DATA_SOURCES.md` and must be before publication.** `verify_proposed_gtfs.py`
+   cannot be re-fetched. PRT supplied it to Pittsburghers for Public Transit by
+   email at PPT's request and PPT passed it on; that provenance is recorded in
+   `DATA_SOURCES.md`. `verify_proposed_gtfs.py`
    checks it against what PRT *did* publish. That is the basis for treating it as
    the final plan; it is not the same as PRT publishing it.
 5. **The walk radius is a flat-earth proxy.** 400 m of map distance across a

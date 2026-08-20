@@ -51,6 +51,13 @@ white-residents finding in [EQUITY-RACE](EQUITY-RACE.md); the two are the same
 places seen through different variables, and should not be presented as two
 independent findings.
 
+`analyze_equity_places.py` shows that directly. The places where the most
+residents aged 65+ lose every bus are Baldwin borough (2,249), Ross township
+(1,669), McCandless township (1,281), Kennedy township (1,029) and Scott
+township (875); twenty-five places hold 91% of the 15,882 county-wide. Only
+Carrick, Bon Air, Brookline and Chartiers City appear from inside the city.
+Per block group in `data/equity_places.csv`.
+
 ## Service volume
 
 Departures per day within 400 m of home, weighted by population:
