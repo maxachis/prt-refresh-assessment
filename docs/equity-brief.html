@@ -32,12 +32,35 @@
   --q-vehicle:#b494f7; --q-disability:#4fc3d9; --q-language:#d9b455;
 }
 * { box-sizing:border-box; }
+/* The system stack is a choice, not a default: this file is a repo artifact
+   that has to render identically offline, and a webfont would be the page's
+   only network call. */
 body { margin:0; padding:0; color:var(--ink); background:var(--page);
-  font:16px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,
-  "Helvetica Neue",Arial,sans-serif; }
-main { max-width:920px; margin:0 auto; padding:40px 24px 72px; }
-h1 { font-size:2rem; line-height:1.2; margin:0 0 .4em; letter-spacing:-.015em; }
-h2 { font-size:1.15rem; margin:2.6em 0 .2em; letter-spacing:-.01em; }
+  font:16px/1.62 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,
+  "Helvetica Neue",Arial,sans-serif;
+  font-variant-numeric:tabular-nums; }
+
+/* The argument reads in a 68-character column; the evidence -- charts, tables,
+   the headline figures -- breaks out wider, because a chart squeezed to
+   reading width stops being readable at exactly the point it matters. */
+main { display:grid; padding:52px 24px 80px; column-gap:0;
+  grid-template-columns:minmax(0,1fr) min(68ch,100%) minmax(0,1fr); }
+main > * { grid-column:2; }
+main > figure, main > .scroller, main > .numbers {
+  grid-column:1 / -1; margin-inline:auto; }
+/* Each kind of evidence gets the width it actually needs. The charts want
+   room; a three-column table stretched to 1060px is mostly the gap between a
+   place name and its number. */
+/* Capped near the charts' own drawing width (~700-750 px). Beyond that the
+   SVG upscales and every label with it, so the type stops matching the page. */
+main > figure { width:min(100%,860px); }
+main > .numbers { width:min(100%,880px); }
+main > .scroller { width:min(100%,760px); }
+
+h1 { font-size:clamp(1.75rem,1.2rem + 2vw,2.15rem); line-height:1.18;
+  margin:0 0 .45em; letter-spacing:-.018em; text-wrap:balance; }
+h2 { font-size:1.16rem; margin:2.7em 0 .3em; letter-spacing:-.008em;
+  text-wrap:balance; }
 p { margin:0 0 1em; }
 .standfirst { font-size:1.12rem; color:var(--body); }
 .figure { margin:1.2em 0 0; }
@@ -55,21 +78,21 @@ p { margin:0 0 1em; }
   stroke:var(--page); stroke-width:3px; stroke-linejoin:round; }
 .county-mark { font:10px sans-serif; fill:var(--ink); paint-order:stroke;
   stroke:var(--page); stroke-width:3px; stroke-linejoin:round; }
-.caption { font-size:.88rem; color:var(--muted); margin:.4em 0 1.9em;
-  padding-top:.7em; border-top:1px solid var(--rule); }
-.table-note { font-size:.88rem; color:var(--muted); margin:.6em 0 1.9em; }
+.caption { font-size:.88rem; color:var(--muted); margin:.5em auto 1.9em;
+  padding-top:.7em; border-top:1px solid var(--rule); max-width:68ch; }
+.table-note { font-size:.88rem; color:var(--muted); margin:.7em 0 2em; }
 .legend { list-style:none; display:flex; flex-wrap:wrap; gap:.4em 1.3em;
-  padding:0; margin:1em 0 0; font-size:.86rem; color:var(--body); }
+  padding:0; margin:.2em 0 0; font-size:.85rem; color:var(--body); }
 .legend em { color:var(--muted); font-style:normal; }
 .swatch { display:inline-block; width:11px; height:11px; border-radius:50%;
   margin-right:.4em; vertical-align:-1px; }
 .numbers { display:flex; flex-wrap:wrap; gap:1px; background:var(--rule);
   border:1px solid var(--rule); margin:1.6em 0 0; }
-.numbers div { background:var(--page); padding:.9em 1.1em; flex:1 1 200px; }
+.numbers div { background:var(--page); padding:1em 1.2em; flex:1 1 200px; }
 .numbers b { display:block; font-size:1.4rem; letter-spacing:-.02em;
   line-height:1.25; white-space:nowrap; }
-.numbers span { display:block; margin-top:.25em; font-size:.82rem;
-  color:var(--muted); line-height:1.4; }
+.numbers span { display:block; margin-top:.3em; font-size:.79rem;
+  color:var(--muted); line-height:1.45; letter-spacing:.005em; }
 .note { border-left:3px solid var(--note-edge); background:var(--note-bg);
   padding:.9em 1.1em; margin:1.6em 0 0; font-size:.92rem; }
 .note p:last-child { margin:0; }
