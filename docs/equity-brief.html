@@ -63,7 +63,11 @@ h2 { font-size:1.16rem; margin:2.7em 0 .3em; letter-spacing:-.008em;
   text-wrap:balance; }
 p { margin:0 0 1em; }
 .standfirst { font-size:1.12rem; color:var(--body); }
-.figure { margin:1.2em 0 0; }
+/* `margin-block`, never the `margin` shorthand: these blocks are centred on the
+   reading column by `margin-inline:auto` above, and a shorthand here resets that
+   axis to 0 -- `.figure` outranks `main > figure`, so the charts would hang off
+   the left page edge while the tables beside them stayed centred. */
+.figure { margin-block:1.2em 0; }
 /* Wide charts scroll inside their own box; the page body never scrolls sideways. */
 .figure > svg { min-width:520px; }
 .scroller { overflow-x:auto; }
@@ -87,7 +91,7 @@ p { margin:0 0 1em; }
 .swatch { display:inline-block; width:11px; height:11px; border-radius:50%;
   margin-right:.4em; vertical-align:-1px; }
 .numbers { display:flex; flex-wrap:wrap; gap:1px; background:var(--rule);
-  border:1px solid var(--rule); margin:1.6em 0 0; }
+  border:1px solid var(--rule); margin-block:1.6em 0; }
 .numbers div { background:var(--page); padding:1em 1.2em; flex:1 1 200px; }
 .numbers b { display:block; font-size:1.4rem; letter-spacing:-.02em;
   line-height:1.25; white-space:nowrap; }

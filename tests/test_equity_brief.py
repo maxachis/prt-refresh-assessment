@@ -144,3 +144,17 @@ def test_a_nameless_place_says_why_it_has_no_name():
     label = brief.place_label(None)
     assert "2 km" in label
     assert brief.place_label("Ross township") == "Ross township"
+
+
+def test_the_wide_evidence_blocks_keep_their_centring_margins():
+    """Charts and figure blocks break out wider than the reading column and are
+    centred on it with `margin-inline:auto`. A `margin:` shorthand in the class
+    rule silently resets that to 0 -- and because `.figure` (0,1,0) outranks
+    `main > figure` (0,0,2), the charts then hang off the left page edge while
+    the tables beside them stay centred. Cost: both charts misaligned on every
+    desktop width. Use `margin-block` so the inline axis is never touched.
+    """
+    for rule in (".figure", ".numbers"):
+        block = brief.CSS.split(rule + " {", 1)[1].split("}", 1)[0]
+        assert "margin:" not in block, (
+            f"{rule} resets margin-inline and un-centres the breakout")
