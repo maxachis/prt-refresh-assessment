@@ -264,6 +264,33 @@ distinction whichever view is open.
 | `GET /api/crosswalk` | PRT's current → proposed route mapping. A labelling aid; no served number goes through it. |
 | `GET /api/meta` | Feed versions, sample dates, periods, caveats. |
 
+Two pages, not one endpoint each: `GET /` is the map and `GET /findings` is the
+equity brief.
+
+## The findings page
+
+`/findings` is the one part of the site that is not the map, because the
+question it answers has no location. "Who does this fall on?" is a rate for a
+group divided by the county's own rate for the same group's universe — a
+number about a population, not a place — and a map cannot draw a ratio. Nor
+would a choropleth of it be honest: 83% of Allegheny's block groups are
+unchanged, so the picture would be a demographic base map with a scatter of
+colour on it, and every reader would infer the cause from the base map.
+
+So it is a document, and a pre-rendered one. `build_equity_brief.py` writes it
+straight from `data/equity_change.csv` and `data/equity_places.csv`, the same
+files `docs/answers/EQUITY-*.md` cite, into
+`src/refresh/web/static/findings.html` — committed like `static/app.js`, for
+the same reason: the box serves the commit it checks out. Nothing about the
+page is per-request, and no number on it goes through `query.py`. Rebuild it
+with `python3 build_equity_brief.py`, which also writes the standalone
+`docs/equity-brief.html`.
+
+The two copies differ only in chrome. The served one pins `data-theme="dark"`
+and carries a bar back to the map, because the map is dark-only and a light
+document opening off it reads as a different site; the standalone file follows
+the reader's own setting, since it has no site around it.
+
 ## Hosting it
 
 [`deploy/`](../deploy/) is a Hetzner + Caddy kit: `./deploy/provision.sh` creates
@@ -317,6 +344,10 @@ or heartbeat to maintain. See [`deploy/README.md`](../deploy/README.md).
   *Before it goes public*. This matters more now the surface exists: 23% of the
   area losing all fixed-route service is inside a zone, and the surface paints
   every square metre of it plain red.
+- The equity findings are a page, not a layer: nothing on the map is
+  coloured by who lives there, and per convention 12 a block group is
+  covered or not at a single point, so a map of it would overstate its own
+  precision. `/findings` is the answer for now.
 - Stop-name and neighbourhood search is not built (the DB has FTS5 available).
 - `nearest_place_label` uses PRT's `HOOD`/`MUNI` labels, which contain errors up
   to 40 km (caveat 4). It is a display hint; nothing computed depends on it.

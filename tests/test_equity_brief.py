@@ -121,3 +121,17 @@ def test_the_point_change_carried_to_the_chart_is_the_published_one():
     (result,) = brief.ratios(rows)
     assert (result.pct_now, result.pct_proposed) == (53.3, 49.4)
     assert result.pct_point_change == -3.9
+
+
+def test_the_served_page_pins_the_dark_theme_the_map_app_uses():
+    """The map is dark-only. A light document opening off it reads as a
+    different site, so the served copy fixes the theme rather than following
+    the reader's OS the way the standalone file does."""
+    assert '<html lang="en" data-theme="dark">' in brief.app_page("<h1>x</h1>")
+    # Asserted on the root tag, not the whole file: the stylesheet carries
+    # `[data-theme]` selectors in both, and only the stamp differs.
+    assert '<html lang="en">' in brief.document("<h1>x</h1>")
+
+
+def test_the_served_page_carries_a_way_back_to_the_map():
+    assert 'href="/"' in brief.app_page("<h1>x</h1>")

@@ -160,3 +160,20 @@ def test_meta_carries_the_surface_caveat(client):
     the number, and the methods drawer is where the app says it."""
     ids = {c["id"] for c in client.get("/api/meta").json()["caveats"]}
     assert "surface" in ids
+
+
+def test_findings_page_is_served(client):
+    """The equity brief has a home on the site, not only in the repo."""
+    r = client.get("/findings")
+    assert r.status_code == 200
+    assert "who gains and who loses" in r.text.lower()
+
+
+def test_the_findings_page_leads_back_to_the_map(client):
+    """A page with no way back is a dead end -- the map is the site."""
+    assert 'href="/"' in client.get("/findings").text
+
+
+def test_the_map_links_to_the_findings_page(client):
+    """Nobody finds a page that nothing points at."""
+    assert 'href="/findings"' in client.get("/").text

@@ -162,6 +162,17 @@ def create_app(db_path: str | Path = "data/refresh.db") -> FastAPI:
     def index():
         return FileResponse(_STATIC / "index.html")
 
+    @app.get("/findings")
+    def findings():
+        """The equity brief, as a page of the site rather than a repo file.
+
+        Static and pre-rendered: `build_equity_brief.py` writes it from
+        `data/equity_change.csv`, so the charts here cannot drift from what
+        `docs/answers/EQUITY-*.md` publish. Nothing about it is per-request,
+        which is why it is a file and not an endpoint over `query.py`.
+        """
+        return FileResponse(_STATIC / "findings.html")
+
     if _STATIC.exists():
         app.mount("/", StaticFiles(directory=_STATIC, html=True), name="static")
 

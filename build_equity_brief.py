@@ -49,6 +49,10 @@ DOCS = Path(__file__).resolve().parent / "docs"
 CHANGE_CSV = DATA / "equity_change.csv"
 FREQUENCY_CSV = DATA / "equity_frequency.csv"
 OUT_HTML = DOCS / "equity-brief.html"
+# The same brief, served by the web app at /findings. Generated and committed
+# for the same reason `static/app.js` is: the box serves what it checks out.
+APP_HTML = (Path(__file__).resolve().parent / "src" / "refresh" / "web"
+            / "static" / "findings.html")
 
 # The headline denominator and radius. METHOD-equity.md caveat 1 is that two
 # thirds of the three-county population lives where PRT has never run a bus, so
@@ -713,13 +717,50 @@ pro-bono analysis — not a PRT publication.</p>
 """
 
 
-def document(body):
-    return ("<!doctype html>\n<html lang=\"en\">\n<head>\n"
+def _html(body, *, theme=None, extra_css="", top=""):
+    root = f' data-theme="{theme}"' if theme else ""
+    return (f'<!doctype html>\n<html lang="en"{root}>\n<head>\n'
             '<meta charset="utf-8">\n'
             '<meta name="viewport" content="width=device-width,initial-scale=1">\n'
             "<title>Who gains and who loses under the Bus Line Refresh</title>\n"
-            f"<style>{CSS}</style>\n</head>\n<body>\n<main>{body}</main>\n"
-            "</body>\n</html>\n")
+            f"<style>{CSS}{extra_css}</style>\n</head>\n<body>\n{top}"
+            f"<main>{body}</main>\n</body>\n</html>\n")
+
+
+def document(body):
+    """The standalone file. Follows the reader's own light/dark setting."""
+    return _html(body)
+
+
+def app_page(body):
+    """The same brief as a page of the map app, at `/findings`.
+
+    Two differences from the standalone file, both about belonging to a site
+    rather than sitting in a repo. The theme is pinned dark, because the map
+    is dark-only and a light document opening off it reads as a different
+    site. And it gets a bar back to the map, since the map is the site and a
+    page with no way back is a dead end.
+    """
+    return _html(body, theme="dark", extra_css=APP_CSS, top=SITE_BAR)
+
+
+# The map app's own accent blue (index.html `--now`), so the one interactive
+# thing on this page is the colour the rest of the site uses for interaction.
+APP_CSS = """
+.sitebar { position:sticky; top:0; z-index:5; display:flex; flex-wrap:wrap;
+  align-items:baseline; gap:6px 14px; padding:11px 24px;
+  background:var(--page); border-bottom:1px solid var(--rule); }
+.sitebar a { color:#4aa3ff; text-decoration:none; font-size:13px; }
+.sitebar a:hover { text-decoration:underline; }
+.sitebar a:focus-visible { outline:2px solid #4aa3ff; outline-offset:3px;
+  border-radius:3px; }
+.sitebar .where { color:var(--muted); font-size:13px; }
+main { padding-top:34px; }
+"""
+
+SITE_BAR = ('<nav class="sitebar"><a href="/">← Back to the map</a>'
+            '<span class="where">Bus Line Refresh — findings</span>'
+            "</nav>\n")
 
 
 def main():
@@ -737,10 +778,13 @@ def main():
         return
 
     OUT_HTML.write_text(document(body), encoding="utf-8")
+    APP_HTML.write_text(app_page(body), encoding="utf-8")
     charted = {r.group for r in ratios(rows)}
     print(f"wrote {OUT_HTML.relative_to(OUT_HTML.parent.parent)} "
           f"-- {len(charted)} groups, {len(SCATTER_TIERS)} tiers, "
           f"{OUT_HTML.stat().st_size / 1024:.0f} KB")
+    print(f"wrote {APP_HTML.relative_to(APP_HTML.parents[4])} "
+          f"-- the same brief as the app's /findings page")
 
 
 if __name__ == "__main__":

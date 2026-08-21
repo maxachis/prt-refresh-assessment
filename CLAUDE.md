@@ -52,7 +52,7 @@ because they read the census rather than PRT:
 python3 ingest_census.py            # -> data/census_blocks.csv, census_block_groups.csv
 python3 analyze_equity_change.py    # -> data/equity_*.csv
 python3 analyze_equity_places.py    # -> data/equity_places.csv (needs PRT stop labels)
-python3 build_equity_brief.py       # -> docs/equity-brief.html, the charts
+python3 build_equity_brief.py       # -> docs/equity-brief.html + the app's /findings page
 ```
 
 `ingest_census.py` is the only script that ever wants a credential: the Census
@@ -74,7 +74,7 @@ uv sync --extra web && npm install   # one-time
 npm run build                        # frontend/*.ts -> static/app.js
 uv run refresh serve                 # http://127.0.0.1:8000
 
-uv run pytest                        # 86 tests, incl. served == published
+uv run pytest                        # 108 tests, incl. served == published
 npx vitest run && npx tsc --noEmit   # 37 frontend tests
 ```
 

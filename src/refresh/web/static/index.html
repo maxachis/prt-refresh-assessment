@@ -86,6 +86,11 @@
     .seg button:disabled { opacity:.35; cursor:not-allowed; }
     .link { background:none; border:0; color:var(--now); cursor:pointer;
       font:inherit; font-size:12px; padding:0; margin-left:auto; }
+    /* Two of these now share the row; only the first needs pushing right, and
+       the second would otherwise re-eat the gap between them. */
+    .link + .link { margin-left:0; }
+    a.link { text-decoration:none; }
+    a.link:hover { text-decoration:underline; }
 
     #panel { padding:16px; overflow:auto; flex:1; }
     #panel.loading { opacity:.5; }
@@ -178,6 +183,11 @@
           <button data-radius="150">150 m</button>
         </div>
         <button class="link" id="methods-open">Method &amp; caveats</button>
+        <!-- The map answers "what changes here?" one point at a time and can
+             never answer "who does this fall on?", which is a ratio against a
+             county baseline rather than anything with a location. That is a
+             different page, not another layer. -->
+        <a class="link" href="/findings">Findings</a>
       </div>
       <!-- Day type governs the map layer as well as the panel: a place that
            keeps every weekday bus and loses the weekend reads as untouched on
