@@ -286,6 +286,20 @@ page is per-request, and no number on it goes through `query.py`. Rebuild it
 with `python3 build_equity_brief.py`, which also writes the standalone
 `docs/equity-brief.html`.
 
+**To change the words, edit `equity_brief_body.html` and rebuild.** That file
+is the brief's prose — headline, every paragraph, both figure captions, the
+"what this does not say" box, the footer — as a plain HTML fragment. The
+charts and tables arrive through `<!--slot:name-->` comments, chosen over `{}`
+or `$` templating because a comment cannot collide with anything a writer
+might type. A slot with no builder, or a builder with no slot, raises rather
+than shipping an HTML comment where a chart should be. Editing the two output
+files directly does nothing: the next build overwrites them.
+
+Some sentences quote figures as literal text — "1.40×", "182 lose coverage",
+"about 12% less ground". Those are typed, not interpolated, so they do not
+follow the CSVs the way the charts do; re-read them whenever the analysis is
+re-run.
+
 The two copies differ only in chrome. The served one pins `data-theme="dark"`
 and carries a bar back to the map, because the map is dark-only and a light
 document opening off it reads as a different site; the standalone file follows

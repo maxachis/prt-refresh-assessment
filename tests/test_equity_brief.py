@@ -158,3 +158,38 @@ def test_the_wide_evidence_blocks_keep_their_centring_margins():
         block = brief.CSS.split(rule + " {", 1)[1].split("}", 1)[0]
         assert "margin:" not in block, (
             f"{rule} resets margin-inline and un-centres the breakout")
+
+
+# --------------------------------------------------------------------------
+# the prose file and its slots
+# --------------------------------------------------------------------------
+
+def test_a_slot_the_prose_does_not_ask_for_is_an_error_not_a_silent_drop():
+    """Renaming a slot in the prose file must not quietly delete a chart. A
+    builder with nowhere to go means the page loses a whole figure, and the
+    output is still valid HTML, so nothing else would catch it."""
+    with pytest.raises(KeyError, match="no slot for"):
+        brief.fill_slots("<p>no slots here</p>", {"chart-churn": lambda: "x"})
+
+
+def test_a_slot_with_no_builder_is_an_error_not_a_comment_left_on_the_page():
+    """The other direction: a typo in the prose file would otherwise ship an
+    HTML comment where a chart should be, invisible in a browser."""
+    with pytest.raises(KeyError, match="unknown slots"):
+        brief.fill_slots("<!--slot:chart-of-nothing-->", {})
+
+
+def test_the_prose_file_supplies_the_words_and_the_slots_the_evidence():
+    filled = brief.fill_slots(
+        "<h1>Title</h1>\n<!--slot:chart-churn-->\n",
+        {"chart-churn": lambda: "<svg/>"})
+    assert filled == "<h1>Title</h1>\n<svg/>\n"
+
+
+def test_every_slot_the_prose_file_asks_for_has_a_builder():
+    """Guards the real file, not a fixture: `page_body` raises on a mismatch,
+    so this fails the moment the prose and the builders disagree."""
+    prose = brief.BODY_HTML.read_text(encoding="utf-8")
+    assert brief.SLOT.findall(prose), "the prose file has no evidence slots"
+    assert "{" not in prose and "}" not in prose, (
+        "the prose file must be plain HTML -- braces would read as templating")

@@ -53,6 +53,7 @@ python3 ingest_census.py            # -> data/census_blocks.csv, census_block_gr
 python3 analyze_equity_change.py    # -> data/equity_*.csv
 python3 analyze_equity_places.py    # -> data/equity_places.csv (needs PRT stop labels)
 python3 build_equity_brief.py       # -> docs/equity-brief.html + the app's /findings page
+                                    #    prose lives in equity_brief_body.html
 ```
 
 `ingest_census.py` is the only script that ever wants a credential: the Census

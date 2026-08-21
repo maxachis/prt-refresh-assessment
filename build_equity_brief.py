@@ -33,9 +33,16 @@ gain rates are read from the analysis output as published; the only arithmetic
 is dividing a group's rate by its own universe's county rate, which is the
 ratio `docs/answers/` prints. Output is `docs/equity-brief.html`, one
 self-contained file with no scripts, no fonts and no network calls.
+
+The brief's words are not in this file. They live in `equity_brief_body.html`,
+a plain HTML fragment with `<!--slot:name-->` comments where the charts and
+tables go, so that editing the prose is editing a document rather than a
+Python string literal -- and so that a writer never has to know which
+characters this script would try to interpolate. See `page_body`.
 """
 import argparse
 import csv
+import re
 import sys
 from dataclasses import dataclass
 from pathlib import Path
@@ -49,6 +56,9 @@ DOCS = Path(__file__).resolve().parent / "docs"
 CHANGE_CSV = DATA / "equity_change.csv"
 FREQUENCY_CSV = DATA / "equity_frequency.csv"
 OUT_HTML = DOCS / "equity-brief.html"
+# The brief's words, as an editable HTML fragment rather than a string
+# literal in this file. See `page_body`.
+BODY_HTML = Path(__file__).resolve().parent / "equity_brief_body.html"
 # The same brief, served by the web app at /findings. Generated and committed
 # for the same reason `static/app.js` is: the box serves what it checks out.
 APP_HTML = (Path(__file__).resolve().parent / "src" / "refresh" / "web"
@@ -632,110 +642,48 @@ def place_table(rolled, key, *, side, unit, columns):
 
 
 def page_body(rows):
+    """The brief's prose, with the generated evidence dropped into its slots.
+
+    The words live in `equity_brief_body.html` rather than in this file, so
+    editing them is editing a document rather than a Python string literal. It
+    is a real HTML fragment -- openable, diffable, and free of any templating
+    syntax beyond the `<!--slot:name-->` comments, which cannot collide with
+    prose the way `{}` or `$` would.
+    """
     ratio_rows = ratios(rows)
     rolled = ap.by_place(ap.read_located())
-    return f"""
-<h1>Who gains and who loses under the Bus Line Refresh</h1>
-<p class="standfirst">Measured as people, not as stops or square kilometres:
-coverage at every populated census block in Allegheny County, weighted by who
-lives there. Read across all six equity questions at once, the plan's trade
-runs <strong>progressive</strong> — car-free, low-income and Black residents
-come out ahead of the county on nearly every tier. The clear exception is
-<strong>age</strong>.</p>
+    return fill_slots(BODY_HTML.read_text(encoding="utf-8"), {
+        "key-numbers": lambda: key_numbers(rows),
+        "chart-churn": lambda: churn_scatter(ratio_rows),
+        "chart-change": lambda: change_dots(ratio_rows, rows),
+        "colour-legend": colour_legend,
+        "table-car-free": lambda: place_table(
+            rolled, "zero_vehicle", side="lost", unit="car-free households",
+            columns=["Lose every bus", "Gain a bus"]),
+        "table-gained": lambda: place_table(
+            rolled, "residents", side="gained", unit="residents",
+            columns=["Lose every bus", "Gain a bus"]),
+    })
 
-{key_numbers(rows)}
 
-<h2>Losing more is not the same as losing ground</h2>
-<p>Each dot is one group on one tier, placed by how fast it loses service
-compared with the county as a whole (across) and how fast it gains service back
-(up). Dot size is the group's population. A group can sit well right of the
-centre line and still end up ahead: Black residents lose weekend hourly service
-at <strong>1.40×</strong> the county rate and regain it at <strong>1.79×</strong>,
-for a net of +8.4 points. That is churn, not harm — the plan moved their
-service and gave back more than it took.</p>
-<p>Only the shaded corner is losing ground: above the county rate on losses
-<em>and</em> below it on gains. On the tier that matters most — having any bus
-at all — five groups land there, and the one to carry is
-<strong>residents aged 65 and over</strong>, at 1.14 and 0.89.</p>
+SLOT = re.compile(r"<!--slot:([a-z-]+)-->")
 
-<figure class="figure"><div class="scroller">{churn_scatter(ratio_rows)}</div>
-<figcaption class="caption">Loss rate and gain rate, each as a multiple of the
-county's own rate for the same universe. Log scale, so “half the county rate”
-and “twice the county rate” sit equally far from the centre. Groups of fewer
-than 5,000 are not plotted at all. The two dots furthest into the corners are
-“Other race” — 6,773 people, only just over that threshold, and the noisiest
-line in the analysis.</figcaption></figure>
 
-<h2>Where the trade landed</h2>
-<p>The same result in each group's own percentage points. Every group loses
-some plain coverage and every group gains weekend frequency; what differs is
-the exchange rate. Read the two columns together — sorted by the left one, the
-right one is close to its mirror image.</p>
+def fill_slots(template, builders):
+    """Replace every `<!--slot:name-->` with what `builders[name]` returns.
 
-<figure class="figure"><div class="scroller">{change_dots(ratio_rows, rows)}</div>
-<figcaption class="caption">Change in the share of each group living within
-400 m of the service tier, now versus proposed. Dashed line is the county.
-Both columns use the same scale, so the weekend-frequency gains really are
-larger than the plain-coverage losses.</figcaption></figure>
-
-{colour_legend()}
-
-<h2>Where this happened</h2>
-<p>The losses are concentrated. Of Allegheny County's 1,062 census block
-groups, 182 lose coverage and 75 gain it; a hundred of them hold 90% of the
-loss. So this is a list rather than a map — and the list says something the
-county totals do not: <strong>the coverage being trimmed is suburban</strong>.
-Baldwin, Ross, McCandless, Mount Lebanon, Kennedy, Scott, Plum, Bethel Park.
-That is the same geography behind both the age finding and the white-residents
-finding above; they are one result seen through two variables, not two
-independent results.</p>
-
-<p>Car-free households are the ones with no fallback, so they are the first
-table.</p>
-
-{place_table(rolled, "zero_vehicle", side="lost", unit="car-free households",
-             columns=["Lose every bus", "Gain a bus"])}
-
-<p>And the plan does add buses to ground that has none today — most of all in
-McKeesport, and in West View, Brackenridge and Robinson. The fourth row is
-unnamed because it takes its name from the nearest bus stop and there isn't
-one: four block groups on Perry Highway around Wexford, where nothing stops
-within 3 km today and the plan puts ten stops, including one at AHN Wexford.
-They have no name to borrow for the same reason they are gaining a bus.</p>
-
-{place_table(rolled, "residents", side="gained", unit="residents",
-             columns=["Lose every bus", "Gain a bus"])}
-
-<div class="note">
-<h2>What this does not say</h2>
-<p><strong>This describes places, not people.</strong> It measures the
-neighbourhoods a group lives in, not its members — a census block group is
-covered or not, and everyone in it is counted the same way. It cannot tell you
-that any particular person gained or lost a bus.</p>
-<p><strong>Population is one of three denominators, and it is not the whole
-answer.</strong> By location the plan is roughly service-neutral; by area it
-covers about 12% less ground. Quote this page beside those, never instead of
-them.</p>
-<p><strong>Disability and language are tract-level estimates</strong> shared
-down to block groups by population, so they assume a uniform rate across a
-whole tract. Treat them as indicative.</p>
-<p><strong>Walking 400 m is not the same everywhere.</strong> Grade, sidewalks,
-crossings and shelters decide whether a stop is usable, and none of them are
-measured here.</p>
-</div>
-
-<footer>
-<p>Generated by <code>build_equity_brief.py</code> from
-<code>data/equity_change.csv</code>, which
-<code>analyze_equity_change.py</code> writes. Method, and the eight caveats in
-full, in <code>docs/answers/METHOD-equity.md</code>; the six questions in
-<code>docs/answers/EQUITY-*.md</code>.</p>
-<p>Current service from PRT's published GTFS; proposed service from the GTFS
-PRT supplied to Pittsburghers for Public Transit on request. Demographics from
-the 2020 Census and the 2020–2024 American Community Survey. Independent
-pro-bono analysis — not a PRT publication.</p>
-</footer>
-"""
+    Raises on a slot with no builder and on a builder with no slot, because
+    both failures are silent otherwise: the first leaves an HTML comment where
+    a chart should be, and the second drops a chart off the page entirely.
+    """
+    wanted = set(SLOT.findall(template))
+    if wanted - builders.keys():
+        raise KeyError(f"{BODY_HTML.name} asks for unknown slots: "
+                       f"{sorted(wanted - builders.keys())}")
+    if builders.keys() - wanted:
+        raise KeyError(f"{BODY_HTML.name} has no slot for: "
+                       f"{sorted(builders.keys() - wanted)}")
+    return SLOT.sub(lambda m: builders[m.group(1)](), template)
 
 
 def _html(body, *, theme=None, extra_css="", top=""):
@@ -745,7 +693,7 @@ def _html(body, *, theme=None, extra_css="", top=""):
             '<meta name="viewport" content="width=device-width,initial-scale=1">\n'
             "<title>Who gains and who loses under the Bus Line Refresh</title>\n"
             f"<style>{CSS}{extra_css}</style>\n</head>\n<body>\n{top}"
-            f"<main>{body}</main>\n</body>\n</html>\n")
+            f"<main>\n{body}</main>\n</body>\n</html>\n")
 
 
 def document(body):
