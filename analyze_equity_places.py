@@ -194,8 +194,21 @@ def write(located):
         writer = csv.DictWriter(f, fieldnames=fields)
         writer.writeheader()
         for row in sorted(located, key=lambda r: -r["residents_lost"]):
-            writer.writerow({k: (round(v, 1) if isinstance(v, float) else v)
-                             for k, v in row.items()})
+            writer.writerow({k: _rounded(k, v) for k, v in row.items()})
+
+
+# Latitude and longitude are the exception to the tenth-of-a-person rounding
+# below: one decimal of latitude is about 11 km, which would put a block group
+# in the wrong municipality while still looking precise enough to map.
+COORDINATES = ("lat", "lon")
+COORD_DP = 6
+COUNT_DP = 1
+
+
+def _rounded(field, value):
+    if not isinstance(value, float):
+        return value
+    return round(value, COORD_DP if field in COORDINATES else COUNT_DP)
 
 
 def table(rolled, key, title, unit):

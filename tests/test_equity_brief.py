@@ -135,3 +135,12 @@ def test_the_served_page_pins_the_dark_theme_the_map_app_uses():
 
 def test_the_served_page_carries_a_way_back_to_the_map():
     assert 'href="/"' in brief.app_page("<h1>x</h1>")
+
+
+def test_a_nameless_place_says_why_it_has_no_name():
+    """Four of the six unnamed block groups are the plan reaching Wexford,
+    where PRT has no stop within 3 km today. "unnamed ground" reads as a data
+    artifact; the reason it has no name is the finding."""
+    label = brief.place_label(None)
+    assert "2 km" in label
+    assert brief.place_label("Ross township") == "Ross township"

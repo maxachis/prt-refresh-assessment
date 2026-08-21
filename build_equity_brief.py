@@ -586,6 +586,19 @@ def key_numbers(rows):
 PLACE_ROWS = 12
 
 
+def place_label(place):
+    """What to print for a block group that took no name.
+
+    A block group more than `LABEL_RADIUS_M` from a labelled stop stays
+    unnamed rather than borrowing a neighbourhood it has no claim to. Saying
+    so is better than calling it "unnamed ground", because the absence is the
+    finding: four of the six sit on Perry Highway around Wexford, where PRT
+    has no stop within 3 km today and the plan puts ten. They have no name to
+    borrow for the same reason they are gaining a bus.
+    """
+    return place or f"no stop within {ap.LABEL_RADIUS_M // 1_000} km today"
+
+
 def place_table(rolled, key, *, side, unit, columns):
     """The places holding the most of one kind of change, as a table.
 
@@ -600,7 +613,7 @@ def place_table(rolled, key, *, side, unit, columns):
     head = "".join(f"<th>{escape(c)}</th>" for c in columns)
     body = ""
     for entry in shown:
-        body += (f"<tr><td>{escape(entry['place'] or 'unnamed ground')}</td>"
+        body += (f"<tr><td>{escape(place_label(entry['place']))}</td>"
                  f"<td class=\"num\">{entry[f'{key}_lost']:,.0f}</td>"
                  f"<td class=\"num\">{entry[f'{key}_gained']:,.0f}</td></tr>")
     rest = sum(e[f"{key}_{side}"] for e in ranked[PLACE_ROWS:])
@@ -680,7 +693,11 @@ table.</p>
              columns=["Lose every bus", "Gain a bus"])}
 
 <p>And the plan does add buses to ground that has none today — most of all in
-McKeesport, and in West View, Brackenridge and Robinson.</p>
+McKeesport, and in West View, Brackenridge and Robinson. The fourth row is
+unnamed because it takes its name from the nearest bus stop and there isn't
+one: four block groups on Perry Highway around Wexford, where nothing stops
+within 3 km today and the plan puts ten stops, including one at AHN Wexford.
+They have no name to borrow for the same reason they are gaining a bus.</p>
 
 {place_table(rolled, "residents", side="gained", unit="residents",
              columns=["Lose every bus", "Gain a bus"])}

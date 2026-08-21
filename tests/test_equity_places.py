@@ -109,3 +109,21 @@ def test_a_place_where_nothing_changed_is_not_in_the_rollup():
     grid = places.label_grid([(40.44, -79.99, "Carrick")])
     located = places.locate([block_group()], grid)
     assert places.by_place(located) == []
+
+
+def test_the_written_coordinates_keep_their_precision(tmp_path, monkeypatch):
+    """One decimal of latitude is about 11 km. Counts round to a tenth of a
+    person happily; a position rounded the same way puts a block group in the
+    wrong municipality while still looking precise enough to trust."""
+    monkeypatch.setattr(places, "OUT_CSV", tmp_path / "places.csv")
+    grid = places.label_grid([(40.626271, -80.064431, "Wexford")])
+    places.write(places.locate(
+        [block_group(lat=40.626271, lon=-80.064431, gained_week_any_minimum=1.0)],
+        grid))
+
+    import csv
+    (row,) = list(csv.DictReader(open(tmp_path / "places.csv")))
+    assert float(row["lat"]) == pytest.approx(40.626271, abs=1e-5)
+    assert float(row["lon"]) == pytest.approx(-80.064431, abs=1e-5)
+    # The people columns still round -- a tenth of a person is the useful grain.
+    assert row["residents_gained"] == "1000.0"
