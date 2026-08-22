@@ -466,13 +466,23 @@ mean. The first and last walks are anchored at the pins rather than at the
 first and last stop, since the clock is already counting them.
 
 The drawn path is **for drawing only**. It is thinned to five metres between
-stops, and it is anchored at each stop's own coordinate rather than at the
-nearest bit of road, so a leg starts and ends under the markers a reader can
-see. Where a feed's shape wanders from its own stops — some proposed-side
-stops sit 100–350 m off the path their trips carry, and rail stations sit
-beside the track alignment — the line jogs to the stop. Street length is a
-different question and is measured on the full shape by
-`analyze_corridor_change.py`; nothing may be measured off this one.
+stops, and two things happen at each stop that a reader would otherwise see as
+the line failing to follow the street. Today's `shapes.txt` **steps to the kerb
+and back at every stop** — five metres out and five metres back to the
+coordinate it left from, on 14,820 stops — and simplifying cannot remove that,
+because the step really is five metres off the zero-length segment between its
+neighbours; whole excursions the path leaves and returns from are dropped
+instead (`gtfs.drop_curb_pull_ins`), while a bus that drives 60–100 m into a
+transit centre and back out keeps its spur. And a stop **moves the drawn line
+only when the feed has genuinely put it somewhere else**: within
+`gtfs.STOP_SNAP_M` the line stays on the street and the stop is a kerbside
+coordinate for a bus driving down the middle, and beyond it — some
+proposed-side stops sit 100–350 m off the path their own trips carry, and rail
+stations sit beside the track alignment — the line jogs out to the stop rather
+than through the wrong block. Nothing between 25 m and 100 m occurs in either
+feed, so that threshold sits in an empty gap. Street length is a different
+question and is measured on the full shape by `analyze_corridor_change.py`;
+nothing may be measured off this one.
 
 The walk-radius control is disabled here, like it is for the street view. A
 journey's walking is the router's own (`journey.CONSTANTS`), not a control, and
@@ -586,6 +596,15 @@ or heartbeat to maintain. See [`deploy/README.md`](../deploy/README.md).
   most of it in those two questions rather than in the drawing.
   *Max chose the magnitude surface first and asked for this to be held as an
   alternative to explore later; it is not abandoned.*
+- **A walk is drawn — and timed — as a straight line**, so a walk out of the
+  Strip District into the Hill District crosses a river valley, Bigelow
+  Boulevard and the busway on a diagonal nobody can take, and the clock charges
+  that distance. There is no pedestrian network in this repo to route on.
+  Related and visible in the same itinerary: the last walk can dogleg via a bus
+  stop the rider never boards, because only a stop inside the destination's own
+  400 m radius may be the final alighting point. Both are decisions owed —
+  `docs/worklog/walks-are-drawn-and-timed-in-straight-lines.md` and
+  `docs/worklog/the-last-walk-doglegs-via-a-stop-nobody-boards.md`.
 - The 10 on-demand microtransit zones are still undrawn — see item 2 under
   *Before it goes public*. This matters more now the surface exists: 23% of the
   area losing all fixed-route service is inside a zone, and the surface paints

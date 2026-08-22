@@ -351,8 +351,66 @@ def simplify_path(points, tolerance_m=SHAPE_SIMPLIFY_M):
     return [p for p, k in zip(points, keep) if k]
 
 
+# Today's `shapes.txt` steps to the curb and back at every stop: three points
+# that leave the centreline by a few metres and return to the coordinate they
+# left from (`shp-87-01`, sequence 788-790, 5.5 m out and 5.5 m back). Drawn
+# faithfully that is a perpendicular stub at 14,820 stops, which is exactly
+# what "the line does not follow the street" looks like -- and simplifying
+# cannot remove it, because the detour really is 5.5 m off the zero-length
+# segment between its two neighbours. A vertex whose neighbours are this close
+# together is not a turn, so it goes before the path is simplified.
+CURB_PULL_IN_M = 2.0
+
+# The longest excursion, in vertices, that may be collapsed as a pull-in. The
+# feed's are four points -- centreline, kerb, stop, kerb -- and a bus entering
+# a transit centre and coming back out is far longer. Both this and the offset
+# ceiling below are what keeps a real dead-end spur (Century III, South Hills
+# Village: 60-100 m out and back) on the map while the kerb steps come off it.
+CURB_PULL_IN_MAX_POINTS = 8
+
+
+def drop_curb_pull_ins(points, tolerance_m=CURB_PULL_IN_M,
+                       max_offset_m=None, max_points=CURB_PULL_IN_MAX_POINTS):
+    """Drop excursions the path makes and returns from within a few metres.
+
+    Written as a scan over whole excursions rather than a filter over triples,
+    because the feed's pull-ins nest: `shp-61A-03` steps out at 458, again at
+    459, touches the stop at 460 and unwinds through 461 to 462, and dropping
+    the innermost pair leaves the outer one behind as a wedge. Drawing only.
+    """
+    if max_offset_m is None:
+        max_offset_m = STOP_SNAP_M
+    if len(points) < 3:
+        return list(points)
+
+    def returns_to(start):
+        """The furthest vertex the path comes back to `start` at, if any."""
+        limit = min(len(points), start + max_points + 1)
+        for end in range(limit - 1, start + 1, -1):
+            if metres_between(points[start], points[end]) > tolerance_m:
+                continue
+            if max(metres_between(points[start], points[i])
+                   for i in range(start + 1, end)) <= max_offset_m:
+                return end
+        return None
+
+    kept, at = [points[0]], 0
+    while at < len(points) - 1:
+        back = returns_to(at)
+        if back is not None:
+            at = back            # the path is already at this coordinate
+            continue
+        at += 1
+        kept.append(points[at])
+    return kept
+
+
 def _shape_paths(feed, wanted):
-    """{shape_id: [(lat, lon), ...]}, ordered along the shape, for the ids asked."""
+    """{shape_id: [(lat, lon), ...]}, ordered along the shape, for the ids asked.
+
+    Curb pull-ins are dropped on the way out, so callers get the line the bus
+    drives rather than the line plus a stub at every stop.
+    """
     raw = defaultdict(list)
     for r in feed.rows("shapes.txt"):
         sid = r["shape_id"]
@@ -363,7 +421,7 @@ def _shape_paths(feed, wanted):
                              float(r["shape_pt_lat"]), float(r["shape_pt_lon"])))
         except (TypeError, ValueError):
             continue
-    return {sid: [(lat, lon) for _, lat, lon in sorted(rows)]
+    return {sid: drop_curb_pull_ins([(lat, lon) for _, lat, lon in sorted(rows)])
             for sid, rows in raw.items()}
 
 
@@ -411,16 +469,29 @@ def _vertex_for_each_stop(points, stops, coords):
     return out
 
 
+# How far a stop may sit from the path its own trips drive and still be
+# treated as being ON it. Below this, a stop is a kerbside coordinate for a bus
+# that drives down the middle of the street, and moving the drawn line out to
+# touch it wrenches it off the street and back for no information at all.
+# Above it, the feed has genuinely put the stop somewhere else -- some
+# proposed-side stops are 100-350 m off their own shape, and rail stations sit
+# beside the track alignment -- and drawing through the wrong block would be
+# worse than a visible jog. Nothing between 25 m and 100 m occurs in either
+# feed, so the threshold sits in an empty gap rather than on a judgement call.
+STOP_SNAP_M = 30.0
+
+
 def _pattern_path(points, stops, coords):
     """A pattern's drawn path: the shape between stops, the stop at each stop.
 
-    Every stop contributes its OWN coordinate as a vertex, and the shape fills
-    in the driving between them. That is what makes the slice for a leg start
-    and end exactly where the map's markers are, and it degrades gracefully
-    where a feed's shape wanders from its own stops -- some proposed-side
-    stops sit 100-350 m off the path their trips carry, and rail stations sit
-    beside the track alignment rather than on it. Those draw a small jog to
-    the stop instead of a path through the wrong block.
+    Every stop contributes a vertex, so a leg from stop i to stop j is the
+    slice between their two indices. WHICH coordinate that vertex takes is the
+    whole subtlety, and it is `STOP_SNAP_M` that decides: a stop the path
+    already runs past keeps the path on the street, and only a stop the feed
+    has genuinely put elsewhere -- 100-350 m off on the proposed side, or a
+    rail station beside its track alignment -- pulls the line out to itself.
+    Anchoring unconditionally looks right and is not: it steps the line off
+    the street and back at the kerb of every stop on every route.
 
     Between stops the run is thinned on its own, so the vertices the stops sit
     on always survive. A leg from stop i to stop j is then the slice between
@@ -429,14 +500,20 @@ def _pattern_path(points, stops, coords):
     vertices = _vertex_for_each_stop(points, stops, coords)
     if vertices is None:
         return None
-    path, stop_idx = [coords[stops[0]]], [0]
+
+    def anchor(position):
+        """Where the drawn path sits at this stop: the street, or the stop."""
+        here, on_path = coords[stops[position]], points[vertices[position]]
+        return on_path if metres_between(here, on_path) <= STOP_SNAP_M else here
+
+    path, stop_idx = [anchor(0)], [0]
     for position in range(1, len(stops)):
         # Interior vertices only: the two ends of the run are the stops
         # themselves, which are already in the path or about to be.
         run = points[vertices[position - 1] + 1:vertices[position]]
         if run:
             path.extend(simplify_path(run) if len(run) > 2 else run)
-        path.append(coords[stops[position]])
+        path.append(anchor(position))
         stop_idx.append(len(path) - 1)
     return tuple(path), tuple(stop_idx)
 
