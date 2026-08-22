@@ -43,6 +43,9 @@ python3 analyze_coverage_change.py  # -> data/coverage_change.csv, route_service
 python3 analyze_coverage_area.py    # -> data/coverage_area*.csv (coverage as km2)
 python3 analyze_route_hours.py      # -> data/route_frequency_change.csv
 python3 analyze_corridor_change.py  # -> data/corridor_change.csv
+python3 analyze_travel_time.py      # -> data/trip_time_change.csv (slow: ~1,500
+                                    #    profiles; needs analyze_one_seat.py and
+                                    #    ingest_census.py to have run)
 python3 build_webdb.py              # -> data/refresh.db, for the web app only
 ```
 
@@ -243,6 +246,46 @@ changes published findings.
     `analyze_one_seat.py`, and the app keeps its all-mode index in separate
     tables (`reach_stop`, `point_reach`) precisely so that widening the
     universe here can never widen it under a published service number.
+
+14. **A journey is a fifth unit, and it is the only one with a clock.**
+    `analyze_travel_time.py` and the app's journey view ask how long a
+    rider's actual trip takes, origin to destination — the only measure here
+    that involves waiting, transferring, or the time of day. Five things
+    follow, and the first three look like inconsistencies and are not.
+
+    The clock starts **when the rider is ready at the origin, not when they
+    board**. Waiting is part of a trip, and it is the only place the headway
+    changes the rest of the site measures actually reach a person. A router
+    that timed from boarding would flatter a network whose headways doubled.
+
+    The answer is a **profile, not a departure**. Leaving at 8:03 rather than
+    8:07 is the whole answer when a headway goes from 15 to 30, so the unit
+    is the distribution of trip times across a window, with the fraction of
+    minutes that can be made at all reported beside it. A single chosen
+    departure produces a quotable number with no denominator behind it.
+
+    Like the one-seat ride, it **includes rail** (convention 13) and it is
+    **route-based** (against convention 1) — for the same reasons, and with
+    the same protection: the router's index is built from `gtfs.load_patterns`,
+    which is separate from the `load_service` every service figure uses, so
+    widening the universe here can never widen it under a published service
+    number.
+
+    **Transfers are invented, and the invention is not neutral.** Neither
+    feed publishes `transfers.txt`, so connections are synthesised from stop
+    coordinates, governed by the three numbers in `journey.CONSTANTS`. The
+    Refresh depends on transferring more than today's network does, so a
+    generous transfer radius can only help it and a strict one can only hurt
+    it. Unlike the access radii in convention 4, this sensitivity can change
+    a pair's **sign**, not just its magnitude. Publish the flip count — how
+    many pairs reverse direction between a strict and a headline radius —
+    or do not publish the times. See
+    `docs/worklog/transfer-radius-favours-one-network.md`.
+
+    **It is schedule against schedule.** Today's side is compared at its
+    scheduled times, not its observed ones, because the proposed side has no
+    observed times and never will. Symmetric, and not the same as saying a
+    trip will take that long. Say so wherever a number is quoted.
 
 State data vintage and PRT's own accuracy disclaimer (stop figures are
 "unadjusted, unofficial totals" that may understate ridership by up to 30%)

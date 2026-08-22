@@ -44,7 +44,7 @@ side has its own code path. The app inherits that.
 ```
 data/raw/current_gtfs.zip  ─┐
                             ├─→ build_webdb.py ─→ data/refresh.db ─→ FastAPI ─→ MapLibre
-data/raw/proposed_gtfs/    ─┘      (stdlib)         (14 MB, ~26s)     read-only
+data/raw/proposed_gtfs/    ─┘      (stdlib)         (35 MB, ~26s)     read-only
 ```
 
 | Piece | What it is |
