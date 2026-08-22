@@ -177,3 +177,79 @@ def test_the_findings_page_leads_back_to_the_map(client):
 def test_the_map_links_to_the_findings_page(client):
     """Nobody finds a page that nothing points at."""
     assert 'href="/findings"' in client.get("/").text
+
+
+# --------------------------------------------------------------------------
+# the one-seat view
+# --------------------------------------------------------------------------
+
+def test_destinations_are_listed_with_their_seed_counts(client):
+    got = {d["key"]: d for d in client.get("/api/destinations").json()}
+    assert set(got) == {"downtown", "oakland"}
+    assert got["oakland"]["seeds"] > 1        # a district, not a pin
+
+
+def test_oneseat_is_served_for_a_named_destination(client):
+    got = client.get("/api/oneseat", params={"dest": "downtown"}).json()
+    assert got["destination"]["key"] == "downtown"
+    assert sum(got["counts"].values()) == len(got["points"])
+    assert got["counts"]["loses"] > 0 and got["counts"]["gains"] > 0
+
+
+def test_oneseat_accepts_a_dropped_pin(client):
+    """The reader is not limited to the destinations built into the database."""
+    got = client.get("/api/oneseat", params={
+        "dest_lat": DOWNTOWN["lat"], "dest_lon": DOWNTOWN["lon"]}).json()
+    assert got["destination"]["seeds"] == 1
+    assert sum(got["counts"].values()) == len(got["points"])
+
+
+def test_oneseat_needs_somewhere_to_go(client):
+    assert client.get("/api/oneseat").status_code == 400
+
+
+def test_oneseat_rejects_an_unknown_destination(client):
+    r = client.get("/api/oneseat", params={"dest": "shadyside"})
+    assert r.status_code == 404
+    assert "downtown" in r.json()["detail"]
+
+
+def test_oneseat_rejects_a_radius_it_was_not_built_at(client):
+    r = client.get("/api/oneseat", params={"dest": "downtown", "radius": 275})
+    assert r.status_code == 400
+
+
+def test_oneseat_rejects_a_pin_outside_the_service_area(client):
+    r = client.get("/api/oneseat", params={"dest_lat": 39.95, "dest_lon": -75.16})
+    assert r.status_code == 400
+
+
+def test_place_carries_the_one_seat_verdicts(client):
+    p = client.get("/api/place", params=DOWNTOWN).json()
+    assert {d["key"] for d in p["oneseat"]} == {"downtown", "oakland"}
+    assert {d["status"] for d in p["oneseat"]} <= {
+        "here", "keeps", "gains", "loses", "none"}
+
+
+def test_meta_carries_the_one_seat_caveat(client):
+    """The view has no day type and no travel time, and must say so."""
+    caveats = {c["id"]: c["text"] for c in client.get("/api/meta").json()["caveats"]}
+    assert "one-seat" in caveats
+    assert "transferring" in caveats["one-seat"]
+
+
+def test_place_answers_for_a_dropped_pin_too(client):
+    """Pick a destination of your own and the panel must follow you there.
+
+    Without this the reader points the map at somewhere that matters to them,
+    clicks a location, and the panel quietly answers about Downtown instead.
+    """
+    p = client.get("/api/place", params={
+        **DOWNTOWN, "dest_lat": 40.4614, "dest_lon": -79.9247}).json()
+    assert p["oneseat"][0]["key"] is None          # the pin leads
+    assert {d["key"] for d in p["oneseat"][1:]} == {"downtown", "oakland"}
+
+
+def test_place_rejects_half_a_destination(client):
+    r = client.get("/api/place", params={**DOWNTOWN, "dest_lat": 40.4614})
+    assert r.status_code == 400

@@ -75,13 +75,25 @@ def create_app(db_path: str | Path = "data/refresh.db") -> FastAPI:
         lon: float = Query(..., description="longitude"),
         radius: float = Query(query.PRIMARY_RADIUS, ge=MIN_RADIUS, le=MAX_RADIUS,
                               description="walk radius in metres"),
+        dest_lat: float | None = Query(None, description="optional one-seat "
+                                                         "destination pin"),
+        dest_lon: float | None = Query(None),
     ):
         """Before and after at one point, both networks measured identically.
 
         This is the app's whole purpose; everything else is navigation.
+
+        `dest_lat`/`dest_lon` add one dropped-pin one-seat verdict alongside
+        the named destinations, so that a reader who has pointed the map at
+        somewhere of their own gets the panel to answer for it too rather than
+        silently reverting to Downtown and Oakland.
         """
         _check_point(lat, lon)
-        return query.place(con, lat, lon, radius)
+        if (dest_lat is None) != (dest_lon is None):
+            raise HTTPException(400, "give both dest_lat and dest_lon, or neither")
+        if dest_lat is not None:
+            _check_point(dest_lat, dest_lon)
+        return query.place(con, lat, lon, radius, dest_lat, dest_lon)
 
     @app.get("/api/change")
     def api_change(
@@ -133,6 +145,51 @@ def create_app(db_path: str | Path = "data/refresh.db") -> FastAPI:
         `analyze_corridor_change.py` for the distinction.
         """
         return query.corridor_layer(con, day)
+
+    @app.get("/api/destinations")
+    def api_destinations():
+        """The named destinations the one-seat view offers, with their centres.
+
+        `seeds` is how many stops define the district; the centre is only
+        somewhere for the map to fly to, and nothing is measured from it.
+        """
+        return query.destinations(con)
+
+    @app.get("/api/oneseat")
+    def api_oneseat(
+        radius: float = Query(query.PRIMARY_RADIUS,
+                              description="walk radius in metres; must be one "
+                                          "of the precomputed radii"),
+        dest: str | None = Query(None, description="a named destination key"),
+        dest_lat: float | None = Query(None, description="or a dropped pin"),
+        dest_lon: float | None = Query(None),
+    ):
+        """Who keeps, gains and loses a one-seat ride to one destination.
+
+        Unlike `/api/change` and `/api/surface`, the answer here is not
+        precomputed -- only its expensive half is. Which routes can be boarded
+        at each location is built once per radius; the destination is applied
+        as a set intersection per request, which is what lets the reader drop a
+        pin anywhere rather than choose from a list fixed at build time.
+
+        Radius is still restricted to the built set, because that stored half
+        is per radius.
+        """
+        if int(radius) not in query.RADII:
+            raise HTTPException(
+                400, f"radius must be one of {list(query.RADII)} — the "
+                     "one-seat layer is precomputed at those two")
+        if dest is None and (dest_lat is None or dest_lon is None):
+            raise HTTPException(
+                400, "give either dest=<key> or dest_lat= and dest_lon=")
+        if dest is None:
+            _check_point(dest_lat, dest_lon)
+        try:
+            return query.oneseat_layer(con, radius, key=dest,
+                                       dest_lat=dest_lat, dest_lon=dest_lon)
+        except KeyError:
+            known = [d["key"] for d in query.destinations(con)]
+            raise HTTPException(404, f"no destination {dest!r}; known: {known}")
 
     @app.get("/api/stops")
     def api_stops(
@@ -220,6 +277,20 @@ CAVEATS = [
                 "where they show a loss two blocks over. Read it alongside "
                 "those views, never instead of them. Weekday citywide: 897.8 "
                 "km kept, 258.5 km lost, 83.0 km added.",
+    },
+    {
+        "id": "one-seat",
+        "text": "The one-seat view asks a different question from every other "
+                "layer here: can a rider reach the chosen destination without "
+                "transferring? It has no day type and no travel time — a route "
+                "serves a location or it does not — so a surviving one-seat "
+                "ride may be hourly on a Sunday or take an hour to make. It is "
+                "also the only view that counts rail: the T and the inclines "
+                "are unchanged by the Refresh, but leaving them out would show "
+                "the South Hills losing Downtown rides the Blue Line still "
+                "provides. Both ends of the trip use the walk radius, where "
+                "the published place-level answer uses 200 m at the "
+                "destination.",
     },
     {
         "id": "location-not-route",

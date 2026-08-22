@@ -235,6 +235,86 @@ CREATE TABLE corridor (
     geometry  TEXT NOT NULL           -- "lon,lat lon,lat ..." as the CSV wrote it
 );
 CREATE INDEX ix_corridor_day ON corridor(day);
+-- --------------------------------------------------------------------------
+-- THE ONE-SEAT LAYER: three tables, and the only ones here that are not bus
+-- only.
+--
+-- Every table above drops rail and the inclines, because they are outside the
+-- Refresh and putting unchanged service on both sides of a change figure
+-- would dilute it. The one-seat question is not a change figure -- it asks
+-- whether a rider can get there without transferring -- and dropping the T
+-- from it makes Beechview "lose its one-seat ride Downtown" when the Blue
+-- Line still runs. That is control 2 of analyze_one_seat.py. So these carry
+-- every mode, and they are separate tables rather than a flag on `stops` so
+-- that widening the universe here cannot widen it under a published number.
+--
+-- No day type and no timetable: a route serves a stop or it does not, which
+-- is the published method. See query.py's one-seat section for the five ways
+-- this question differs from the rest of the app.
+
+CREATE TABLE reach_stop (
+    side    TEXT NOT NULL,
+    stop_id TEXT NOT NULL,
+    lat     REAL NOT NULL,
+    lon     REAL NOT NULL,
+    routes  TEXT NOT NULL,          -- ';'-joined route ids, sorted
+    PRIMARY KEY (side, stop_id)
+);
+CREATE VIRTUAL TABLE reach_rtree USING rtree(id, min_lat, max_lat, min_lon, max_lon);
+CREATE TABLE reach_key (
+    id      INTEGER PRIMARY KEY,
+    side    TEXT NOT NULL,
+    stop_id TEXT NOT NULL
+);
+CREATE INDEX ix_reach_key ON reach_key(side, stop_id);
+
+-- Named destinations, one row per SEED STOP -- a district is a cloud of
+-- points, not a centroid. Downtown measured from its middle is a circle over
+-- one block of it. Seeds are PRT's own HOOD labels on the current network,
+-- put through analyze_one_seat.py's outlier filter (convention 6), and they
+-- are taken from the CURRENT network for both sides: a destination defined
+-- per network would move under the plan, and a route stopping one block from
+-- where the old definition ended would read as a lost one-seat ride.
+CREATE TABLE destination (
+    dest_key TEXT NOT NULL,
+    name     TEXT NOT NULL,
+    lat      REAL NOT NULL,
+    lon      REAL NOT NULL
+);
+CREATE INDEX ix_destination ON destination(dest_key);
+
+-- Which routes reach each named destination, per side and radius. Downtown is
+-- 44 seeds and Oakland 93, so measuring them live would put ~270 spatial
+-- queries in front of every click to re-derive something that cannot change
+-- between builds. A pin the reader drops is one point and is measured live.
+CREATE TABLE destination_reach (
+    dest_key TEXT NOT NULL,
+    radius   INTEGER NOT NULL,
+    side     TEXT NOT NULL,
+    routes   TEXT NOT NULL,
+    PRIMARY KEY (dest_key, radius, side)
+);
+
+-- The routes boardable at each citywide-layer point, per side and radius.
+--
+-- This is the table that makes an ARBITRARY destination affordable. "Which
+-- routes can I board here" does not depend on where the reader is going, so
+-- it is measured once per point at build time and every destination picked
+-- afterwards is a set intersection over these strings -- a repaint of the
+-- whole county in well under a second, against the ~20 s `change` costs.
+-- Same point set, radii and published flag as `change`, so the two views show
+-- the same dots asking different questions.
+CREATE TABLE point_reach (
+    radius    INTEGER NOT NULL,
+    point_id  TEXT NOT NULL,
+    side      TEXT NOT NULL,
+    lat       REAL NOT NULL,
+    lon       REAL NOT NULL,
+    published INTEGER NOT NULL,
+    routes    TEXT NOT NULL,
+    PRIMARY KEY (radius, point_id, side)
+);
+CREATE INDEX ix_point_reach_radius ON point_reach(radius);
 """
 
 
@@ -321,6 +401,8 @@ def build(out_path):
     print(f"  corridor runs: {len(corridor):,} rows")
 
     key_id = 0
+    reach_id = 0
+    reach_coords = {}
     for side in SIDES:
         feed = gtfs.current() if side == "current" else gtfs.proposed()
         print(f"\n{side}:")
@@ -390,8 +472,35 @@ def build(out_path):
         con.executemany(
             "INSERT INTO route_service VALUES (?,?,?,?,?,?,?)", svc_rows)
 
+        # --- the one-seat reach index, ALL MODES ----------------------------
+        # Deliberately not `svc.served()` above: that is the bus-only universe
+        # every service figure is measured over, and the one-seat question
+        # needs the T. See the schema comment on `reach_stop`.
+        sr, coords = gtfs.stop_routes(feed, bus_only=False)
+        reach_rows, key_rows, rtree_rows = [], [], []
+        for sid, rts in sorted(sr.items()):
+            if sid not in coords or not rts:
+                continue
+            lat, lon = coords[sid]
+            reach_rows.append((side, sid, lat, lon, ";".join(sorted(rts))))
+            reach_id += 1
+            key_rows.append((reach_id, side, sid))
+            rtree_rows.append((reach_id, lat, lat, lon, lon))
+        con.executemany("INSERT INTO reach_stop VALUES (?,?,?,?,?)", reach_rows)
+        con.executemany("INSERT INTO reach_key VALUES (?,?,?)", key_rows)
+        con.executemany("INSERT INTO reach_rtree VALUES (?,?,?,?,?)", rtree_rows)
+        if side == "current":
+            reach_coords = coords
+
         print(f"    -> {len(stop_rows):,} stops, {len(dep_rows):,} departure "
-              f"rows, {len(rt_rows)} bus routes")
+              f"rows, {len(rt_rows)} bus routes, "
+              f"{len(reach_rows):,} all-mode stops for one-seat")
+
+    dest = load_destinations(reach_coords)
+    con.executemany("INSERT INTO destination VALUES (?,?,?,?)", dest)
+    seeded = Counter(d[0] for d in dest)
+    print("\ndestinations: "
+          + ", ".join(f"{k} ({n} seed stops)" for k, n in sorted(seeded.items())))
 
     con.execute("INSERT INTO meta VALUES ('periods', ?)",
                 (",".join(f"{k}:{a}:{b}" for k, a, b in PERIODS),))
@@ -402,6 +511,7 @@ def build(out_path):
 
     change_layer(out_path)
     surface_layer(out_path)
+    oneseat_layer(out_path)
 
     mb = out_path.stat().st_size / 1e6
     print(f"\nwrote {out_path}  ({mb:.1f} MB)")
@@ -463,6 +573,81 @@ def surface_layer(out_path):
               f"({cells * query.CELL_M ** 2 / 1e6:.1f} km2 of lattice), "
               f"{served:,} with weekday service either side")
     write.commit()
+    write.close()
+    read.close()
+
+
+def load_destinations(coords):
+    """[(dest_key, name, lat, lon)] -- one row per seed stop of each anchor.
+
+    Imported wholesale from `analyze_one_seat.py` rather than re-derived: the
+    anchor definitions, the HOOD labels they are read from and the outlier
+    filter that makes those labels usable are all that script's, so the app's
+    Downtown is the Downtown `data/oneseat_change.csv` publishes. PRT labels
+    two stops in Braddock "Westwood", 16 km out (convention 6); an unfiltered
+    seed cloud would put a piece of Downtown wherever a label went wrong.
+
+    Seeds come from the CURRENT network for both sides. A destination defined
+    per network would move under the plan, and a route stopping one block from
+    where the old definition ended would read as a lost one-seat ride.
+    """
+    import analyze_one_seat as one_seat
+
+    label, _boardings = one_seat.load_labels()
+    label, dropped = one_seat.drop_outliers(label, coords)
+    if dropped:
+        print(f"  dropped {len(dropped)} mislabelled stops before seeding "
+              "destinations")
+
+    rows = []
+    for name, hoods in one_seat.ANCHORS.items():
+        for sid, place in label.items():
+            if place in hoods and sid in coords:
+                rows.append((name.lower(), name, *coords[sid]))
+    return rows
+
+
+def oneseat_layer(out_path):
+    """Fill `destination_reach` and `point_reach` -- the one-seat layer.
+
+    Same fresh-connection requirement as `change_layer`: this is ~24,000
+    spatial queries, and on the build connection the r-tree would be scanned
+    whole for every one of them.
+
+    Cheaper than the other two layers by an order of magnitude because there
+    is no timetable in it -- a route serves a stop or it does not -- so this
+    is spatial work only, no departure parsing and no day types.
+    """
+    read = query.connect(out_path)
+    write = sqlite3.connect(out_path)
+
+    for radius in query.RADII:
+        for d in query.destinations(read):
+            seeds = query.destination_seeds(read, d["key"])
+            for side in SIDES:
+                rts = query.routes_reaching(read, seeds, radius, side)
+                write.execute("INSERT INTO destination_reach VALUES (?,?,?,?)",
+                              (d["key"], int(radius), side, ";".join(sorted(rts))))
+
+        rows = []
+        for point_id, lat, lon, published in query.change_points(read, radius):
+            for side in SIDES:
+                rts = query.routes_at(read, lat, lon, radius, side)
+                rows.append((int(radius), point_id, side, lat, lon, published,
+                             ";".join(sorted(rts))))
+        write.executemany("INSERT INTO point_reach VALUES (?,?,?,?,?,?,?)", rows)
+        print(f"\none-seat layer @ {radius} m: {len(rows) // len(SIDES):,} "
+              f"locations, {len(rows):,} rows")
+
+    write.commit()
+    # The verdict counts for the named destinations, as a build-time check:
+    # a destination that reaches nothing is a broken seed cloud, and it should
+    # not take a browser to notice.
+    for d in query.destinations(read):
+        for radius in query.RADII:
+            counts = query.oneseat_layer(read, radius, key=d["key"])["counts"]
+            print(f"    {d['name']} @ {radius} m: "
+                  + ", ".join(f"{v} {k}" for k, v in counts.items() if v))
     write.close()
     read.close()
 

@@ -3,7 +3,10 @@
 A map that answers, for any point in Allegheny County, what the Bus Line Refresh
 does to the buses within a short walk of it — measured from real timetables on
 both sides, by the same code. A third view drops the walk radius and colours the
-street network itself, by whether any bus still runs on each block.
+street network itself, by whether any bus still runs on each block. A fourth
+asks a different kind of question entirely: from every place at once, can a
+rider still reach Downtown, Oakland or a point you pick **without
+transferring**?
 
 It exists because the comment period generates one question far more than any
 other, and it is not a question the answer documents can hold: **not** "what
@@ -52,6 +55,7 @@ data/raw/proposed_gtfs/    ─┘      (stdlib)         (14 MB, ~26s)     read-o
 | `frontend/*.ts` | Vanilla TypeScript, esbuild → one `app.js`. MapLibre vendored, no CDN. |
 | `frontend/change.ts`, `legend.ts` | The citywide layer and the legend that summarises and filters it. |
 | `frontend/surface.ts` | The magnitude surface — the same layer as a continuous field. |
+| `frontend/oneseat.ts` | The one-seat layer and its destination picker. |
 
 The stack follows `pgh-ghost-bus` (kept as a gitignored reference checkout at
 `pgh-ghost-bus/`): uv, `src/` package, an optional web extra, read-only SQLite,
@@ -251,14 +255,128 @@ bigger-sounding number than the surface's 12% area loss and measures something
 narrower, so the legend carries the caveat inline and the panel explains the
 distinction whichever view is open.
 
+## The one-seat view
+
+The first three views all measure a QUANTITY of service — trips within a walk,
+square kilometres of covered ground, kilometres of street with a bus on it.
+This one measures a CONNECTION: from each location, does some single route
+serve both here and the destination? It is `analyze_one_seat.py`'s published
+question — the four `*-ONE-SEAT-*` answers in `BASE_CAMP.md` — asked at every
+location rather than per place, and with the destination chosen by the reader.
+
+Downtown and Oakland are built in. Anything else is a dropped pin, and the
+whole county repaints for it.
+
+### Five ways it differs from every other layer, all of them load-bearing
+
+1. **It counts rail, and nothing else here does.** Every service figure in this
+   app is bus only, because the T and the inclines are outside the Refresh and
+   putting unchanged service on both sides of a change figure dilutes it. A
+   one-seat ride is not a change figure. Drop the T and Beechview reads as
+   losing a Downtown ride the Blue Line still runs, while Bon Air appears to
+   *gain* one it has had all along — control 2 of `analyze_one_seat.py`, found
+   there the same way. So the layer reads its own all-mode index (`reach_stop`),
+   a separate table rather than a flag on `stops`, so that widening the
+   universe here cannot widen it under a published number.
+2. **It is route-based, which convention 1 normally forbids.** The convention
+   forbids comparing route N to route N; this never does. It intersects the set
+   of routes serving a location with the set serving the destination, both
+   recomputed independently per network, so renumbering cannot manufacture a
+   loss: the 61A becoming the 61X moves both sets together.
+3. **It has no day type.** A route serves a location or it does not — the
+   published method, and what keeps this comparable to
+   `data/oneseat_change.csv`. The cost is real and the legend says so: a
+   surviving one-seat ride may run hourly on a Sunday, and this test cannot
+   tell that from a ten-minute trunk route. The panel's day-by-day counts are
+   where that question goes.
+4. **It has no travel time.** A route touching both ends is a one-seat ride
+   however long it takes; 90 minutes around three sides of the county counts
+   the same as 12.
+5. **The destination takes the same walk radius as the origin.** The published
+   script uses a fixed 200 m at the destination against a *place* at the origin;
+   here the reader picks both ends and moves one radius control, so both ends
+   use it. *Max chose this.* For the two named destinations it turns out to
+   change nothing — Downtown reaches the same 79 current and 69 proposed routes
+   at 200 m and at 400 m, Oakland the same 23 and 25, because a district's seed
+   cloud is dense enough that widening each seed's circle finds nothing new. So
+   the Downtown and Oakland verdicts rest on exactly the published route sets,
+   and `tests/test_oneseat.py` checks that against the CSV rather than assuming
+   it. Where the radius bites is a dropped pin, which is one seed with nothing
+   to saturate it.
+
+### What a destination is
+
+A **set of seed points**, which is what lets a district and a pin share one
+definition. Downtown is the 44 stops PRT labels Central Business District and
+Oakland the 93 across its four neighbourhoods, both put through
+`analyze_one_seat.py`'s outlier filter (convention 6) — PRT labels two stops in
+Braddock "Westwood", 16 km out, and an unfiltered cloud would put a piece of a
+district wherever a label went wrong. A pin is a set of one.
+
+Seeds come from the **current** network for both sides. A destination defined
+per network would move under the plan, and a route stopping one block from
+where the old definition ended would read as a lost one-seat ride.
+
+Districts get no map marker, deliberately: 44 stops spread over a neighbourhood
+are not a point, and one pin would invite the map to be read as though they
+were. A dropped pin does get one, because it is a point.
+
+### Why an arbitrary destination is affordable
+
+The expensive half of a one-seat answer — *which routes can be boarded here* —
+does not depend on where the reader is going. So it is measured once per
+location per side per radius at build time (`point_reach`), and every
+destination picked afterwards is a set intersection over stored strings. The
+county repaints in well under a second, against the ~20 s `compute_change`
+takes. The named destinations' own route sets are precomputed too
+(`destination_reach`), because Downtown is 44 seeds and Oakland 93 and
+measuring them live would put ~270 spatial queries in front of every click.
+
+### Presentation decisions
+
+- **The point set is the change layer's.** Same dots, same published/new-
+  coverage split, same two radii — a reader switching views is not also
+  switching which places are on the map.
+- **The palette is borrowed, not invented.** Lost is the surface's red and
+  gained its blue, keeps the street layer's desaturated grey, exactly as the
+  street layer borrowed them. Losses and gains take the same dot size, per the
+  standing rule that overstating losses discredits the real ones.
+- **The destination itself is not a verdict.** A place needs no one-seat ride
+  to itself; `analyze_one_seat.py` drops the anchor districts outright, and
+  this layer gives them a fifth status in a neutral near-black rather than
+  letting Downtown join the "keeps" tally and inflate it by its own size.
+- **"No ride either way" is drawn, faintly.** For Oakland it is more than half
+  the county, and leaving it off would make the map's empty half read as
+  missing data rather than as the finding: most of Allegheny cannot reach
+  Oakland without transferring, before or after.
+- **The verdict always arrives with route numbers**, in the hover text and in
+  the panel. "Loses its one-seat ride to Oakland" is a sentence somebody will
+  screenshot, and it should be checkable.
+- **The panel carries the verdicts whichever view is open**, because a corner
+  can keep every bus it has and still lose the ride that got it to Oakland
+  without changing. A dropped pin joins Downtown and Oakland there rather than
+  replacing them.
+
+### Citywide, weekday, 400 m
+
+| destination | loses | gains | keeps | none either way | at it |
+|---|---|---|---|---|---|
+| Downtown | 864 | 148 | 4,504 | 308 | 48 |
+| Oakland | 486 | 384 | 1,704 | 3,139 | 159 |
+
+At 150 m: Downtown 1,188 lose and 205 gain; Oakland 528 lose and 326 gain.
+Counts are locations, not people — the same caveat the change layer carries.
+
 ## API
 
 | Endpoint | Returns |
 |---|---|
-| `GET /api/place?lat=&lon=&radius=` | Before and after at one point, all three day types. The app's purpose; everything else is navigation. |
+| `GET /api/place?lat=&lon=&radius=` | Before and after at one point, all three day types, plus the one-seat verdicts for the named destinations. Optional `dest_lat`/`dest_lon` adds a dropped pin's verdict. The app's purpose; everything else is navigation. |
 | `GET /api/change?radius=` | The citywide layer: every location bucketed, all three day types, columnar. Radius must be 400 or 150 — it is precomputed. ~300 KB, 77 KB gzipped. |
 | `GET /api/surface?radius=` | The magnitude surface: every covered 100 m cell, all three day types, columnar as lattice indices. Radius must be 400 or 150. ~1.3 MB, 198 KB gzipped. |
 | `GET /api/corridors?day=` | Every street run kept, lost or added for one day type, with citywide kilometres by class. No radius — a corridor is pavement, not a catchment. ~290 KB weekday. |
+| `GET /api/oneseat?radius=&dest=` *or* `&dest_lat=&dest_lon=` | Every location's one-seat verdict for one destination, named or dropped. Not precomputed — only its expensive half is, which is what lets the destination be arbitrary. No day type. |
+| `GET /api/destinations` | The named destinations, with seed counts and centres. |
 | `GET /api/stops?side=&lat=&lon=&radius=` | Stops one network puts inside the radius. |
 | `GET /api/routes?side=` | Bus routes with trips, revenue hours and span per day type. |
 | `GET /api/crosswalk` | PRT's current → proposed route mapping. A labelling aid; no served number goes through it. |

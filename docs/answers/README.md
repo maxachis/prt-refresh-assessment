@@ -13,11 +13,11 @@ the same caveats as everything below.
 | Question | Status | Output |
 |---|---|---|
 | REGION-LOSS | Mostly answered at stop level | `FINDINGS.md` §A, `data/stop_service_change.csv` |
-| GAIN-ONE-SEAT-DOWNTOWN | **Answered** | [doc](GAIN-ONE-SEAT-DOWNTOWN.md), `data/oneseat_change.csv` |
-| LOSE-ONE-SEAT-DOWNTOWN | **Answered** | [doc](LOSE-ONE-SEAT-DOWNTOWN.md), `data/oneseat_change.csv` |
-| GAIN-ONE-SEAT-OAKLAND | **Answered** | [doc](GAIN-ONE-SEAT-OAKLAND.md), `data/oneseat_change.csv` |
-| LOSE-ONE-SEAT-OAKLAND | **Answered** | [doc](LOSE-ONE-SEAT-OAKLAND.md), `data/oneseat_change.csv` |
-| GAIN/LOSE-ONE-SEAT-CRITICAL | **Blocked** — no POI data | needs SNAP/grocery coordinates; see below |
+| GAIN-ONE-SEAT-DOWNTOWN | **Answered** | [doc](GAIN-ONE-SEAT-DOWNTOWN.md), `data/oneseat_change.csv`, and per location in the app's One-seat view |
+| LOSE-ONE-SEAT-DOWNTOWN | **Answered** | [doc](LOSE-ONE-SEAT-DOWNTOWN.md), `data/oneseat_change.csv`, and per location in the app's One-seat view |
+| GAIN-ONE-SEAT-OAKLAND | **Answered** | [doc](GAIN-ONE-SEAT-OAKLAND.md), `data/oneseat_change.csv`, and per location in the app's One-seat view |
+| LOSE-ONE-SEAT-OAKLAND | **Answered** | [doc](LOSE-ONE-SEAT-OAKLAND.md), `data/oneseat_change.csv`, and per location in the app's One-seat view |
+| GAIN/LOSE-ONE-SEAT-CRITICAL | **Blocked** — no POI data | needs SNAP/grocery coordinates; see below. The *method* is no longer the blocker: the app answers this for any point in the county, so what is missing is only the list of coordinates to run it over. |
 | GAIN-OTHER / LOSE-OTHER | Not started — editorial | `data/exhibit_a.txt`, route pages |
 | NEW-ROUTE | **Answered** — 14 routes | [doc](NEW-ROUTE.md), `data/route_crosswalk.csv` |
 | LOST-ROUTE | **Answered** — 20 routes, plus the 77 | [doc](LOST-ROUTE.md), `data/discontinued_route_ridership_202604.csv` |

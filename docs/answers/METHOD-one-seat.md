@@ -72,7 +72,7 @@ All raw, so this is independent of the other analysis scripts' outputs:
 |---|---|
 | `data/raw/current_gtfs.zip` | current network: stop → routes actually serving it |
 | `data/raw/stop_usage_202505.csv` | place labels (`HOOD`/`MUNI`) and May 2025 weekday boardings |
-| `data/proposed_stops.csv` + `data/proposed_stop_sequences.csv` | proposed network, from the Remix public API |
+| `data/raw/proposed_gtfs/` | proposed network: stop -> routes, from PRT's own feed. This replaced the Remix extract once PRT supplied a GTFS; Remix agreed on 5,513 of 5,515 served stops but also carried 107 stops the proposal does not serve, and its labels were Remix `short_name`s rather than the GTFS route ids this join needs. |
 
 ## Caveats — read before citing
 
@@ -80,10 +80,14 @@ All raw, so this is independent of the other analysis scripts' outputs:
    place's stops, not trips to the anchor. They size the affected population;
    they are not a count of riders making that specific trip. No origin-destination
    data is public, so a true figure is not available.
-2. **The Remix map is built on a 2023 base feed** (`feedStartDate` 2023-06-18),
-   so the proposed stop inventory carries drift against the 2026 current feed.
-3. **No timetables exist for the proposed network.** A retained one-seat ride
-   can still lose most of its trips; a gained one may run hourly.
+2. **Both sides are read from real feeds**, the current GTFS and the
+   proposed-network GTFS PRT supplied to PPT. The Remix map, and the 2023 base
+   feed it is built on, no longer enter this answer.
+3. **This measure carries no timetable.** A retained one-seat ride can still
+   lose most of its trips, and a gained one may run hourly — the proposed feed
+   would answer that, but this test deliberately does not ask it, because a
+   route serves a place or it does not. Pair with `data/coverage_change.csv`,
+   or click the location in the web app, for the frequency dimension.
 4. **"Oakland" is the whole of the four Oakland neighbourhoods.** A route
    clipping the edge of North Oakland counts. The destination most riders mean
    is the Fifth/Forbes hospital and university core, which is a narrower target.
@@ -94,6 +98,35 @@ All raw, so this is independent of the other analysis scripts' outputs:
    toward anchor reach.
 7. **Trafford borough appears twice**, in Allegheny and Westmoreland counties,
    because PRT labels it both ways. Both rows are shown rather than merged.
+
+## The same question in the web app
+
+`docs/WEBAPP.md`'s **One-seat** view asks this at every location rather than
+per place, with the destination chosen by the reader — Downtown, Oakland, or a
+dropped pin anywhere in the county. It is a port of this method, not a second
+one, and `tests/test_oneseat.py` pins the agreement: every route this file
+credits with reaching an anchor must reach it in the app's index too.
+
+Three deliberate differences:
+
+| | this file | the app |
+|---|---|---|
+| unit | place (neighbourhood, else municipality) | location (a radius on the ground) |
+| destination radius | 200 m | the reader's walk radius, 400 m or 150 m |
+| verdicts | keeps / gains / loses / none either way | the same four, plus `here` for the destination itself |
+
+The unit differs because the app measures a circle, which is what dissolves the
+adjacent-stop-id artefact that forced this file to the place level in the first
+place — at 400 m the circle contains both sides of the intersection. At 150 m
+that protection weakens, which is why the strict radius is offered as a
+sensitivity test rather than as the headline here too.
+
+The destination radius differs by Max's choice: the reader picks both ends and
+moves one control, and a rider walks at the far end as well. It turns out to
+change nothing for the two named destinations — Downtown reaches the same 79
+current and 69 proposed routes at either radius, Oakland the same 23 and 25,
+because a district's seed cloud is already dense enough to saturate. It matters
+only for a dropped pin, which is a single seed.
 
 ## Reproduce
 

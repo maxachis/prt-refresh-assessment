@@ -120,6 +120,20 @@ def period_of(axis_t: float) -> str | None:
 # spatial
 # --------------------------------------------------------------------------
 
+def _bbox(lat: float, lon: float, radius: float):
+    """(cos(lat), dlat, dlon) for a padded r-tree query box.
+
+    Shared by the two spatial indexes -- `stops_within` over the bus-only
+    service universe and `reach_stops_within` over every mode -- so that a
+    radius means the same thing in both. The padding is explained at length in
+    `stops_within`; it is not a tolerance on the radius, which stays exact.
+    """
+    coslat = math.cos(math.radians(lat)) or 1e-9
+    return (coslat,
+            (radius + RTREE_PAD_M) / METERS_PER_DEGREE,
+            (radius + RTREE_PAD_M) / (METERS_PER_DEGREE * coslat))
+
+
 def stops_within(con, lat: float, lon: float, radius: float, side: str):
     """[(stop_id, name, lat, lon, metres)] for one side, inside the radius.
 
@@ -140,9 +154,7 @@ def stops_within(con, lat: float, lon: float, radius: float, side: str):
     r-tree is only a prefilter, and the exact equirectangular test below is
     what actually decides membership. It must never be the tighter of the two.
     """
-    coslat = math.cos(math.radians(lat)) or 1e-9
-    dlat = (radius + RTREE_PAD_M) / METERS_PER_DEGREE
-    dlon = (radius + RTREE_PAD_M) / (METERS_PER_DEGREE * coslat)
+    coslat, dlat, dlon = _bbox(lat, lon, radius)
 
     rows = con.execute(
         """
@@ -313,7 +325,8 @@ def side_at_place(con, side: str, lat: float, lon: float, radius: float):
     }
 
 
-def place(con, lat: float, lon: float, radius: float = PRIMARY_RADIUS):
+def place(con, lat: float, lon: float, radius: float = PRIMARY_RADIUS,
+          dest_lat: float | None = None, dest_lon: float | None = None):
     """Before and after at one point, measured identically on both sides.
 
     The response deliberately carries both sides' full detail rather than only
@@ -336,7 +349,34 @@ def place(con, lat: float, lon: float, radius: float = PRIMARY_RADIUS):
         for day in DAYS
     }
     out["place"] = nearest_place_label(con, lat, lon)
+    # The one-seat verdicts ride along with the panel rather than sitting
+    # behind their own request: they answer a question about this same point,
+    # and two round trips would let the panel show a corner's trip counts
+    # while its "can I still get Downtown" line was still loading.
+    out["oneseat"] = oneseat_named(con, lat, lon, radius)
+    # A dropped pin joins the named destinations rather than replacing them.
+    # The reader picked it, so it goes first; Downtown and Oakland stay because
+    # they are the two the published answers cover and the two most people are
+    # actually travelling to.
+    if dest_lat is not None and dest_lon is not None:
+        out["oneseat"].insert(0, pin_verdict(con, lat, lon, radius,
+                                             dest_lat, dest_lon))
     return out
+
+
+def pin_verdict(con, lat: float, lon: float, radius: float,
+                dest_lat: float, dest_lon: float):
+    """One dropped-pin destination, shaped like a named one for the panel."""
+    got = oneseat_at_place(con, lat, lon, radius,
+                           dest_lat=dest_lat, dest_lon=dest_lon)
+    return {
+        "key": None,
+        "name": f"the point you picked ({dest_lat:.4f}, {dest_lon:.4f})",
+        "lat": dest_lat, "lon": dest_lon,
+        "status": got["status"],
+        "current": got["current"], "proposed": got["proposed"],
+        "kept": got["kept"], "lost": got["lost"], "gained": got["gained"],
+    }
 
 
 # --------------------------------------------------------------------------
@@ -699,6 +739,383 @@ def nearest_place_label(con, lat: float, lon: float):
         if row and (row["muni"] or row["hood"]):
             return {"muni": row["muni"], "hood": row["hood"]}
     return None
+
+
+# --------------------------------------------------------------------------
+# one-seat rides to a destination
+# --------------------------------------------------------------------------
+#
+# A fourth question, and the only one here whose answer is not a quantity of
+# service: from this location, can a rider reach a given destination WITHOUT
+# TRANSFERRING, today and under the plan? `analyze_one_seat.py` answers it for
+# the four BASE_CAMP `*-ONE-SEAT-*` questions at the level of a place; this is
+# the same test at an arbitrary location, with the destination chosen by the
+# reader rather than fixed at Downtown and Oakland.
+#
+# FIVE THINGS ABOUT IT DIFFER FROM EVERYTHING ELSE IN THIS MODULE, and each is
+# load-bearing:
+#
+# 1. IT READS `reach_stop`, NOT `stops`/`departures`, BECAUSE IT IS NOT BUS
+#    ONLY. Every other layer drops rail and the inclines: they are outside the
+#    Refresh, so including them would put unchanged service on both sides of a
+#    change figure. A one-seat ride is not a change figure. Ignore the T and
+#    Beechview "loses its one-seat ride Downtown" -- it does not, the Blue Line
+#    still runs -- while Bon Air appears to GAIN one it has had all along. That
+#    is control 2 of `analyze_one_seat.py`, found there the same way, and it is
+#    why `reach_stop` carries every mode on both sides.
+#
+# 2. IT IS ROUTE-BASED, WHICH CONVENTION 1 NORMALLY FORBIDS. The convention
+#    forbids comparing route N to route N; this never does. It asks whether the
+#    set of routes serving this location intersects the set serving the
+#    destination -- a question about connectivity, not volume -- and both sets
+#    are recomputed independently per network. Renumbering therefore cannot
+#    produce a false loss: the 61A becoming the 61X changes both sets together.
+#
+# 3. IT HAS NO DAY TYPE. A route serves a location or it does not, which is the
+#    published method and keeps this comparable to `data/oneseat_change.csv`.
+#    The cost is real and the UI has to say so: a surviving one-seat ride may
+#    run hourly on a Sunday, and this test cannot tell that from a ten-minute
+#    trunk route. The panel's own day-by-day trip counts are what answer that.
+#
+# 4. IT HAS NO TIME OR DISTANCE. A route touching both ends is a one-seat ride
+#    however long it takes to make; a 90-minute ride around three sides of the
+#    county counts the same as a 12-minute one.
+#
+# 5. THE DESTINATION TAKES THE SAME WALK RADIUS AS THE ORIGIN. The published
+#    script uses a fixed 200 m at the destination end against a place at the
+#    origin end. Here the reader picks both ends and moves one radius control,
+#    so both ends use it: a rider walks at the far end too, and two different
+#    radii in one test would be indefensible on a screen that shows one number.
+#    For the two NAMED destinations this turns out to change nothing at all --
+#    Downtown reaches the same 79 current and 69 proposed routes at 200 m and
+#    at 400 m, Oakland the same 23 and 25 -- because a district's seed cloud is
+#    dense enough that widening each seed's circle finds no route the cloud did
+#    not already touch. So the app's Downtown and Oakland verdicts rest on
+#    exactly the published route sets, and `tests/test_oneseat.py` checks that
+#    against `data/oneseat_change.csv` rather than assuming it. Where the
+#    radius does bite is a DROPPED PIN, which is one seed with nothing to
+#    saturate it: there it is the whole difference between a route stopping at
+#    the door and one stopping a quarter-mile away.
+
+ONESEAT_STATUSES = (
+    ("here", "at the destination"),
+    ("keeps", "keeps a one-seat ride"),
+    ("gains", "gains a one-seat ride"),
+    ("loses", "loses its one-seat ride"),
+    ("none", "no one-seat ride either way"),
+)
+ONESEAT_KEYS = tuple(k for k, _ in ONESEAT_STATUSES)
+
+# The destination radius the published place-level analysis uses. Kept here
+# only so the tests can reproduce `data/oneseat_change.csv`'s route sets; the
+# app itself measures the destination at the reader's own walk radius (note 5).
+PUBLISHED_ANCHOR_RADIUS = 200
+
+
+def reach_stops_within(con, lat: float, lon: float, radius: float, side: str):
+    """[(stop_id, lat, lon, frozenset(routes))] inside the radius, ALL MODES.
+
+    The one-seat counterpart of `stops_within`, and deliberately a separate
+    table and index rather than a flag on that one: `stops` holds the bus-only
+    universe every service figure in this app is measured over, and quietly
+    widening it would move published numbers. See note 1 above for why this
+    question needs rail and those do not.
+
+    Same padded-box-then-exact-circle metric as `stops_within`, for the same
+    reason -- the r-tree stores 32-bit floats, so the box is a prefilter and
+    never the tighter of the two tests.
+    """
+    coslat, dlat, dlon = _bbox(lat, lon, radius)
+    rows = con.execute(
+        """
+        SELECT s.stop_id, s.lat, s.lon, s.routes
+        FROM reach_rtree r
+        JOIN reach_key k ON k.id = r.id
+        JOIN reach_stop s ON s.side = k.side AND s.stop_id = k.stop_id
+        WHERE r.min_lat >= ? AND r.max_lat <= ?
+          AND r.min_lon >= ? AND r.max_lon <= ?
+          AND k.side = ?
+        """,
+        (lat - dlat, lat + dlat, lon - dlon, lon + dlon, side),
+    ).fetchall()
+
+    lim = radius * radius
+    out = []
+    for r in rows:
+        dla = (r["lat"] - lat) * METERS_PER_DEGREE
+        dlo = (r["lon"] - lon) * METERS_PER_DEGREE * coslat
+        if dla * dla + dlo * dlo <= lim:
+            out.append((r["stop_id"], r["lat"], r["lon"],
+                        frozenset(r["routes"].split(";")) if r["routes"]
+                        else frozenset()))
+    out.sort(key=lambda x: x[0])          # rule 3: deterministic, lowest id first
+    return out
+
+
+def routes_at(con, lat: float, lon: float, radius: float, side: str) -> set[str]:
+    """Every route boardable within a walk of one point, on one network."""
+    out: set[str] = set()
+    for _sid, _lat, _lon, routes in reach_stops_within(con, lat, lon, radius, side):
+        out |= routes
+    return out
+
+
+def routes_reaching(con, seeds, radius: float, side: str) -> set[str]:
+    """Every route that stops within the radius of any seed point.
+
+    A destination is a SET of points, not one point, and that is what lets a
+    district and a pin share one definition. Downtown is the 44 stops PRT
+    labels Central Business District; a pin the reader drops is a set of one.
+    Union, not intersection: a route serves Downtown if it stops anywhere in
+    it.
+    """
+    out: set[str] = set()
+    for lat, lon in seeds:
+        out |= routes_at(con, lat, lon, radius, side)
+    return out
+
+
+def destinations(con):
+    """The named destinations, with their seed count and centre.
+
+    The centre is the mean of the seeds and is for the map to fly to; nothing
+    is measured from it. A district measured from its centroid would be a
+    circle over one block of it.
+    """
+    rows = con.execute(
+        "SELECT dest_key, name, lat, lon FROM destination "
+        "ORDER BY dest_key, lat, lon").fetchall()
+    out: dict[str, dict] = {}
+    for r in rows:
+        d = out.setdefault(r["dest_key"], {"key": r["dest_key"], "name": r["name"],
+                                           "seeds": 0, "lat": 0.0, "lon": 0.0})
+        d["seeds"] += 1
+        d["lat"] += r["lat"]
+        d["lon"] += r["lon"]
+    for d in out.values():
+        d["lat"] = round(d["lat"] / d["seeds"], 6)
+        d["lon"] = round(d["lon"] / d["seeds"], 6)
+    return list(out.values())
+
+
+def destination_seeds(con, key: str):
+    """[(lat, lon)] for a named destination, or [] if there is no such key."""
+    return [(r["lat"], r["lon"]) for r in con.execute(
+        "SELECT lat, lon FROM destination WHERE dest_key = ? ORDER BY lat, lon",
+        (key,))]
+
+
+def destination_reach(con, key: str, radius: float, side: str) -> set[str] | None:
+    """The stored route set for a named destination, or None if not built.
+
+    Precomputed by `build_webdb.py` because Downtown is 44 seed points and
+    Oakland 93: measuring them per request would put ~270 spatial queries in
+    front of every click, to re-derive an answer that cannot change between
+    builds. A pin the reader drops is one point and is measured live.
+    """
+    row = con.execute(
+        "SELECT routes FROM destination_reach "
+        "WHERE dest_key = ? AND radius = ? AND side = ?",
+        (key, int(radius), side)).fetchone()
+    if row is None:
+        return None
+    return set(row["routes"].split(";")) if row["routes"] else set()
+
+
+def resolve_destination(con, radius: float, key: str | None = None,
+                        lat: float | None = None, lon: float | None = None):
+    """One destination as (label, seeds, {side: routes reaching it}).
+
+    Named or dropped-pin, the rest of the module sees the same shape. Named
+    destinations take their route sets from the table when it holds them and
+    fall back to measuring the seeds, so a database built before this layer
+    existed degrades to slower rather than to wrong.
+    """
+    if key:
+        seeds = destination_seeds(con, key)
+        if not seeds:
+            raise KeyError(key)
+        name = con.execute("SELECT name FROM destination WHERE dest_key = ?",
+                           (key,)).fetchone()["name"]
+        reach = {}
+        for side in SIDES:
+            stored = destination_reach(con, key, radius, side)
+            reach[side] = (stored if stored is not None
+                           else routes_reaching(con, seeds, radius, side))
+        return name, seeds, reach
+
+    if lat is None or lon is None:
+        raise ValueError("a destination needs either a key or a lat/lon")
+    seeds = [(lat, lon)]
+    return (None, seeds,
+            {side: routes_reaching(con, seeds, radius, side) for side in SIDES})
+
+
+def at_destination(lat: float, lon: float, seeds, radius: float) -> bool:
+    """Is this point itself inside the destination?
+
+    Kept out of the four verdicts rather than folded into `keeps`. A place
+    needs no one-seat ride to itself -- `analyze_one_seat.py` skips the anchor
+    districts outright for that reason -- and painting Downtown solid green as
+    though the plan had preserved something there would be the loudest wrong
+    signal on the map.
+    """
+    coslat = math.cos(math.radians(lat)) or 1e-9
+    lim = radius * radius
+    for slat, slon in seeds:
+        dla = (slat - lat) * METERS_PER_DEGREE
+        dlo = (slon - lon) * METERS_PER_DEGREE * coslat
+        if dla * dla + dlo * dlo <= lim:
+            return True
+    return False
+
+
+def oneseat_status(now: set[str], prop: set[str], here: bool = False) -> str:
+    """Which of the five statuses a location falls in.
+
+    `now`/`prop` are the routes providing the one-seat ride on each side -- the
+    intersection of what serves the location with what reaches the destination
+    -- not the routes serving the location. Mirrors `analyze_one_seat.py`'s
+    keeps/gains/loses/none either way, with `here` added for the destination
+    itself.
+    """
+    if here:
+        return "here"
+    if now and prop:
+        return "keeps"
+    if prop:
+        return "gains"
+    if now:
+        return "loses"
+    return "none"
+
+
+def oneseat_at_place(con, lat: float, lon: float, radius: float,
+                     key: str | None = None,
+                     dest_lat: float | None = None,
+                     dest_lon: float | None = None):
+    """Can a rider get from this point to that destination without changing?
+
+    Returns both sides' route lists in full rather than a verdict alone, for
+    the reason the panel exists: "loses its one-seat ride" is a sentence a
+    reader should be able to check against route numbers they recognise, and a
+    bare status invites the map to be quoted without them.
+    """
+    name, seeds, reach = resolve_destination(con, radius, key, dest_lat, dest_lon)
+    here = at_destination(lat, lon, seeds, radius)
+
+    sides = {}
+    for side in SIDES:
+        serving = routes_at(con, lat, lon, radius, side)
+        sides[side] = sorted(serving & reach[side])
+
+    now, prop = set(sides["current"]), set(sides["proposed"])
+    return {
+        "destination": {"key": key, "name": name, "seeds": len(seeds),
+                        "lat": dest_lat, "lon": dest_lon},
+        "radius": radius,
+        "status": oneseat_status(now, prop, here),
+        "current": sides["current"],
+        "proposed": sides["proposed"],
+        "kept": sorted(now & prop),
+        "lost": sorted(now - prop),
+        "gained": sorted(prop - now),
+    }
+
+
+def oneseat_named(con, lat: float, lon: float, radius: float):
+    """Every named destination's verdict at one point.
+
+    Measured once per side and intersected per destination, rather than by
+    calling `oneseat_at_place` in a loop: which routes serve this corner does
+    not depend on where the reader is going, and it is the only part of the
+    answer that costs a spatial query.
+
+    Returns [] when the database predates this layer, so an old `refresh.db`
+    serves the rest of the app unchanged instead of failing every click.
+    """
+    if not _has_table(con, "destination"):
+        return []
+
+    serving = {side: routes_at(con, lat, lon, radius, side) for side in SIDES}
+    out = []
+    for d in destinations(con):
+        seeds = destination_seeds(con, d["key"])
+        here = at_destination(lat, lon, seeds, radius)
+        sides = {}
+        for side in SIDES:
+            reach = destination_reach(con, d["key"], radius, side)
+            if reach is None:
+                reach = routes_reaching(con, seeds, radius, side)
+            sides[side] = serving[side] & reach
+        now, prop = sides["current"], sides["proposed"]
+        out.append({
+            "key": d["key"], "name": d["name"],
+            "lat": d["lat"], "lon": d["lon"],
+            "status": oneseat_status(now, prop, here),
+            "current": sorted(now), "proposed": sorted(prop),
+            "kept": sorted(now & prop), "lost": sorted(now - prop),
+            "gained": sorted(prop - now),
+        })
+    return out
+
+
+def _has_table(con, name: str) -> bool:
+    return con.execute("SELECT 1 FROM sqlite_master WHERE type = 'table' "
+                       "AND name = ?", (name,)).fetchone() is not None
+
+
+def oneseat_layer(con, radius: float = PRIMARY_RADIUS,
+                  key: str | None = None,
+                  dest_lat: float | None = None,
+                  dest_lon: float | None = None):
+    """Every location on the citywide point set, for one destination.
+
+    This is why `point_reach` exists. The expensive half of a one-seat answer
+    is "which routes can be boarded here", and it does not depend on the
+    destination at all -- so it is measured once per point per side at build
+    time, and every destination a reader picks afterwards is a set
+    intersection over stored strings rather than ~12,000 spatial queries. That
+    is what makes an arbitrary dropped pin repaint the county in well under a
+    second instead of the twenty seconds `compute_change` takes.
+
+    The point set, the radii and the published/new-coverage split are
+    `change_points`' -- the same dots, recoloured by a different question, so
+    a reader switching views is not also switching what is on the map.
+    """
+    name, seeds, reach = resolve_destination(con, radius, key, dest_lat, dest_lon)
+
+    rows = con.execute(
+        "SELECT point_id, side, lat, lon, published, routes FROM point_reach "
+        "WHERE radius = ? ORDER BY point_id", (int(radius),)).fetchall()
+
+    idx = {k: i for i, k in enumerate(ONESEAT_KEYS)}
+    packed: dict[str, dict] = {}
+    for r in rows:
+        p = packed.setdefault(r["point_id"], {
+            "lat": r["lat"], "lon": r["lon"], "published": r["published"],
+            "current": set(), "proposed": set()})
+        serving = set(r["routes"].split(";")) if r["routes"] else set()
+        p[r["side"]] = serving & reach[r["side"]]
+
+    points, counts = [], {k: 0 for k in ONESEAT_KEYS}
+    for p in packed.values():
+        status = oneseat_status(p["current"], p["proposed"],
+                                at_destination(p["lat"], p["lon"], seeds, radius))
+        counts[status] += 1
+        points.append([round(p["lat"], 6), round(p["lon"], 6), p["published"],
+                       idx[status], ";".join(sorted(p["current"])),
+                       ";".join(sorted(p["proposed"]))])
+
+    return {
+        "radius": int(radius),
+        "destination": {"key": key, "name": name, "seeds": len(seeds),
+                        "lat": dest_lat, "lon": dest_lon},
+        "statuses": [{"key": k, "label": lab} for k, lab in ONESEAT_STATUSES],
+        "counts": counts,
+        "fields": ["lat", "lon", "published", "status", "current", "proposed"],
+        "points": points,
+    }
 
 
 # --------------------------------------------------------------------------

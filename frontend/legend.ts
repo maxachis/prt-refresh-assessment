@@ -13,12 +13,18 @@
  * to 30% low).
  */
 import { esc } from './utils';
-import { Day, ChangeLayer, SurfaceLayer, CorridorLayer, CorridorKlass } from './types';
+import {
+  Day, ChangeLayer, SurfaceLayer, CorridorLayer, CorridorKlass, OneSeatLayer,
+} from './types';
 import { STYLE, countInBounds, isHidden } from './change';
 import {
   RAMP, GONE_COLOR, NEW_COLOR, summariseInBounds,
 } from './surface';
 import { KLASS_COLOR, pavementPct } from './corridor';
+import {
+  STATUS_STYLE, STATUS_ORDER, countInBounds as countOneSeatInBounds,
+  destinationLabel,
+} from './oneseat';
 
 const DAY_WORD: Record<Day, string> = {
   weekday: 'a weekday',
@@ -135,6 +141,58 @@ export function renderCorridorLegend(el: HTMLElement, layer: CorridorLayer) {
       can keep full walk access while a specific street loses its only bus, if
       a parallel block picks up the trip instead. See Locations or Surface for
       what you can still reach on foot.</div>`;
+}
+
+/**
+ * The one-seat legend: five statuses, counted in view, with the destination in
+ * the header.
+ *
+ * Two things it has to say that no other legend here does.
+ *
+ * IT IS NOT A DAY-TYPE ANSWER. The day control still governs the panel and
+ * every other layer, and a reader who has been switching Weekday/Saturday all
+ * session will assume it governs this too. It does not: a route serves a place
+ * or it does not. That is the published method, and the honest consequence --
+ * a kept one-seat ride may be hourly on a Sunday -- is the footnote.
+ *
+ * IT COUNTS RAIL. Said out loud because every other number on this screen
+ * excludes it, and a reader comparing the two would otherwise be comparing
+ * different universes without being told.
+ */
+export function renderOneSeatLegend(
+  el: HTMLElement, layer: OneSeatLayer,
+  bounds: { west: number; south: number; east: number; north: number },
+) {
+  const keys = layer.statuses.map((s) => s.key);
+  const counts = countOneSeatInBounds(
+    layer.points, keys, bounds.west, bounds.south, bounds.east, bounds.north);
+  const label = (k: string) => layer.statuses.find((s) => s.key === k)?.label ?? k;
+  const total = STATUS_ORDER.reduce((n, k) => n + (counts[k] ?? 0), 0);
+  const to = destinationLabel(layer);
+
+  el.innerHTML = `
+    <div class="lg-head">
+      One-seat ride to <b>${esc(to)}</b>
+      <span class="muted">· ${total.toLocaleString()} locations in view
+      · ${layer.radius} m walk</span>
+    </div>
+    ${STATUS_ORDER.map((k) => `
+      <div class="lg-row lg-static">
+        <i style="background:${STATUS_STYLE[k].color}"></i>
+        <span class="lg-lab">${esc(label(k))}</span>
+        <span class="lg-n">${(counts[k] ?? 0).toLocaleString()}</span>
+      </div>`).join('')}
+    <div class="lg-ends" style="margin-top:4px">
+      citywide: ${STATUS_ORDER.map((k) =>
+        `${(layer.counts[k] ?? 0).toLocaleString()} ${esc(label(k))}`).join(' · ')}
+    </div>
+    <div class="lg-foot">Can a rider reach ${esc(to)} without transferring?
+      No day type and no travel time enter this — a route serves a place or it
+      doesn't — so a one-seat ride that survives may still be hourly on a
+      Sunday, or take an hour to make. Click a dot for that location's actual
+      timetable. This is also the only view that counts the T and the inclines:
+      they are unchanged by the Refresh, but leaving them out would show the
+      South Hills losing rides the Blue Line still runs.</div>`;
 }
 
 export function renderLegend(

@@ -20,7 +20,9 @@
  *    panel show different days at the same time.
  */
 import { esc, clock, signed, pct } from './utils';
-import { PKEYS, PERIOD_LABEL, Day, PlaceResult, DayService } from './types';
+import {
+  PKEYS, PERIOD_LABEL, Day, PlaceResult, DayService, OneSeatVerdict,
+} from './types';
 
 let current: PlaceResult | null = null;
 let day: Day = 'weekday';
@@ -38,7 +40,7 @@ export function renderEmpty(el: HTMLElement) {
   el.innerHTML = `
     <div class="empty">
       <h2>What changes here?</h2>
-      <p>The map draws the whole city at once, one of three ways depending on
+      <p>The map draws the whole city at once, one of four ways depending on
          the view above. Pan and zoom to read a neighbourhood.</p>
       <p><b>Locations</b> draws one dot per place a bus stops today, coloured
          by what the plan does to the buses within a short walk.
@@ -53,6 +55,13 @@ export function renderEmpty(el: HTMLElement) {
          can keep full walk access while a specific street loses its only bus,
          if a parallel block a minute's walk away picks up the trip instead:
          real loss of pavement, possibly no loss of access.</p>
+      <p><b>One-seat</b> asks a different kind of question again: from each
+         place, can a rider still reach Downtown, Oakland or a point you pick
+         <em>without transferring</em>? No day type and no travel time enter
+         that — a route serves a place or it doesn't — so a surviving one-seat
+         ride may still be hourly on a Sunday. It is also the only view that
+         counts the T and the inclines, which are unchanged by the Refresh but
+         are how much of the South Hills reaches Downtown.</p>
       <p>Click anywhere on the map for the full before-and-after.</p>
       <p class="muted">Both networks are measured inside the same circle, so
          renumbered routes and consolidated stops don't distort the comparison.
@@ -110,6 +119,63 @@ function bestMedian(s: DayService): number | null {
   return vals.length ? Math.min(...vals) : null;
 }
 
+/**
+ * The one-seat verdicts for the named destinations.
+ *
+ * Sits in the panel whichever view is on screen, because it answers something
+ * the trip counts above cannot: a corner can keep every bus it has and still
+ * lose the ride that got it to Oakland without changing. It is deliberately
+ * the only block here with no day type on it — a route serves a place or it
+ * does not — and the note says so rather than letting the reader carry the
+ * day control's meaning into it.
+ *
+ * Both sides' route numbers are shown, never a bare verdict. "Loses its
+ * one-seat ride to Oakland" is a sentence somebody will screenshot, and it
+ * should arrive with the routes that make it checkable.
+ */
+const ONESEAT_WORD: Record<string, string> = {
+  here: 'you are here',
+  keeps: 'keeps a one-seat ride',
+  gains: 'gains a one-seat ride',
+  loses: 'loses its one-seat ride',
+  none: 'no one-seat ride either way',
+};
+
+function oneSeatBlock(verdicts: OneSeatVerdict[]): string {
+  if (!verdicts.length) return '';
+  const rows = verdicts.map((v) => {
+    const now = routeList(v.current);
+    const prop = routeList(v.proposed);
+    // One row per side, never both on one line: at Downtown each side lists
+    // fourteen routes, and a single wrapped run makes the two indistinguishable
+    // -- which is exactly the comparison this block exists to show.
+    const detail = v.status === 'here'
+      ? '<div class="muted">no one-seat ride needed</div>'
+      : `<div class="rrow"><span class="rlab">today</span>${now}</div>
+         <div class="rrow"><span class="rlab">proposed</span>${prop}</div>`;
+    return `
+      <div class="os-row">
+        <div class="os-head">
+          <span class="os-name">${esc(v.name)}</span>
+          <span class="os-status ${esc(v.status)}">${ONESEAT_WORD[v.status] ?? v.status}</span>
+        </div>
+        <div class="os-routes">${detail}</div>
+      </div>`;
+  }).join('');
+
+  return `
+    <div class="oneseat">
+      <h3>Getting there without changing bus</h3>
+      ${rows}
+      <p class="note">A one-seat ride means some single route serves both this
+        spot and the destination. It says nothing about how long the trip takes
+        or how often it runs — check the timetable above for that. This is the
+        only figure on the panel that counts the T and the inclines: they are
+        unchanged by the Refresh, but leaving them out would show the South
+        Hills losing Downtown rides the Blue Line still runs.</p>
+    </div>`;
+}
+
 export function render(p: PlaceResult) {
   current = p;
   const el = document.getElementById('panel')!;
@@ -165,6 +231,8 @@ export function render(p: PlaceResult) {
       <dt>Stops within ${p.radius} m</dt>
       <dd>${p.current.stops.length} <span class="muted">→</span> ${p.proposed.stops.length}</dd>
     </dl>
+
+    ${oneSeatBlock(p.oneseat ?? [])}
 
     <div class="routes">
       <h3>Routes serving this spot</h3>

@@ -5,7 +5,7 @@ import {
   initChangeLayer, loadChangeLayer, setChangeDay, toggleBucket, resetBuckets,
   layerData, dotLabel,
 } from './change';
-import { renderLegend, renderCorridorLegend } from './legend';
+import { renderLegend, renderCorridorLegend, renderOneSeatLegend } from './legend';
 import {
   initSurfaceLayer, loadSurfaceLayer, setSurfaceDay, setSurfaceVisible,
   layerData as surfaceData, isVisible as surfaceOn,
@@ -14,6 +14,11 @@ import {
   initCorridorLayer, loadCorridorLayer, setCorridorDay, setCorridorVisible,
   layerData as corridorData, isVisible as corridorOn,
 } from './corridor';
+import {
+  initOneSeatLayer, loadOneSeatLayer, setOneSeatVisible,
+  layerData as oneSeatData, isVisible as oneSeatOn,
+  dotLabel as oneSeatDotLabel, HERE_COLOR, Destination,
+} from './oneseat';
 import { PlaceResult, Day } from './types';
 
 const PGH: [number, number] = [-79.9959, 40.4406];
@@ -22,6 +27,17 @@ let radius = 400;
 let marker: maplibregl.Marker | null = null;
 let last: { lat: number; lon: number } | null = null;
 let seq = 0;   // guards against a slow response overwriting a newer click
+
+// The one-seat view's destination. A named district by default; a dropped pin
+// once the reader asks for one, which is the whole reason the layer computes
+// its destination per request instead of at build time.
+let dest: Destination = { key: 'downtown' };
+let destMarker: maplibregl.Marker | null = null;
+// While this is on, a map click sets the destination rather than opening the
+// panel. It clears itself after one click: a mode that stays on is a mode a
+// reader forgets they are in, and every later click would silently move the
+// destination instead of answering "what changes here?".
+let pinMode = false;
 
 const map = new maplibregl.Map({
   container: 'map',
@@ -36,14 +52,21 @@ map.on('load', () => {
   initChangeLayer(map);      // after initMapLayers: it inserts beneath 'walk-fill'
   initSurfaceLayer(map, 'change-dots');   // under the dots, so 'Both' reads
   initCorridorLayer(map, 'change-dots');  // same slot; corridors and dots/surface are mutually exclusive
+  initOneSeatLayer(map, 'walk-fill');     // the dots' own slot; the two never show together
   renderEmpty($('panel'));
 
   map.on('click', (e: any) => {
+    if (pinMode) {
+      setDestination({ lat: e.lngLat.lat, lon: e.lngLat.lng });
+      return;
+    }
     // Snap to a change dot when one is under the cursor, so the panel that
     // opens is measured at the same point the dot was coloured from. Clicking
     // a dot and getting a different answer to the one it is painted with is
     // the single worst thing this layer could do.
-    const hit = map.queryRenderedFeatures(e.point, { layers: ['change-dots'] })[0];
+    const layers = ['change-dots', 'oneseat-dots'].filter((l) =>
+      map.getLayoutProperty(l, 'visibility') !== 'none');
+    const hit = map.queryRenderedFeatures(e.point, { layers })[0];
     const c = hit ? (hit.geometry as any).coordinates : [e.lngLat.lng, e.lngLat.lat];
     void load(c[1], c[0]);
   });
@@ -62,6 +85,19 @@ map.on('load', () => {
       .setHTML(dotLabel(f.properties, activeDay(), d.buckets)).addTo(map);
   });
 
+  map.on('mouseenter', 'oneseat-dots', () => { map.getCanvas().style.cursor = 'pointer'; });
+  map.on('mouseleave', 'oneseat-dots', () => {
+    map.getCanvas().style.cursor = '';
+    popup.remove();
+  });
+  map.on('mousemove', 'oneseat-dots', (e: any) => {
+    const f = e.features?.[0];
+    const d = oneSeatData();
+    if (!f || !d) return;
+    popup.setLngLat((f.geometry as any).coordinates)
+      .setHTML(oneSeatDotLabel(f.properties, d)).addTo(map);
+  });
+
   map.on('moveend', refreshLegend);
 
   // Radius is a control, not a constant: 400 m is the headline quarter-mile
@@ -73,6 +109,7 @@ map.on('load', () => {
     if (surfaceData()) {
       void loadSurfaceLayer(map, radius, activeDay()).then(refreshLegend);
     }
+    if (oneSeatData()) void reloadOneSeat();
     if (last) void load(last.lat, last.lon);
   });
 
@@ -95,10 +132,30 @@ map.on('load', () => {
   segment('[data-view]', (b) => {
     const view = b.dataset.view!;
     map.setLayoutProperty('change-dots', 'visibility',
-      view === 'surface' || view === 'corridors' ? 'none' : 'visible');
+      view === 'dots' || view === 'both' ? 'visible' : 'none');
     void showSurface(view === 'surface' || view === 'both');
     void showCorridors(view === 'corridors');
+    void showOneSeat(view === 'oneseat');
     setRadiusEnabled(view !== 'corridors');
+    // The destination picker only means anything in the one-seat view, and a
+    // mode left armed behind a hidden control is a click the reader cannot
+    // account for.
+    $('dest-controls').classList.toggle('hidden', view !== 'oneseat');
+    if (view !== 'oneseat') setPinMode(false);
+  });
+
+  // Where the one-seat view is measuring TO. Downtown and Oakland are the two
+  // destinations BASE_CAMP asks about and the two the published place-level
+  // answer covers; "pick a point" is the reason the layer applies its
+  // destination per request rather than baking a list in at build time.
+  segment('[data-dest]', (b) => {
+    const key = b.dataset.dest!;
+    if (key === 'pin') {
+      setPinMode(true);
+      return;
+    }
+    setPinMode(false);
+    setDestination({ key });
   });
 
   $('legend').addEventListener('click', (e) => {
@@ -131,10 +188,23 @@ function refreshLegend() {
   // "Show all" clears buckets hidden from the change legend's filter, which
   // has no counterpart here -- the corridor legend is a key, not a filter --
   // so the button is hidden rather than left clickable and silently inert.
-  $('legend-reset').classList.toggle('hidden', corridorOn());
+  // "Show all" clears the change legend's bucket filter; neither the corridor
+  // legend nor the one-seat legend has one, so the button is hidden rather
+  // than left clickable and silently inert.
+  $('legend-reset').classList.toggle('hidden', corridorOn() || oneSeatOn());
   if (corridorOn()) {
     const c = corridorData();
     if (c) renderCorridorLegend($('legend'), c);
+    return;
+  }
+  if (oneSeatOn()) {
+    const o = oneSeatData();
+    if (!o) return;
+    const ob = map.getBounds();
+    renderOneSeatLegend($('legend'), o, {
+      west: ob.getWest(), south: ob.getSouth(),
+      east: ob.getEast(), north: ob.getNorth(),
+    });
     return;
   }
   const d = layerData();
@@ -185,6 +255,64 @@ function setRadiusEnabled(on: boolean) {
   });
 }
 
+/** Turn the one-seat layer on or off, loading it the first time it is asked for. */
+async function showOneSeat(on: boolean) {
+  if (on && !oneSeatData()) {
+    await withLoadingLegend(() => loadOneSeatLayer(map, radius, dest));
+  }
+  setOneSeatVisible(map, on);
+  refreshLegend();
+}
+
+/** Repaint the one-seat layer for the current destination and radius. */
+async function reloadOneSeat() {
+  await withLoadingLegend(() => loadOneSeatLayer(map, radius, dest));
+  refreshLegend();
+}
+
+async function withLoadingLegend<T>(work: () => Promise<T>) {
+  $('legend').classList.add('loading');
+  try {
+    return await work();
+  } finally {
+    $('legend').classList.remove('loading');
+  }
+}
+
+/**
+ * Point the one-seat view at a destination, named or dropped.
+ *
+ * A pin gets a marker in the one-seat palette's neutral, so the reader can see
+ * what the map is measuring to. A named district deliberately gets none: it is
+ * 44 or 93 stops spread over a neighbourhood, and a single marker would invite
+ * the map to be read as though the district were that point.
+ */
+function setDestination(next: Destination) {
+  dest = next;
+  setPinMode(false);
+  if ('lat' in next) {
+    if (!destMarker) {
+      destMarker = new maplibregl.Marker({ color: HERE_COLOR })
+        .setLngLat([next.lon, next.lat]).addTo(map);
+    } else {
+      destMarker.setLngLat([next.lon, next.lat]).addTo(map);
+    }
+  } else if (destMarker) {
+    destMarker.remove();
+  }
+  void reloadOneSeat();
+}
+
+/** Arm or disarm "the next map click sets the destination". */
+function setPinMode(on: boolean) {
+  pinMode = on;
+  map.getCanvas().style.cursor = on ? 'crosshair' : '';
+  document.querySelectorAll<HTMLButtonElement>('[data-dest="pin"]').forEach((b) => {
+    b.classList.toggle('armed', on);
+    b.textContent = on ? 'click the map…' : 'Pick a point';
+  });
+}
+
 async function load(lat: number, lon: number) {
   const mine = ++seq;
   last = { lat, lon };
@@ -197,8 +325,12 @@ async function load(lat: number, lon: number) {
   }
 
   try {
+    // Carry the dropped pin, if there is one, so the panel answers for the
+    // destination the reader chose rather than only for Downtown and Oakland.
+    const pin = 'lat' in dest
+      ? `&dest_lat=${dest.lat.toFixed(6)}&dest_lon=${dest.lon.toFixed(6)}` : '';
     const p = await fetchJSON<PlaceResult>(
-      `/api/place?lat=${lat.toFixed(6)}&lon=${lon.toFixed(6)}&radius=${radius}`);
+      `/api/place?lat=${lat.toFixed(6)}&lon=${lon.toFixed(6)}&radius=${radius}${pin}`);
     if (mine !== seq) return;       // a newer click already won
     showPlace(map, lat, lon, radius, p.current.stops, p.proposed.stops);
     render(p);

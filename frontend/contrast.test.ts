@@ -3,6 +3,7 @@ import { relativeLuminance, contrastRatio, BASEMAP_LAND } from './contrast';
 import { STYLE } from './change';
 import { RAMP, GONE_COLOR, NEW_COLOR, DEAD_BAND_COLOR } from './surface';
 import { KEPT_COLOR, KEPT_COLOR_LOW } from './corridor';
+import { HERE_COLOR, NO_RIDE_COLOR } from './oneseat';
 
 // The floor this file exists to enforce: change.ts's docstring says gains
 // read as loudly as losses, which was true of hue and dot size but said
@@ -92,5 +93,23 @@ describe('corridor.ts kept colours against the basemap', () => {
 
   it('KEPT_COLOR_LOW clears 3.5:1', () => {
     expect(contrastRatio(KEPT_COLOR_LOW, BASEMAP_LAND)).toBeGreaterThanOrEqual(3.5);
+  });
+});
+
+// The one-seat layer borrows the surface's red and blue and the street
+// layer's grey, so most of its palette is already covered above. Two colours
+// are its own: the near-black that marks the destination itself, and the
+// faint grey for ground with no one-seat ride either way.
+describe('oneseat.ts palette against the basemap', () => {
+  it('HERE_COLOR clears 2.5:1 -- the destination has to be visible', () => {
+    expect(contrastRatio(HERE_COLOR, BASEMAP_LAND)).toBeGreaterThanOrEqual(2.5);
+  });
+
+  it('NO_RIDE_COLOR stays below the findings, on purpose', () => {
+    // Exempt from the floor for the same reason change.ts's `none` is: it
+    // carries no finding. Pinned below `keeps` so it can never quietly
+    // brighten into competing with the statuses that do.
+    expect(contrastRatio(NO_RIDE_COLOR, BASEMAP_LAND))
+      .toBeLessThan(contrastRatio(KEPT_COLOR, BASEMAP_LAND));
   });
 });

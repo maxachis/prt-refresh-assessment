@@ -12,8 +12,9 @@ with evidence PRT has not itself published.
 
 Since both networks gained a real GTFS it also carries **a web app** (`src/refresh/`,
 `frontend/`) that answers "what changes here?" at an arbitrary point, as dots
-at today's stops, as a continuous 100 m surface, or as the street network
-itself gaining and losing buses — see
+at today's stops, as a continuous 100 m surface, as the street network
+itself gaining and losing buses, or as who keeps a one-seat ride to Downtown,
+Oakland or a point you pick — see
 [`docs/WEBAPP.md`](docs/WEBAPP.md). The pipeline remains the primary artifact and
 stays standard-library only; the app is an optional extra that only reads what
 the pipeline builds. It is deployed at
@@ -75,8 +76,8 @@ uv sync --extra web && npm install   # one-time
 npm run build                        # frontend/*.ts -> static/app.js
 uv run refresh serve                 # http://127.0.0.1:8000
 
-uv run pytest                        # 108 tests, incl. served == published
-npx vitest run && npx tsc --noEmit   # 37 frontend tests
+uv run pytest                        # 146 tests, incl. served == published
+npx vitest run && npx tsc --noEmit   # 82 frontend tests
 ```
 
 **Hosting** is `deploy/` — a Hetzner VM behind Caddy, live at
@@ -96,7 +97,9 @@ labels the place-level one-seat answer uses (convention 6); it therefore has to
 run after `ingest_blr.py` and `analyze_service_loss.py`, unlike the rest of the
 equity pair. `build_equity_brief.py` reads only published CSVs and re-uses
 `analyze_equity_places.by_place`, so the charts cannot drift from the files
-`docs/answers/` cites.
+`docs/answers/` cites. `build_webdb.py` takes the anchor definitions, the HOOD
+labels and the outlier filter from `analyze_one_seat.py`, so the app's Downtown
+and Oakland are the districts `data/oneseat_change.csv` publishes.
 `analyze_equity_change.py` takes the tiers and the whole location test from
 `analyze_coverage_change.py` and the dimension definitions from
 `ingest_census.py`, so a rider's coverage is decided the same way at a house as
@@ -223,6 +226,23 @@ changes published findings.
     **ecological** measure — it describes the places a group lives, not its
     members — and a block group is covered or not at a single point. Quote it
     beside the location and area figures, per convention 10, never alone.
+
+13. **A one-seat ride is a fourth unit, and it is the only measure in this
+    repo that counts rail.** `analyze_one_seat.py` and the app's one-seat view
+    ask whether some single route serves both a location and a destination —
+    connectivity, not volume. Three things follow that look like bugs and are
+    not. It is **route-based**, which convention 1 otherwise forbids: it never
+    compares route N to route N, it intersects two independently recomputed
+    route sets, so renumbering moves both sides together. It has **no day type
+    and no travel time**: a route serves a place or it does not, so a surviving
+    one-seat ride may be hourly on a Sunday or take an hour to make, and that
+    caveat has to ship with the number. And it **includes the T and the
+    inclines**, where every service figure here drops them — drop them from
+    this question and Beechview reads as losing a Downtown ride the Blue Line
+    still runs. Do not "fix" that inconsistency; it is control 2 of
+    `analyze_one_seat.py`, and the app keeps its all-mode index in separate
+    tables (`reach_stop`, `point_reach`) precisely so that widening the
+    universe here can never widen it under a published service number.
 
 State data vintage and PRT's own accuracy disclaimer (stop figures are
 "unadjusted, unofficial totals" that may understate ridership by up to 30%)

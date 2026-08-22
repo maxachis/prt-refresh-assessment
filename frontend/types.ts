@@ -69,6 +69,52 @@ export interface ChangeLayer {
   points: ChangePoint[];
 }
 
+/** The five one-seat verdicts. `here` is the destination itself, not an outcome. */
+export type OneSeatStatus = 'here' | 'keeps' | 'gains' | 'loses' | 'none';
+
+/**
+ * One location on the one-seat layer:
+ *
+ *   [lat, lon, published, statusIndex, routesToday, routesProposed]
+ *
+ * The two route strings are ';'-joined and hold only the routes that actually
+ * provide the one-seat ride — not everything serving the location — so the
+ * hover text can name them without a second request.
+ */
+export type OneSeatPoint = (number | string)[];
+
+export interface DestinationRef {
+  key: string | null;
+  name: string | null;
+  seeds: number;
+  lat: number | null;
+  lon: number | null;
+}
+
+export interface OneSeatLayer {
+  radius: number;
+  destination: DestinationRef;
+  statuses: { key: OneSeatStatus; label: string }[];
+  counts: Record<OneSeatStatus, number>;
+  fields: string[];
+  points: OneSeatPoint[];
+}
+
+/** One named destination's verdict at the clicked point, for the panel. */
+export interface OneSeatVerdict {
+  /** null for a dropped pin -- it has no name in the database. */
+  key: string | null;
+  name: string;
+  lat: number;
+  lon: number;
+  status: OneSeatStatus;
+  current: string[];
+  proposed: string[];
+  kept: string[];
+  lost: string[];
+  gained: string[];
+}
+
 export interface PlaceResult {
   lat: number;
   lon: number;
@@ -77,6 +123,8 @@ export interface PlaceResult {
   proposed: SideResult;
   change: Record<Day, { trips: number; hourly: [boolean, boolean] }>;
   place: { muni: string; hood: string } | null;
+  /** Empty when the database predates the one-seat layer. */
+  oneseat: OneSeatVerdict[];
 }
 
 /**
