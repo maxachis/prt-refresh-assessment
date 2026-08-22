@@ -3,9 +3,9 @@
 **Observed:** riders want the one question the site cannot answer — "I go from
 here to there; how does *my trip* change?" — and both feeds carry complete
 scheduled times at every stop, so it is computable rather than estimable.
-**Where it stands:** open, unstarted, and deliberately so. Scoped 2026-08-22 at
-Max's request; the blocking item is not routing code but the absence of a
-BASE_CAMP question for it.
+**Where it stands:** open, in progress since 2026-08-22. Max decided to build
+it ahead of the BASE_CAMP question rather than behind it, and to compute a
+departure-time profile rather than a single chosen departure.
 
 ## What is being asked for
 
@@ -150,14 +150,23 @@ something like `data/trip_time_change.csv` for the app to be tested against.
 *All four of these are agent judgements, not Max's decisions — a later session
 with better information should feel free to overturn them.*
 
-## The non-technical blocker
+## The non-technical blocker, and how it was settled
 
 There is no travel-time question in `docs/BASE_CAMP.md`. Every feature on this
 site traces to a question ID there, and that file is ground truth for intent.
-This would be the first that does not — while also being the most quotable
-thing the site could produce ("my commute goes from 35 minutes to 58"), which
-cuts both ways. The question should be added to BASE_CAMP, with PPT's buy-in,
-*before* building rather than after.
+This is the first that does not — while also being the most quotable thing the
+site could produce ("my commute goes from 35 minutes to 58"), which cuts both
+ways.
+
+> **Max decided (2026-08-22)** to build the layer first and add the BASE_CAMP
+> question afterwards, against this entry's original recommendation to get
+> PPT's buy-in before writing code. The question still has to be written and
+> the layer still has to be traceable to it; what changed is the order.
+
+Max also chose the **departure-time profile** over a single chosen departure —
+the recommendation in trap 2 above — so waiting, and therefore the frequency
+changes the rest of the site measures, are in the answer from the first
+version rather than deferred as a refinement.
 
 ## Rough size
 
@@ -168,4 +177,9 @@ be tested against.
 
 ## Resolution
 
-Open. Nothing built.
+Open, in progress. Build order: the round-based router as a standard-library
+module beside `gtfs.py`, tested against a hand-built toy timetable; then the
+pipeline script that publishes journeys over a fixed sample of origin–
+destination pairs, so the served answer has a file to be pinned against before
+the app can serve it; then the pattern/trip tables in `build_webdb.py`; then
+the served query, its API, and the two-pin UI.
