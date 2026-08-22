@@ -22,7 +22,12 @@ never does. What these tests protect, in order of how badly each would read:
    differently (current 2, proposed 0), which is the trap.
 5. NO JOURNEY IS None, NOT A LARGE NUMBER. An unreachable pair has to be
    reported as unreachable; a sentinel travel time would be averaged.
+6. AN UNBOUNDED WAIT IS NOT A TRAVEL TIME. The mirror of 1: because waiting
+   counts, a rider whose only bus is fourteen hours away gets a correct
+   arrival and a meaningless trip time. A profile bounds it and reports
+   those minutes as unreachable, which is what they are.
 """
+import math
 import statistics
 from collections import defaultdict
 
@@ -158,12 +163,57 @@ def test_a_transfer_walk_beyond_the_published_maximum_is_not_a_transfer():
                                     ready_at=hm(8) - 5) is None
 
 
-def test_the_three_transfer_constants_are_published_not_hidden():
-    """They decide whether an itinerary is real, so they must be quotable."""
+def test_every_constant_that_decides_an_itinerary_is_published_not_hidden():
+    """They decide whether an itinerary is real -- or, for the journey
+    bound, whether it counts as one at all -- so they must be quotable."""
     assert set(journey.CONSTANTS) == {
         "walk_speed_m_per_min", "max_access_walk_m",
-        "max_transfer_walk_m", "min_transfer_buffer_min"}
+        "max_transfer_walk_m", "min_transfer_buffer_min",
+        "max_journey_minutes"}
     assert journey.CONSTANTS["walk_speed_m_per_min"] == journey.WALK_SPEED_M_PER_MIN
+    assert journey.CONSTANTS["max_journey_minutes"] == journey.MAX_JOURNEY_MINUTES
+
+
+# --------------------------------------------------------------------------
+# 2b. an unbounded wait is not a travel time
+# --------------------------------------------------------------------------
+
+def _one_bus_late_in_the_day():
+    """A stop whose only departure all day is at 21:00 -- the shape that
+    produced 863-minute "travel times" against the real feeds."""
+    return toy(line_every(30, first=hm(21), n=1), LINE_COORDS)
+
+
+def test_an_overnight_wait_is_unreachable_rather_than_a_very_slow_trip():
+    """A rider ready at 07:00 whose only bus is at 21:00 has no morning
+    service. The router is right that they can eventually get there; a
+    profile that published 848 minutes as a trip time would be handing a
+    reader a quotable number for something that is not a trip."""
+    tt = _one_bus_late_in_the_day()
+    window = (hm(7), hm(9))
+    assert journey.earliest_arrival(tt, at(0, 0), at(2000, 0),
+                                    ready_at=hm(7)) is not None
+    bounded = journey.profile(tt, at(0, 0), at(2000, 0), window=window)
+    assert bounded.journeys == ()
+    assert bounded.reachable_fraction == 0.0
+    assert bounded.median_minutes is None
+
+
+def test_the_bound_is_a_parameter_so_the_unbounded_question_is_still_askable():
+    tt = _one_bus_late_in_the_day()
+    unbounded = journey.profile(tt, at(0, 0), at(2000, 0),
+                                window=(hm(7), hm(9)), max_journey_minutes=math.inf)
+    assert unbounded.reachable_fraction == 1.0
+    assert unbounded.median_minutes > journey.MAX_JOURNEY_MINUTES
+
+
+def test_a_trip_just_inside_the_bound_survives(line):
+    """The bound must not quietly truncate the long-but-real tail: against
+    the real feeds the genuine distribution runs to ~202 minutes, and the
+    overnight artefacts start at 480."""
+    p = journey.profile(line, at(0, 0), at(2000, 0), window=(hm(8), hm(9)))
+    assert p.journeys
+    assert max(j.total_minutes for j in p.journeys) < journey.MAX_JOURNEY_MINUTES
 
 
 # --------------------------------------------------------------------------

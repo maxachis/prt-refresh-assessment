@@ -43,9 +43,14 @@ python3 analyze_coverage_change.py  # -> data/coverage_change.csv, route_service
 python3 analyze_coverage_area.py    # -> data/coverage_area*.csv (coverage as km2)
 python3 analyze_route_hours.py      # -> data/route_frequency_change.csv
 python3 analyze_corridor_change.py  # -> data/corridor_change.csv
-python3 analyze_travel_time.py      # -> data/trip_time_change.csv (slow: ~1,500
-                                    #    profiles; needs analyze_one_seat.py and
-                                    #    ingest_census.py to have run)
+python3 analyze_travel_time.py      # -> data/trip_time_change.csv (the pooled
+                                    #    answer) + data/trip_time_origins.csv
+                                    #    (the per-block-group evidence).
+                                    #    SLOW: ~7,700 profiles, hours not
+                                    #    minutes, because every place is
+                                    #    searched from all of its block groups.
+                                    #    Needs analyze_one_seat.py and
+                                    #    ingest_census.py to have run.
 python3 build_webdb.py              # -> data/refresh.db, for the web app only
 ```
 
@@ -250,7 +255,7 @@ changes published findings.
 14. **A journey is a fifth unit, and it is the only one with a clock.**
     `analyze_travel_time.py` and the app's journey view ask how long a
     rider's actual trip takes, origin to destination — the only measure here
-    that involves waiting, transferring, or the time of day. Five things
+    that involves waiting, transferring, or the time of day. Six things
     follow, and the first three look like inconsistencies and are not.
 
     The clock starts **when the rider is ready at the origin, not when they
@@ -281,6 +286,24 @@ changes published findings.
     many pairs reverse direction between a strict and a headline radius —
     or do not publish the times. See
     `docs/worklog/transfer-radius-favours-one-network.md`.
+
+    **A place is its residents, not its centre.** This is convention 12's
+    ecological trap arriving one unit further down, and it bites harder here
+    because a journey has a single origin where coverage has a whole
+    surface. Searching a place from one point made six suburban townships
+    read as losing *all* morning-peak access to Downtown, when what was true
+    is that one arbitrary coordinate in each had no stop within a quarter
+    mile — a false sentence a reader would happily repeat. So a place is
+    searched from **every populated census block group that labels to it**
+    and the profiles are pooled by population, the published median being
+    the median *resident-minute*. Two things ship with that: the share of a
+    place's residents the answer speaks for (`origin_coverage_fraction` —
+    coverage stays `analyze_coverage_change.py`'s to own, per convention 10,
+    and appears here only as a denominator), and the **spread** across a
+    place's own block groups, which is routinely tens of minutes. Where the
+    spread is wide there is no single travel time for the place, and a "this
+    place gets N minutes slower" sentence is hiding that. See
+    `docs/worklog/one-point-cannot-represent-a-township.md`.
 
     **It is schedule against schedule.** Today's side is compared at its
     scheduled times, not its observed ones, because the proposed side has no

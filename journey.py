@@ -175,11 +175,31 @@ MAX_ACCESS_WALK_M = 400.0          # origin/dest <-> stop
 MAX_TRANSFER_WALK_M = 400.0        # ~5 minutes: stop <-> stop, a quarter mile
 MIN_TRANSFER_BUFFER_MIN = 3.0      # dwell + reaction time on top of the walk
 
+# THE WAIT HAS TO BE BOUNDED, or "no morning service" is published as a trip
+# time. `earliest_arrival` answers "when can this rider get there at all",
+# and it is right to: with no bound, a rider ready at 07:00 whose only stop
+# is served once at 21:30 gets a correct 863-minute answer. But a profile is
+# asking how long the TRIP takes, and 863 minutes is not a trip time -- it is
+# the absence of a morning bus, wearing a number that a reader would quote as
+# one. Real runs make the two populations easy to tell apart: over the 2,492
+# published place-origin medians, the distribution is continuous to 202
+# minutes and then jumps to a cluster of 24 values between 480 and 864, all
+# of them overnight waits. So the bound sits in the empty ground between,
+# comfortably above the longest genuine trip and far below the artefacts.
+#
+# A minute over the bound is reported UNREACHABLE, not omitted: the trip
+# genuinely cannot be made in the terms this measure asks about, and
+# `reachable_fraction` is the column that says so. Applied in `profile`
+# rather than in `earliest_arrival`, so the raw router keeps answering the
+# raw question.
+MAX_JOURNEY_MINUTES = 240.0
+
 CONSTANTS = {
     "walk_speed_m_per_min": WALK_SPEED_M_PER_MIN,
     "max_access_walk_m": MAX_ACCESS_WALK_M,
     "max_transfer_walk_m": MAX_TRANSFER_WALK_M,
     "min_transfer_buffer_min": MIN_TRANSFER_BUFFER_MIN,
+    "max_journey_minutes": MAX_JOURNEY_MINUTES,
 }
 
 # GTFS route_type values that count as a journey. Convention 13: a journey is
@@ -712,7 +732,8 @@ def _collapse_block(cache, per_minute, tt, origin, dest, access_walk_m, lo, hi):
     _collapse_block(cache, per_minute, tt, origin, dest, access_walk_m, mid, hi)
 
 
-def profile(tt, origin, dest, window, *, access_walk_m=MAX_ACCESS_WALK_M):
+def profile(tt, origin, dest, window, *, access_walk_m=MAX_ACCESS_WALK_M,
+            max_journey_minutes=MAX_JOURNEY_MINUTES):
     """The distribution of trip times for a rider ready at any minute in
     `window = (start, end)` (end exclusive).
 
@@ -729,6 +750,11 @@ def profile(tt, origin, dest, window, *, access_walk_m=MAX_ACCESS_WALK_M):
     a web-request latency budget. Treat a profile as a slow query -- fine for
     the pipeline, needing a loading state or a cache in front of it for the
     app. The ceiling is per-search cost, not search count.
+
+    A minute whose only itinerary takes longer than `max_journey_minutes`
+    counts as unreachable rather than as a very slow trip -- see that
+    constant for why an unbounded wait publishes "no morning service" as
+    a travel time. Pass `math.inf` to ask the unbounded question.
     """
     start, end = window
     n_departures = end - start
@@ -739,7 +765,8 @@ def profile(tt, origin, dest, window, *, access_walk_m=MAX_ACCESS_WALK_M):
                         start, end - 1)
 
     journeys = [per_minute[ready_at] for ready_at in range(start, end)
-               if per_minute[ready_at] is not None]
+               if per_minute[ready_at] is not None
+               and per_minute[ready_at].total_minutes <= max_journey_minutes]
 
     if not journeys:
         return Profile(journeys=(), n_departures=n_departures,
