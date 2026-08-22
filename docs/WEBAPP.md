@@ -97,9 +97,14 @@ carry-over pattern by pattern and trip by trip against the feeds, and checks
 that a timetable rebuilt from the database finds the same journey as one built
 from the feed.
 
-**No view reads them yet.** The travel-time answer is published as
-`data/trip_time_change.csv` (`analyze_travel_time.py`); the served version is
-the next piece of work — see *Known gaps*.
+`/api/journey` serves them. The query layer builds a router's timetable from
+those tables — one per (network, day type, transfer walk), cached, ~0.3 s each
+— and answers two dropped pins with a profile over every ready-minute of the
+published window, on both networks and at both transfer radii. It is the only
+slow endpoint on the site and the only one with nothing precomputed: a few
+tenths of a second for a well-served pair, a few seconds for a badly served
+one, because both ends are points the reader chose. **No view reads it yet** —
+the two-pin UI is the remaining piece; see *Known gaps*.
 
 ## The rules the query layer must honour
 
@@ -404,6 +409,7 @@ Counts are locations, not people — the same caveat the change layer carries.
 | `GET /api/surface?radius=` | The magnitude surface: every covered 100 m cell, all three day types, columnar as lattice indices. Radius must be 400 or 150. ~1.3 MB, 198 KB gzipped. |
 | `GET /api/corridors?day=` | Every street run kept, lost or added for one day type, with citywide kilometres by class. No radius — a corridor is pavement, not a catchment. ~290 KB weekday. |
 | `GET /api/oneseat?radius=&dest=` *or* `&dest_lat=&dest_lon=` | Every location's one-seat verdict for one destination, named or dropped. Not precomputed — only its expensive half is, which is what lets the destination be arbitrary. No day type. |
+| `GET /api/journey?lat=&lon=&dest_lat=&dest_lon=&day=` | How long the trip takes door to door, both networks, over every ready-minute of the weekday 07:00–09:00 peak. Answered at both transfer radii, with `sign_flips` where they disagree about which network is faster. Nothing precomputed and no radius control — seconds, not milliseconds. |
 | `GET /api/destinations` | The named destinations, with seed counts and centres. |
 | `GET /api/stops?side=&lat=&lon=&radius=` | Stops one network puts inside the radius. |
 | `GET /api/routes?side=` | Bus routes with trips, revenue hours and span per day type. |
@@ -508,14 +514,16 @@ or heartbeat to maintain. See [`deploy/README.md`](../deploy/README.md).
   coloured by who lives there, and per convention 12 a block group is
   covered or not at a single point, so a map of it would overstate its own
   precision. `/findings` is the answer for now.
-- **The journey view is not built, though its data ships.** `refresh.db` now
-  carries both feeds' patterns and trips (see *And why the router carries a
-  second copy of both feeds*), so a rider's origin-to-destination time can be
-  served live. What is missing is the query layer over those tables, an
-  endpoint, and a two-pin UI — plus the caveat surface the measure needs:
-  a profile rather than a departure, schedule against schedule, and the
-  transfer radius that can flip a pair's sign
-  (`docs/worklog/transfer-radius-favours-one-network.md`).
+- **The journey view has no UI, though the answer is served.**
+  `GET /api/journey` returns both networks at both transfer radii for two
+  dropped pins, pinned against `data/trip_time_origins.csv`. What is missing
+  is the front end: two pins rather than one, a loading state (this is the
+  only endpoint that takes seconds), a way to show a distribution rather than
+  a single number, and the caveat surface the measure needs — a profile rather
+  than a departure, schedule against schedule, and the transfer radius that
+  can flip a pair's sign
+  (`docs/worklog/transfer-radius-favours-one-network.md`). The caveat text
+  itself already ships in `/api/meta` as `travel-time`.
 - Stop-name and neighbourhood search is not built (the DB has FTS5 available).
 - `nearest_place_label` uses PRT's `HOOD`/`MUNI` labels, which contain errors up
   to 40 km (caveat 4). It is a display hint; nothing computed depends on it.

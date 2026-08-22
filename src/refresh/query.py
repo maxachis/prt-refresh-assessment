@@ -37,6 +37,8 @@ import math
 import sqlite3
 from pathlib import Path
 
+from . import journey
+
 DAYS = ("weekday", "saturday", "sunday")
 SIDES = ("current", "proposed")
 
@@ -1115,6 +1117,313 @@ def oneseat_layer(con, radius: float = PRIMARY_RADIUS,
         "counts": counts,
         "fields": ["lat", "lon", "published", "status", "current", "proposed"],
         "points": points,
+    }
+
+
+# --------------------------------------------------------------------------
+# how long the trip actually takes
+# --------------------------------------------------------------------------
+#
+# A fifth question, and the only one on this site with a clock: leaving from
+# here at any minute of the weekday morning peak, how long does it take to get
+# there -- today, and under the plan? `analyze_travel_time.py` answers it for
+# the 187 published places against Downtown and Oakland; this is the same
+# search between two points a reader has chosen, and it must return the number
+# that script publishes for the same pair (`tests/test_journey_query.py`).
+#
+# It reads `journey_pattern`/`journey_trip`/`journey_stop`, which are a second
+# copy of both feeds carried for this alone, and it routes with
+# `refresh.journey`. Convention 14 spells out the six things about this measure
+# that look like inconsistencies and are not; four of them decide code here:
+#
+# 1. THE CLOCK STARTS WHEN THE RIDER IS READY, NOT WHEN THEY BOARD, so the
+#    wait is part of the trip. It is the only place on the site where a
+#    headway change reaches a person as time.
+#
+# 2. THE ANSWER IS A PROFILE, NOT A DEPARTURE. Leaving at 8:03 rather than
+#    8:07 is the whole answer when a headway goes from 15 to 30, so what is
+#    served is the distribution over every ready-minute in the window, with
+#    the share of minutes the trip can be made at all beside it. A single
+#    chosen departure is a quotable number with no denominator behind it.
+#
+# 3. THE TRANSFERS ARE INVENTED, AND THE INVENTION IS NOT NEUTRAL. Neither
+#    feed publishes `transfers.txt`, so connections are synthesised from stop
+#    coordinates. The Refresh leans on transferring more than today's network
+#    does, so a generous transfer walk can only flatter it and a strict one
+#    can only hurt it -- and unlike the access radii of convention 4, this can
+#    change a pair's SIGN rather than its size. Every request is therefore
+#    answered at BOTH radii, with `sign_flips` set when the two disagree about
+#    the direction of the change. See
+#    `docs/worklog/transfer-radius-favours-one-network.md`.
+#
+# 4. IT IS SCHEDULE AGAINST SCHEDULE. Today's side is compared at its
+#    scheduled times, not its observed ones, because the proposed side has no
+#    observed times and never will. Symmetric, and not the same claim as "the
+#    trip will take this long" -- the caveat ships in `/api/meta`.
+#
+# AND IT IS A SLOW QUERY, unlike everything above. A profile is tens of RAPTOR
+# searches; two networks at two transfer radii is four profiles, a few tenths
+# of a second for a well-served pair and a few seconds for a badly served one.
+# There is nothing to precompute -- both ends are arbitrary points -- so the UI
+# needs a loading state rather than this needing a cache.
+
+# The published question, mirrored from `analyze_travel_time.py` (which stays
+# self-contained pipeline code, so these are repeated rather than imported --
+# `tests/test_journey_query.py` pins them equal). The window is
+# 07:00-08:59, end exclusive.
+JOURNEY_DAY = "weekday"
+JOURNEY_WINDOW = (7 * 60, 9 * 60)
+
+# The two transfer walks every pair is answered at: the headline is the same
+# quarter mile the rest of the site walks, the strict one convention 4's
+# same-corner distance.
+TRANSFER_HEADLINE = "headline"
+TRANSFER_STRICT = "strict"
+TRANSFER_RADII = {TRANSFER_HEADLINE: journey.MAX_TRANSFER_WALK_M,
+                  TRANSFER_STRICT: 150.0}
+
+# Why a pair has no comparable travel time -- three different failures that a
+# bare "no median" would collapse into one. NO_ORIGIN_COVERAGE especially:
+# that is a coverage answer, owned by `analyze_coverage_change.py` and by the
+# change and surface layers above, and reporting it as a travel-time result is
+# the error convention 10 forbids, one unit further down.
+CLASS_COMPARABLE = "comparable"
+CLASS_NO_ORIGIN_COVERAGE = "no_origin_coverage"
+CLASS_NO_DEST_COVERAGE = "no_dest_coverage"
+CLASS_NO_JOURNEY = "no_journey"
+JOURNEY_CLASSIFICATIONS = (CLASS_COMPARABLE, CLASS_NO_ORIGIN_COVERAGE,
+                           CLASS_NO_DEST_COVERAGE, CLASS_NO_JOURNEY)
+
+# Published precision, applied here rather than on the way out, so that the
+# change a reader sees is the difference of the two numbers they see.
+MINUTE_DP = 1
+FRACTION_DP = 3
+
+# {(database, side, day, transfer walk): Timetable}. Keyed by database file
+# rather than by connection because a Timetable is derived only from what the
+# file holds, and building one is ~0.3 s of work that would otherwise be
+# repeated on every request.
+_TIMETABLES: dict[tuple, "journey.Timetable"] = {}
+
+
+def _database_of(con) -> str:
+    """The file this connection reads, as the timetable cache's key."""
+    return con.execute("PRAGMA database_list").fetchone()[2]
+
+
+def journey_patterns(con, side: str, day: str):
+    """[(route_id, stops, [(start_min, offsets)])] -- the router's own shape.
+
+    The rows are read straight back into the tuples `gtfs.load_patterns`
+    returned when `build_webdb.py` wrote them; nothing is recomputed.
+    """
+    patterns: dict[int, tuple] = {}
+    for row in con.execute(
+            "SELECT pattern_id, route_id, stops FROM journey_pattern "
+            "WHERE side = ? AND day = ?", (side, day)):
+        patterns[row["pattern_id"]] = (row["route_id"],
+                                       tuple(row["stops"].split(";")), [])
+    for row in con.execute(
+            "SELECT pattern_id, start_min, offsets FROM journey_trip "
+            "WHERE side = ? AND day = ?", (side, day)):
+        patterns[row["pattern_id"]][2].append(
+            (row["start_min"], tuple(int(o) for o in row["offsets"].split(","))))
+    return list(patterns.values())
+
+
+def journey_coords(con, side: str):
+    """{stop_id: (lat, lon)} for every stop the feed places, all modes."""
+    return {r["stop_id"]: (r["lat"], r["lon"]) for r in con.execute(
+        "SELECT stop_id, lat, lon FROM journey_stop WHERE side = ?", (side,))}
+
+
+def journey_timetable(con, side: str, day: str = JOURNEY_DAY,
+                      transfer_walk_m: float = journey.MAX_TRANSFER_WALK_M):
+    """The router's timetable for one network, day type and transfer walk.
+
+    One per transfer walk, not one shared: the transfer graph is synthesised
+    at build time, so the radius cannot be applied per search.
+    """
+    key = (_database_of(con), side, day, transfer_walk_m)
+    if key not in _TIMETABLES:
+        _TIMETABLES[key] = journey.Timetable.build(
+            label=f"{side}-{day}-{transfer_walk_m:.0f}m",
+            patterns=journey_patterns(con, side, day),
+            coords=journey_coords(con, side),
+            max_transfer_walk_m=transfer_walk_m)
+    return _TIMETABLES[key]
+
+
+def lower_median(values):
+    """The lower median, matching `analyze_travel_time.weighted_median` at a
+    single origin's weight -- NOT `statistics.median`, which averages the two
+    middle values on an even count. A minute some rider actually experiences
+    is a better thing to publish than the average of two that nobody does,
+    and the two differ by half a step of the arrival curve, which is exactly
+    the size of drift a rounded comparison against the CSV would hide."""
+    ordered = sorted(values)
+    return ordered[(len(ordered) - 1) // 2] if ordered else None
+
+
+def summarise_profile(profile):
+    """The published numbers for one point's profile.
+
+    The single-origin case of `analyze_travel_time.summarise`. The published
+    place-level answer pools many block groups by population, which cannot be
+    reproduced from one pin -- but each of those block groups is itself a
+    point, and `data/trip_time_origins.csv` publishes them, which is what the
+    served answer is pinned against.
+    """
+    reachable = round(profile.reachable_fraction, FRACTION_DP)
+    if not profile.journeys:
+        return {"median_min": None, "best_min": None, "worst_min": None,
+                "reachable_fraction": reachable, "median_transfers": None,
+                "median_wait_min": None}
+    totals = [j.total_minutes for j in profile.journeys]
+    return {
+        "median_min": round(lower_median(totals), MINUTE_DP),
+        "best_min": round(min(totals), MINUTE_DP),
+        "worst_min": round(max(totals), MINUTE_DP),
+        "reachable_fraction": reachable,
+        "median_transfers": lower_median([j.transfers for j in profile.journeys]),
+        "median_wait_min": round(
+            lower_median([j.wait_minutes for j in profile.journeys]), MINUTE_DP),
+    }
+
+
+def median_journey(profile):
+    """The itinerary that takes the median time -- a real trip, not a summary
+    of several, so that what the panel describes is something a rider could
+    actually have made."""
+    if not profile.journeys:
+        return None
+    ordered = sorted(profile.journeys, key=lambda j: j.total_minutes)
+    return ordered[(len(ordered) - 1) // 2]
+
+
+def stop_names(con, side: str, stop_ids):
+    """Best-effort names for the stops an itinerary calls at.
+
+    `stops` is the bus-only service table, so rail stops have no row and come
+    back unnamed rather than being joined in -- widening that table is the
+    leak the journey layer is kept separate to prevent (convention 13).
+    """
+    if not stop_ids:
+        return {}
+    marks = ",".join("?" * len(stop_ids))
+    return {r["stop_id"]: r["name"] for r in con.execute(
+        f"SELECT stop_id, name FROM stops WHERE side = ? "
+        f"AND stop_id IN ({marks})", (side, *stop_ids))}
+
+
+def itinerary_of(con, side: str, trip, coords):
+    """One journey as the map can draw it: legs, with each end placed.
+
+    Coordinates come from the journey layer's own stop table, which has every
+    mode; names are looked up in the bus-only one and may be missing.
+    """
+    if trip is None:
+        return None
+    called = [stop for leg in trip.legs for stop in (leg.from_stop, leg.to_stop)
+              if stop is not None]
+    names = stop_names(con, side, sorted(set(called)))
+
+    def end(stop_id):
+        if stop_id is None:
+            return None
+        lat, lon = coords[stop_id]
+        return {"stop_id": stop_id, "name": names.get(stop_id),
+                "lat": lat, "lon": lon}
+
+    return {
+        "ready_at": trip.ready_at,
+        "arrive": round(trip.arrive, MINUTE_DP),
+        "total_min": round(trip.total_minutes, MINUTE_DP),
+        "ride_min": round(trip.ride_minutes, MINUTE_DP),
+        "walk_min": round(trip.walk_minutes, MINUTE_DP),
+        "wait_min": round(trip.wait_minutes, MINUTE_DP),
+        "transfers": trip.transfers,
+        "legs": [{"kind": leg.kind, "route": leg.route,
+                  "from": end(leg.from_stop), "to": end(leg.to_stop),
+                  "depart": round(leg.depart, MINUTE_DP),
+                  "arrive": round(leg.arrive, MINUTE_DP)}
+                 for leg in trip.legs],
+    }
+
+
+def classify_journey(origin_access, dest_access, medians):
+    """Why a pair has no comparable travel time, in the published vocabulary.
+
+    Order matters and mirrors `analyze_travel_time.classify`: a missing stop
+    at either end is a coverage answer and is named as one, and NO_JOURNEY is
+    reserved for the case where both ends are served and the search still
+    found nothing -- which is the only one of the three that is really about
+    time.
+    """
+    if all(medians[side] is not None for side in SIDES):
+        return CLASS_COMPARABLE
+    if any(origin_access[side] == 0 for side in SIDES):
+        return CLASS_NO_ORIGIN_COVERAGE
+    if any(dest_access[side] == 0 for side in SIDES):
+        return CLASS_NO_DEST_COVERAGE
+    return CLASS_NO_JOURNEY
+
+
+def journey_at_radius(con, origin, dest, day, window, transfer_walk_m):
+    """Both networks between two points, at one invented transfer walk."""
+    answers, origin_access, dest_access, medians = {}, {}, {}, {}
+    for side in SIDES:
+        tt = journey_timetable(con, side, day, transfer_walk_m)
+        origin_access[side] = len(journey.access_stops(tt, origin))
+        dest_access[side] = len(journey.access_stops(tt, dest))
+        profile = journey.profile(tt, origin, dest, window)
+        answer = summarise_profile(profile)
+        answer["origin_access_stops"] = origin_access[side]
+        answer["dest_access_stops"] = dest_access[side]
+        answer["itinerary"] = itinerary_of(con, side, median_journey(profile),
+                                           tt.coords)
+        medians[side] = answer["median_min"]
+        answers[side] = answer
+
+    change = (None if None in medians.values()
+              else round(medians["proposed"] - medians["current"], MINUTE_DP))
+    return {"transfer_walk_m": transfer_walk_m,
+            "classification": classify_journey(origin_access, dest_access,
+                                               medians),
+            "change_min": change, **answers}
+
+
+def journey_between(con, lat: float, lon: float, dest_lat: float,
+                    dest_lon: float, *, day: str = JOURNEY_DAY,
+                    window: tuple = JOURNEY_WINDOW):
+    """Door to door, both networks, both transfer radii.
+
+    `change_min` is positive where the plan makes the trip longer. It is the
+    difference of the two medians AS PUBLISHED, computed after rounding, so
+    the arithmetic on the screen checks out -- deriving it from full precision
+    and showing rounded halves is what once flagged a pair as reversing sign
+    between two radii whose displayed changes were 0.0 and -1.0.
+
+    `sign_flips` is the answer to the question the transfer radius raises:
+    True where the headline and strict searches disagree about which network
+    is faster, in which case the flip IS the finding and neither median
+    should be quoted alone.
+    """
+    origin, dest = (lat, lon), (dest_lat, dest_lon)
+    radii = {key: journey_at_radius(con, origin, dest, day, window, walk_m)
+             for key, walk_m in TRANSFER_RADII.items()}
+    headline = radii[TRANSFER_HEADLINE]["change_min"]
+    strict = radii[TRANSFER_STRICT]["change_min"]
+    return {
+        "origin": {"lat": lat, "lon": lon},
+        "destination": {"lat": dest_lat, "lon": dest_lon},
+        "day": day,
+        "window": {"start_min": window[0], "end_min": window[1],
+                   "minutes": window[1] - window[0]},
+        "radii": radii,
+        "sign_flips": (None if headline is None or strict is None
+                       else headline * strict < 0),
+        "constants": journey.CONSTANTS,
     }
 
 

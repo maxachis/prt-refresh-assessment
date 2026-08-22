@@ -23,7 +23,7 @@ from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from .. import query
+from .. import journey, query
 
 _STATIC = Path(__file__).parent / "static"
 
@@ -66,6 +66,13 @@ def create_app(db_path: str | Path = "data/refresh.db") -> FastAPI:
             "radii": {"primary": query.PRIMARY_RADIUS, "offered": list(query.RADII)},
             "periods": [{"key": k, "start": a, "end": b}
                         for k, a, b in query.PERIODS],
+            "journey": {
+                "day": query.JOURNEY_DAY,
+                "window": {"start_min": query.JOURNEY_WINDOW[0],
+                           "end_min": query.JOURNEY_WINDOW[1]},
+                "transfer_radii": query.TRANSFER_RADII,
+                "constants": journey.CONSTANTS,
+            },
             "caveats": CAVEATS,
         }
 
@@ -191,6 +198,34 @@ def create_app(db_path: str | Path = "data/refresh.db") -> FastAPI:
             known = [d["key"] for d in query.destinations(con)]
             raise HTTPException(404, f"no destination {dest!r}; known: {known}")
 
+    @app.get("/api/journey")
+    def api_journey(
+        lat: float = Query(..., description="origin latitude"),
+        lon: float = Query(..., description="origin longitude"),
+        dest_lat: float = Query(..., description="destination latitude"),
+        dest_lon: float = Query(..., description="destination longitude"),
+        day: str = Query(query.JOURNEY_DAY,
+                         pattern=f"^({'|'.join(query.DAYS)})$"),
+    ):
+        """How long the trip takes, door to door, on both networks.
+
+        The only endpoint here with a clock, and the only slow one. Nothing is
+        precomputed because both ends are points the reader chose, and the
+        answer is a profile over every ready-minute of the window rather than
+        one departure -- so this is a few tenths of a second for a well-served
+        pair and a few seconds for a badly served one. It needs a loading
+        state, not a cache.
+
+        No `radius` parameter: the walk to a stop is the router's own access
+        distance, shared with the rest of the site, and the radius that
+        matters to this answer is the one the reader cannot choose -- the
+        invented transfer walk. Every pair is therefore answered at both, with
+        `sign_flips` set where they disagree about which network is faster.
+        """
+        _check_point(lat, lon)
+        _check_point(dest_lat, dest_lon)
+        return query.journey_between(con, lat, lon, dest_lat, dest_lon, day=day)
+
     @app.get("/api/stops")
     def api_stops(
         side: str = Query("current", pattern="^(current|proposed)$"),
@@ -291,6 +326,26 @@ CAVEATS = [
                 "provides. Both ends of the trip use the walk radius, where "
                 "the published place-level answer uses 200 m at the "
                 "destination.",
+    },
+    {
+        "id": "travel-time",
+        "text": "The journey view is the only one here with a clock, and it "
+                "measures schedule against schedule: today's side is compared "
+                "at its scheduled times, not the times its buses actually "
+                "run, because the proposed side has no observed times and "
+                "never will. The clock starts when the rider is ready, not "
+                "when they board, so waiting counts. The answer is the spread "
+                "over every departure minute of the weekday 07:00-09:00 peak, "
+                "not one chosen departure, with the share of minutes the trip "
+                "can be made at all beside it. Neither feed publishes "
+                "transfer rules, so connections are invented from stop "
+                "positions -- and because the Refresh asks riders to transfer "
+                "more than today's network does, a generous transfer walk "
+                "flatters it and a strict one penalises it. Every pair is "
+                "answered at both 400 m and 150 m for that reason; where the "
+                "two disagree about which network is faster, that "
+                "disagreement is the finding and neither number should be "
+                "quoted alone.",
     },
     {
         "id": "location-not-route",

@@ -5,8 +5,8 @@ Door-to-door trip time change under the Bus Line Refresh.
 Every other script in this repo counts service -- stops, trips, headways,
 one-seat rides. This one asks what a rider actually experiences: starting at
 a place, ready at any minute in the weekday morning peak, how long does it
-take to get to Downtown or Oakland, on each network? `journey.py` is the
-router that answers that for one origin-destination pair; this script runs
+take to get to Downtown or Oakland, on each network? `src/refresh/journey.py`
+is the router that answers that for one origin-destination pair; this script runs
 it over the same 187 places x 2 anchors that `analyze_one_seat.py` already
 publishes, so a reader can put "does this place still have a one-seat ride"
 next to "how long does the ride actually take" for the same place.
@@ -126,7 +126,7 @@ is the only symmetric comparison available. It is not the same claim as "the
 trip will take this long", and a number from this file quoted without that
 caveat is making the stronger claim by omission. A profile also has no notion
 of fare, comfort, or crowding, and it takes the RAPTOR search's own
-connection model on faith -- see journey.py's docstring for the walking
+connection model on faith -- see the router's docstring for the walking
 speed, transfer walk and buffer that decide whether a synthesised connection
 is real. It also inherits
 convention 13: this is the one analysis in the repo (besides one-seat) that
@@ -178,9 +178,16 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import gtfs
-import journey
 from analyze_one_seat import ANCHORS
 from analyze_equity_places import label_for, label_grid, load_place_labels
+
+# The router lives in the installed package rather than at the repo root,
+# because the web app routes journeys too and an installed app cannot import a
+# loose file from the working directory. Adding `src/` to the path is how
+# `build_webdb.py` reaches `refresh.query` for the same reason, and it adds no
+# dependency: `journey.py` is standard library like everything else here.
+sys.path.insert(0, str(Path(__file__).parent / "src"))
+from refresh import journey  # noqa: E402
 
 DATA = Path("data")
 ONESEAT_CSV = DATA / "oneseat_change.csv"

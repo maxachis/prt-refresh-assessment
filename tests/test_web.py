@@ -253,3 +253,50 @@ def test_place_answers_for_a_dropped_pin_too(client):
 def test_place_rejects_half_a_destination(client):
     r = client.get("/api/place", params={**DOWNTOWN, "dest_lat": 40.4614})
     assert r.status_code == 400
+
+
+# A real origin with a real destination: Bloomfield to a Downtown corner, the
+# kind of pair the panel exists to answer.
+BLOOMFIELD = {"lat": 40.461380, "lon": -79.949380}
+JOURNEY = {**BLOOMFIELD, "dest_lat": DOWNTOWN["lat"], "dest_lon": DOWNTOWN["lon"]}
+
+
+def test_journey_answers_both_networks_at_both_transfer_radii(client):
+    j = client.get("/api/journey", params=JOURNEY).json()
+    assert set(j["radii"]) == {"headline", "strict"}
+    for at_radius in j["radii"].values():
+        for side in ("current", "proposed"):
+            assert at_radius[side]["median_min"] > 0
+            assert 0 < at_radius[side]["reachable_fraction"] <= 1
+    assert j["day"] == "weekday"
+
+
+def test_journey_says_whether_the_transfer_radius_changes_the_answer(client):
+    """The invented transfer walk can flip which network is faster, so the
+    answer has to carry its own sensitivity rather than one median."""
+    j = client.get("/api/journey", params=JOURNEY).json()
+    assert j["sign_flips"] in (True, False)
+    assert j["constants"]["max_transfer_walk_m"] == 400.0
+
+
+def test_journey_shows_a_trip_a_rider_could_have_made(client):
+    legs = (client.get("/api/journey", params=JOURNEY)
+            .json()["radii"]["headline"]["current"]["itinerary"]["legs"])
+    assert any(leg["kind"] == "ride" and leg["route"] for leg in legs)
+
+
+def test_journey_rejects_a_pin_outside_the_service_area(client):
+    for bad in ({"lat": 41.9, "lon": -87.6}, {"dest_lat": 41.9, "dest_lon": -87.6}):
+        assert client.get("/api/journey", params={**JOURNEY, **bad}).status_code == 400
+
+
+def test_journey_rejects_a_day_type_the_feeds_do_not_have(client):
+    assert client.get("/api/journey",
+                      params={**JOURNEY, "day": "tuesday"}).status_code == 422
+
+
+def test_meta_carries_the_travel_time_caveat_and_the_window(client):
+    m = client.get("/api/meta").json()
+    assert "travel-time" in {c["id"] for c in m["caveats"]}
+    assert m["journey"]["window"] == {"start_min": 420, "end_min": 540}
+    assert m["journey"]["transfer_radii"]["strict"] == 150.0

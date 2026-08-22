@@ -4,9 +4,10 @@
 stop coordinates — and because the Refresh asks riders to transfer more than
 today's network does, any value chosen for the transfer walk tilts the
 before-and-after comparison in a direction that is not visible in the output.
-**Where it stands:** open, decision owed by Max. The router ships with a
-published 400 m and no sensitivity run yet, which is the weaker half of
-convention 4.
+**Where it stands:** open, decision owed by Max — but the sensitivity run now
+exists and reports the flip count, so the headline is quotable while the
+constant itself is still a chosen number rather than a sourced one: 1 material
+flip of 343 comparable pairs.
 
 ## What is being decided
 
@@ -70,12 +71,13 @@ at all.
 - **Pick a defensible single value and publish it.** Insufficient on its own,
   for the reason above: publishing a constant does not tell a reader whether
   the answer is robust to it.
-- **Report the sensitivity, as convention 4 does for access distance.** The
-  likely answer: run the published origin–destination sample at a strict and a
-  generous transfer radius, and report the spread — and, more importantly,
-  report the count of pairs whose *direction* of change flips between the two.
-  If that count is near zero the headline is safe; if it is large the headline
-  is the flip count, not the median.
+- **Report the sensitivity, as convention 4 does for access distance.**
+  Adopted, and it is what the Resolution below records: every pair is searched
+  at a strict and a generous transfer radius, and what is reported is the count
+  of pairs whose *direction* of change flips between the two, not just the
+  spread. The test stated when this was written — near zero and the headline is
+  safe, large and the flip count is the headline — is the one applied to the
+  result.
 - **Ask PRT what they assumed.** Not pursued. The plan's own service standards
   may state a transfer walking assumption, which would make this a sourced
   number rather than a chosen one — worth one question to PPT to relay, and it
@@ -86,6 +88,17 @@ better information should feel free to overturn them.*
 
 ## Resolution
 
-Open. The router is built and the constants are published; no sensitivity run
-exists yet, and no number from this layer should be quoted publicly until one
-does.
+Open. The sensitivity run landed with `analyze_travel_time.py`, which searches
+every pair at both 400 m and 150 m and prints the flip count: **1 material flip
+(a change of ≥ 2.0 min on the smaller side) out of 343 comparable pairs**, plus
+11 rounding-scale flips under that threshold. By this entry's own test — "if
+that count is near zero the headline is safe; if it is large the headline is
+the flip count" — the published medians may be quoted, with the transfer walk
+stated alongside them. `/api/journey` carries the same run per request: both
+radii, and `sign_flips` set where they disagree, so a pin that lands on the
+unlucky pair says so on screen rather than in a caveat nobody reads.
+
+What is still owed is the constant, not the number: 400 m remains an untuned
+judgement. The open question is whether to ask PPT to relay it to PRT — the
+plan's service standards may state a transfer walking assumption, which would
+make this sourced rather than chosen and settle the entry outright.

@@ -34,7 +34,7 @@ from pathlib import Path
 import pytest
 
 import gtfs
-import journey
+from refresh import journey
 
 ROOT = Path(__file__).resolve().parent.parent
 ORIGINS_CSV = ROOT / "data" / "trip_time_origins.csv"

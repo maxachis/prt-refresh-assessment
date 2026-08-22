@@ -33,7 +33,7 @@ from collections import defaultdict
 
 import pytest
 
-import journey
+from refresh import journey
 
 # A synthetic grid, in metres east and north of an arbitrary origin, so a test
 # can say "these stops are 300 m apart" and mean it.

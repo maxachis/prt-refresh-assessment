@@ -1,6 +1,6 @@
 """The travel-time layer: how long a rider's actual trip takes, place by place.
 
-`analyze_travel_time.py` is the first script to run `journey.py` at scale
+`analyze_travel_time.py` is the first script to run the router at scale
 against the real feeds, over the same 187 places x 2 anchors the one-seat
 answer already publishes. What these tests protect, in order of how badly a
 failure would read:
@@ -40,7 +40,7 @@ from pathlib import Path
 
 import pytest
 
-import journey
+from refresh import journey
 import analyze_travel_time as att
 
 ROOT = Path(__file__).resolve().parent.parent

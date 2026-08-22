@@ -253,10 +253,15 @@ changes published findings.
     universe here can never widen it under a published service number.
 
 14. **A journey is a fifth unit, and it is the only one with a clock.**
-    `analyze_travel_time.py` and the app's journey view ask how long a
+    `analyze_travel_time.py` and the app's `/api/journey` ask how long a
     rider's actual trip takes, origin to destination — the only measure here
-    that involves waiting, transferring, or the time of day. Six things
-    follow, and the first three look like inconsistencies and are not.
+    that involves waiting, transferring, or the time of day. Both run the
+    same router, which lives in the installed package (`src/refresh/journey.py`)
+    rather than at the repo root, because a deployed app cannot import a loose
+    file from the working directory; it is standard library like the rest of
+    the pipeline, and root scripts reach it the way `build_webdb.py` reaches
+    `refresh.query`. Six things follow, and the first three look like
+    inconsistencies and are not.
 
     The clock starts **when the rider is ready at the origin, not when they
     board**. Waiting is part of a trip, and it is the only place the headway
