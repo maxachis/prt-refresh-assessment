@@ -22,7 +22,7 @@ point and check rather than assume:
 ```bash
 HCLOUD_CONTEXT=prt-refresh hcloud server list        # does it still exist, at what IP
 curl -s https://prt-refresh.lemaliconsulting.com/api/meta | head -c 200
-ssh root@<ip> 'cd /opt/prt-refresh/app && git log -1 --oneline'   # what is live
+ssh root@<ip> 'sudo -u prtrefresh git -C /opt/prt-refresh/app log -1 --oneline'
 ```
 
 Nobody has been pointed at the URL yet — see [Before you point people at
@@ -69,7 +69,9 @@ box, which is fine too — nothing here is latency-sensitive.
 
 The script creates the server, runs `cloud-init.yaml` for base prep, then over
 SSH: clones the repo, checks out the commit, `uv sync --extra web`, runs
-`build_webdb.py` on the box (~30–90 s), installs the unit and restarts it.
+`build_webdb.py` on the box (several minutes — it now indexes both feeds'
+full timetables so the app can time a journey), installs the unit and restarts
+it.
 
 **It deploys a pushed commit, not your working tree.** The repo is public, so
 the box can clone it, and "what is live" is then a SHA you can `git show` — no
@@ -124,7 +126,7 @@ bundle against a fresh API is the one failure a reader could not diagnose.
 systemctl status prt-refresh-web
 journalctl -u prt-refresh-web -n 50 --no-pager
 curl -s https://refresh.example.org/api/meta | head -c 400   # feeds + caveats
-cd /opt/prt-refresh/app && git log -1 --oneline               # what is live
+sudo -u prtrefresh git -C /opt/prt-refresh/app log -1 --oneline   # what is live
 ```
 
 `/api/meta` is the useful one: it returns both feed versions and the caveats the
@@ -133,9 +135,12 @@ answers.
 
 ## Sizing
 
-The database is ~31 MB and is read from disk with SQLite's own caching; the
-process sits well under a couple of hundred MB. The largest single response is
-the 100 m magnitude surface at ~1.3 MB, which the app gzips to 198 KB before
+The database is ~43 MB — two thirds of it the timetable index behind the
+travel-time view — and is read from disk with SQLite's own caching; the process
+sits well under a couple of hundred MB. The build is the memory peak, not the
+serving, and it topped out around 200 MB on a workstation. The largest single
+response is the 100 m magnitude surface at ~1.3 MB, which the app gzips to
+198 KB before
 Caddy ever sees it. A 2 GB box is not close to being the constraint; a 1 GB one
 would do if you wanted to shave the bill.
 
