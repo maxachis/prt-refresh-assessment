@@ -264,3 +264,8 @@ either half would discredit the other.
   question's state changes.
 - Findings are for a public-comment audience: lead with the number, state the
   caveat inline, and name the file that reproduces it.
+- `docs/worklog/` holds open items that outlive the session that found them —
+  an unbuilt feature scoped but not started, a defect deliberately not fixed, a
+  decision owed. One file per item, opening with a two-line lede; see
+  `docs/worklog/README.md`. This is not the place for anything found and fixed
+  in the same change.
