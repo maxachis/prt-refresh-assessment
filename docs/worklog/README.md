@@ -20,4 +20,5 @@ pass — a reader who stops halfway down must not be misinformed.
 
 | Entry | Status |
 |---|---|
-| [Origin-to-destination travel time, before and after](origin-destination-travel-time.md) | open, unstarted |
+| [Origin-to-destination travel time, before and after](origin-destination-travel-time.md) | open, in progress |
+| [The synthesised transfer radius is not neutral between the two networks](transfer-radius-favours-one-network.md) | open, decision owed |
