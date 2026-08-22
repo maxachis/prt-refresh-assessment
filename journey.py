@@ -306,7 +306,7 @@ class _StopGrid:
     cells R can reach rather than a walk over the whole feed. Built once in
     `Timetable.build` and shared by everything that needs such a lookup: the
     transfer graph (`_build_transfer_graph`), the walk out from an origin
-    (`_access_stops`), and the walk in to a destination (the egress set in
+    (`access_stops`), and the walk in to a destination (the egress set in
     `earliest_arrival`) -- so a search never re-buckets the ~6,000 stops of
     a real feed, it only ever queries a structure built once at load time.
 
@@ -448,8 +448,15 @@ class Timetable:
 # the search
 # --------------------------------------------------------------------------
 
-def _access_stops(tt, point, access_walk_m):
+def access_stops(tt, point, access_walk_m=MAX_ACCESS_WALK_M):
     """Every stop within the access walk of a point, with the walk distance.
+
+    Public because a caller often needs to know whether a point has any
+    service in reach at all, separately from whether a search found an
+    itinerary. Those are different questions with different owners: the first
+    is coverage, which `analyze_coverage_change.py` measures properly across
+    the whole surface, and answering it with "no journey found" quietly
+    reports a coverage result as a travel-time one.
 
     A linear scan over every stop in the feed used to answer this -- fine
     for a toy fixture, ~24% of a real search's runtime against ~6,000 stops
@@ -488,7 +495,7 @@ class _DestBound:
 
 def _seed_from_origin(tt, origin, ready_at, best_arrival, ready_to_board, back,
                       access_walk_m, dest_bound, egress):
-    for stop, distance in _access_stops(tt, origin, access_walk_m):
+    for stop, distance in access_stops(tt, origin, access_walk_m):
         arrive = ready_at + distance / WALK_SPEED_M_PER_MIN
         if arrive >= dest_bound.arrive:
             continue  # cannot lead to a dest arrival better than the bound
