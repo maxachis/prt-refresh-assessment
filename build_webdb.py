@@ -27,6 +27,15 @@ would be ~2.5M rows across both feeds; packing the times into the
 (stop, route, direction, day) row that owns them is ~100k rows, because that is
 how many distinct such combinations exist.
 
+AND WHY THE ROUTER STILL GETS ITS OWN TABLES
+
+Departure lists answer how much service runs at a place. They cannot answer
+how long a rider's trip takes, because they have thrown away which departures
+belong to the same vehicle and in what order it calls -- the one dimension a
+journey needs. So the `journey_*` tables carry a second reading of both feeds,
+in raw minutes and with rail in, and nothing joins them to the tables above.
+See the schema comment on `journey_pattern`, and convention 14.
+
 THE AGGREGATION RULE IS THE ANALYSIS
 
 Convention 2 says aggregate above the stop id, and the rule
@@ -315,6 +324,66 @@ CREATE TABLE point_reach (
     PRIMARY KEY (radius, point_id, side)
 );
 CREATE INDEX ix_point_reach_radius ON point_reach(radius);
+-- --------------------------------------------------------------------------
+-- THE JOURNEY LAYER: the router's own timetable, and the second thing here
+-- that is not bus only.
+--
+-- `departures` above answers how MUCH service runs, and it cannot answer how
+-- LONG A TRIP TAKES. It knows when buses leave a stop; it does not know which
+-- departures belong to the same vehicle or in what order that vehicle calls,
+-- and no amount of aggregation recovers that. So these three tables carry
+-- `gtfs.load_patterns` -- the reader the router uses -- rather than
+-- `gtfs.load_service`, which every table above is built from.
+--
+-- Three departures from the conventions those tables follow. Each is
+-- deliberate, and each is CLAUDE.md convention 14 in schema form:
+--
+--   * RAW MINUTES, not the 4:00-28:00 axis. Folding is what puts a 25:30
+--     departure in the owl period, and it is exactly wrong along a trip -- a
+--     vehicle running through 4am would appear to arrive before it left.
+--   * EVERY MODE, like the one-seat tables and unlike every service figure.
+--     Separate tables again, and for the same reason: widening the universe
+--     here must never widen it under a published service number.
+--   * PER-TRIP RUNNING TIMES, never per pattern. Both feeds widen a route's
+--     end-to-end time at the PM peak, and that widening is part of what a
+--     before-and-after comparison is measuring.
+--
+-- Stored as patterns rather than trip by trip for the same reason the router
+-- patterns: the two feeds' ~27,000 sample-day trips run only ~1,100 distinct
+-- (route, stop sequence) combinations, so a trip costs a start minute and its
+-- offsets while the stop list is paid for once. That is ~4 MB of offsets for
+-- both networks and all three day types.
+
+CREATE TABLE journey_pattern (
+    side       TEXT NOT NULL,
+    day        TEXT NOT NULL,
+    pattern_id INTEGER NOT NULL,
+    route_id   TEXT NOT NULL,
+    stops      TEXT NOT NULL,      -- ';'-joined stop ids, in calling order
+    PRIMARY KEY (side, day, pattern_id)
+);
+
+CREATE TABLE journey_trip (
+    side       TEXT NOT NULL,
+    day        TEXT NOT NULL,
+    pattern_id INTEGER NOT NULL,
+    start_min  INTEGER NOT NULL,   -- raw GTFS minutes; over 1440 past midnight
+    offsets    TEXT NOT NULL       -- ','-joined minutes from start, one per stop
+);
+CREATE INDEX ix_journey_trip ON journey_trip(side, day, pattern_id);
+
+-- Every stop the feed places, not only those a pattern calls at. The router
+-- builds its transfer graph and both of its walks -- out from the origin, in
+-- to the destination -- over exactly this set, so storing a narrower one would
+-- hand the app a different graph from the one the published travel times were
+-- measured on.
+CREATE TABLE journey_stop (
+    side    TEXT NOT NULL,
+    stop_id TEXT NOT NULL,
+    lat     REAL NOT NULL,
+    lon     REAL NOT NULL,
+    PRIMARY KEY (side, stop_id)
+);
 """
 
 
@@ -492,9 +561,13 @@ def build(out_path):
         if side == "current":
             reach_coords = coords
 
+        patterns, trips, placed_all_modes = journey_layer(con, side, feed)
+
         print(f"    -> {len(stop_rows):,} stops, {len(dep_rows):,} departure "
               f"rows, {len(rt_rows)} bus routes, "
               f"{len(reach_rows):,} all-mode stops for one-seat")
+        print(f"       journey layer: {patterns} patterns, {trips:,} trips, "
+              f"{placed_all_modes:,} placed stops")
 
     dest = load_destinations(reach_coords)
     con.executemany("INSERT INTO destination VALUES (?,?,?,?)", dest)
@@ -515,6 +588,39 @@ def build(out_path):
 
     mb = out_path.stat().st_size / 1e6
     print(f"\nwrote {out_path}  ({mb:.1f} MB)")
+
+
+def journey_layer(con, side, feed):
+    """Fill `journey_pattern`, `journey_trip` and `journey_stop` for one feed.
+
+    A second read of the same feed, on purpose. `gtfs.load_service` above and
+    `gtfs.load_patterns` here disagree about the time axis and about rail, both
+    deliberately (see the schema comment), so one loader cannot serve both --
+    and a caller that took the wrong one would get a plausible answer to the
+    other question. Sharing the calendar resolution is what keeps them honest:
+    a journey can only be routed onto service the analyses would also count.
+
+    Unlike the three precomputed layers below, nothing is measured here. The
+    rows are the loader's own tuples written down, so that the app can build a
+    `journey.Timetable` without opening a GTFS feed.
+    """
+    by_day, coords = gtfs.load_patterns(feed, SAMPLE[side], quiet=True)
+
+    pattern_rows, trip_rows = [], []
+    for day in DAYS:
+        for route, stops, trips in by_day[day]:
+            pattern_id = len(pattern_rows) + 1
+            pattern_rows.append((side, day, pattern_id, route, ";".join(stops)))
+            trip_rows.extend(
+                (side, day, pattern_id, start, ",".join(str(o) for o in offsets))
+                for start, offsets in trips)
+
+    con.executemany("INSERT INTO journey_pattern VALUES (?,?,?,?,?)", pattern_rows)
+    con.executemany("INSERT INTO journey_trip VALUES (?,?,?,?,?)", trip_rows)
+    con.executemany("INSERT INTO journey_stop VALUES (?,?,?,?)",
+                    [(side, sid, lat, lon)
+                     for sid, (lat, lon) in sorted(coords.items())])
+    return len(pattern_rows), len(trip_rows), len(coords)
 
 
 def change_layer(out_path):

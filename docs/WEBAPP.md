@@ -44,7 +44,7 @@ side has its own code path. The app inherits that.
 ```
 data/raw/current_gtfs.zip  ─┐
                             ├─→ build_webdb.py ─→ data/refresh.db ─→ FastAPI ─→ MapLibre
-data/raw/proposed_gtfs/    ─┘      (stdlib)         (35 MB, ~26s)     read-only
+data/raw/proposed_gtfs/    ─┘      (stdlib)         (43 MB, ~2.5 min)     read-only
 ```
 
 | Piece | What it is |
@@ -72,6 +72,34 @@ is what lets the walk radius be a control in the UI instead of a rebuild.
 
 It is also what keeps the file small: one row per stop_time would be ~2.5M rows;
 packing times into the row that owns them is ~54k.
+
+### And why the router carries a second copy of both feeds
+
+Departure lists say how *much* service a place has. They cannot say how long a
+rider's trip takes, because the thing they threw away is exactly the thing a
+journey needs: which departures belong to the same vehicle, and in what order
+that vehicle calls. So `build_webdb.py` reads both feeds twice, and the
+`journey_*` tables hold the second reading — `gtfs.load_patterns`' own tuples,
+written down, so the app can build a router's timetable without opening a GTFS
+zip. 1,082 patterns, 26,660 trips, ~6.8 MB.
+
+They break three of the house rules the tables above follow, all three
+deliberately, all three convention 14: the times are **raw minutes** rather
+than folded onto the 4:00–28:00 axis (folding mid-trip makes a vehicle running
+through 4am arrive before it left), **every mode is in** including the T and
+the inclines (a journey is not a quantity of service), and each trip keeps
+**its own running times** rather than a per-pattern average (both feeds widen
+end-to-end times at the PM peak, and that widening is part of what the
+comparison measures). Separate tables rather than flags, for the same reason
+the one-seat index is separate: widening the universe here must never widen it
+under a published service number. `tests/test_journey_layer.py` checks the
+carry-over pattern by pattern and trip by trip against the feeds, and checks
+that a timetable rebuilt from the database finds the same journey as one built
+from the feed.
+
+**No view reads them yet.** The travel-time answer is published as
+`data/trip_time_change.csv` (`analyze_travel_time.py`); the served version is
+the next piece of work — see *Known gaps*.
 
 ## The rules the query layer must honour
 
@@ -480,6 +508,14 @@ or heartbeat to maintain. See [`deploy/README.md`](../deploy/README.md).
   coloured by who lives there, and per convention 12 a block group is
   covered or not at a single point, so a map of it would overstate its own
   precision. `/findings` is the answer for now.
+- **The journey view is not built, though its data ships.** `refresh.db` now
+  carries both feeds' patterns and trips (see *And why the router carries a
+  second copy of both feeds*), so a rider's origin-to-destination time can be
+  served live. What is missing is the query layer over those tables, an
+  endpoint, and a two-pin UI — plus the caveat surface the measure needs:
+  a profile rather than a departure, schedule against schedule, and the
+  transfer radius that can flip a pair's sign
+  (`docs/worklog/transfer-radius-favours-one-network.md`).
 - Stop-name and neighbourhood search is not built (the DB has FTS5 available).
 - `nearest_place_label` uses PRT's `HOOD`/`MUNI` labels, which contain errors up
   to 40 km (caveat 4). It is a display hint; nothing computed depends on it.
