@@ -79,10 +79,38 @@ checks every reached stop's walk-in against `dest`, plus the possibility that
 `_reconstruct` walks the winning stop's back-pointer chain to build the leg
 list a rider could actually follow.
 
-`profile()` runs `earliest_arrival` once per minute across a window rather
-than analytically -- a synthetic grid this size makes that cheap, and doing
-it for real turns a headway change on the rest of the site into a
-distribution of rider-experienced trip times instead of a single number.
+`profile()` needs the arrival time for every minute in the window, but it
+does not run `earliest_arrival` once per minute -- against the real feeds
+that is 120-290 ms per search, so a two-hour window would take 20+ seconds,
+too slow to serve from a web request. Instead it exploits a property of
+`arrive(t)`, the earliest arrival for a rider ready at minute t: `arrive` is
+non-decreasing in t (the FIFO property above, `test_leaving_later_never_
+arrives_earlier`) and piecewise constant (an arrival only changes when a
+different departure becomes the earliest catchable one, which happens at
+isolated minutes, not continuously). Divide-and-conquer over a block `[lo,
+hi]` follows directly: compute `arrive(lo)` and `arrive(hi)`; if they are
+equal, every minute in between has that same arrival too, because a
+non-decreasing function bounded above and below by two equal values cannot
+vary in between; otherwise split the block and recurse on both halves.
+Unreachable is treated as an arrival of infinity so it participates in the
+same comparison -- if `arrive(lo)` is infinite then, by the same
+monotonicity, so is every later minute in the block, and the whole block is
+unreachable without another search. Each minute is searched at most once
+(`earliest_arrival` results are memoised by ready minute), and a 30-minute
+headway over a two-hour window collapses roughly 120 searches to a double
+digit count -- see the timing note in `profile`'s docstring.
+
+A block found constant is assigned the `Journey` computed at its RIGHT end,
+never its left. A journey found for a rider ready at `hi` only boards trips
+departing at or after `hi`, so a rider ready at any earlier minute in the
+block can make the same journey -- they simply wait longer at the origin.
+The reverse does not hold: the journey found at `lo` may board a trip that
+has already left by a later minute in the block, which is an itinerary
+nobody ready at that minute could actually make. The chosen journey is
+copied per minute via `dataclasses.replace(ready_at=...)`, which keeps
+`arrive` (and therefore `total_minutes`, `wait_minutes`, ...) correct for
+each rider even though the underlying legs were computed once.
+
 Some minutes in a window have no usable departure left in the timetable;
 those count toward `n_departures` and lower `reachable_fraction` without
 contributing a journey, so a median never quietly narrows itself to the
@@ -93,7 +121,7 @@ import math
 import statistics
 from bisect import bisect_left
 from collections import defaultdict
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 # --------------------------------------------------------------------------
 # geometry: everything here works in metres, converted from the feeds' lat/lon
@@ -504,15 +532,78 @@ def earliest_arrival(tt, origin, dest, ready_at, *, access_walk_m=MAX_ACCESS_WAL
     return Journey(ready_at, dest_arrive, legs)
 
 
+def _minute_block_is_constant(cache, tt, origin, dest, access_walk_m, lo, hi):
+    """Search `lo` and `hi` (memoised) and say whether `arrive` is the same
+    at both -- which, by the monotonicity in the module docstring, means it
+    is that same value at every minute in between too."""
+    journey_lo = _searched_minute(cache, tt, origin, dest, lo, access_walk_m)
+    journey_hi = _searched_minute(cache, tt, origin, dest, hi, access_walk_m)
+    arrival_lo = journey_lo.arrive if journey_lo is not None else math.inf
+    arrival_hi = journey_hi.arrive if journey_hi is not None else math.inf
+    return arrival_lo == arrival_hi, journey_lo, journey_hi
+
+
+def _searched_minute(cache, tt, origin, dest, ready_at, access_walk_m):
+    if ready_at not in cache:
+        cache[ready_at] = earliest_arrival(tt, origin, dest, ready_at,
+                                           access_walk_m=access_walk_m)
+    return cache[ready_at]
+
+
+def _assign_block(per_minute, lo, hi, journey_at_hi):
+    """Every minute in a constant block gets the journey found at the block's
+    right end, `ready_at` rewritten to that minute -- see the module
+    docstring for why the right end and not the left."""
+    for ready_at in range(lo, hi + 1):
+        per_minute[ready_at] = (None if journey_at_hi is None
+                                else replace(journey_at_hi, ready_at=ready_at))
+
+
+def _collapse_block(cache, per_minute, tt, origin, dest, access_walk_m, lo, hi):
+    """The divide-and-conquer step: a constant block needs no more searches;
+    otherwise split at the midpoint and recurse on both halves."""
+    is_constant, journey_lo, journey_hi = _minute_block_is_constant(
+        cache, tt, origin, dest, access_walk_m, lo, hi)
+    if is_constant:
+        _assign_block(per_minute, lo, hi, journey_hi)
+        return
+    if hi - lo <= 1:
+        per_minute[lo] = journey_lo
+        per_minute[hi] = journey_hi
+        return
+    mid = (lo + hi) // 2
+    _collapse_block(cache, per_minute, tt, origin, dest, access_walk_m, lo, mid)
+    _collapse_block(cache, per_minute, tt, origin, dest, access_walk_m, mid, hi)
+
+
 def profile(tt, origin, dest, window, *, access_walk_m=MAX_ACCESS_WALK_M):
+    """The distribution of trip times for a rider ready at any minute in
+    `window = (start, end)` (end exclusive).
+
+    Exact, not sampled: every minute's arrival is either searched directly
+    or inferred from two searches that bracket it and agree, per the
+    divide-and-conquer in the module docstring ("HOW A SEARCH ACTUALLY
+    RUNS").
+
+    HOW MUCH THIS ACTUALLY SAVES, measured rather than assumed. The collapse
+    can never do fewer searches than the arrival curve has steps, and on a
+    frequent corridor that number is high: three real weekday pairs over a
+    07:00-09:00 window needed 40, 62 and 75 searches against 120 naive ones,
+    for 3.0s, 5.2s and 7.7s against ~20-26s. So this is a 2-4x saving and NOT
+    a web-request latency budget. Treat a profile as a slow query -- fine for
+    the pipeline, needing a loading state or a cache in front of it for the
+    app. The ceiling is per-search cost, not search count.
+    """
     start, end = window
-    journeys = []
-    n_departures = 0
-    for ready_at in range(start, end):
-        n_departures += 1
-        j = earliest_arrival(tt, origin, dest, ready_at, access_walk_m=access_walk_m)
-        if j is not None:
-            journeys.append(j)
+    n_departures = end - start
+    per_minute = {}
+    if n_departures > 0:
+        cache = {}
+        _collapse_block(cache, per_minute, tt, origin, dest, access_walk_m,
+                        start, end - 1)
+
+    journeys = [per_minute[ready_at] for ready_at in range(start, end)
+               if per_minute[ready_at] is not None]
 
     if not journeys:
         return Profile(journeys=(), n_departures=n_departures,

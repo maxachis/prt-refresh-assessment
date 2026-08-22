@@ -303,3 +303,139 @@ def test_the_transfer_grid_is_correct_away_from_pittsburgh_too():
                 coords, journey.MAX_TRANSFER_WALK_M))
             == _sorted_graph(_brute_force_transfer_graph(
                 coords, journey.MAX_TRANSFER_WALK_M)))
+
+
+# --------------------------------------------------------------------------
+# 7. the fast profile is exact -- collapsing a constant block of minutes must
+# never change a single journey, only how many searches produced them
+# --------------------------------------------------------------------------
+
+def _irregular_offsets(rng, n_legs, min_leg, max_leg):
+    """A route's running time between each pair of stops -- cumulative and
+    strictly increasing, with each leg's length chosen independently so
+    consecutive legs differ (an "irregular running time").
+
+    Drawn as floats rather than whole minutes purely so two legs are never
+    exactly interchangeable by coincidence."""
+    offsets = [0.0]
+    for _ in range(n_legs):
+        offsets.append(offsets[-1] + rng.uniform(min_leg, max_leg))
+    return tuple(offsets)
+
+
+def _irregular_trips(rng, offsets, first, last, min_gap, max_gap):
+    """Trips at an irregular headway, all sharing one running-time profile.
+
+    Varying only the gap between trips -- never a trip's own leg times --
+    keeps `_Pattern.dep_times` sorted per position, which is what the FIFO
+    property (module docstring, point 3) requires; randomising offsets
+    per-trip would silently break that unrelated invariant instead of
+    exercising the one this test is for.
+    """
+    trips = []
+    t = first
+    while t <= last:
+        trips.append((t, offsets))
+        t += rng.randint(min_gap, max_gap)
+    return trips
+
+
+def _irregular_network(rng):
+    """Three routes chained end to end -- A-B, B-C-D, D-E -- each with its
+    own irregular headway and running-time profile, so a trip needs two
+    forced transfers. No route duplicates another's leg, which matters here:
+    if two *different* route ids could both reach the same connection, an
+    equal overall arrival could legitimately be produced by either one, and
+    which a search happens to return would be an unresolvable tie rather
+    than something this test could call right or wrong. A single chain has
+    no such alternative -- `routes` can only ever read `("10", "20", "30")`
+    -- so any mismatch the test catches is the collapse actually getting a
+    minute wrong. Service ends mid-morning, well before the window used to
+    exercise it below, so part of that window is genuinely unreachable --
+    the case the module docstring calls out as most likely to be got wrong.
+    """
+    coords = {
+        "A": at(0, 0), "B": at(1300, 0),
+        "C": at(1300, 1200), "D": at(1300, 2500),
+        "E": at(2600, 2500),
+    }
+    leg1_offsets = _irregular_offsets(rng, 1, 6, 11)      # A-B
+    leg2_offsets = _irregular_offsets(rng, 2, 4, 10)      # B-C-D
+    leg3_offsets = _irregular_offsets(rng, 1, 3, 8)       # D-E
+
+    patterns = [
+        ("10", ("A", "B"),
+         _irregular_trips(rng, leg1_offsets, hm(7), hm(8, 30), 7, 19)),
+        ("20", ("B", "C", "D"),
+         _irregular_trips(rng, leg2_offsets, hm(7), hm(8, 50), 11, 24)),
+        ("30", ("D", "E"),
+         _irregular_trips(rng, leg3_offsets, hm(7), hm(9), 9, 23)),
+    ]
+    return toy(patterns, coords)
+
+
+def _naive_profile(tt, origin, dest, window,
+                   access_walk_m=journey.MAX_ACCESS_WALK_M):
+    """The pre-optimisation `profile`: one `earliest_arrival` search per
+    minute, kept here only as the oracle the fast version is checked
+    against."""
+    start, end = window
+    n_departures = end - start
+    journeys = [j for ready_at in range(start, end)
+               for j in (journey.earliest_arrival(
+                   tt, origin, dest, ready_at, access_walk_m=access_walk_m),)
+               if j is not None]
+    if not journeys:
+        return journey.Profile(journeys=(), n_departures=n_departures,
+                               median_minutes=None, best_minutes=None,
+                               worst_minutes=None, reachable_fraction=0.0)
+    totals = [j.total_minutes for j in journeys]
+    return journey.Profile(
+        journeys=tuple(journeys), n_departures=n_departures,
+        median_minutes=statistics.median(totals), best_minutes=min(totals),
+        worst_minutes=max(totals), reachable_fraction=len(journeys) / n_departures)
+
+
+def _journey_tuple(j):
+    return (j.ready_at, j.arrive, j.total_minutes, j.routes)
+
+
+def test_fast_profile_matches_naive_profile():
+    """The divide-and-conquer collapse must reproduce the naive, once-per-
+    minute profile exactly -- same summary statistics, and the same
+    (ready_at, arrive, total_minutes, routes) for every single minute."""
+    import random
+
+    rng = random.Random(20260822)
+    tt = _irregular_network(rng)
+    window = (hm(6, 50), hm(9, 50))
+    origin, dest = at(0, 0), at(2600, 2500)
+
+    fast = journey.profile(tt, origin, dest, window=window)
+    naive = _naive_profile(tt, origin, dest, window)
+
+    # A window that runs off the end of service is the case most likely to
+    # be got wrong -- confirm the fixture actually exercises it.
+    assert 0.0 < naive.reachable_fraction < 1.0
+
+    assert fast.n_departures == naive.n_departures
+    assert fast.reachable_fraction == naive.reachable_fraction
+    assert fast.median_minutes == naive.median_minutes
+    assert fast.best_minutes == naive.best_minutes
+    assert fast.worst_minutes == naive.worst_minutes
+    assert len(fast.journeys) == len(naive.journeys)
+
+    fast_by_minute = {j.ready_at: _journey_tuple(j) for j in fast.journeys}
+    naive_by_minute = {j.ready_at: _journey_tuple(j) for j in naive.journeys}
+    assert fast_by_minute == naive_by_minute
+
+    # Every journey must be one its rider could actually catch: nothing can
+    # depart before the rider is ready for it. This is what would catch
+    # assigning a constant block's LEFT-end journey instead of its right --
+    # the values above (arrive, total_minutes, routes) stay numerically
+    # correct either way once a block is genuinely constant, so only a
+    # feasibility check on the legs themselves exposes a rider being handed
+    # a trip that already left.
+    for j in fast.journeys:
+        if j.legs:
+            assert j.legs[0].depart >= j.ready_at - 1e-9
