@@ -58,9 +58,13 @@ answer would embarrass this repo:
 HOW A SEARCH ACTUALLY RUNS
 
 `origin` and `dest` are points, not stop ids -- a rider starts somewhere on
-the ground. `_seed_from_origin` walks out to every stop within
-`access_walk_m` (a keyword-only parameter on `earliest_arrival` and
-`profile`, defaulting to `MAX_ACCESS_WALK_M`, the site's published
+the ground. Both "which stops are near this point" queries -- the walk out
+from `origin` and the walk in to `dest` -- go through `tt.stop_grid`, a
+`_StopGrid` bucketed into cells sized in metres and built once in
+`Timetable.build`; a search never re-buckets or linearly scans the feed's
+~6,000 stops to answer either one. `_seed_from_origin` walks out to every
+stop within `access_walk_m` (a keyword-only parameter on `earliest_arrival`
+and `profile`, defaulting to `MAX_ACCESS_WALK_M`, the site's published
 quarter-mile radius), arriving at `ready_at + distance / WALK_SPEED_M_PER_MIN`;
 that is round 0. Each subsequent round (`_round`) scans only the patterns
 that touch a stop marked in the previous round -- the real feeds run ~471
@@ -73,11 +77,21 @@ out along the synthesised transfer graph from every stop a ride newly
 reached. A stop reached this way gets its own `ready_to_board` bumped by the
 buffer immediately, which is what makes an immediate same-stop transfer to a
 different route cost the buffer exactly like a transfer that needs a walk --
-there is no separate zero-distance case to get wrong. `_best_egress` then
-checks every reached stop's walk-in against `dest`, plus the possibility that
-`origin` and `dest` are close enough to skip transit entirely, and
-`_reconstruct` walks the winning stop's back-pointer chain to build the leg
-list a rider could actually follow.
+there is no separate zero-distance case to get wrong.
+
+The stops within `access_walk_m` of `dest` (the egress set) are found once,
+before round 0, rather than by scanning every reached stop after the rounds
+finish. A `_DestBound` tracks the best known arrival at `dest` as the search
+proceeds -- a direct walk if `origin` and `dest` are close enough, tightened
+every time a newly-reached stop turns out to be in the egress set -- and
+doubles as a standard RAPTOR target-pruning bound: a stop cannot lead to a
+better arrival at `dest` than one already known once its own arrival is no
+better than that bound, since riding or walking from it only adds
+non-negative time, so `_seed_from_origin` and `_round` drop such a stop
+rather than mark and expand it. This only ever discards a stop that
+provably cannot win; it changes how many labels a search touches, never
+which journey it finds. `_reconstruct` then walks the winning stop's
+back-pointer chain to build the leg list a rider could actually follow.
 
 `profile()` needs the arrival time for every minute in the window, but it
 does not run `earliest_arrival` once per minute -- against the real feeds
@@ -285,7 +299,74 @@ def _build_stop_patterns(patterns):
     return dict(stop_patterns)
 
 
-def _build_transfer_graph(coords, max_transfer_walk_m):
+@dataclass
+class _StopGrid:
+    """Every stop bucketed into a cell sized in METRES on both axes, so
+    "which stops are within R of this point" costs a scan of the handful of
+    cells R can reach rather than a walk over the whole feed. Built once in
+    `Timetable.build` and shared by everything that needs such a lookup: the
+    transfer graph (`_build_transfer_graph`), the walk out from an origin
+    (`_access_stops`), and the walk in to a destination (the egress set in
+    `earliest_arrival`) -- so a search never re-buckets the ~6,000 stops of
+    a real feed, it only ever queries a structure built once at load time.
+
+    Sizing the cell in metres rather than degrees matters more than it
+    looks: a degree of longitude is only ~0.76 of a degree of latitude at
+    Pittsburgh's latitude, so a cell indexed by raw degrees is narrower on
+    the ground east-west than north-south. Sizing the cell at `cell_m` in
+    each direction guarantees two stops closer together than that never
+    land more than one cell apart on either axis, at any latitude.
+    """
+    coords: dict
+    cell_m: float
+    lat_cell_deg: float
+    lon_cell_deg: float
+    buckets: dict   # (cell_y, cell_x) -> [stop, ...]
+
+    @staticmethod
+    def _cell(lat, lon, lat_cell_deg, lon_cell_deg):
+        return math.floor(lat / lat_cell_deg), math.floor(lon / lon_cell_deg)
+
+    @classmethod
+    def build(cls, coords, cell_m):
+        if not coords:
+            return cls(coords={}, cell_m=cell_m, lat_cell_deg=1.0,
+                       lon_cell_deg=1.0, buckets={})
+        lat_cell_deg = cell_m / M_PER_DEG_LAT
+        mean_lat = sum(lat for lat, _ in coords.values()) / len(coords)
+        lon_cell_deg = cell_m / m_per_deg_lon(mean_lat)
+        buckets = defaultdict(list)
+        for stop, (lat, lon) in coords.items():
+            buckets[cls._cell(lat, lon, lat_cell_deg, lon_cell_deg)].append(stop)
+        return cls(coords=coords, cell_m=cell_m, lat_cell_deg=lat_cell_deg,
+                   lon_cell_deg=lon_cell_deg, buckets=dict(buckets))
+
+    def stops_within(self, point, radius_m):
+        """Every stop within radius_m of point, as (stop, distance) pairs.
+
+        The query radius is a per-search parameter (`access_walk_m`) and can
+        exceed the cell size the grid was built with (fixed at
+        `max_transfer_walk_m`), so the neighbourhood scanned widens with the
+        query rather than staying a hard-coded 3x3 -- `reach` cells in every
+        direction is always enough, because a cell measures `cell_m` on each
+        axis by construction.
+        """
+        if not self.buckets:
+            return []
+        lat, lon = point
+        cell_y, cell_x = self._cell(lat, lon, self.lat_cell_deg, self.lon_cell_deg)
+        reach = max(1, math.ceil(radius_m / self.cell_m))
+        found = []
+        for dy in range(-reach, reach + 1):
+            for dx in range(-reach, reach + 1):
+                for stop in self.buckets.get((cell_y + dy, cell_x + dx), ()):
+                    distance = _distance_m(point, self.coords[stop])
+                    if distance <= radius_m:
+                        found.append((stop, distance))
+        return found
+
+
+def _build_transfer_graph(coords, max_transfer_walk_m, grid=None):
     """Every stop pair within the published transfer radius, both directions.
 
     Neither feed publishes transfers, so this is the only source of them --
@@ -294,18 +375,14 @@ def _build_transfer_graph(coords, max_transfer_walk_m):
 
     Comparing every stop pair is quadratic -- fine for a toy fixture, not for
     a real feed's ~6,000 stops, where it costs seconds and grows as the
-    square. Instead every stop is bucketed into a grid cell, the same
-    coarse-index idiom `Grid` uses in analyze_frequency_change.py, and only
-    the 3x3 neighbourhood around a stop's own cell is searched.
-
-    The cell is sized in METRES on both axes rather than in degrees, which
-    matters more than it looks. A degree of longitude is only ~0.76 of a
-    degree of latitude at Pittsburgh's latitude, so a cell indexed by raw
-    degrees is narrower on the ground east-west than north-south. Sizing the
-    cell at max_transfer_walk_m in each direction guarantees two stops closer
-    together than that never land more than one cell apart on either axis, at
-    any latitude -- so the correctness of the 3x3 neighbourhood is a property
-    of the construction rather than of where Pittsburgh happens to be.
+    square. Instead every stop is bucketed by `_StopGrid` (the same
+    coarse-index idiom `Grid` uses in analyze_frequency_change.py) and only
+    the 3x3 neighbourhood around a stop's own cell is searched -- correct
+    because the grid's cell is sized in metres, per `_StopGrid`'s docstring.
+    `Timetable.build` already needs this grid for per-search lookups, so it
+    is passed in as `grid` rather than rebuilt here; the direct two-argument
+    call (as the tests use, to check this function against a brute-force
+    oracle) builds one on the spot.
 
     Each unordered pair is still checked exactly once: within a cell by index
     (i < j), and across a pair of distinct cells via a canonical half of the 8
@@ -315,13 +392,9 @@ def _build_transfer_graph(coords, max_transfer_walk_m):
     graph = defaultdict(list)
     if not coords:
         return {}
-    lat_cell_deg = max_transfer_walk_m / M_PER_DEG_LAT
-    mean_lat = sum(lat for lat, _ in coords.values()) / len(coords)
-    lon_cell_deg = max_transfer_walk_m / m_per_deg_lon(mean_lat)
-    buckets = defaultdict(list)
-    for stop, (lat, lon) in coords.items():
-        buckets[(math.floor(lat / lat_cell_deg),
-                 math.floor(lon / lon_cell_deg))].append(stop)
+    if grid is None:
+        grid = _StopGrid.build(coords, max_transfer_walk_m)
+    buckets = grid.buckets
 
     def _link(stop_a, stop_b):
         distance = _distance_m(coords[stop_a], coords[stop_b])
@@ -352,18 +425,22 @@ class Timetable:
     stop_patterns: dict
     transfer_graph: dict
     max_transfer_walk_m: float
+    stop_grid: "_StopGrid"
 
     @classmethod
     def build(cls, label, patterns, coords, max_transfer_walk_m=MAX_TRANSFER_WALK_M):
         built_patterns = [_build_pattern(route_id, stops, trips)
                           for route_id, stops, trips in patterns]
+        stop_grid = _StopGrid.build(coords, max_transfer_walk_m)
         return cls(
             label=label,
             patterns=built_patterns,
             coords=dict(coords),
             stop_patterns=_build_stop_patterns(built_patterns),
-            transfer_graph=_build_transfer_graph(coords, max_transfer_walk_m),
+            transfer_graph=_build_transfer_graph(coords, max_transfer_walk_m,
+                                                 grid=stop_grid),
             max_transfer_walk_m=max_transfer_walk_m,
+            stop_grid=stop_grid,
         )
 
 
@@ -372,41 +449,83 @@ class Timetable:
 # --------------------------------------------------------------------------
 
 def _access_stops(tt, point, access_walk_m):
-    """Every stop within the access walk of a point, with the walk distance."""
-    reachable = []
-    for stop, coord in tt.coords.items():
-        distance = _distance_m(point, coord)
-        if distance <= access_walk_m:
-            reachable.append((stop, distance))
-    return reachable
+    """Every stop within the access walk of a point, with the walk distance.
+
+    A linear scan over every stop in the feed used to answer this -- fine
+    for a toy fixture, ~24% of a real search's runtime against ~6,000 stops
+    (it is run once for the origin here and, before target pruning, again
+    for the destination). `tt.stop_grid` is the same bucketed index
+    `_build_transfer_graph` builds for the transfer radius, reused here for
+    a different radius via `stops_within`.
+    """
+    return tt.stop_grid.stops_within(point, access_walk_m)
+
+
+@dataclass
+class _DestBound:
+    """The best known arrival at dest so far, updated as the search finds
+    better ones, and the target-pruning bound: no stop whose own arrival is
+    already >= this can lead to a better one, because riding or walking
+    from it only adds non-negative time. `stop` is the reached stop the
+    bound currently routes through, or None while a direct walk (or nothing
+    yet) is the best candidate.
+    """
+    arrive: float
+    stop: object = None
+
+    def tighten_from_stop(self, egress_distance_m, stop, stop_arrive):
+        """Consider walking in to dest from `stop`, newly arrived at
+        `stop_arrive` -- `egress_distance_m` is None for a stop outside the
+        access walk of dest, which cannot egress at all."""
+        distance = egress_distance_m
+        if distance is None:
+            return
+        candidate = stop_arrive + distance / WALK_SPEED_M_PER_MIN
+        if candidate < self.arrive:
+            self.arrive = candidate
+            self.stop = stop
 
 
 def _seed_from_origin(tt, origin, ready_at, best_arrival, ready_to_board, back,
-                      access_walk_m):
+                      access_walk_m, dest_bound, egress):
     for stop, distance in _access_stops(tt, origin, access_walk_m):
         arrive = ready_at + distance / WALK_SPEED_M_PER_MIN
+        if arrive >= dest_bound.arrive:
+            continue  # cannot lead to a dest arrival better than the bound
         if arrive < best_arrival.get(stop, math.inf):
             best_arrival[stop] = arrive
             ready_to_board[stop] = arrive  # no buffer: nothing to connect from
             back[stop] = (_KIND_ACCESS, arrive)
+            dest_bound.tighten_from_stop(egress.get(stop), stop, arrive)
 
 
-def _scan_pattern(pattern, marked, best_arrival, ready_to_board, ride_updates):
+def _scan_pattern(pattern, marked, best_arrival, ready_to_board, ride_updates,
+                  dest_bound_value):
     """One RAPTOR route-scan: ride the pattern once, boarding the earliest
-    trip available at each marked stop, improving every stop further along."""
+    trip available at each marked stop, improving every stop further along.
+
+    `dest_bound_value` is a snapshot of the target-pruning bound taken once
+    per round (see `_round`) rather than re-read live -- this loop runs once
+    per touched pattern per round and dominates a search's cost, so keeping
+    it to local variables and a single attribute read up front matters.
+    """
     board_trip_index = None
     board_stop = None
     board_depart = None
+    best_arrival_get = best_arrival.get
+    ride_updates_get = ride_updates.get
+    ready_to_board_get = ready_to_board.get
     for position, stop in enumerate(pattern.stops):
         dep_times = pattern.dep_times[position]
         if board_trip_index is not None:
             arrive = dep_times[board_trip_index]
-            if (arrive < best_arrival.get(stop, math.inf)
-                    and arrive < ride_updates.get(stop, (math.inf,))[0]):
+            if (arrive < dest_bound_value
+                    and arrive < best_arrival_get(stop, math.inf)
+                    and arrive < ride_updates_get(stop, (math.inf,))[0]):
                 ride_updates[stop] = (arrive, pattern.route_id, board_stop,
                                       board_depart)
         if stop in marked:
-            ready = ready_to_board.get(stop)
+            ready = ready_to_board_get(stop)
             if ready is not None:
                 candidate = bisect_left(dep_times, ready)
                 if candidate < len(dep_times) and (
@@ -416,18 +535,28 @@ def _scan_pattern(pattern, marked, best_arrival, ready_to_board, ride_updates):
                     board_depart = dep_times[candidate]
 
 
-def _round(tt, marked, best_arrival, ready_to_board, back):
+def _round(tt, marked, best_arrival, ready_to_board, back, dest_bound, egress):
     """Board and ride once (a RAPTOR round), then synthesise the transfer
     walks out of every stop a ride newly reached. Returns the stops a rider
-    could newly be standing at, ready to board again next round."""
+    could newly be standing at, ready to board again next round.
+
+    `dest_bound` tightens as stops are newly reached, and its value at the
+    START of this round is what `_scan_pattern` prunes against for the
+    whole round -- a snapshot rather than a live read, so a bound found by
+    one touched pattern cannot retroactively prune a pattern already
+    scanned in this same round out of order; it only ever sharpens the next
+    round's pruning, which keeps the result independent of dict/set
+    iteration order.
+    """
     touched_patterns = {pattern_idx
                         for stop in marked
                         for pattern_idx, _ in tt.stop_patterns.get(stop, ())}
 
+    dest_bound_value = dest_bound.arrive
     ride_updates = {}
     for pattern_idx in touched_patterns:
         _scan_pattern(tt.patterns[pattern_idx], marked, best_arrival,
-                     ready_to_board, ride_updates)
+                     ready_to_board, ride_updates, dest_bound_value)
 
     newly_ridden = set()
     for stop, (arrive, route, board_stop, board_depart) in ride_updates.items():
@@ -436,6 +565,7 @@ def _round(tt, marked, best_arrival, ready_to_board, back):
             ready_to_board[stop] = arrive + MIN_TRANSFER_BUFFER_MIN
             back[stop] = (_KIND_RIDE, route, board_stop, board_depart, arrive)
             newly_ridden.add(stop)
+            dest_bound.tighten_from_stop(egress.get(stop), stop, arrive)
 
     next_marked = set()
     for stop in newly_ridden:
@@ -443,33 +573,16 @@ def _round(tt, marked, best_arrival, ready_to_board, back):
         next_marked.add(stop)  # reboarding a different route at the same stop
         for neighbour, walk_min in tt.transfer_graph.get(stop, ()):
             candidate = arrive + walk_min
+            if candidate >= dest_bound.arrive:
+                continue  # cannot lead to a dest arrival better than the bound
             if candidate < best_arrival.get(neighbour, math.inf):
                 best_arrival[neighbour] = candidate
                 ready_to_board[neighbour] = candidate + MIN_TRANSFER_BUFFER_MIN
                 back[neighbour] = (_KIND_TRANSFER, stop, arrive, candidate)
                 next_marked.add(neighbour)
+                dest_bound.tighten_from_stop(egress.get(neighbour), neighbour,
+                                             candidate)
     return next_marked
-
-
-def _best_egress(tt, dest, origin, ready_at, best_arrival, access_walk_m):
-    """The earliest the rider can be at dest: walking straight there, or
-    walking in from whichever reached stop gets them closest in time."""
-    best_time = None
-    best_stop = None  # None means the winner is the direct walk
-
-    direct_distance = _distance_m(origin, dest)
-    if direct_distance <= access_walk_m:
-        best_time = ready_at + direct_distance / WALK_SPEED_M_PER_MIN
-
-    for stop, arrive in best_arrival.items():
-        distance = _distance_m(tt.coords[stop], dest)
-        if distance > access_walk_m:
-            continue
-        candidate = arrive + distance / WALK_SPEED_M_PER_MIN
-        if best_time is None or candidate < best_time:
-            best_time = candidate
-            best_stop = stop
-    return best_time, best_stop
 
 
 def _leg_from_back_entry(back_entry, to_stop):
@@ -501,35 +614,51 @@ def _reconstruct(tt, back, ready_at, dest_stop, stop_arrive, dest_arrive):
     return tuple(legs)
 
 
+def _initial_dest_bound(origin, dest, ready_at, access_walk_m):
+    """The best dest arrival known before any transit is searched: a direct
+    walk, when origin and dest are close enough to make one."""
+    direct_distance = _distance_m(origin, dest)
+    if direct_distance <= access_walk_m:
+        return _DestBound(arrive=ready_at + direct_distance / WALK_SPEED_M_PER_MIN)
+    return _DestBound(arrive=math.inf)
+
+
 def earliest_arrival(tt, origin, dest, ready_at, *, access_walk_m=MAX_ACCESS_WALK_M):
     best_arrival = {}
     ready_to_board = {}
     back = {}
 
+    # Egress stops and the running best-known dest arrival are computed once,
+    # up front, rather than by scanning every reached stop after the rounds
+    # finish -- both to answer "how do I get to dest" cheaply (`stops_within`
+    # rather than a linear scan) and to drive target pruning: a stop whose
+    # own arrival cannot beat this bound is dropped rather than expanded.
+    egress = dict(tt.stop_grid.stops_within(dest, access_walk_m))
+    dest_bound = _initial_dest_bound(origin, dest, ready_at, access_walk_m)
+
     _seed_from_origin(tt, origin, ready_at, best_arrival, ready_to_board, back,
-                      access_walk_m)
+                      access_walk_m, dest_bound, egress)
     marked = set(best_arrival)
 
     for _ in range(MAX_ROUNDS):
         if not marked:
             break
-        marked = _round(tt, marked, best_arrival, ready_to_board, back)
+        marked = _round(tt, marked, best_arrival, ready_to_board, back,
+                        dest_bound, egress)
 
-    dest_arrive, dest_stop = _best_egress(tt, dest, origin, ready_at, best_arrival,
-                                          access_walk_m)
-    if dest_arrive is None:
+    if dest_bound.arrive == math.inf:
         return None
 
-    if dest_stop is None:
+    if dest_bound.stop is None:
         direct_distance = _distance_m(origin, dest)
         legs = ()
         if direct_distance > 0:
-            legs = (Leg(LEG_WALK, None, None, None, ready_at, dest_arrive),)
-        return Journey(ready_at, dest_arrive, legs)
+            legs = (Leg(LEG_WALK, None, None, None, ready_at, dest_bound.arrive),)
+        return Journey(ready_at, dest_bound.arrive, legs)
 
-    legs = _reconstruct(tt, back, ready_at, dest_stop,
-                        best_arrival[dest_stop], dest_arrive)
-    return Journey(ready_at, dest_arrive, legs)
+    legs = _reconstruct(tt, back, ready_at, dest_bound.stop,
+                        best_arrival[dest_bound.stop], dest_bound.arrive)
+    return Journey(ready_at, dest_bound.arrive, legs)
 
 
 def _minute_block_is_constant(cache, tt, origin, dest, access_walk_m, lo, hi):
