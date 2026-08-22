@@ -59,10 +59,27 @@ granularity suggests a template.
 per (side, stop, route, direction, day) carrying that combination's departure
 minutes — no trip identity, no arrival times, no stop order
 (`build_webdb.py:111`, and the reasoning in `docs/WEBAPP.md`, "Why departure
-times are stored, not trip counts"). That collapse is what keeps the file at
-14 MB and what lets the walk radius be a live UI control. A router needs the
-trip dimension back: trips grouped into patterns with their time arrays, built
-fresh from the raw feeds. Expect roughly to double the database.
+times are stored, not trip counts"). That collapse is what lets the walk radius
+be a live UI control. A router needs the trip dimension back: trips grouped
+into patterns with their time arrays, built fresh from the raw feeds.
+
+**The trip dimension is far cheaper than it looks.** Measured 2026-08-22: the
+1.7 million stop calls across both feeds collapse to **471 distinct stop
+sequences** — 273 current, 198 proposed, averaging ~70 trips each. So the
+router's data is one row per pattern-stop (25,647 rows) plus one row per trip
+(33,305) carrying a pattern id, a day type, a start minute, and its running
+times as offsets from that start. Offsets are monotonic on every one of the
+33,305 trips and top out at 171 minutes, so the whole time dimension is 4.5 MB
+of text. Against a `refresh.db` that is **35 MB today**, that is roughly +20%,
+not the doubling first assumed here. Per-pattern offsets would be smaller still
+and are wrong: running times widen at the peak, which is the effect worth
+measuring.
+
+> An earlier version of this entry said "expect roughly to double the
+> database", off a 14 MB figure taken from `docs/WEBAPP.md` — itself stale by
+> two layers. The root of that error was quoting a written-down size instead of
+> measuring the file, and estimating a table's cost before checking whether its
+> rows deduplicate.
 
 **Neither feed publishes transfers.** No `transfers.txt` on either side, so
 every transfer connection has to be synthesised from stop coordinates. Three
