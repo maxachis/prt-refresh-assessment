@@ -148,6 +148,20 @@ export function destinationQuery(dest: Destination): string {
     : `dest_lat=${dest.lat.toFixed(6)}&dest_lon=${dest.lon.toFixed(6)}`;
 }
 
+/**
+ * Which `[data-dest]` button the toolbar should light for a destination.
+ *
+ * A point of the reader's own lights "pick a point" however it was chosen --
+ * clicked in pin mode, or dragged there from a district's centre. Dragging is
+ * the case that needs this: the toolbar would otherwise go on claiming
+ * Downtown while the map measured to somewhere else entirely.
+ */
+export const PIN_BUTTON = 'pin';
+
+export function activeDestButton(dest: Destination): string {
+  return 'key' in dest ? dest.key : PIN_BUTTON;
+}
+
 export async function loadOneSeatLayer(
   map: maplibregl.Map, radius: number, dest: Destination,
 ) {

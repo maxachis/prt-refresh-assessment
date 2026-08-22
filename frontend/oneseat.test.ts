@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   STATUS_STYLE, STATUS_ORDER, countInBounds, toGeoJSON, dotLabel,
-  destinationQuery, destinationLabel, NO_RIDE_COLOR,
+  destinationQuery, destinationLabel, activeDestButton, NO_RIDE_COLOR,
 } from './oneseat';
 import { GONE_COLOR, NEW_COLOR } from './surface';
 import { KEPT_COLOR } from './corridor';
@@ -144,5 +144,17 @@ describe('NO_RIDE_COLOR', () => {
     // Deliberately recessive, and exempted from the contrast floor in
     // contrast.test.ts for the same reason change.ts's `none` is.
     expect(NO_RIDE_COLOR).not.toBe(STATUS_STYLE.keeps.color);
+  });
+});
+
+describe('which destination button is lit', () => {
+  it('lights the named district in force', () => {
+    expect(activeDestButton({ key: 'oakland' })).toBe('oakland');
+  });
+
+  it('lights "pick a point" for any dropped or dragged point', () => {
+    // Dragging the destination marker turns a named district into a point of
+    // the reader's own, and the toolbar has to stop claiming Downtown.
+    expect(activeDestButton({ lat: 40.44, lon: -79.99 })).toBe('pin');
   });
 });

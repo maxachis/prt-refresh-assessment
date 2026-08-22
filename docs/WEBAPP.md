@@ -410,6 +410,14 @@ point, and gets the trip timed on both networks: the median across every minute
 they could be ready inside the published weekday 07:00–09:00 window, with the
 wait for the bus counted in.
 
+Both pins can be **dragged**, and dropping one re-asks the question rather
+than only moving a dot. Comparing two corners is the commonest thing anyone
+does here, and clicking each in turn throws the first answer away before the
+second arrives. Dragging the *destination* pin turns a named district into a
+point of the reader's own — the same thing "pick a point" does, reached by
+dragging instead of by arming a mode — and the toolbar re-lights to say so.
+Nothing recomputes mid-drag: only the drop asks.
+
 It is the only view that **answers on the click rather than from a layer loaded
 in advance**, because both of its ends belong to the reader and there is
 nothing to precompute. That costs a few tenths of a second for a well-served

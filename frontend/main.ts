@@ -17,7 +17,7 @@ import {
 import {
   initOneSeatLayer, loadOneSeatLayer, setOneSeatVisible,
   layerData as oneSeatData, isVisible as oneSeatOn,
-  dotLabel as oneSeatDotLabel, HERE_COLOR, Destination,
+  dotLabel as oneSeatDotLabel, HERE_COLOR, Destination, activeDestButton,
 } from './oneseat';
 import {
   initJourneyLayer, setJourneyVisible, drawJourney, journeyUrl,
@@ -27,6 +27,7 @@ import {
 import { PlaceResult, Day, JourneyResult, NamedDestination } from './types';
 
 const PGH: [number, number] = [-79.9959, 40.4406];
+const ORIGIN_COLOR = '#e2574c';   // the red "you asked here" pin
 
 let radius = 400;
 let marker: maplibregl.Marker | null = null;
@@ -89,12 +90,9 @@ map.on('load', () => {
     const c = hit ? (hit.geometry as any).coordinates : [e.lngLat.lng, e.lngLat.lat];
     // The travel-time view answers on the click itself rather than from a
     // preloaded layer: both ends are the reader's, so there is nothing to
-    // precompute and the panel is the whole answer.
-    if (view === 'journey') {
-      void loadJourney(c[1], c[0]);
-      return;
-    }
-    void load(c[1], c[0]);
+    // precompute and the panel is the whole answer. `askAt` decides which,
+    // so a dragged pin and a click cannot diverge.
+    askAt(c[1], c[0]);
   });
 
   const popup = new maplibregl.Popup({ closeButton: false, offset: 8 });
@@ -404,6 +402,7 @@ async function withLoadingLegend<T>(work: () => Promise<T>) {
 function setDestination(next: Destination) {
   dest = next;
   setPinMode(false);
+  syncDestinationButtons();
   showDestinationMarker();
   if (view === 'journey') {
     if (last) void loadJourney(last.lat, last.lon);
@@ -434,11 +433,32 @@ function showDestinationMarker() {
     return;
   }
   if (!destMarker) {
-    destMarker = new maplibregl.Marker({ color: HERE_COLOR })
+    // Dragging this one moves the destination, which turns a named district
+    // into a point of the reader's own -- the same thing "pick a point" does,
+    // reached by dragging instead of by arming a mode. `setDestination` then
+    // re-times the trip and re-lights the toolbar to match.
+    destMarker = new maplibregl.Marker({ color: HERE_COLOR, draggable: true })
       .setLngLat([point!.lon, point!.lat]).addTo(map);
+    destMarker.on('dragend', () => {
+      const at = destMarker!.getLngLat();
+      setDestination({ lat: at.lat, lon: at.lng });
+    });
   } else {
     destMarker.setLngLat([point!.lon, point!.lat]).addTo(map);
   }
+}
+
+/**
+ * Light the toolbar button for wherever we are now measuring to.
+ *
+ * Clicking a button lights it on its own; this exists for the destination
+ * that moves without one being clicked -- a dragged marker.
+ */
+function syncDestinationButtons() {
+  const lit = activeDestButton(dest);
+  document.querySelectorAll<HTMLButtonElement>('[data-dest]').forEach((b) => {
+    b.classList.toggle('active', b.dataset.dest === lit);
+  });
 }
 
 /** Where the journey is timed TO: the dropped pin, or the district's centre. */
@@ -493,13 +513,41 @@ async function load(lat: number, lon: number) {
   }
 }
 
-/** The red pin: where the reader is asking from, on every view that asks. */
+/**
+ * The red pin: where the reader is asking from, on every view that asks.
+ *
+ * It is draggable, and dragging it re-asks the question rather than just
+ * moving a dot: comparing two corners is the commonest thing anyone does
+ * here, and clicking each of them in turn loses the first answer before the
+ * second arrives. The answer only changes on drop, not while dragging --
+ * the travel-time view takes seconds per answer, so re-routing at every
+ * frame of a drag would queue up dozens of searches nobody asked for.
+ */
 function placeMarker(lat: number, lon: number) {
   if (!marker) {
-    marker = new maplibregl.Marker({ color: '#e2574c' }).setLngLat([lon, lat]).addTo(map);
+    marker = new maplibregl.Marker({ color: ORIGIN_COLOR, draggable: true })
+      .setLngLat([lon, lat]).addTo(map);
+    marker.on('dragend', () => {
+      const at = marker!.getLngLat();
+      askAt(at.lat, at.lng);
+    });
   } else {
     marker.setLngLat([lon, lat]);
   }
+}
+
+/**
+ * Ask the question the current view asks, at a point.
+ *
+ * The map click and a dropped pin both come through here, so a dragged pin
+ * can never answer a different question from a clicked one.
+ */
+function askAt(lat: number, lon: number) {
+  if (view === 'journey') {
+    void loadJourney(lat, lon);
+    return;
+  }
+  void load(lat, lon);
 }
 
 /**
