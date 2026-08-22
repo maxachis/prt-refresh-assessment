@@ -56,11 +56,26 @@ SEMANTICS, identical for both feeds:
   * bus only by default (route_type 3): rail and the inclines are outside the
     Refresh.
 
+TWO WAYS TO READ A FEED
+
+`load_service` answers how much service there is: departure minutes per stop,
+per route and direction, folded onto the 4am axis, buses only. Every analysis
+that counts service uses it.
+
+`load_patterns` answers what a vehicle does: which departures belong to the
+same trip, in what order it calls, in raw minutes, every mode included. Only
+the router uses it. It is a separate reader rather than a flag because the two
+disagree about the axis and about rail on purpose, and a caller that took the
+wrong one would get a plausible answer to the other question.
+
 Usage:
     import gtfs
     svc = gtfs.load_service(gtfs.proposed(), gtfs.SAMPLE["proposed"],
                             period_of=period_of, to_axis=to_axis)
     svc.times[day][stop_id][(route, direction)] -> [axis minutes]
+
+    by_day, coords = gtfs.load_patterns(gtfs.current(), gtfs.SAMPLE["current"])
+    by_day[day] -> [(route, stops, [(start minute, offsets)])]
 """
 
 import csv
@@ -265,6 +280,107 @@ class Service:
                     if p:
                         out[sid][(rt, dr, p)] += 1
         return out
+
+
+def load_patterns(feed, samples, routed_types=None, quiet=False):
+    """({day: [(route, stops, trips)]}, {stop_id: (lat, lon)}) for one feed.
+
+    The trip dimension `load_service` throws away. It keeps which departures
+    belong to the same vehicle and in what order that vehicle calls, which is
+    the only thing a journey needs and the one thing a departure count cannot
+    reconstruct. Everything else about how a feed is read -- the calendar
+    resolution, the holiday exclusion, the minute truncation -- is shared with
+    `load_service`, so a journey cannot be routed onto service no analysis here
+    would count.
+
+    WHY PATTERNS RATHER THAN TRIPS
+
+    The two feeds carry 1.7 million stop calls between them and about 33,000
+    trips, but only ~471 distinct stop sequences: a route's trips overwhelmingly
+    call at the same stops in the same order, ~70 times over. So a trip is
+    stored as a pattern index, a start minute and its running times as offsets
+    from that start, and the stop list is paid for once per pattern instead of
+    once per trip. That is what makes the router's data a fifth of the size of
+    the feeds it comes from.
+
+    Running times are per trip and never per pattern, deliberately. Both feeds
+    widen a route's end-to-end time at the PM peak, and that widening is part of
+    what a before-and-after comparison is measuring; averaging it into one
+    per-pattern profile would erase the plan's own congestion assumptions.
+
+    TWO DEPARTURES FROM THE HOUSE CONVENTIONS, both required here
+
+    Times are RAW GTFS minutes, not the 4:00-28:00 axis every other analysis
+    folds onto. Folding is what puts a 25:30 departure in the owl period, and it
+    is exactly wrong along a trip: a vehicle running through 4am would appear to
+    arrive an hour before it left. Callers that need a period bucket fold at the
+    point of display, after the routing is done.
+
+    Every route type is kept, not buses only -- convention 13. A journey is not
+    a quantity of service, so the T and the inclines carry riders here even
+    though no service figure in this repo counts them. Pass `routed_types` to
+    narrow it; the default is every mode in the feed. Note that the two feeds
+    spell rail differently, current as route_type 2 and proposed as 0, so a
+    caller that narrows by naming a type must name both.
+    """
+    feed.check()
+    by_day, occasional, nominal, _dates_run = resolve_calendars(feed, samples)
+
+    routes = {r["route_id"]: r for r in feed.rows("routes.txt")}
+    keep_routes = (set(routes) if routed_types is None else
+                   {rid for rid, r in routes.items()
+                    if r["route_type"] in routed_types})
+
+    keep = {}
+    for t in feed.rows("trips.txt"):
+        if t["route_id"] not in keep_routes or t["service_id"] in occasional:
+            continue
+        days = [d for d in DAYS if t["service_id"] in by_day[d]]
+        if days:
+            keep[t["trip_id"]] = (t["route_id"], days)
+
+    calls = defaultdict(list)
+    for st in feed.rows("stop_times.txt"):
+        if st["trip_id"] not in keep:
+            continue
+        clock = st["departure_time"] or st["arrival_time"]
+        try:
+            h, m, _ = clock.split(":")
+        except ValueError:
+            continue
+        calls[st["trip_id"]].append(
+            (int(st["stop_sequence"]), st["stop_id"], int(h) * 60 + int(m)))
+
+    # {(route, stops): {day: [(start, offsets)]}} -- one entry per pattern,
+    # holding the trips that run it, split by the day types they operate on.
+    patterns = defaultdict(lambda: defaultdict(list))
+    for trip_id, rows in calls.items():
+        rows.sort()
+        route, days = keep[trip_id]
+        start = rows[0][2]
+        stops = tuple(stop for _, stop, _ in rows)
+        offsets = tuple(minute - start for _, _, minute in rows)
+        for day in days:
+            patterns[(route, stops)][day].append((start, offsets))
+
+    out = {day: [] for day in DAYS}
+    for (route, stops), per_day in patterns.items():
+        for day, trips in per_day.items():
+            trips.sort()
+            out[day].append((route, stops, trips))
+
+    coords = {}
+    for s in feed.rows("stops.txt"):
+        try:
+            coords[s["stop_id"]] = (float(s["stop_lat"]), float(s["stop_lon"]))
+        except (TypeError, ValueError, KeyError):
+            pass
+
+    if not quiet:
+        print(f"  {feed.label}: patterns={len(patterns)}  "
+              + "  ".join(f"{d}={sum(len(t) for _, _, t in out[d]):,} trips"
+                          for d in DAYS))
+    return out, coords
 
 
 def stop_routes(feed, bus_only=True):
