@@ -457,12 +457,22 @@ What the panel shows, and why each part is there rather than a single number:
   schedule-against-schedule said in the same breath.
 
 The map draws both trips: today's in blue, the proposed one thinner in orange
-so that where they share a street both stay visible. Walks are dashed, because
-a walk is a straight line between two points while a ride is a real sequence of
-stops — and every leg is drawn stop to stop rather than along the road the bus
-takes, which the legend says. The first and last walks are anchored at the pins
-rather than at the first and last stop, since the clock is already counting
-them.
+so that where they share a street both stay visible. A **ride follows the
+street its bus drives** — the path comes from the pattern's own `shapes.txt`
+entry, sliced between the two stops the leg rides (`journey_shape`, built by
+`build_webdb.py`). Walks stay dashed and straight, because a walk really is a
+straight line between two points, and that contrast is now what the dashes
+mean. The first and last walks are anchored at the pins rather than at the
+first and last stop, since the clock is already counting them.
+
+The drawn path is **for drawing only**. It is thinned to five metres between
+stops, and it is anchored at each stop's own coordinate rather than at the
+nearest bit of road, so a leg starts and ends under the markers a reader can
+see. Where a feed's shape wanders from its own stops — some proposed-side
+stops sit 100–350 m off the path their trips carry, and rail stations sit
+beside the track alignment — the line jogs to the stop. Street length is a
+different question and is measured on the full shape by
+`analyze_corridor_change.py`; nothing may be measured off this one.
 
 The walk-radius control is disabled here, like it is for the street view. A
 journey's walking is the router's own (`journey.CONSTANTS`), not a control, and
@@ -591,11 +601,6 @@ or heartbeat to maintain. See [`deploy/README.md`](../deploy/README.md).
   is not. Widening it is a query parameter and a control, not new analysis,
   but every number then stops being the published one, which is why it has not
   been added on a whim.
-- **A drawn trip is stop to stop, not along the road.** Neither feed's shapes
-  are carried into the journey tables, so a leg is a straight line between two
-  stops. It is honest at a glance and wrong in detail — a river crossing can
-  read as though a bus swam it. The legend says so; carrying `shapes.txt`
-  would fix it at real size in the database.
 - Stop-name and neighbourhood search is not built (the DB has FTS5 available).
 - `nearest_place_label` uses PRT's `HOOD`/`MUNI` labels, which contain errors up
   to 40 km (caveat 4). It is a display hint; nothing computed depends on it.

@@ -135,8 +135,8 @@ answers.
 
 ## Sizing
 
-The database is ~43 MB — two thirds of it the timetable index behind the
-travel-time view — and is read from disk with SQLite's own caching; the process
+The database is ~49 MB — two thirds of it the timetable index behind the
+travel-time view, plus the paths its rides are drawn along — and is read from disk with SQLite's own caching; the process
 sits well under a couple of hundred MB. The build is the memory peak, not the
 serving, and it topped out around 200 MB on a workstation. The largest single
 response is the 100 m magnitude surface at ~1.3 MB, which the app gzips to

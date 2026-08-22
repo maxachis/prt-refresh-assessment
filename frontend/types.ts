@@ -197,6 +197,13 @@ export interface JourneyLeg {
   to: JourneyStopEnd | null;
   depart: number;
   arrive: number;
+  /**
+   * Where the bus drives between the two stops, as [lon, lat] pairs, for
+   * drawing only. Null on a walk -- which really is a straight line -- and on
+   * a ride whose pattern named no shape in its feed. Thinned at build time
+   * and never to be measured.
+   */
+  path: [number, number][] | null;
 }
 
 export interface Itinerary {

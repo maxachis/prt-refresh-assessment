@@ -13,6 +13,7 @@ function leg(overrides: Partial<JourneyLeg> = {}): JourneyLeg {
     to: { stop_id: '2', name: 'Fifth Ave at Craig St', lat: 40.45, lon: -79.95 },
     depart: 425,
     arrive: 440,
+    path: null,
     ...overrides,
   };
 }
@@ -80,6 +81,40 @@ function result(overrides: Partial<JourneyResult> = {}): JourneyResult {
 // --------------------------------------------------------------------------
 // what the map draws
 // --------------------------------------------------------------------------
+
+describe('drawing a ride along the street', () => {
+  // Two stops a block apart joined by a path that turns a corner: the drawn
+  // line has to be the corner, not the chord through the block.
+  const PATH: [number, number][] = [
+    [-79.99, 40.44], [-79.98, 40.44], [-79.98, 40.45],
+  ];
+
+  function oneLeg(overrides: Partial<JourneyLeg>) {
+    const only = side({
+      itinerary: { ...side().itinerary!, legs: [leg(overrides)] },
+    });
+    return result({
+      radii: { ...result().radii,
+               headline: { ...result().radii.headline,
+                           current: only, proposed: only } },
+    });
+  }
+
+  it('follows the path the bus drives when the server sends one', () => {
+    const drawn = toGeoJSON(oneLeg({ kind: 'ride', path: PATH }), 'headline');
+    expect(drawn.features[0].geometry.coordinates).toEqual(PATH);
+  });
+
+  it('falls back to the straight line when there is no path', () => {
+    const drawn = toGeoJSON(oneLeg({ kind: 'ride', path: null }), 'headline');
+    expect(drawn.features[0].geometry.coordinates).toHaveLength(2);
+  });
+
+  it('never bends a walk: a walk really is a straight line', () => {
+    const drawn = toGeoJSON(oneLeg({ kind: 'walk', path: PATH }), 'headline');
+    expect(drawn.features[0].geometry.coordinates).toHaveLength(2);
+  });
+});
 
 describe('toGeoJSON', () => {
   it('draws both networks, one line per leg, carrying side and kind', () => {

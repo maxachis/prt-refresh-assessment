@@ -363,6 +363,28 @@ CREATE TABLE journey_pattern (
     PRIMARY KEY (side, day, pattern_id)
 );
 
+-- Where a pattern's bus actually drives, for drawing only. The router works
+-- in stops and minutes and knows nothing about streets, so a drawn itinerary
+-- without this joins its stops with straight lines -- through buildings,
+-- across rivers, and straight through every turn the bus makes.
+--
+-- `points` is the path, `stop_idx` gives the vertex each of the pattern's
+-- stops sits on, so a leg from one stop to another is a slice. The path is
+-- thinned to `gtfs.SHAPE_SIMPLIFY_M` between stops and is LOSSY BY
+-- CONSTRUCTION: nothing may be measured off it. Street length is
+-- `analyze_corridor_change.py`'s question and is measured on the full shape.
+--
+-- A pattern whose trips name no shape simply has no row here, and the map
+-- falls back to the straight line it drew before.
+CREATE TABLE journey_shape (
+    side       TEXT NOT NULL,
+    day        TEXT NOT NULL,
+    pattern_id INTEGER NOT NULL,
+    points     TEXT NOT NULL,      -- "lon,lat lon,lat ..." as `corridor` does
+    stop_idx   TEXT NOT NULL,      -- ','-joined index into points, one per stop
+    PRIMARY KEY (side, day, pattern_id)
+);
+
 CREATE TABLE journey_trip (
     side       TEXT NOT NULL,
     day        TEXT NOT NULL,
@@ -561,13 +583,13 @@ def build(out_path):
         if side == "current":
             reach_coords = coords
 
-        patterns, trips, placed_all_modes = journey_layer(con, side, feed)
+        patterns, trips, placed_all_modes, drawn = journey_layer(con, side, feed)
 
         print(f"    -> {len(stop_rows):,} stops, {len(dep_rows):,} departure "
               f"rows, {len(rt_rows)} bus routes, "
               f"{len(reach_rows):,} all-mode stops for one-seat")
         print(f"       journey layer: {patterns} patterns, {trips:,} trips, "
-              f"{placed_all_modes:,} placed stops")
+              f"{placed_all_modes:,} placed stops, {drawn} drawn on streets")
 
     dest = load_destinations(reach_coords)
     con.executemany("INSERT INTO destination VALUES (?,?,?,?)", dest)
@@ -591,7 +613,8 @@ def build(out_path):
 
 
 def journey_layer(con, side, feed):
-    """Fill `journey_pattern`, `journey_trip` and `journey_stop` for one feed.
+    """Fill `journey_pattern`, `journey_trip`, `journey_stop` and
+    `journey_shape` for one feed.
 
     A second read of the same feed, on purpose. `gtfs.load_service` above and
     `gtfs.load_patterns` here disagree about the time axis and about rail, both
@@ -602,11 +625,13 @@ def journey_layer(con, side, feed):
 
     Unlike the three precomputed layers below, nothing is measured here. The
     rows are the loader's own tuples written down, so that the app can build a
-    `journey.Timetable` without opening a GTFS feed.
+    `journey.Timetable` without opening a GTFS feed -- plus the path each
+    pattern drives, which the router never looks at and only the map draws.
     """
-    by_day, coords = gtfs.load_patterns(feed, SAMPLE[side], quiet=True)
+    by_day, coords, shapes = gtfs.load_patterns(
+        feed, SAMPLE[side], quiet=True, with_shapes=True)
 
-    pattern_rows, trip_rows = [], []
+    pattern_rows, trip_rows, shape_rows = [], [], []
     for day in DAYS:
         for route, stops, trips in by_day[day]:
             pattern_id = len(pattern_rows) + 1
@@ -614,13 +639,21 @@ def journey_layer(con, side, feed):
             trip_rows.extend(
                 (side, day, pattern_id, start, ",".join(str(o) for o in offsets))
                 for start, offsets in trips)
+            drawn = shapes.get((route, stops))
+            if drawn is not None:
+                points, stop_idx = drawn
+                shape_rows.append((
+                    side, day, pattern_id,
+                    " ".join(f"{lon:.5f},{lat:.5f}" for lat, lon in points),
+                    ",".join(str(i) for i in stop_idx)))
 
     con.executemany("INSERT INTO journey_pattern VALUES (?,?,?,?,?)", pattern_rows)
     con.executemany("INSERT INTO journey_trip VALUES (?,?,?,?,?)", trip_rows)
+    con.executemany("INSERT INTO journey_shape VALUES (?,?,?,?,?)", shape_rows)
     con.executemany("INSERT INTO journey_stop VALUES (?,?,?,?)",
                     [(side, sid, lat, lon)
                      for sid, (lat, lon) in sorted(coords.items())])
-    return len(pattern_rows), len(trip_rows), len(coords)
+    return len(pattern_rows), len(trip_rows), len(coords), len(shape_rows)
 
 
 def change_layer(out_path):

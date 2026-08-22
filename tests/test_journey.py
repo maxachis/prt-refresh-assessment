@@ -99,6 +99,24 @@ def test_halving_the_frequency_lengthens_the_typical_trip():
     assert seldom.median_minutes - often.median_minutes == pytest.approx(7.5, abs=2)
 
 
+def test_a_ride_leg_says_which_pattern_it_rode_and_where(line):
+    """The map draws a ride along the street, which needs the pattern.
+
+    A leg names its stops, and two stops are not enough to know the path
+    between them: patterns of the same route can run different streets. The
+    positions come with it so a drawn leg is a slice, not a search -- and a
+    loop route calling one stop twice cannot be sliced by stop id at all.
+    """
+    j = journey.earliest_arrival(line, at(0, 0), at(2000, 0), ready_at=hm(8, 1))
+    rides = [leg for leg in j.legs if leg.kind == journey.LEG_RIDE]
+    assert len(rides) == 1
+    ride, = rides
+    assert line.patterns[ride.pattern].route_id == "10"
+    assert (ride.from_pos, ride.to_pos) == (0, 2)
+    walks = [leg for leg in j.legs if leg.kind == journey.LEG_WALK]
+    assert all(leg.pattern is None for leg in walks), "a walk rides nothing"
+
+
 def test_a_profile_reports_spread_not_just_a_median(line):
     p = journey.profile(line, at(0, 0), at(2000, 0), window=(hm(8), hm(10)))
     assert p.n_departures == 120

@@ -56,7 +56,8 @@ WINDOW_START_MIN = 7 * 60
 def feed_side(request):
     side = request.param
     feed = gtfs.current() if side == "current" else gtfs.proposed()
-    by_day, coords = gtfs.load_patterns(feed, gtfs.SAMPLE[side], quiet=True)
+    by_day, coords, _ = gtfs.load_patterns(feed, gtfs.SAMPLE[side],
+                                           quiet=True)
     return side, by_day, coords
 
 
@@ -210,8 +211,8 @@ def test_a_timetable_rebuilt_from_the_database_finds_the_same_journey(con):
     dest = (float(pair["dest_lat"]), float(pair["dest_lon"]))
     ready_at = WINDOW_START_MIN
 
-    by_day, coords = gtfs.load_patterns(gtfs.current(), gtfs.SAMPLE["current"],
-                                        quiet=True)
+    by_day, coords, _ = gtfs.load_patterns(gtfs.current(),
+                                           gtfs.SAMPLE["current"], quiet=True)
     from_feed = journey.Timetable.build("current-weekday", by_day["weekday"],
                                         coords)
     from_db = rebuild(con, "current", "weekday")

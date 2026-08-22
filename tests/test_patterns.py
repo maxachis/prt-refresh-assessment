@@ -36,7 +36,8 @@ RAIL = {"BLUE", "RED", "SLVR"}
 def loaded(request):
     side = request.param
     feed = gtfs.current() if side == "current" else gtfs.proposed()
-    by_day, coords = gtfs.load_patterns(feed, gtfs.SAMPLE[side], quiet=True)
+    by_day, coords, _ = gtfs.load_patterns(feed, gtfs.SAMPLE[side],
+                                           quiet=True)
     return side, by_day, coords
 
 

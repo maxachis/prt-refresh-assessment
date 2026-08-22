@@ -416,7 +416,8 @@ def anchor_destinations(labelled_stops):
 
 def load_side_patterns(side):
     feed = gtfs.current() if side == CURRENT else gtfs.proposed()
-    by_day, coords = gtfs.load_patterns(feed, gtfs.SAMPLE[side], quiet=True)
+    by_day, coords, _ = gtfs.load_patterns(feed, gtfs.SAMPLE[side],
+                                           quiet=True)
     return by_day[DAY_TYPE], coords
 
 

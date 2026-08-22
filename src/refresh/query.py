@@ -1204,6 +1204,9 @@ FRACTION_DP = 3
 # file holds, and building one is ~0.3 s of work that would otherwise be
 # repeated on every request.
 _TIMETABLES: dict[tuple, "journey.Timetable"] = {}
+# Parsed drawn paths, per database, side and day. About 2 MB of text across
+# both feeds, so parsing it per request would cost more than routing does.
+_PATHS: dict[tuple, list] = {}
 
 
 def _database_of(con) -> str:
@@ -1216,11 +1219,16 @@ def journey_patterns(con, side: str, day: str):
 
     The rows are read straight back into the tuples `gtfs.load_patterns`
     returned when `build_webdb.py` wrote them; nothing is recomputed.
+
+    ORDERED BY `pattern_id`, and that ordering is load-bearing: a ride leg
+    names the pattern it rode by its index in the timetable, which is this
+    list's index, so `journey_paths` below must order its rows the same way
+    or a leg would be drawn along someone else's street.
     """
     patterns: dict[int, tuple] = {}
     for row in con.execute(
             "SELECT pattern_id, route_id, stops FROM journey_pattern "
-            "WHERE side = ? AND day = ?", (side, day)):
+            "WHERE side = ? AND day = ? ORDER BY pattern_id", (side, day)):
         patterns[row["pattern_id"]] = (row["route_id"],
                                        tuple(row["stops"].split(";")), [])
     for row in con.execute(
@@ -1231,10 +1239,44 @@ def journey_patterns(con, side: str, day: str):
     return list(patterns.values())
 
 
+def journey_paths(con, side: str, day: str):
+    """[(points, stop_idx) or None] -- where each pattern's bus drives.
+
+    Indexed the same way as `journey_patterns`, which is how a ride leg's
+    pattern index finds its path. A pattern whose feed named no shape has no
+    row and comes back None, and the map draws the straight line it always
+    drew for that leg.
+
+    For drawing only. The path is thinned at build time and no distance may
+    be measured off it.
+    """
+    drawn = {}
+    # Stored as "lon,lat" and kept that way: every consumer is GeoJSON, which
+    # wants that order, and flipping it here would mean flipping it back.
+    for row in con.execute(
+            "SELECT pattern_id, points, stop_idx FROM journey_shape "
+            "WHERE side = ? AND day = ?", (side, day)):
+        drawn[row["pattern_id"]] = (
+            tuple(tuple(float(v) for v in pair.split(","))
+                  for pair in row["points"].split(" ")),
+            tuple(int(i) for i in row["stop_idx"].split(",")))
+    return [drawn.get(pattern_id) for (pattern_id,) in con.execute(
+        "SELECT pattern_id FROM journey_pattern WHERE side = ? AND day = ? "
+        "ORDER BY pattern_id", (side, day))]
+
+
 def journey_coords(con, side: str):
     """{stop_id: (lat, lon)} for every stop the feed places, all modes."""
     return {r["stop_id"]: (r["lat"], r["lon"]) for r in con.execute(
         "SELECT stop_id, lat, lon FROM journey_stop WHERE side = ?", (side,))}
+
+
+def cached_journey_paths(con, side: str, day: str):
+    """`journey_paths`, parsed once per database, side and day."""
+    key = (_database_of(con), side, day)
+    if key not in _PATHS:
+        _PATHS[key] = journey_paths(con, side, day)
+    return _PATHS[key]
 
 
 def journey_timetable(con, side: str, day: str = JOURNEY_DAY,
@@ -1316,14 +1358,21 @@ def stop_names(con, side: str, stop_ids):
         f"AND stop_id IN ({marks})", (side, *stop_ids))}
 
 
-def itinerary_of(con, side: str, trip, coords):
+def itinerary_of(con, side: str, trip, coords, day: str = JOURNEY_DAY):
     """One journey as the map can draw it: legs, with each end placed.
 
     Coordinates come from the journey layer's own stop table, which has every
     mode; names are looked up in the bus-only one and may be missing.
+
+    A ride leg also carries the path the bus drives between its two stops, so
+    the map draws it along the street rather than through the blocks between.
+    A walk gets none: a walk really is a straight line here, which is what the
+    legend's dashes say. Nor does a ride whose pattern named no shape, which
+    falls back to the same straight line.
     """
     if trip is None:
         return None
+    paths = cached_journey_paths(con, side, day)
     called = [stop for leg in trip.legs for stop in (leg.from_stop, leg.to_stop)
               if stop is not None]
     names = stop_names(con, side, sorted(set(called)))
@@ -1334,6 +1383,18 @@ def itinerary_of(con, side: str, trip, coords):
         lat, lon = coords[stop_id]
         return {"stop_id": stop_id, "name": names.get(stop_id),
                 "lat": lat, "lon": lon}
+
+    def drawn(leg):
+        if leg.kind != journey.LEG_RIDE or leg.pattern is None:
+            return None
+        path = paths[leg.pattern] if leg.pattern < len(paths) else None
+        if path is None:
+            return None
+        points, stop_idx = path
+        if leg.to_pos >= len(stop_idx):
+            return None
+        return [list(pt) for pt in
+                points[stop_idx[leg.from_pos]:stop_idx[leg.to_pos] + 1]]
 
     return {
         "ready_at": trip.ready_at,
@@ -1346,7 +1407,8 @@ def itinerary_of(con, side: str, trip, coords):
         "legs": [{"kind": leg.kind, "route": leg.route,
                   "from": end(leg.from_stop), "to": end(leg.to_stop),
                   "depart": round(leg.depart, MINUTE_DP),
-                  "arrive": round(leg.arrive, MINUTE_DP)}
+                  "arrive": round(leg.arrive, MINUTE_DP),
+                  "path": drawn(leg)}
                  for leg in trip.legs],
     }
 
@@ -1381,7 +1443,7 @@ def journey_at_radius(con, origin, dest, day, window, transfer_walk_m):
         answer["origin_access_stops"] = origin_access[side]
         answer["dest_access_stops"] = dest_access[side]
         answer["itinerary"] = itinerary_of(con, side, median_journey(profile),
-                                           tt.coords)
+                                           tt.coords, day)
         medians[side] = answer["median_min"]
         answers[side] = answer
 

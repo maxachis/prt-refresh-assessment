@@ -238,6 +238,14 @@ class Leg:
     to_stop: object       # stop id, or None at the destination
     depart: float
     arrive: float
+    # Which pattern was ridden, and where along it the rider got on and off.
+    # None on a walk. The router itself never needs these -- they are what
+    # lets a caller draw the leg along the street the bus runs, because two
+    # stop ids do not say which of a route's patterns joined them, and a loop
+    # route calling one stop twice cannot be sliced by stop id at all.
+    pattern: object = None
+    from_pos: object = None
+    to_pos: object = None
 
 
 @dataclass(frozen=True)
@@ -526,8 +534,8 @@ def _seed_from_origin(tt, origin, ready_at, best_arrival, ready_to_board, back,
             dest_bound.tighten_from_stop(egress.get(stop), stop, arrive)
 
 
-def _scan_pattern(pattern, marked, best_arrival, ready_to_board, ride_updates,
-                  dest_bound_value):
+def _scan_pattern(pattern, pattern_idx, marked, best_arrival, ready_to_board,
+                  ride_updates, dest_bound_value):
     """One RAPTOR route-scan: ride the pattern once, boarding the earliest
     trip available at each marked stop, improving every stop further along.
 
@@ -539,6 +547,7 @@ def _scan_pattern(pattern, marked, best_arrival, ready_to_board, ride_updates,
     board_trip_index = None
     board_stop = None
     board_depart = None
+    board_position = None
     best_arrival_get = best_arrival.get
     ride_updates_get = ride_updates.get
     ready_to_board_get = ready_to_board.get
@@ -550,7 +559,8 @@ def _scan_pattern(pattern, marked, best_arrival, ready_to_board, ride_updates,
                     and arrive < best_arrival_get(stop, math.inf)
                     and arrive < ride_updates_get(stop, (math.inf,))[0]):
                 ride_updates[stop] = (arrive, pattern.route_id, board_stop,
-                                      board_depart)
+                                      board_depart, pattern_idx,
+                                      board_position, position)
         if stop in marked:
             ready = ready_to_board_get(stop)
             if ready is not None:
@@ -560,6 +570,7 @@ def _scan_pattern(pattern, marked, best_arrival, ready_to_board, ride_updates,
                     board_trip_index = candidate
                     board_stop = stop
                     board_depart = dep_times[candidate]
+                    board_position = position
 
 
 def _round(tt, marked, best_arrival, ready_to_board, back, dest_bound, egress):
@@ -582,15 +593,18 @@ def _round(tt, marked, best_arrival, ready_to_board, back, dest_bound, egress):
     dest_bound_value = dest_bound.arrive
     ride_updates = {}
     for pattern_idx in touched_patterns:
-        _scan_pattern(tt.patterns[pattern_idx], marked, best_arrival,
-                     ready_to_board, ride_updates, dest_bound_value)
+        _scan_pattern(tt.patterns[pattern_idx], pattern_idx, marked,
+                      best_arrival, ready_to_board, ride_updates,
+                      dest_bound_value)
 
     newly_ridden = set()
-    for stop, (arrive, route, board_stop, board_depart) in ride_updates.items():
+    for stop, update in ride_updates.items():
+        arrive, route, board_stop, board_depart, pattern_idx, from_pos, to_pos = update
         if arrive < best_arrival.get(stop, math.inf):
             best_arrival[stop] = arrive
             ready_to_board[stop] = arrive + MIN_TRANSFER_BUFFER_MIN
-            back[stop] = (_KIND_RIDE, route, board_stop, board_depart, arrive)
+            back[stop] = (_KIND_RIDE, route, board_stop, board_depart, arrive,
+                          pattern_idx, from_pos, to_pos)
             newly_ridden.add(stop)
             dest_bound.tighten_from_stop(egress.get(stop), stop, arrive)
 
@@ -615,8 +629,11 @@ def _round(tt, marked, best_arrival, ready_to_board, back, dest_bound, egress):
 def _leg_from_back_entry(back_entry, to_stop):
     kind = back_entry[0]
     if kind == _KIND_RIDE:
-        _, route, board_stop, depart, arrive = back_entry
-        return Leg(LEG_RIDE, route, board_stop, to_stop, depart, arrive), board_stop
+        (_, route, board_stop, depart, arrive,
+         pattern_idx, from_pos, to_pos) = back_entry
+        return Leg(LEG_RIDE, route, board_stop, to_stop, depart, arrive,
+                   pattern=pattern_idx, from_pos=from_pos,
+                   to_pos=to_pos), board_stop
     _, from_stop, depart, arrive = back_entry
     return Leg(LEG_WALK, None, from_stop, to_stop, depart, arrive), from_stop
 

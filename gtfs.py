@@ -74,13 +74,15 @@ Usage:
                             period_of=period_of, to_axis=to_axis)
     svc.times[day][stop_id][(route, direction)] -> [axis minutes]
 
-    by_day, coords = gtfs.load_patterns(gtfs.current(), gtfs.SAMPLE["current"])
+    by_day, coords, _ = gtfs.load_patterns(gtfs.current(), gtfs.SAMPLE["current"])
     by_day[day] -> [(route, stops, [(start minute, offsets)])]
 """
 
 import csv
 import io
+import math
 import zipfile
+from bisect import bisect_left
 from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import date, timedelta
@@ -282,8 +284,197 @@ class Service:
         return out
 
 
-def load_patterns(feed, samples, routed_types=None, quiet=False):
-    """({day: [(route, stops, trips)]}, {stop_id: (lat, lon)}) for one feed.
+# --------------------------------------------------------------------------
+# where a bus actually drives: shapes, for drawing only
+# --------------------------------------------------------------------------
+
+# A drawn path is simplified to this tolerance before it is stored. Five metres
+# is under a lane width and well under a pixel at any zoom this map is read at,
+# so it is invisible on screen -- and it turns ~550,000 shape points into
+# something a database can carry.
+SHAPE_SIMPLIFY_M = 5.0
+
+M_PER_DEG_LAT = 111_320.0
+
+
+def metres_between(a, b):
+    """Equirectangular metres between two (lat, lon) points.
+
+    The same approximation the rest of the repo uses at city scale: exact
+    enough at these distances, and it does not need trigonometry per call.
+    """
+    lat_scale = math.cos(math.radians((a[0] + b[0]) / 2))
+    dy = (a[0] - b[0]) * M_PER_DEG_LAT
+    dx = (a[1] - b[1]) * M_PER_DEG_LAT * lat_scale
+    return math.hypot(dx, dy)
+
+
+def _perpendicular_m(point, start, end):
+    """Distance from `point` to the segment start->end, in metres."""
+    lat_scale = math.cos(math.radians(start[0]))
+    px = (point[1] - start[1]) * M_PER_DEG_LAT * lat_scale
+    py = (point[0] - start[0]) * M_PER_DEG_LAT
+    ex = (end[1] - start[1]) * M_PER_DEG_LAT * lat_scale
+    ey = (end[0] - start[0]) * M_PER_DEG_LAT
+    span = ex * ex + ey * ey
+    if span == 0:
+        return math.hypot(px, py)
+    t = max(0.0, min(1.0, (px * ex + py * ey) / span))
+    return math.hypot(px - t * ex, py - t * ey)
+
+
+def simplify_path(points, tolerance_m=SHAPE_SIMPLIFY_M):
+    """Douglas-Peucker, iterative so a long shape cannot blow the stack.
+
+    Lossy on purpose and only ever used for drawing. Nothing in this repo
+    measures a distance off a simplified path -- lengths come from the full
+    shape (`analyze_corridor_change.py`) or from the timetable.
+    """
+    if len(points) < 3:
+        return list(points)
+    keep = [False] * len(points)
+    keep[0] = keep[-1] = True
+    stack = [(0, len(points) - 1)]
+    while stack:
+        lo, hi = stack.pop()
+        if hi - lo < 2:
+            continue
+        worst_at, worst = lo, 0.0
+        for i in range(lo + 1, hi):
+            d = _perpendicular_m(points[i], points[lo], points[hi])
+            if d > worst:
+                worst_at, worst = i, d
+        if worst > tolerance_m:
+            keep[worst_at] = True
+            stack.append((lo, worst_at))
+            stack.append((worst_at, hi))
+    return [p for p, k in zip(points, keep) if k]
+
+
+def _shape_paths(feed, wanted):
+    """{shape_id: [(lat, lon), ...]}, ordered along the shape, for the ids asked."""
+    raw = defaultdict(list)
+    for r in feed.rows("shapes.txt"):
+        sid = r["shape_id"]
+        if sid not in wanted:
+            continue
+        try:
+            raw[sid].append((int(r["shape_pt_sequence"]),
+                             float(r["shape_pt_lat"]), float(r["shape_pt_lon"])))
+        except (TypeError, ValueError):
+            continue
+    return {sid: [(lat, lon) for _, lat, lon in sorted(rows)]
+            for sid, rows in raw.items()}
+
+
+# How far ahead of the last matched stop to look for the next one. Shape
+# points run every few tens of metres, so a stop is normally a handful of
+# vertices past its predecessor; the window only has to cover a long express
+# run between two stops, and a stop that finds nothing convincing inside it
+# widens to the whole remaining path.
+_STOP_MATCH_LOOKAHEAD = 400
+_STOP_MATCH_GOOD_M = 60.0
+
+
+def _vertex_for_each_stop(points, stops, coords):
+    """One vertex index per stop, in calling order and never going backwards.
+
+    Matched by POSITION, not by the feeds' `shape_dist_traveled`. That field
+    is published on every row of both feeds and is wrong on some of them: 27
+    proposed routes, route 55 among them, carry stop distances running to
+    36,850 against a shape whose own distances stop at 30,858, and slicing on
+    it put stops five kilometres from the path they are supposed to sit on.
+    Position cannot drift like that, and a shape point is only tens of metres
+    from its neighbour, so the vertex found is the right one.
+
+    Forward-only: a route that doubles back would otherwise match its return
+    leg to an outbound stop and draw the ride backwards.
+    """
+    out, floor = [], 0
+    for stop in stops:
+        here = coords.get(stop)
+        if here is None:
+            return None
+        best, best_m = floor, None
+        window = min(len(points), floor + _STOP_MATCH_LOOKAHEAD)
+        for candidate in range(floor, window):
+            gap = metres_between(here, points[candidate])
+            if best_m is None or gap < best_m:
+                best, best_m = candidate, gap
+        if best_m is not None and best_m > _STOP_MATCH_GOOD_M:
+            for candidate in range(window, len(points)):
+                gap = metres_between(here, points[candidate])
+                if gap < best_m:
+                    best, best_m = candidate, gap
+        out.append(best)
+        floor = best
+    return out
+
+
+def _pattern_path(points, stops, coords):
+    """A pattern's drawn path: the shape between stops, the stop at each stop.
+
+    Every stop contributes its OWN coordinate as a vertex, and the shape fills
+    in the driving between them. That is what makes the slice for a leg start
+    and end exactly where the map's markers are, and it degrades gracefully
+    where a feed's shape wanders from its own stops -- some proposed-side
+    stops sit 100-350 m off the path their trips carry, and rail stations sit
+    beside the track alignment rather than on it. Those draw a small jog to
+    the stop instead of a path through the wrong block.
+
+    Between stops the run is thinned on its own, so the vertices the stops sit
+    on always survive. A leg from stop i to stop j is then the slice between
+    their two indices, with no searching at draw time.
+    """
+    vertices = _vertex_for_each_stop(points, stops, coords)
+    if vertices is None:
+        return None
+    path, stop_idx = [coords[stops[0]]], [0]
+    for position in range(1, len(stops)):
+        # Interior vertices only: the two ends of the run are the stops
+        # themselves, which are already in the path or about to be.
+        run = points[vertices[position - 1] + 1:vertices[position]]
+        if run:
+            path.extend(simplify_path(run) if len(run) > 2 else run)
+        path.append(coords[stops[position]])
+        stop_idx.append(len(path) - 1)
+    return tuple(path), tuple(stop_idx)
+
+
+def _pattern_shapes(feed, shape_votes, coords):
+    """{(route, stops): (path, stop_idx)} for every pattern that has a path.
+
+    A pattern whose trips name no shape, or whose feed omits `shapes.txt`, is
+    simply absent -- the map draws its straight lines for that leg instead.
+    """
+    if not shape_votes or not feed.has("shapes.txt"):
+        return {}
+    # Broken by (-count, shape_id) so a tie resolves the same way on every
+    # run: a redraw that moved with dict order would be a diff nobody could
+    # explain.
+    chosen = {key: min(votes.items(), key=lambda kv: (-kv[1], kv[0]))[0]
+              for key, votes in shape_votes.items()}
+
+    paths = _shape_paths(feed, set(chosen.values()))
+    out = {}
+    for (route, stops), shape_id in chosen.items():
+        points = paths.get(shape_id)
+        if not points:
+            continue
+        drawn = _pattern_path(points, stops, coords)
+        if drawn is not None:
+            out[(route, stops)] = drawn
+    return out
+
+
+def load_patterns(feed, samples, routed_types=None, quiet=False,
+                  with_shapes=False):
+    """({day: [(route, stops, trips)]}, {stop_id: (lat, lon)}, shapes).
+
+    `shapes` is `{(route, stops): (path, stop_idx)}` and is empty unless
+    `with_shapes` asks for it, because filling it means reading the feed's
+    `shapes.txt` -- 22 MB on the current side -- which only the map needs. See
+    WHERE THE BUS ACTUALLY DRIVES below.
 
     The trip dimension `load_service` throws away. It keeps which departures
     belong to the same vehicle and in what order that vehicle calls, which is
@@ -322,6 +513,20 @@ def load_patterns(feed, samples, routed_types=None, quiet=False):
     narrow it; the default is every mode in the feed. Note that the two feeds
     spell rail differently, current as route_type 2 and proposed as 0, so a
     caller that narrows by naming a type must name both.
+
+    WHERE THE BUS ACTUALLY DRIVES
+
+    A pattern is a list of stops, which is everything the router needs and
+    nothing a map can draw a line along: joining stops directly puts a bus
+    through buildings and across rivers, and straightens every turn it makes.
+    Both feeds carry `shapes.txt`, so with `with_shapes` a pattern also gets
+    the path its own trips run, with the vertex each of its stops sits on --
+    a leg from one stop to another is then a slice, not a search.
+
+    Where trips of one pattern name different shapes, the commonest wins; the
+    variants differ by a few metres at a terminal loop. The path is thinned to
+    `SHAPE_SIMPLIFY_M` between stops and is LOSSY BY CONSTRUCTION: it is for
+    drawing only, and no distance may be measured off it.
     """
     feed.check()
     by_day, occasional, nominal, _dates_run = resolve_calendars(feed, samples)
@@ -337,7 +542,8 @@ def load_patterns(feed, samples, routed_types=None, quiet=False):
             continue
         days = [d for d in DAYS if t["service_id"] in by_day[d]]
         if days:
-            keep[t["trip_id"]] = (t["route_id"], days)
+            keep[t["trip_id"]] = (t["route_id"], days,
+                                  t.get("shape_id", "") if with_shapes else "")
 
     calls = defaultdict(list)
     for st in feed.rows("stop_times.txt"):
@@ -354,14 +560,19 @@ def load_patterns(feed, samples, routed_types=None, quiet=False):
     # {(route, stops): {day: [(start, offsets)]}} -- one entry per pattern,
     # holding the trips that run it, split by the day types they operate on.
     patterns = defaultdict(lambda: defaultdict(list))
+    # {(route, stops): {shape_id: trips}} -- which path this pattern's trips
+    # actually run. Only filled when the caller wants geometry.
+    shape_votes = defaultdict(lambda: defaultdict(int))
     for trip_id, rows in calls.items():
         rows.sort()
-        route, days = keep[trip_id]
+        route, days, shape_id = keep[trip_id]
         start = rows[0][2]
         stops = tuple(stop for _, stop, _ in rows)
         offsets = tuple(minute - start for _, _, minute in rows)
         for day in days:
             patterns[(route, stops)][day].append((start, offsets))
+        if with_shapes and shape_id:
+            shape_votes[(route, stops)][shape_id] += 1
 
     out = {day: [] for day in DAYS}
     for (route, stops), per_day in patterns.items():
@@ -376,11 +587,13 @@ def load_patterns(feed, samples, routed_types=None, quiet=False):
         except (TypeError, ValueError, KeyError):
             pass
 
+    shapes = _pattern_shapes(feed, shape_votes, coords) if with_shapes else {}
+
     if not quiet:
         print(f"  {feed.label}: patterns={len(patterns)}  "
               + "  ".join(f"{d}={sum(len(t) for _, _, t in out[d]):,} trips"
                           for d in DAYS))
-    return out, coords
+    return out, coords, shapes
 
 
 def stop_routes(feed, bus_only=True):
