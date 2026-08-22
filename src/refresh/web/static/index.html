@@ -175,6 +175,26 @@
     .os-routes { margin-top:5px; }
     .os-routes .rrow { margin-bottom:4px; }
 
+    /* The travel-time view's itinerary: one line per leg, with the waits
+       between them spelled out rather than left implicit in a gap between two
+       clock times -- the wait is most of what a headway change does to a
+       rider, and it is the reason this view exists. */
+    .jl { display:flex; gap:8px; align-items:baseline; font-size:12px;
+      padding:3px 0 3px 10px; border-left:2px solid var(--line); }
+    .jl-what { white-space:nowrap; }
+    /* The travel-time table's row labels are sentences, not period names, and
+       the shared no-wrap rule would push them out of a 400 px panel. */
+    table.periods.jt th { white-space:normal; }
+    table.periods.jt td.n, table.periods.jt th.n { width:52px; }
+    .jl-wait { color:var(--muted); }
+    /* The transfer radii disagreeing about WHICH NETWORK IS FASTER is not a
+       footnote: the connections are invented, and for this pair the invention
+       decides the direction. It gets the losing colour's frame so it cannot be
+       skimmed past. */
+    .js-flip { margin:10px 0 0; padding:9px 11px; font-size:12px;
+      line-height:1.45; border:1px solid #5c2626; border-radius:8px;
+      background:rgba(255,107,107,.09); }
+
     /* Armed "pick a point": the map is waiting for a click, and the control
        has to look different from a plain selection or the reader has no way
        to tell the mode is on. */
@@ -246,7 +266,14 @@
            the trip instead — real loss of pavement, possibly no loss of
            access. It is a third complement, not a replacement for the other
            two, which is why the walk-radius control above is disabled while
-           it is active rather than left to silently mean nothing. -->
+           it is active rather than left to silently mean nothing. Travel
+           time is the fifth and the only one with a clock: how long the trip
+           from a clicked point to the chosen destination takes on each
+           network, waiting for the bus included. It takes no walk radius
+           either -- the walking in a journey is the router's own -- and it is
+           the only view that answers on the click rather than from a layer
+           loaded in advance, because both of its ends belong to the reader
+           and there is nothing to precompute. -->
       <div class="controls">
         <span class="lbl">view</span>
         <div class="seg">
@@ -255,6 +282,7 @@
           <button data-view="both">Both</button>
           <button data-view="corridors">Streets</button>
           <button data-view="oneseat">One-seat</button>
+          <button data-view="journey">Travel time</button>
         </div>
       </div>
       <!-- The one-seat view asks a different KIND of question from the other
@@ -266,6 +294,11 @@
            build time, so anywhere in the county works. There is no day type on
            this view -- a route serves a place or it doesn't -- and it is the
            only one that counts the T. -->
+      <!-- Shared by the one-seat and travel-time views, which mean slightly
+           different things by "to": the one-seat test runs against every stop
+           of the district, while a journey has to arrive somewhere and uses
+           the centre of that same seed cloud -- the identical point the
+           published travel-time analysis searches to. -->
       <div class="controls hidden" id="dest-controls">
         <span class="lbl">to</span>
         <div class="seg">

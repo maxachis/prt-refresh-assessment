@@ -13,8 +13,9 @@ with evidence PRT has not itself published.
 Since both networks gained a real GTFS it also carries **a web app** (`src/refresh/`,
 `frontend/`) that answers "what changes here?" at an arbitrary point, as dots
 at today's stops, as a continuous 100 m surface, as the street network
-itself gaining and losing buses, or as who keeps a one-seat ride to Downtown,
-Oakland or a point you pick — see
+itself gaining and losing buses, as who keeps a one-seat ride to Downtown,
+Oakland or a point you pick, or as how many minutes a trip to one of those
+takes on each network — see
 [`docs/WEBAPP.md`](docs/WEBAPP.md). The pipeline remains the primary artifact and
 stays standard-library only; the app is an optional extra that only reads what
 the pipeline builds. It is deployed at

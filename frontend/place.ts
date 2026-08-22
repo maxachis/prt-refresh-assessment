@@ -40,7 +40,7 @@ export function renderEmpty(el: HTMLElement) {
   el.innerHTML = `
     <div class="empty">
       <h2>What changes here?</h2>
-      <p>The map draws the whole city at once, one of four ways depending on
+      <p>The map draws the whole city at once, one of five ways depending on
          the view above. Pan and zoom to read a neighbourhood.</p>
       <p><b>Locations</b> draws one dot per place a bus stops today, coloured
          by what the plan does to the buses within a short walk.
@@ -62,6 +62,12 @@ export function renderEmpty(el: HTMLElement) {
          ride may still be hourly on a Sunday. It is also the only view that
          counts the T and the inclines, which are unchanged by the Refresh but
          are how much of the South Hills reaches Downtown.</p>
+      <p><b>Travel time</b> is the only view here with a clock on it: how many
+         minutes the trip from a point to Downtown, Oakland or a point you pick
+         actually takes, on each network, with the wait for the bus counted in.
+         It is timed from every minute of the morning peak rather than from one
+         chosen departure, and it is schedule against schedule — the proposed
+         network has no observed running times and never will.</p>
       <p>Click anywhere on the map for the full before-and-after.</p>
       <p class="muted">Both networks are measured inside the same circle, so
          renumbered routes and consolidated stops don't distort the comparison.

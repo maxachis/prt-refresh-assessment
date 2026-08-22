@@ -6,7 +6,9 @@ both sides, by the same code. A third view drops the walk radius and colours the
 street network itself, by whether any bus still runs on each block. A fourth
 asks a different kind of question entirely: from every place at once, can a
 rider still reach Downtown, Oakland or a point you pick **without
-transferring**?
+transferring**? A fifth puts a clock on it: from a point you click to a
+destination you choose, **how many minutes does the trip take** on each
+network, waiting for the bus included?
 
 It exists because the comment period generates one question far more than any
 other, and it is not a question the answer documents can hold: **not** "what
@@ -103,8 +105,8 @@ those tables — one per (network, day type, transfer walk), cached, ~0.3 s each
 published window, on both networks and at both transfer radii. It is the only
 slow endpoint on the site and the only one with nothing precomputed: a few
 tenths of a second for a well-served pair, a few seconds for a badly served
-one, because both ends are points the reader chose. **No view reads it yet** —
-the two-pin UI is the remaining piece; see *Known gaps*.
+one, because both ends are points the reader chose. The **Travel time** view
+reads it; see [The travel-time view](#the-travel-time-view).
 
 ## The rules the query layer must honour
 
@@ -400,6 +402,66 @@ measuring them live would put ~270 spatial queries in front of every click.
 At 150 m: Downtown 1,188 lose and 205 gain; Oakland 528 lose and 326 gain.
 Counts are locations, not people — the same caveat the change layer carries.
 
+## The travel-time view
+
+The fifth view, and the only one on the site with a clock. A reader picks a
+destination — Downtown, Oakland, or a point of their own — clicks a starting
+point, and gets the trip timed on both networks: the median across every minute
+they could be ready inside the published weekday 07:00–09:00 window, with the
+wait for the bus counted in.
+
+It is the only view that **answers on the click rather than from a layer loaded
+in advance**, because both of its ends belong to the reader and there is
+nothing to precompute. That costs a few tenths of a second for a well-served
+pair and a few seconds for a badly served one, so the panel says what it is
+doing rather than dimming and going quiet — and the prompt that stands before
+the first click says the same thing, so the wait is expected rather than read
+as a hang.
+
+**"To Downtown" here is the published question, not a second definition of
+Downtown.** The one-seat view measures against every stop of the district — 44
+of them for Downtown, 93 for Oakland — but a journey has to arrive somewhere,
+so this view uses the centre of that same seed cloud, which is the identical
+point `analyze_travel_time.py` searches to. That is also why the destination
+gets a marker here and not in the one-seat view: here the marker is where the
+trip actually ends.
+
+What the panel shows, and why each part is there rather than a single number:
+
+- **Both medians and the change**, in the panel's existing blue and orange.
+  Slower is red and faster is green, the same way the trip counts are coloured,
+  so gains read as loudly as losses.
+- **The spread**: the fastest and slowest minute of the window, the typical
+  wait, the number of bus changes, and the share of minutes the trip can be
+  made at all. The answer is a profile, not a departure (convention 14), and a
+  median with no spread under it is quotable and misleading in the same breath.
+- **One real trip, leg by leg** — the one that takes the median time, not a
+  composite — with the **waits between legs spelled out**. The wait is most of
+  what a headway change does to a rider, and leaving it implicit in a gap
+  between two clock times would drop the point of the view.
+- **The strict transfer radius beside the headline one**, and where the two
+  disagree about *which network is faster*, a framed warning above the number.
+  The connections are invented — neither feed publishes them — and for a pair
+  close to the line the invention decides the direction, so for that pair the
+  disagreement is the finding and neither median may be quoted alone
+  (`docs/worklog/transfer-radius-favours-one-network.md`).
+- **The constants that invented those transfers**, in the note under it, with
+  schedule-against-schedule said in the same breath.
+
+The map draws both trips: today's in blue, the proposed one thinner in orange
+so that where they share a street both stay visible. Walks are dashed, because
+a walk is a straight line between two points while a ride is a real sequence of
+stops — and every leg is drawn stop to stop rather than along the road the bus
+takes, which the legend says. The first and last walks are anchored at the pins
+rather than at the first and last stop, since the clock is already counting
+them.
+
+The walk-radius control is disabled here, like it is for the street view. A
+journey's walking is the router's own (`journey.CONSTANTS`), not a control, and
+leaving the buttons live would let them mean nothing silently. The day control
+does apply: the published answer is the weekday peak, but a Saturday or Sunday
+trip is a fair question and re-times the answer on screen.
+
 ## API
 
 | Endpoint | Returns |
@@ -514,16 +576,18 @@ or heartbeat to maintain. See [`deploy/README.md`](../deploy/README.md).
   coloured by who lives there, and per convention 12 a block group is
   covered or not at a single point, so a map of it would overstate its own
   precision. `/findings` is the answer for now.
-- **The journey view has no UI, though the answer is served.**
-  `GET /api/journey` returns both networks at both transfer radii for two
-  dropped pins, pinned against `data/trip_time_origins.csv`. What is missing
-  is the front end: two pins rather than one, a loading state (this is the
-  only endpoint that takes seconds), a way to show a distribution rather than
-  a single number, and the caveat surface the measure needs — a profile rather
-  than a departure, schedule against schedule, and the transfer radius that
-  can flip a pair's sign
-  (`docs/worklog/transfer-radius-favours-one-network.md`). The caveat text
-  itself already ships in `/api/meta` as `travel-time`.
+- **The travel-time view is fixed to the morning peak.** The window is the
+  published one — weekday 07:00–09:00 — and there is no control for it, so a
+  reader cannot ask what the same trip looks like at 8pm, which is where this
+  plan's evening headway changes live. The day type is switchable; the window
+  is not. Widening it is a query parameter and a control, not new analysis,
+  but every number then stops being the published one, which is why it has not
+  been added on a whim.
+- **A drawn trip is stop to stop, not along the road.** Neither feed's shapes
+  are carried into the journey tables, so a leg is a straight line between two
+  stops. It is honest at a glance and wrong in detail — a river crossing can
+  read as though a bus swam it. The legend says so; carrying `shapes.txt`
+  would fix it at real size in the database.
 - Stop-name and neighbourhood search is not built (the DB has FTS5 available).
 - `nearest_place_label` uses PRT's `HOOD`/`MUNI` labels, which contain errors up
   to 40 km (caveat 4). It is a display hint; nothing computed depends on it.

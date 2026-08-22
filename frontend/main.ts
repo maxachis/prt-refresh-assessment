@@ -1,4 +1,4 @@
-import { $, fetchJSON } from './utils';
+import { $, fetchJSON, esc } from './utils';
 import { initMapLayers, showPlace } from './mapview';
 import { render, renderEmpty, setDay, activeDay } from './place';
 import {
@@ -19,7 +19,12 @@ import {
   layerData as oneSeatData, isVisible as oneSeatOn,
   dotLabel as oneSeatDotLabel, HERE_COLOR, Destination,
 } from './oneseat';
-import { PlaceResult, Day } from './types';
+import {
+  initJourneyLayer, setJourneyVisible, drawJourney, journeyUrl,
+  journeyPanelHTML, journeyPromptHTML, journeyKeyHTML,
+  isVisible as journeyOn, journeyData, Point,
+} from './journey';
+import { PlaceResult, Day, JourneyResult, NamedDestination } from './types';
 
 const PGH: [number, number] = [-79.9959, 40.4406];
 
@@ -39,6 +44,19 @@ let destMarker: maplibregl.Marker | null = null;
 // destination instead of answering "what changes here?".
 let pinMode = false;
 
+// Which view is on screen. Two of them — one-seat and travel time — take a
+// destination, and one of those two answers on a click rather than on a load,
+// so the click handler and the day control both have to know which is active.
+let view = 'dots';
+
+// The named destinations' centres, fetched once. The one-seat view measures to
+// a district — 44 stops for Downtown, 93 for Oakland — but a journey has to
+// have somewhere to arrive, so the travel-time view uses the centre of that
+// same seed cloud. That is the identical point `analyze_travel_time.py`
+// searches to, so "to Downtown" here is the published question rather than a
+// second definition of Downtown.
+let named: NamedDestination[] = [];
+
 const map = new maplibregl.Map({
   container: 'map',
   style: 'https://tiles.openfreemap.org/styles/positron',
@@ -53,6 +71,7 @@ map.on('load', () => {
   initSurfaceLayer(map, 'change-dots');   // under the dots, so 'Both' reads
   initCorridorLayer(map, 'change-dots');  // same slot; corridors and dots/surface are mutually exclusive
   initOneSeatLayer(map, 'walk-fill');     // the dots' own slot; the two never show together
+  initJourneyLayer(map);                  // on top: two drawn trips, over everything
   renderEmpty($('panel'));
 
   map.on('click', (e: any) => {
@@ -68,6 +87,13 @@ map.on('load', () => {
       map.getLayoutProperty(l, 'visibility') !== 'none');
     const hit = map.queryRenderedFeatures(e.point, { layers })[0];
     const c = hit ? (hit.geometry as any).coordinates : [e.lngLat.lng, e.lngLat.lat];
+    // The travel-time view answers on the click itself rather than from a
+    // preloaded layer: both ends are the reader's, so there is nothing to
+    // precompute and the panel is the whole answer.
+    if (view === 'journey') {
+      void loadJourney(c[1], c[0]);
+      return;
+    }
     void load(c[1], c[0]);
   });
 
@@ -121,6 +147,10 @@ map.on('load', () => {
     setDay(day);
     setChangeDay(map, day);
     setSurfaceDay(map, day);
+    // A journey has a day type of its own — a Sunday trip is a fair question
+    // to ask, and the published one is the weekday peak — so the answer on
+    // screen is re-timed rather than left showing yesterday's day type.
+    if (view === 'journey' && last) void loadJourney(last.lat, last.lon);
     if (corridorData()) void setCorridorDay(map, day).then(refreshLegend);
     refreshLegend();
   });
@@ -130,18 +160,25 @@ map.on('load', () => {
   // cells against ~5,900 dots and the corridors are ~200 KB per day type, and
   // a reader who never switches views should not pay for either.
   segment('[data-view]', (b) => {
-    const view = b.dataset.view!;
+    const previous = view;
+    view = b.dataset.view!;
     map.setLayoutProperty('change-dots', 'visibility',
       view === 'dots' || view === 'both' ? 'visible' : 'none');
     void showSurface(view === 'surface' || view === 'both');
     void showCorridors(view === 'corridors');
     void showOneSeat(view === 'oneseat');
-    setRadiusEnabled(view !== 'corridors');
-    // The destination picker only means anything in the one-seat view, and a
-    // mode left armed behind a hidden control is a click the reader cannot
-    // account for.
-    $('dest-controls').classList.toggle('hidden', view !== 'oneseat');
-    if (view !== 'oneseat') setPinMode(false);
+    showJourney(view === 'journey', previous === 'journey');
+    // Neither the street view nor the travel-time view has a walk radius: a
+    // corridor is a piece of street, and a journey's walk is the router's own
+    // (`journey.CONSTANTS`), not a control. Disabled rather than left
+    // clickable and silently ignored.
+    setRadiusEnabled(view !== 'corridors' && view !== 'journey');
+    // The destination picker means something in two views, and a mode left
+    // armed behind a hidden control is a click the reader cannot account for.
+    const picksDestination = view === 'oneseat' || view === 'journey';
+    $('dest-controls').classList.toggle('hidden', !picksDestination);
+    if (!picksDestination) setPinMode(false);
+    showDestinationMarker();
   });
 
   // Where the one-seat view is measuring TO. Downtown and Oakland are the two
@@ -171,6 +208,7 @@ map.on('load', () => {
 
   void loadChangeLayer(map, radius, activeDay()).then(refreshLegend);
   void loadMeta();
+  void loadDestinations();
 });
 
 /** Wire one segmented control: mark the clicked button active, then act. */
@@ -191,7 +229,12 @@ function refreshLegend() {
   // "Show all" clears the change legend's bucket filter; neither the corridor
   // legend nor the one-seat legend has one, so the button is hidden rather
   // than left clickable and silently inert.
-  $('legend-reset').classList.toggle('hidden', corridorOn() || oneSeatOn());
+  $('legend-reset').classList.toggle('hidden',
+    corridorOn() || oneSeatOn() || journeyOn());
+  if (journeyOn()) {
+    $('legend').innerHTML = journeyKeyHTML(journeyData());
+    return;
+  }
   if (corridorOn()) {
     const c = corridorData();
     if (c) renderCorridorLegend($('legend'), c);
@@ -255,6 +298,77 @@ function setRadiusEnabled(on: boolean) {
   });
 }
 
+/**
+ * Turn the travel-time view on or off.
+ *
+ * Nothing is fetched here, unlike every other view: both ends of a journey are
+ * the reader's, so there is nothing to precompute and nothing to load until
+ * they click. What the panel shows in the meantime is the prompt, which is
+ * also where the "this takes a moment" warning lives.
+ */
+function showJourney(on: boolean, leaving = false) {
+  setJourneyVisible(map, on);
+  refreshLegend();
+  if (!on) {
+    // The panel belongs to the view that filled it. Leaving a timed trip on
+    // screen under the Locations map would leave two different questions
+    // answered side by side, with only the heading to say which is which.
+    if (leaving) {
+      if (last) void load(last.lat, last.lon);
+      else renderEmpty($('panel'));
+    }
+    return;
+  }
+  if (journeyData() && last) {
+    $('panel').innerHTML = journeyPanelHTML(journeyData()!, destinationName());
+  } else {
+    $('panel').innerHTML = journeyPromptHTML(destinationName());
+  }
+}
+
+/**
+ * Time one trip, from the clicked point to the chosen destination.
+ *
+ * This is the only request in the app measured in seconds rather than
+ * milliseconds — two networks routed from scratch at two transfer radii, with
+ * no cache possible — so the panel says what it is doing rather than dimming
+ * and going quiet for three seconds.
+ */
+async function loadJourney(lat: number, lon: number) {
+  const mine = ++seq;
+  last = { lat, lon };
+  placeMarker(lat, lon);
+
+  const to = destinationPoint();
+  const name = esc(destinationName());
+  if (!to) {
+    // The named destinations' centres have not arrived yet, and a click that
+    // does nothing at all reads as a broken map.
+    $('panel').innerHTML = `<div class="empty"><h2>No destination yet</h2>
+      <p class="muted">Still fetching where ${name} is. Try again in a
+         moment, or pick a point on the map instead.</p></div>`;
+    return;
+  }
+  $('panel').innerHTML = `<div class="empty"><h2>Timing the trip…</h2>
+    <p class="muted">Routing both networks from this point to
+       ${name}, at two transfer distances. A few seconds.</p></div>`;
+
+  try {
+    const r = await fetchJSON<JourneyResult>(
+      journeyUrl({ lat, lon }, to, activeDay()));
+    if (mine !== seq) return;          // a newer click already won
+    drawJourney(map, r);
+    $('panel').innerHTML = journeyPanelHTML(r, name);
+    refreshLegend();
+  } catch (err) {
+    if (mine !== seq) return;
+    drawJourney(map, null);
+    $('panel').innerHTML =
+      `<div class="empty"><h2>No answer for that point</h2>
+       <p class="muted">${(err as Error).message}</p></div>`;
+  }
+}
+
 /** Turn the one-seat layer on or off, loading it the first time it is asked for. */
 async function showOneSeat(on: boolean) {
   if (on && !oneSeatData()) {
@@ -280,27 +394,66 @@ async function withLoadingLegend<T>(work: () => Promise<T>) {
 }
 
 /**
- * Point the one-seat view at a destination, named or dropped.
+ * Point the destination-taking views at somewhere, named or dropped.
  *
- * A pin gets a marker in the one-seat palette's neutral, so the reader can see
- * what the map is measuring to. A named district deliberately gets none: it is
- * 44 or 93 stops spread over a neighbourhood, and a single marker would invite
- * the map to be read as though the district were that point.
+ * Both the one-seat view and the travel-time view answer "to where?", and they
+ * mean subtly different things by the same word: one-seat measures against
+ * every stop of a district, a journey arrives at a single point. That is why
+ * the marker is decided per view below rather than per destination here.
  */
 function setDestination(next: Destination) {
   dest = next;
   setPinMode(false);
-  if ('lat' in next) {
-    if (!destMarker) {
-      destMarker = new maplibregl.Marker({ color: HERE_COLOR })
-        .setLngLat([next.lon, next.lat]).addTo(map);
-    } else {
-      destMarker.setLngLat([next.lon, next.lat]).addTo(map);
-    }
-  } else if (destMarker) {
-    destMarker.remove();
+  showDestinationMarker();
+  if (view === 'journey') {
+    if (last) void loadJourney(last.lat, last.lon);
+    refreshLegend();
+    return;
   }
   void reloadOneSeat();
+}
+
+/**
+ * Show or hide the destination marker for the view on screen.
+ *
+ * A dropped pin always gets one — it is the only way to see what the map is
+ * measuring to. A NAMED destination gets one in the travel-time view and not
+ * in the one-seat view, because the two measure to different things: a journey
+ * arrives at the centre of the district and the marker is where it arrives,
+ * while the one-seat test is run against all 44 or 93 of Downtown's stops and
+ * a single marker would invite the map to be read as though the district were
+ * that one point.
+ */
+function showDestinationMarker() {
+  const point = destinationPoint();
+  const wanted = point !== null
+    && (view === 'journey' || (view === 'oneseat' && 'lat' in dest));
+  if (!wanted) {
+    destMarker?.remove();
+    destMarker = null;
+    return;
+  }
+  if (!destMarker) {
+    destMarker = new maplibregl.Marker({ color: HERE_COLOR })
+      .setLngLat([point!.lon, point!.lat]).addTo(map);
+  } else {
+    destMarker.setLngLat([point!.lon, point!.lat]).addTo(map);
+  }
+}
+
+/** Where the journey is timed TO: the dropped pin, or the district's centre. */
+function destinationPoint(): Point | null {
+  if ('lat' in dest) return { lat: dest.lat, lon: dest.lon };
+  const key = dest.key;
+  const match = named.find((d) => d.key === key);
+  return match ? { lat: match.lat, lon: match.lon } : null;
+}
+
+/** What to call it in a sentence. */
+function destinationName(): string {
+  if ('lat' in dest) return `${dest.lat.toFixed(4)}, ${dest.lon.toFixed(4)}`;
+  const key = dest.key;
+  return named.find((d) => d.key === key)?.name ?? key;
 }
 
 /** Arm or disarm "the next map click sets the destination". */
@@ -318,11 +471,7 @@ async function load(lat: number, lon: number) {
   last = { lat, lon };
   $('panel').classList.add('loading');
 
-  if (!marker) {
-    marker = new maplibregl.Marker({ color: '#e2574c' }).setLngLat([lon, lat]).addTo(map);
-  } else {
-    marker.setLngLat([lon, lat]);
-  }
+  placeMarker(lat, lon);
 
   try {
     // Carry the dropped pin, if there is one, so the panel answers for the
@@ -341,6 +490,30 @@ async function load(lat: number, lon: number) {
        <p class="muted">${(err as Error).message}</p></div>`;
   } finally {
     if (mine === seq) $('panel').classList.remove('loading');
+  }
+}
+
+/** The red pin: where the reader is asking from, on every view that asks. */
+function placeMarker(lat: number, lon: number) {
+  if (!marker) {
+    marker = new maplibregl.Marker({ color: '#e2574c' }).setLngLat([lon, lat]).addTo(map);
+  } else {
+    marker.setLngLat([lon, lat]);
+  }
+}
+
+/**
+ * The named destinations' centres.
+ *
+ * Only the travel-time view needs them — the one-seat layer sends a key and
+ * the server resolves the whole seed cloud — so a failure here leaves every
+ * other view working and is not worth interrupting the map for.
+ */
+async function loadDestinations() {
+  try {
+    named = await fetchJSON<NamedDestination[]>('/api/destinations');
+  } catch {
+    /* the travel-time view falls back to a dropped pin */
   }
 }
 

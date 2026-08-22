@@ -20,6 +20,7 @@ pass — a reader who stops halfway down must not be misinformed.
 
 | Entry | Status |
 |---|---|
-| [Origin-to-destination travel time, before and after](origin-destination-travel-time.md) | open, in progress |
+| [Origin-to-destination travel time, before and after](origin-destination-travel-time.md) | built, awaiting close — BASE_CAMP question owed |
 | [The synthesised transfer radius is not neutral between the two networks](transfer-radius-favours-one-network.md) | open, decision owed |
 | [A township is not a point, and the travel-time layer treats it as one](one-point-cannot-represent-a-township.md) | open, decision owed |
+| [A T station reads as a bare number in a drawn itinerary](rail-stops-have-no-name-in-a-journey.md) | open, not fixed |

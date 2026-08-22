@@ -3,9 +3,10 @@
 **Observed:** riders want the one question the site cannot answer — "I go from
 here to there; how does *my trip* change?" — and both feeds carry complete
 scheduled times at every stop, so it is computable rather than estimable.
-**Where it stands:** open, in progress since 2026-08-22. Max decided to build
-it ahead of the BASE_CAMP question rather than behind it, and to compute a
-departure-time profile rather than a single chosen departure.
+**Where it stands:** built as of 2026-08-22 — router, published pipeline
+output, serving tables, API and the Travel time view — and awaiting close. One
+thing is still owed and it is the one Max chose to defer: the BASE_CAMP
+question ID this layer answers to.
 
 ## What is being asked for
 
@@ -177,9 +178,34 @@ be tested against.
 
 ## Resolution
 
-Open, in progress. Build order: the round-based router as a standard-library
-module beside `gtfs.py`, tested against a hand-built toy timetable; then the
-pipeline script that publishes journeys over a fixed sample of origin–
-destination pairs, so the served answer has a file to be pinned against before
-the app can serve it; then the pattern/trip tables in `build_webdb.py`; then
-the served query, its API, and the two-pin UI.
+Built, awaiting close. The planned build order was followed end to end:
+
+1. The round-based router as a standard-library module, tested against a
+   hand-built toy timetable — now `src/refresh/journey.py`, in the installed
+   package rather than at the repo root, because the app routes journeys too
+   and a deployed app cannot import a loose file from the working directory.
+2. `analyze_travel_time.py`, publishing `data/trip_time_change.csv` and the
+   per-block-group evidence in `data/trip_time_origins.csv`, so the served
+   answer had a file to be pinned against before it existed.
+3. The `journey_*` tables in `build_webdb.py`, a second reading of both feeds
+   kept separate from every service table (convention 13).
+4. `query.journey_between` and `GET /api/journey`, answering two points on
+   both networks at both transfer radii, pinned to the published per-origin
+   medians in `tests/test_journey_query.py`.
+5. The **Travel time** view: destination picker, click for an origin, both
+   trips drawn, the profile and its spread in the panel, the strict radius
+   beside the headline one with a framed warning where they disagree about
+   which network is faster, and the invented-transfer constants under it.
+   `docs/WEBAPP.md` describes it; `frontend/journey.test.ts` covers it.
+
+Convention 14 in `CLAUDE.md` is written, in the shape this entry asked for.
+What is **not** done is the BASE_CAMP question ID — the thing Max deferred
+rather than dropped when choosing to build first. Until it exists this is the
+only layer on the site that traces to nothing in the ground-truth document,
+and it is the most quotable one.
+
+Two items found while building it are filed separately rather than here:
+[the transfer radius](transfer-radius-favours-one-network.md) and
+[a township is not a point](one-point-cannot-represent-a-township.md). A third,
+[rail stops having no name](rail-stops-have-no-name-in-a-journey.md), came out
+of the view itself.

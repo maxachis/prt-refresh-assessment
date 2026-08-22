@@ -167,3 +167,93 @@ export interface CorridorLayer {
   km: Record<CorridorKlass, number>;
   runs: CorridorRun[];
 }
+
+/**
+ * How long the trip actually takes — the only measure on this site with a
+ * clock, and the only one whose answer is a distribution rather than a number.
+ *
+ * `median_min` is the median over every minute a rider could be ready inside
+ * the window, waiting included; `reachable_fraction` is the share of those
+ * minutes the trip can be made at all, and it is the denominator that number
+ * needs. Every pair comes back at both transfer radii, because the transfers
+ * are synthesised and the choice is not neutral between the two networks
+ * (convention 14).
+ */
+export interface JourneyStopEnd {
+  stop_id: string;
+  /** Null for rail: `stops` is the bus-only service table, on purpose. */
+  name: string | null;
+  lat: number;
+  lon: number;
+}
+
+export type LegKind = 'walk' | 'ride';
+
+export interface JourneyLeg {
+  kind: LegKind;
+  route: string | null;
+  /** Null at the origin end of the first walk and the far end of the last. */
+  from: JourneyStopEnd | null;
+  to: JourneyStopEnd | null;
+  depart: number;
+  arrive: number;
+}
+
+export interface Itinerary {
+  ready_at: number;
+  arrive: number;
+  total_min: number;
+  ride_min: number;
+  walk_min: number;
+  wait_min: number;
+  transfers: number;
+  legs: JourneyLeg[];
+}
+
+export interface JourneySide {
+  median_min: number | null;
+  best_min: number | null;
+  worst_min: number | null;
+  reachable_fraction: number;
+  median_transfers: number | null;
+  median_wait_min: number | null;
+  origin_access_stops: number;
+  dest_access_stops: number;
+  /** The trip that takes the median time — a real one, not a composite. */
+  itinerary: Itinerary | null;
+}
+
+/** Why a pair has no comparable time. Only the first is about time at all. */
+export type JourneyClass =
+  'comparable' | 'no_origin_coverage' | 'no_dest_coverage' | 'no_journey';
+
+export interface JourneyAtRadius {
+  transfer_walk_m: number;
+  classification: JourneyClass;
+  /** Positive where the plan makes the trip longer. */
+  change_min: number | null;
+  current: JourneySide;
+  proposed: JourneySide;
+}
+
+export type TransferRadiusKey = 'headline' | 'strict';
+
+export interface JourneyResult {
+  origin: { lat: number; lon: number };
+  destination: { lat: number; lon: number };
+  day: Day;
+  window: { start_min: number; end_min: number; minutes: number };
+  radii: Record<TransferRadiusKey, JourneyAtRadius>;
+  /** True where the two radii disagree about which network is faster. */
+  sign_flips: boolean | null;
+  constants: Record<string, number>;
+}
+
+/** One named destination's centre, from /api/destinations. */
+export interface NamedDestination {
+  key: string;
+  name: string;
+  seeds: number;
+  lat: number;
+  lon: number;
+}
