@@ -69,8 +69,9 @@ box, which is fine too — nothing here is latency-sensitive.
 
 The script creates the server, runs `cloud-init.yaml` for base prep, then over
 SSH: clones the repo, checks out the commit, `uv sync --extra web`, runs
-`build_webdb.py` on the box (several minutes — it now indexes both feeds'
-full timetables so the app can time a journey), installs the unit and restarts
+`build_webdb.py` on the box (several minutes — it indexes both feeds' full
+timetables so the app can time a journey, and packs in the Allegheny County
+pedestrian network every walk is measured on), installs the unit and restarts
 it.
 
 **It deploys a pushed commit, not your working tree.** The repo is public, so
@@ -135,14 +136,19 @@ answers.
 
 ## Sizing
 
-The database is ~49 MB — two thirds of it the timetable index behind the
-travel-time view, plus the paths its rides are drawn along — and is read from disk with SQLite's own caching; the process
-sits well under a couple of hundred MB. The build is the memory peak, not the
-serving, and it topped out around 200 MB on a workstation. The largest single
+The database is ~116 MB. Roughly a third of it is the timetable index behind
+the travel-time view plus the paths its rides are drawn along, and another
+~67 MB is the pedestrian network every walk is measured on — a million
+OpenStreetMap nodes as packed arrays, which the app loads into memory the
+first time it routes a walk and then keeps. Everything else is read from disk
+with SQLite's own caching. The build is the memory peak, not the serving:
+parsing the 116 MB OpenStreetMap extract costs about 640 MB on its own, which
+is comfortable on a 2 GB box but is now the number that sizes it. The largest single
 response is the 100 m magnitude surface at ~1.3 MB, which the app gzips to
 198 KB before
-Caddy ever sees it. A 2 GB box is not close to being the constraint; a 1 GB one
-would do if you wanted to shave the bill.
+Caddy ever sees it. A 2 GB box is no longer far from the constraint, and that is the
+walk network's doing rather than the serving load — a 1 GB box would now
+fail during the build, not during a request.
 
 ## Before you point people at it
 

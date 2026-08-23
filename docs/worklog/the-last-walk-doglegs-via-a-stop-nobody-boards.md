@@ -4,9 +4,12 @@
 foot to a bus stop 389 m away and then walks another 274 m from it — 663 m of
 walking, and a visible bend on the map, to reach somewhere they could have
 walked to directly.
-**Where it stands:** open, decision owed by Max. It inflates both networks by
-about the same minute, so the published *change* figures are near-unaffected;
-the drawn itinerary and the absolute times are not.
+**Where it stands:** open, decision owed by Max, and **larger than it was**.
+Since walks are routed on a pedestrian network rather than assumed straight
+([[walks-are-drawn-and-timed-in-straight-lines]]), the dogleg is no longer
+worth about a minute — the detour and the direct walk are now both measured
+over real ground, and where the direct walk is the shorter one the gap is
+whatever the street layout makes it.
 
 ## What is happening
 
@@ -33,8 +36,15 @@ Bedford stop -> dest    274 m
 modelled total          663 m   8.3 min
 ```
 
+> Those four distances are the straight-line ones the router used at the time.
+> Every one of them is now measured on the pedestrian network instead, and the
+> alight-to-destination leg in particular is 2,332 m on foot rather than 568 m
+> — the bluff between the Strip District and the Hill is only crossable via
+> Bigelow Boulevard. The *shape* of the defect is unchanged; the arithmetic
+> above is superseded and should not be quoted.
+
 Both networks do it here, via near-identical Bedford Avenue stops, so the
-1.2 minutes lands on both sides of the comparison.
+penalty lands on both sides of the comparison.
 
 ## Why it matters, and why it might not
 
@@ -48,8 +58,9 @@ both sides largely cancels. What does not cancel:
   middle of blocks; it is a different defect from
   [[walks-are-drawn-and-timed-in-straight-lines]] and shows up in the same
   picture.
-- **The absolute medians.** "23.3 minutes today" is quotable on its own and is
-  over-stated by roughly a minute wherever the alighting stop is 400–800 m out.
+- **The absolute medians.** A published median is quotable on its own, and is
+  over-stated wherever the alighting stop is beyond the destination's own
+  access radius but still a reasonable walk from it.
 - **The symmetry is not guaranteed.** It cancels when both networks alight at
   a similar distance. Where the Refresh moves a stop from just inside 400 m to
   just outside it, one side takes the dogleg and the other does not, and the

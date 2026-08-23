@@ -4,10 +4,13 @@
 stop coordinates — and because the Refresh asks riders to transfer more than
 today's network does, any value chosen for the transfer walk tilts the
 before-and-after comparison in a direction that is not visible in the output.
-**Where it stands:** open, decision owed by Max — but the sensitivity run now
-exists and reports the flip count, so the headline is quotable while the
-constant itself is still a chosen number rather than a sourced one: 1 material
-flip of 343 comparable pairs.
+**Where it stands:** open, decision owed by Max, and the ground under it moved
+on 2026-08-22: the radius is no longer a radius. Walks are now routed on a
+pedestrian network ([[walks-are-drawn-and-timed-in-straight-lines]]), so
+`MAX_TRANSFER_WALK_M` is a *walking* distance, which deletes about a third of
+the connections it used to admit. The flip count that made the headline
+quotable has been re-measured under the routed method and **survives**: 1
+material flip of 337 comparable pairs, against 1 of 343 before.
 
 ## What is being decided
 
@@ -86,19 +89,41 @@ at all.
 *All three are agent judgements, not Max's decisions; a later session with
 better information should feel free to overturn them.*
 
+## What the pedestrian network changed here
+
+The machinery survives; the numbers do not, and one part of the argument above
+got sharper.
+
+The sensitivity run still exists, `/api/journey` still carries both radii per
+request, and `sign_flips` is still set where they disagree. What changed is
+what a radius *means*. Since walks are routed rather than assumed,
+`MAX_TRANSFER_WALK_M` is a distance along the ground: 48,320 of 70,430
+candidate links on the current feed survive as a 400 m walk, so roughly a
+third of the connections this entry worried about being too generous were
+never makeable in the first place. That is a partial answer to the entry's own
+question — some of the "invented connections nobody would make" have now been
+identified and removed on evidence rather than by choosing a smaller constant.
+
+It does not settle the entry, for two reasons. The remaining constant is still
+untuned, and the asymmetry argument is unchanged: the Refresh leans on
+transfers more, so deleting connections still hurts it more than it hurts
+today's network. If anything the stake is higher, because the deletion is
+large.
+
 ## Resolution
 
-Open. The sensitivity run landed with `analyze_travel_time.py`, which searches
-every pair at both 400 m and 150 m and prints the flip count: **1 material flip
-(a change of ≥ 2.0 min on the smaller side) out of 343 comparable pairs**, plus
-11 rounding-scale flips under that threshold. By this entry's own test — "if
-that count is near zero the headline is safe; if it is large the headline is
-the flip count" — the published medians may be quoted, with the transfer walk
-stated alongside them. `/api/journey` carries the same run per request: both
-radii, and `sign_flips` set where they disagree, so a pin that lands on the
-unlucky pair says so on screen rather than in a caveat nobody reads.
+Open. The flip count under the routed method is **1 material flip (≥ 2.0 min
+on the smaller side) out of 337 comparable pairs**, plus 9 noise-level flips
+below that threshold — Hazelwood → Oakland, headline +2.2 min against strict
+−2.0 min. By this entry's own test the published medians may still be quoted
+with the transfer walk stated alongside them.
+
+That the count barely moved while roughly a third of the candidate links
+disappeared is itself worth noting: the connections the routing deleted were
+mostly ones neither network's best itinerary depended on.
 
 What is still owed is the constant, not the number: 400 m remains an untuned
-judgement. The open question is whether to ask PPT to relay it to PRT — the
-plan's service standards may state a transfer walking assumption, which would
-make this sourced rather than chosen and settle the entry outright.
+judgement, now of a walking distance rather than a radius. The open question
+is whether to ask PPT to relay it to PRT — the plan's service standards may
+state a transfer walking assumption, which would make this sourced rather than
+chosen and settle the entry outright.

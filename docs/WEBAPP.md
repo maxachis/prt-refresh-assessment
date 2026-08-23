@@ -460,10 +460,15 @@ The map draws both trips: today's in blue, the proposed one thinner in orange
 so that where they share a street both stay visible. A **ride follows the
 street its bus drives** — the path comes from the pattern's own `shapes.txt`
 entry, sliced between the two stops the leg rides (`journey_shape`, built by
-`build_webdb.py`). Walks stay dashed and straight, because a walk really is a
-straight line between two points, and that contrast is now what the dashes
-mean. The first and last walks are anchored at the pins rather than at the
-first and last stop, since the clock is already counting them.
+`build_webdb.py`). A **walk now follows the pedestrian network** too — the
+sidewalks, alleys and public stairways `refresh.walking.WalkNetwork` routes
+on — searched over exactly the distance the clock already charged that leg,
+so the line drawn can never be shorter than the trip billed. Walks stay
+dashed and thinner, which is what still tells the two kinds apart now that
+neither is a straight line. A walk the network cannot route within its
+charged distance falls back to the straight line every walk used to draw.
+The first and last walks are anchored at the pins rather than at the first
+and last stop, since the clock is already counting them.
 
 The drawn path is **for drawing only**. It is thinned to five metres between
 stops, and two things happen at each stop that a reader would otherwise see as
@@ -596,14 +601,14 @@ or heartbeat to maintain. See [`deploy/README.md`](../deploy/README.md).
   most of it in those two questions rather than in the drawing.
   *Max chose the magnitude surface first and asked for this to be held as an
   alternative to explore later; it is not abandoned.*
-- **A walk is drawn — and timed — as a straight line**, so a walk out of the
-  Strip District into the Hill District crosses a river valley, Bigelow
-  Boulevard and the busway on a diagonal nobody can take, and the clock charges
-  that distance. There is no pedestrian network in this repo to route on.
-  Related and visible in the same itinerary: the last walk can dogleg via a bus
-  stop the rider never boards, because only a stop inside the destination's own
-  400 m radius may be the final alighting point. Both are decisions owed —
-  `docs/worklog/walks-are-drawn-and-timed-in-straight-lines.md` and
+- **A walk used to be drawn and timed as a straight line**; that gap is
+  closed. `refresh.walking.WalkNetwork`, fetched from OpenStreetMap by
+  `ingest_osm_walk.py`, now routes and charges every walk on the ground a
+  rider actually crosses — sidewalks, alleys and Pittsburgh's public
+  stairways — rather than through the blocks, rivers and hillsides between
+  its ends. Still open: the last walk can dogleg via a bus stop the rider
+  never boards, because only a stop inside the destination's own 400 m
+  radius may be the final alighting point —
   `docs/worklog/the-last-walk-doglegs-via-a-stop-nobody-boards.md`.
 - The 10 on-demand microtransit zones are still undrawn — see item 2 under
   *Before it goes public*. This matters more now the surface exists: 23% of the

@@ -181,13 +181,50 @@ def test_a_transfer_walk_beyond_the_published_maximum_is_not_a_transfer():
                                     ready_at=hm(8) - 5) is None
 
 
+# Route 10 lands at X at 8:10; route 11 lands at Y at 8:30. X is a 200 m walk
+# from Y, and Y a 250 m walk from Z -- but X to Z is 450 m, beyond the transfer
+# walk, so Z is only reachable from X by walking twice.
+CHAIN_COORDS = {"A": at(0, 0), "X": at(1000, 0), "Y": at(1000, 200),
+                "Z": at(1000, 450), "D": at(2000, 450)}
+
+
+def _walk_chain():
+    return toy([("10", ("A", "X"), [(hm(8), (0, 10))]),
+                ("11", ("A", "Y"), [(hm(8), (0, 30))]),
+                ("30", ("Z", "D"), [(hm(8, 20), (0, 10)),
+                                    (hm(8, 45), (0, 10))])],
+               CHAIN_COORDS)
+
+
+def test_a_transfer_walk_is_priced_from_when_the_bus_dropped_the_rider():
+    """A walk out of a stop starts when a bus put the rider down there, not
+    when an earlier walk did -- otherwise walks chain, and the answer moves
+    between runs.
+
+    Riding to X at 8:10 and walking to Y beats riding to Y at 8:30, so Y's
+    best arrival improves part-way through the round. If Y's own transfer
+    walk then left from that improved time, the rider would reach Z at 8:15
+    by walking twice and catch the 8:20, which a real rider would miss --
+    and it only happened when Y was itself newly ridden this round AND was
+    visited after X, so this pair moved by two minutes between hash seeds.
+    Boarding at Y at the improved time is still allowed; walking on from it
+    is not, because two hops of MAX_TRANSFER_WALK_M is not a transfer walk.
+    """
+    j = journey.earliest_arrival(_walk_chain(), at(0, 0), at(2000, 450),
+                                 ready_at=hm(7, 55))
+    assert j is not None
+    assert j.arrive == hm(8, 55), "the rider caught a bus by walking twice"
+    walk_from_y, = [leg for leg in j.legs
+                    if leg.kind == journey.LEG_WALK and leg.from_stop == "Y"]
+    assert walk_from_y.depart == hm(8, 30), "the walk left before the bus arrived"
+
 def test_every_constant_that_decides_an_itinerary_is_published_not_hidden():
     """They decide whether an itinerary is real -- or, for the journey
     bound, whether it counts as one at all -- so they must be quotable."""
     assert set(journey.CONSTANTS) == {
         "walk_speed_m_per_min", "max_access_walk_m",
         "max_transfer_walk_m", "min_transfer_buffer_min",
-        "max_journey_minutes"}
+        "walk_detour_bound", "max_journey_minutes"}
     assert journey.CONSTANTS["walk_speed_m_per_min"] == journey.WALK_SPEED_M_PER_MIN
     assert journey.CONSTANTS["max_journey_minutes"] == journey.MAX_JOURNEY_MINUTES
 

@@ -119,6 +119,24 @@ answers that worklog entry's open question for this layer: if it is near
 zero, the headline change is safe to quote; if it is large, the flip count
 is the finding and the median is not.
 
+WALKS ARE ROUTED, NOT ASSUMED. Every walk in a published trip time -- out
+to the first stop, between two stops at a transfer, and in to the door at
+the far end -- is measured on a pedestrian network built from OpenStreetMap
+(`ingest_osm_walk.py`, `refresh.walking`), not as the crow flies. This
+matters more in Pittsburgh than almost anywhere: the straight line between
+two points a quarter of a mile apart routinely crosses a river, a rail cut,
+the busway or the face of a hillside, and the median walk here is 1.22 times
+its own straight line with a long tail past 4. The stairways are in the
+network, because on the slopes they ARE the route.
+
+Two consequences to state wherever these numbers are quoted. First, the
+headline transfer radius is now a WALKING distance: about a third of the
+stop pairs within 400 m of each other as the crow flies are not within a
+400 m walk of each other, so a great many synthesised connections that used
+to exist do not. Second, this can only ever make a network look slower,
+never faster -- so it cannot flatter either side by accident, but it does
+mean these figures are not comparable to any published before the change.
+
 WHAT THIS DOES NOT MEASURE. It is SCHEDULE AGAINST SCHEDULE. Today's side is
 compared at its scheduled times, not the times its buses actually run; the
 proposed side has no observed times and never will, so schedule-to-schedule
@@ -128,7 +146,7 @@ caveat is making the stronger claim by omission. A profile also has no notion
 of fare, comfort, or crowding, and it takes the RAPTOR search's own
 connection model on faith -- see the router's docstring for the walking
 speed, transfer walk and buffer that decide whether a synthesised connection
-is real. It also inherits
+is real, and `refresh.walking` for the ground the walk is measured over. It also inherits
 convention 13: this is the one analysis in the repo (besides one-seat) that
 counts rail and the inclines, because a journey is not a service quantity.
 
@@ -180,6 +198,7 @@ from pathlib import Path
 import gtfs
 from analyze_one_seat import ANCHORS
 from analyze_equity_places import label_for, label_grid, load_place_labels
+from ingest_osm_walk import EXTRACT as WALK_EXTRACT
 
 # The router lives in the installed package rather than at the repo root,
 # because the web app routes journeys too and an installed app cannot import a
@@ -187,7 +206,7 @@ from analyze_equity_places import label_for, label_grid, load_place_labels
 # `build_webdb.py` reaches `refresh.query` for the same reason, and it adds no
 # dependency: `journey.py` is standard library like everything else here.
 sys.path.insert(0, str(Path(__file__).parent / "src"))
-from refresh import journey  # noqa: E402
+from refresh import journey, walking  # noqa: E402
 
 DATA = Path("data")
 ONESEAT_CSV = DATA / "oneseat_change.csv"
@@ -422,7 +441,23 @@ def load_side_patterns(side):
 
 
 def build_timetables():
-    """{(side, radius_key): journey.Timetable}, one GTFS parse per side."""
+    """{(side, radius_key): journey.Timetable}, one GTFS parse per side.
+
+    The pedestrian network is loaded once and shared by all four, so every
+    walk in every published travel time is measured on one graph. Without it
+    each walk would be charged at the crow's distance, which is the defect
+    `refresh.walking` exists to remove -- so a missing extract stops the run
+    rather than quietly republishing the old numbers under the new method.
+    """
+    if not WALK_EXTRACT.exists():
+        raise SystemExit(f"{WALK_EXTRACT} not cached "
+                         "-- run `python3 ingest_osm_walk.py` first")
+    print(f"  loading the pedestrian network from {WALK_EXTRACT}...")
+    walk = walking.load(WALK_EXTRACT)
+    nodes, segments, metres = walk.summary()
+    print(f"    nodes {nodes:,}   segments {segments:,}   "
+          f"{metres / 1000:,.0f} km of walkable ways")
+
     timetables = {}
     for side in SIDES:
         print(f"  loading {side} weekday patterns...")
@@ -433,7 +468,7 @@ def build_timetables():
                   f"(transfer walk {radius_m:.0f} m)...")
             timetables[(side, radius_key)] = journey.Timetable.build(
                 label=f"{side}-{radius_key}", patterns=patterns, coords=coords,
-                max_transfer_walk_m=radius_m)
+                max_transfer_walk_m=radius_m, walk=walk)
     return timetables
 
 

@@ -90,6 +90,9 @@ from analyze_frequency_change import PERIODS, period_of, to_axis
 # src/ because the web extra also imports it.
 sys.path.insert(0, str(Path(__file__).parent / "src"))
 from refresh import query  # noqa: E402
+from refresh import walking  # noqa: E402
+
+import ingest_osm_walk  # noqa: E402  (root script, like analyze_one_seat above)
 
 DATA = Path("data")
 DB = DATA / "refresh.db"
@@ -406,6 +409,24 @@ CREATE TABLE journey_stop (
     lon     REAL NOT NULL,
     PRIMARY KEY (side, stop_id)
 );
+
+-- The pedestrian graph the router measures every walk on -- to a stop, between
+-- stops on a transfer, and from the last stop to the door. One side, shared
+-- by both networks: a street does not move between the current and proposed
+-- plans, only the buses on it do.
+--
+-- Packed arrays under `name`, not rows: `refresh.walking.WalkNetwork.to_blobs`
+-- keys ("lat", "lon", "osm_ids", "offsets", "targets", "lengths") become the
+-- rows here, one column each. It is ~1.0M nodes and ~2.2M directed edges, and
+-- nothing ever reads it a row at a time -- the app loads all six blobs at
+-- once and rebuilds the graph in memory, the same shape `ingest_osm_walk.py`
+-- fetched it in. An app built without this table falls back to straight-line
+-- walks and would silently disagree with the published travel times, which
+-- is why `build_webdb.py` refuses to write one.
+CREATE TABLE walk_network (
+    name TEXT PRIMARY KEY,
+    data BLOB NOT NULL
+);
 """
 
 
@@ -590,6 +611,20 @@ def build(out_path):
               f"{len(reach_rows):,} all-mode stops for one-seat")
         print(f"       journey layer: {patterns} patterns, {trips:,} trips, "
               f"{placed_all_modes:,} placed stops, {drawn} drawn on streets")
+
+    # --- the pedestrian network, shared by both sides ------------------------
+    # Fatal, like the corridor layer above and for the same reason: a database
+    # built without it would silently serve straight-line walks that disagree
+    # with the published travel times, rather than refusing to build.
+    if not ingest_osm_walk.EXTRACT.exists():
+        sys.exit(f"error: {ingest_osm_walk.EXTRACT} missing -- run "
+                  "`python3 ingest_osm_walk.py` first")
+    network = walking.load(ingest_osm_walk.EXTRACT)
+    con.executemany("INSERT INTO walk_network VALUES (?,?)",
+                     network.to_blobs().items())
+    nodes, segments, metres = network.summary()
+    print(f"\nwalk network: {nodes:,} nodes, {segments:,} segments, "
+          f"{metres / 1000:,.0f} km")
 
     dest = load_destinations(reach_coords)
     con.executemany("INSERT INTO destination VALUES (?,?,?,?)", dest)

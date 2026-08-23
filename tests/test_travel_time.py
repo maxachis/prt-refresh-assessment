@@ -40,7 +40,7 @@ from pathlib import Path
 
 import pytest
 
-from refresh import journey
+from refresh import journey, walking
 import analyze_travel_time as att
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -420,11 +420,18 @@ def test_a_half_reachable_block_group_carries_half_the_weight():
 
 @pytest.fixture(scope="module")
 def current_headline_timetable():
-    """Built once for the whole module -- the expensive part of the pin."""
+    """Built once for the whole module -- the expensive part of the pin.
+
+    The pedestrian network has to be loaded here too. It is what the
+    published numbers were measured on, so a timetable built without it
+    answers a different question (the crow's distance) and the pin would
+    fail against its own CSV rather than catching a regression.
+    """
     patterns, coords = att.load_side_patterns(att.CURRENT)
     return journey.Timetable.build(
         label="test-current-headline", patterns=patterns, coords=coords,
-        max_transfer_walk_m=att.TRANSFER_RADII_M[att.HEADLINE])
+        max_transfer_walk_m=att.TRANSFER_RADII_M[att.HEADLINE],
+        walk=walking.load(att.WALK_EXTRACT))
 
 
 def _sample_origin_rows(origin_rows, trip_time_rows, n=2):

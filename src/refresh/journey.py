@@ -135,7 +135,7 @@ import math
 import statistics
 from bisect import bisect_left
 from collections import defaultdict
-from dataclasses import dataclass, replace
+from dataclasses import dataclass, field, replace
 
 # --------------------------------------------------------------------------
 # geometry: everything here works in metres, converted from the feeds' lat/lon
@@ -175,6 +175,33 @@ MAX_ACCESS_WALK_M = 400.0          # origin/dest <-> stop
 MAX_TRANSFER_WALK_M = 400.0        # ~5 minutes: stop <-> stop, a quarter mile
 MIN_TRANSFER_BUFFER_MIN = 3.0      # dwell + reaction time on top of the walk
 
+# HOW FAR A WALK MAY EXCEED THE CROW'S DISTANCE BEFORE IT IS NOT A WALK.
+#
+# Given a pedestrian network (`refresh.walking`), every walk above is measured
+# on the ground the rider actually crosses rather than through the blocks,
+# rivers and hillsides between its ends. The two radii then stop meaning the
+# same thing as each other, and each is right for its own reason:
+#
+#   * MAX_TRANSFER_WALK_M becomes a WALKING distance. It is a statement about
+#     how far a rider will walk between two stops, this module owns it, and
+#     pricing a 1,200 m hike while calling it a quarter-mile transfer is
+#     incoherent. Roughly a third of the stop pairs within 400 m of each
+#     other as the crow flies are not within a 400 m walk of each other, so
+#     this deletes a lot of synthesised connections -- which is the point.
+#
+#   * MAX_ACCESS_WALK_M keeps choosing its CANDIDATES by straight line,
+#     because it is convention 4's published quarter mile, shared with every
+#     coverage number on the site; redefining it here would make the same
+#     point read as served by one layer and unserved by another. What changes
+#     is the price: the walk to that stop is charged at its real length.
+#
+# Either way a bound is needed, because a search has to stop somewhere and
+# because past some multiple a "longer walk" is not the same trip. Beyond
+# three times the radius the rider is not walking to that stop at all, and
+# the connection is dropped rather than sold at fifteen minutes. It costs
+# ~2.4% of transfer candidates against the real feeds.
+WALK_DETOUR_BOUND = 3.0
+
 # THE WAIT HAS TO BE BOUNDED, or "no morning service" is published as a trip
 # time. `earliest_arrival` answers "when can this rider get there at all",
 # and it is right to: with no bound, a rider ready at 07:00 whose only stop
@@ -199,6 +226,7 @@ CONSTANTS = {
     "max_access_walk_m": MAX_ACCESS_WALK_M,
     "max_transfer_walk_m": MAX_TRANSFER_WALK_M,
     "min_transfer_buffer_min": MIN_TRANSFER_BUFFER_MIN,
+    "walk_detour_bound": WALK_DETOUR_BOUND,
     "max_journey_minutes": MAX_JOURNEY_MINUTES,
 }
 
@@ -394,8 +422,16 @@ class _StopGrid:
         return found
 
 
-def _build_transfer_graph(coords, max_transfer_walk_m, grid=None):
+def _build_transfer_graph(coords, max_transfer_walk_m, grid=None, walk=None,
+                          anchors=None):
     """Every stop pair within the published transfer radius, both directions.
+
+    With a pedestrian network in hand this delegates to `_walked_transfers`,
+    where the radius is a distance along the ground. Without one it pairs by
+    straight line, as it always did -- that is the fixture case and the
+    fallback, and it is a different thing from a network that fails to place
+    a stop, which drops that stop's connections rather than approximating
+    them.
 
     Neither feed publishes transfers, so this is the only source of them --
     which is why MAX_TRANSFER_WALK_M is one of the three numbers CONSTANTS
@@ -422,6 +458,9 @@ def _build_transfer_graph(coords, max_transfer_walk_m, grid=None):
         return {}
     if grid is None:
         grid = _StopGrid.build(coords, max_transfer_walk_m)
+    if walk is not None:
+        return _walked_transfers(coords, max_transfer_walk_m, grid, walk,
+                                 anchors)
     buckets = grid.buckets
 
     def _link(stop_a, stop_b):
@@ -445,6 +484,66 @@ def _build_transfer_graph(coords, max_transfer_walk_m, grid=None):
     return dict(graph)
 
 
+def _walked_transfers(coords, radius_m, grid, walk, anchors):
+    """The transfer graph measured on the pedestrian network.
+
+    One bounded search per stop, not one per pair: `walk.reach` answers the
+    whole neighbourhood at once, which is what keeps ~6,000 stops to a few
+    seconds. Candidates still come from the straight-line grid, which is
+    sound because a walk is never shorter than the crow's distance -- so
+    every pair within `radius_m` on foot is within `radius_m` in a straight
+    line, and the grid cannot miss one.
+
+    Only the outgoing direction is appended for each ordered pair; the
+    reverse is appended when the search runs from the other end, and
+    Dijkstra on an undirected graph makes the two agree.
+    """
+    if anchors is None:
+        anchors = walk.snap_all(coords)
+    graph = defaultdict(list)
+    for stop, anchor in anchors.items():
+        near = {other: anchors[other]
+                for other, _ in grid.stops_within(coords[stop], radius_m)
+                if other != stop and other in anchors}
+        if not near:
+            continue
+        for other, distance in walk.reach(anchor, near, radius_m).items():
+            graph[stop].append((other, distance / WALK_SPEED_M_PER_MIN))
+    return dict(graph)
+
+
+def walk_distances(tt, point, radius_m):
+    """How far each stop near `point` is ON FOOT, keyed by stop id.
+
+    The counterpart of `access_stops`, and deliberately a separate function
+    from it, because the two answer different questions and only one of them
+    changed. `access_stops` asks whether there is service in reach -- a
+    coverage question, owned elsewhere, still measured with the published
+    straight-line radius so that this layer and the coverage layers never
+    disagree about whether a place is served. This one asks what the walk
+    COSTS, and charges the real distance over the ground.
+
+    So a stop 390 m away across a valley still counts as coverage and now
+    costs eleven minutes to reach instead of five. A stop the network cannot
+    reach within `WALK_DETOUR_BOUND` times the radius is left out entirely:
+    it is not a walk anybody makes.
+
+    Memoised per (point, radius) on the timetable, because `profile` runs
+    dozens of searches from one origin to one destination and would otherwise
+    repeat the same two searches for every one of them.
+    """
+    near = tt.stop_grid.stops_within(point, radius_m)
+    if tt.walk is None:
+        return dict(near)
+    key = (point, radius_m)
+    if key not in tt.walk_cache:
+        targets = {stop: tt.stop_anchors[stop] for stop, _ in near
+                   if stop in tt.stop_anchors}
+        tt.walk_cache[key] = tt.walk.reach(point, targets,
+                                           radius_m * WALK_DETOUR_BOUND)
+    return tt.walk_cache[key]
+
+
 @dataclass
 class Timetable:
     label: str
@@ -454,21 +553,29 @@ class Timetable:
     transfer_graph: dict
     max_transfer_walk_m: float
     stop_grid: "_StopGrid"
+    walk: object = None            # a refresh.walking.WalkNetwork, or None
+    stop_anchors: dict = field(default_factory=dict)
+    walk_cache: dict = field(default_factory=dict, repr=False)
 
     @classmethod
-    def build(cls, label, patterns, coords, max_transfer_walk_m=MAX_TRANSFER_WALK_M):
+    def build(cls, label, patterns, coords,
+              max_transfer_walk_m=MAX_TRANSFER_WALK_M, walk=None):
         built_patterns = [_build_pattern(route_id, stops, trips)
                           for route_id, stops, trips in patterns]
         stop_grid = _StopGrid.build(coords, max_transfer_walk_m)
+        anchors = walk.snap_all(coords) if walk is not None else {}
         return cls(
             label=label,
             patterns=built_patterns,
             coords=dict(coords),
             stop_patterns=_build_stop_patterns(built_patterns),
             transfer_graph=_build_transfer_graph(coords, max_transfer_walk_m,
-                                                 grid=stop_grid),
+                                                 grid=stop_grid, walk=walk,
+                                                 anchors=anchors),
             max_transfer_walk_m=max_transfer_walk_m,
             stop_grid=stop_grid,
+            walk=walk,
+            stop_anchors=anchors,
         )
 
 
@@ -523,7 +630,7 @@ class _DestBound:
 
 def _seed_from_origin(tt, origin, ready_at, best_arrival, ready_to_board, back,
                       access_walk_m, dest_bound, egress):
-    for stop, distance in access_stops(tt, origin, access_walk_m):
+    for stop, distance in walk_distances(tt, origin, access_walk_m).items():
         arrive = ready_at + distance / WALK_SPEED_M_PER_MIN
         if arrive >= dest_bound.arrive:
             continue  # cannot lead to a dest arrival better than the bound
@@ -585,6 +692,18 @@ def _round(tt, marked, best_arrival, ready_to_board, back, dest_bound, egress):
     scanned in this same round out of order; it only ever sharpens the next
     round's pruning, which keeps the result independent of dict/set
     iteration order.
+
+    A transfer walk is priced from **the time the bus put the rider down**,
+    which is why `newly_ridden` carries that arrival rather than the loop
+    re-reading `best_arrival`. Re-reading it lets a walk chain onto a walk:
+    a stop that was both newly ridden AND improved by an earlier transfer
+    this same round would expand from the improved time, so the rider walks
+    twice in a row and catches a bus they would really have missed. Worse,
+    it only happens when the improving stop is visited first, so the answer
+    moved between runs under different hash seeds. Two walks that genuinely
+    beat one ride are not this router's to invent -- and if they were, the
+    price would be one walk routed end to end, not two priced separately
+    via a stop nobody boards.
     """
     touched_patterns = {pattern_idx
                         for stop in marked
@@ -597,7 +716,7 @@ def _round(tt, marked, best_arrival, ready_to_board, back, dest_bound, egress):
                       best_arrival, ready_to_board, ride_updates,
                       dest_bound_value)
 
-    newly_ridden = set()
+    newly_ridden = {}
     for stop, update in ride_updates.items():
         arrive, route, board_stop, board_depart, pattern_idx, from_pos, to_pos = update
         if arrive < best_arrival.get(stop, math.inf):
@@ -605,12 +724,11 @@ def _round(tt, marked, best_arrival, ready_to_board, back, dest_bound, egress):
             ready_to_board[stop] = arrive + MIN_TRANSFER_BUFFER_MIN
             back[stop] = (_KIND_RIDE, route, board_stop, board_depart, arrive,
                           pattern_idx, from_pos, to_pos)
-            newly_ridden.add(stop)
+            newly_ridden[stop] = arrive
             dest_bound.tighten_from_stop(egress.get(stop), stop, arrive)
 
     next_marked = set()
-    for stop in newly_ridden:
-        arrive = best_arrival[stop]
+    for stop, arrive in newly_ridden.items():
         next_marked.add(stop)  # reboarding a different route at the same stop
         for neighbour, walk_min in tt.transfer_graph.get(stop, ()):
             candidate = arrive + walk_min
@@ -658,13 +776,25 @@ def _reconstruct(tt, back, ready_at, dest_stop, stop_arrive, dest_arrive):
     return tuple(legs)
 
 
-def _initial_dest_bound(origin, dest, ready_at, access_walk_m):
+def _initial_dest_bound(origin, dest, ready_at, access_walk_m, walk=None):
     """The best dest arrival known before any transit is searched: a direct
-    walk, when origin and dest are close enough to make one."""
+    walk, when origin and dest are close enough to make one.
+
+    Whether one is close enough is still the straight-line question (the
+    published radius), but what it costs is the walk over the ground -- so
+    two points either side of a rail cut no longer get a five-minute stroll
+    between them.
+    """
     direct_distance = _distance_m(origin, dest)
-    if direct_distance <= access_walk_m:
-        return _DestBound(arrive=ready_at + direct_distance / WALK_SPEED_M_PER_MIN)
-    return _DestBound(arrive=math.inf)
+    if direct_distance > access_walk_m:
+        return _DestBound(arrive=math.inf)
+    if walk is not None:
+        routed = walk.path_between(origin, dest,
+                                   access_walk_m * WALK_DETOUR_BOUND)
+        if routed is None:
+            return _DestBound(arrive=math.inf)
+        direct_distance = routed.distance_m
+    return _DestBound(arrive=ready_at + direct_distance / WALK_SPEED_M_PER_MIN)
 
 
 def earliest_arrival(tt, origin, dest, ready_at, *, access_walk_m=MAX_ACCESS_WALK_M):
@@ -677,8 +807,9 @@ def earliest_arrival(tt, origin, dest, ready_at, *, access_walk_m=MAX_ACCESS_WAL
     # finish -- both to answer "how do I get to dest" cheaply (`stops_within`
     # rather than a linear scan) and to drive target pruning: a stop whose
     # own arrival cannot beat this bound is dropped rather than expanded.
-    egress = dict(tt.stop_grid.stops_within(dest, access_walk_m))
-    dest_bound = _initial_dest_bound(origin, dest, ready_at, access_walk_m)
+    egress = walk_distances(tt, dest, access_walk_m)
+    dest_bound = _initial_dest_bound(origin, dest, ready_at, access_walk_m,
+                                     walk=tt.walk)
 
     _seed_from_origin(tt, origin, ready_at, best_arrival, ready_to_board, back,
                       access_walk_m, dest_bound, egress)

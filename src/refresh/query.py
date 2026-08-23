@@ -38,6 +38,7 @@ import sqlite3
 from pathlib import Path
 
 from . import journey
+from . import walking
 
 DAYS = ("weekday", "saturday", "sunday")
 SIDES = ("current", "proposed")
@@ -1199,6 +1200,13 @@ JOURNEY_CLASSIFICATIONS = (CLASS_COMPARABLE, CLASS_NO_ORIGIN_COVERAGE,
 MINUTE_DP = 1
 FRACTION_DP = 3
 
+# `itinerary_of` derives a walk leg's drawing search distance from its own
+# timed duration, round-tripped through a division and a multiplication by
+# `journey.WALK_SPEED_M_PER_MIN`. This much slack absorbs that round-trip's
+# floating-point error without ever loosening the search enough to draw a
+# walk the clock did not actually charge for.
+WALK_PATH_SLACK_M = 1.0
+
 # {(database, side, day, transfer walk): Timetable}. Keyed by database file
 # rather than by connection because a Timetable is derived only from what the
 # file holds, and building one is ~0.3 s of work that would otherwise be
@@ -1207,11 +1215,34 @@ _TIMETABLES: dict[tuple, "journey.Timetable"] = {}
 # Parsed drawn paths, per database, side and day. About 2 MB of text across
 # both feeds, so parsing it per request would cost more than routing does.
 _PATHS: dict[tuple, list] = {}
+# {database: WalkNetwork or None}, one graph shared by both sides -- a street
+# does not move between the current and proposed plans. None is cached too,
+# not left as a missing key, so a database built before this layer existed is
+# recognised once per process rather than re-checked on every request.
+_WALK_NETWORKS: dict[str, "walking.WalkNetwork | None"] = {}
 
 
 def _database_of(con) -> str:
     """The file this connection reads, as the timetable cache's key."""
     return con.execute("PRAGMA database_list").fetchone()[2]
+
+
+def walk_network(con):
+    """The pedestrian graph stored in this database, or None on one built
+    before `walk_network` existed.
+
+    Cached per database file for the reason `_TIMETABLES` is: unpacking ~1.0M
+    nodes from their blobs is real work, and the graph never changes under a
+    running server. A caller that gets None falls back to the straight line
+    every walk drew before this layer -- see `itinerary_of`.
+    """
+    key = _database_of(con)
+    if key not in _WALK_NETWORKS:
+        blobs = {row["name"]: row["data"] for row in
+                 con.execute("SELECT name, data FROM walk_network")} \
+            if _has_table(con, "walk_network") else {}
+        _WALK_NETWORKS[key] = walking.WalkNetwork.from_blobs(blobs) if blobs else None
+    return _WALK_NETWORKS[key]
 
 
 def journey_patterns(con, side: str, day: str):
@@ -1292,7 +1323,8 @@ def journey_timetable(con, side: str, day: str = JOURNEY_DAY,
             label=f"{side}-{day}-{transfer_walk_m:.0f}m",
             patterns=journey_patterns(con, side, day),
             coords=journey_coords(con, side),
-            max_transfer_walk_m=transfer_walk_m)
+            max_transfer_walk_m=transfer_walk_m,
+            walk=walk_network(con))
     return _TIMETABLES[key]
 
 
@@ -1358,17 +1390,25 @@ def stop_names(con, side: str, stop_ids):
         f"AND stop_id IN ({marks})", (side, *stop_ids))}
 
 
-def itinerary_of(con, side: str, trip, coords, day: str = JOURNEY_DAY):
+def itinerary_of(con, side: str, trip, coords, day: str = JOURNEY_DAY, *,
+                 origin: tuple, dest: tuple):
     """One journey as the map can draw it: legs, with each end placed.
 
     Coordinates come from the journey layer's own stop table, which has every
     mode; names are looked up in the bus-only one and may be missing.
 
-    A ride leg also carries the path the bus drives between its two stops, so
-    the map draws it along the street rather than through the blocks between.
-    A walk gets none: a walk really is a straight line here, which is what the
-    legend's dashes say. Nor does a ride whose pattern named no shape, which
-    falls back to the same straight line.
+    A ride leg carries the path the bus drives between its two stops, so the
+    map draws it along the street rather than through the blocks between. A
+    walk leg carries the routed pedestrian path over the same network the
+    clock charged it against -- see the nested `walk_path` below for how its
+    search distance is derived from the leg's own duration, which is what
+    keeps the drawn walk from ever being shorter than the one the rider was
+    billed for.
+    Either kind falls back to None (the straight line the caller already
+    knows how to draw) when there is nothing to draw it with: a ride whose
+    pattern named no shape, or a walk the network cannot route within its
+    charged distance. `origin` and `dest` fill in the one end of the first
+    and last legs that no stop id names.
     """
     if trip is None:
         return None
@@ -1384,8 +1424,8 @@ def itinerary_of(con, side: str, trip, coords, day: str = JOURNEY_DAY):
         return {"stop_id": stop_id, "name": names.get(stop_id),
                 "lat": lat, "lon": lon}
 
-    def drawn(leg):
-        if leg.kind != journey.LEG_RIDE or leg.pattern is None:
+    def ride_path(leg):
+        if leg.pattern is None:
             return None
         path = paths[leg.pattern] if leg.pattern < len(paths) else None
         if path is None:
@@ -1395,6 +1435,33 @@ def itinerary_of(con, side: str, trip, coords, day: str = JOURNEY_DAY):
             return None
         return [list(pt) for pt in
                 points[stop_idx[leg.from_pos]:stop_idx[leg.to_pos] + 1]]
+
+    def walk_path(leg):
+        network = walk_network(con)
+        if network is None:
+            return None
+        start = coords[leg.from_stop] if leg.from_stop is not None else origin
+        end = coords[leg.to_stop] if leg.to_stop is not None else dest
+        # The leg's own timed duration, converted back to a distance, is
+        # EXACTLY the distance the clock charged it -- so searching for a
+        # path no longer than that (plus a hair of slack for the float
+        # round-trip through minutes and back) guarantees the drawn walk can
+        # never be shorter than the one the rider was billed for.
+        max_m = ((leg.arrive - leg.depart) * journey.WALK_SPEED_M_PER_MIN
+                + WALK_PATH_SLACK_M)
+        walk = network.path_between(start, end, max_m)
+        if walk is None:
+            return None
+        # Stored and drawn as "lon,lat", matching a ride's path and every
+        # other GeoJSON coordinate in this file; `Walk.points` is (lat, lon).
+        return [[lon, lat] for lat, lon in walk.points]
+
+    def drawn(leg):
+        if leg.kind == journey.LEG_RIDE:
+            return ride_path(leg)
+        if leg.kind == journey.LEG_WALK:
+            return walk_path(leg)
+        return None
 
     return {
         "ready_at": trip.ready_at,
@@ -1443,7 +1510,8 @@ def journey_at_radius(con, origin, dest, day, window, transfer_walk_m):
         answer["origin_access_stops"] = origin_access[side]
         answer["dest_access_stops"] = dest_access[side]
         answer["itinerary"] = itinerary_of(con, side, median_journey(profile),
-                                           tt.coords, day)
+                                           tt.coords, day,
+                                           origin=origin, dest=dest)
         medians[side] = answer["median_min"]
         answers[side] = answer
 

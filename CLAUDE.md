@@ -55,6 +55,21 @@ python3 analyze_travel_time.py      # -> data/trip_time_change.csv (the pooled
 python3 build_webdb.py              # -> data/refresh.db, for the web app only
 ```
 
+**The pedestrian network** is a third independent ingest, because it reads
+OpenStreetMap rather than PRT or the census. `analyze_travel_time.py` and the
+app both refuse to run without it, since every walk in a published trip time
+is measured on it:
+
+```bash
+python3 ingest_osm_walk.py          # -> data/raw/osm/allegheny_walk.json.gz
+```
+
+It writes no tidy CSV: the graph is ~1.0M nodes, rebuilt from the cache in
+about ten seconds, so it stays in memory for the pipeline and is packed into
+`refresh.db` for the app. The 16 MB cache **is** committed, because OSM is the
+fastest-moving upstream in the repo and a re-fetch would quietly restate
+published travel times.
+
 **The equity questions** are a second, independent ingest-then-analyse pair,
 because they read the census rather than PRT:
 
@@ -85,8 +100,8 @@ uv sync --extra web && npm install   # one-time
 npm run build                        # frontend/*.ts -> static/app.js
 uv run refresh serve                 # http://127.0.0.1:8000
 
-uv run pytest                        # 146 tests, incl. served == published
-npx vitest run && npx tsc --noEmit   # 82 frontend tests
+uv run pytest                        # 283 tests, incl. served == published
+npx vitest run && npx tsc --noEmit   # 115 frontend tests
 ```
 
 **Hosting** is `deploy/` — a Hetzner VM behind Caddy, live at
@@ -132,7 +147,7 @@ re-running is cheap and analysis stays reproducible against a moving upstream.
 and the current GTFS zip. To force a refresh, delete the specific cached file;
 do not add cache-busting flags.
 
-The five upstream sources, and what each is the authority for:
+The six upstream sources, and what each is the authority for:
 
 | Source | Authority for |
 |---|---|
@@ -142,6 +157,7 @@ The five upstream sources, and what each is the authority for:
 | ArcGIS `PRT_Bus_Stop_Usage_Unweighted` | Stop-level boardings, May 2025, boardings-only |
 | WPRDC route ridership (CKAN SQL) | Route-level riders, current through Apr 2026 — preferred over stop-level for route totals |
 | Census: 2020 blocks + centres of population + ACS 5-year (`census.gov`) | Who lives where. The population denominator behind every `EQUITY-*` answer, and the only source in the repo that is not about transit. Blocks say where inside a block group people live; ACS says who they are |
+| OpenStreetMap, via Overpass (`overpass-api.de`) | The ground between a door and a bus stop. Every walkable way in Allegheny County, including the public stairways, which on the slopes are the actual pedestrian route. The only source behind how long a walk takes |
 
 `DATA_SOURCES.md` is the full inventory, with live-verified endpoints, per-file
 row counts, and the PDF parsing traps. Read it before touching `ingest_blr.py`.
@@ -283,15 +299,33 @@ changes published findings.
     number.
 
     **Transfers are invented, and the invention is not neutral.** Neither
-    feed publishes `transfers.txt`, so connections are synthesised from stop
-    coordinates, governed by the three numbers in `journey.CONSTANTS`. The
-    Refresh depends on transferring more than today's network does, so a
-    generous transfer radius can only help it and a strict one can only hurt
-    it. Unlike the access radii in convention 4, this sensitivity can change
-    a pair's **sign**, not just its magnitude. Publish the flip count — how
-    many pairs reverse direction between a strict and a headline radius —
-    or do not publish the times. See
+    feed publishes `transfers.txt`, so connections are synthesised, governed
+    by the numbers in `journey.CONSTANTS`. The Refresh depends on
+    transferring more than today's network does, so a generous transfer
+    radius can only help it and a strict one can only hurt it. Unlike the
+    access radii in convention 4, this sensitivity can change a pair's
+    **sign**, not just its magnitude. Publish the flip count — how many pairs
+    reverse direction between a strict and a headline radius — or do not
+    publish the times. See
     `docs/worklog/transfer-radius-favours-one-network.md`.
+
+    **A walk is measured over the ground, and the two radii stopped meaning
+    the same thing.** Walks are routed on a pedestrian network built from
+    OpenStreetMap (`refresh.walking`), not drawn as the crow flies — the
+    median walk is 1.22× its own straight line here, with a tail past 4×
+    where a river, a rail cut or a hillside is in the way. That splits
+    convention 4's single radius in two, and each half is right for its own
+    reason. `MAX_TRANSFER_WALK_M` became a **walking** distance, because it
+    is a claim about how far a rider will walk and this layer owns it; about
+    a third of the stop pairs within 400 m as the crow flies are not within
+    a 400 m walk, so a great many synthesised connections vanished.
+    `MAX_ACCESS_WALK_M` still picks its candidates by **straight line**,
+    because it is convention 4's published quarter mile shared with every
+    coverage number on the site, and redefining it here would make one point
+    read as served by one layer and unserved by another — only the price of
+    that walk changed. Routing can only ever make a network look slower, so
+    it cannot flatter either side; but travel times published before this
+    are not comparable to those published after.
 
     **A place is its residents, not its centre.** This is convention 12's
     ecological trap arriving one unit further down, and it bites harder here

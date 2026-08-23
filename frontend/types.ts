@@ -198,10 +198,11 @@ export interface JourneyLeg {
   depart: number;
   arrive: number;
   /**
-   * Where the bus drives between the two stops, as [lon, lat] pairs, for
-   * drawing only. Null on a walk -- which really is a straight line -- and on
-   * a ride whose pattern named no shape in its feed. Thinned at build time
-   * and never to be measured.
+   * Where the bus drives, or the rider walks, between the two ends, as
+   * [lon, lat] pairs, for drawing only. Null on a ride whose pattern named no
+   * shape in its feed, and on a walk the pedestrian network could not route
+   * within the distance it was charged for -- not, any more, on every walk.
+   * Thinned at build time and never to be measured.
    */
   path: [number, number][] | null;
 }

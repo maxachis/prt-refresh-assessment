@@ -110,8 +110,13 @@ describe('drawing a ride along the street', () => {
     expect(drawn.features[0].geometry.coordinates).toHaveLength(2);
   });
 
-  it('never bends a walk: a walk really is a straight line', () => {
+  it('follows a walk leg\'s routed path when the server sends one', () => {
     const drawn = toGeoJSON(oneLeg({ kind: 'walk', path: PATH }), 'headline');
+    expect(drawn.features[0].geometry.coordinates).toEqual(PATH);
+  });
+
+  it('falls back to the straight line when a walk has no path', () => {
+    const drawn = toGeoJSON(oneLeg({ kind: 'walk', path: null }), 'headline');
     expect(drawn.features[0].geometry.coordinates).toHaveLength(2);
   });
 });

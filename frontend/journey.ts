@@ -96,11 +96,13 @@ export function toGeoJSON(r: JourneyResult, key: TransferRadiusKey) {
     for (const leg of itinerary.legs) {
       const from = leg.from ?? r.origin;
       const to = leg.to ?? r.destination;
-      // A ride follows the street its bus drives when the feed gave one; a
-      // walk never does, and a ride with no path falls back to the straight
-      // line this view drew before there were paths at all.
+      // A ride follows the street its bus drives, and a walk now follows the
+      // pedestrian network, whenever either one names a path; either kind
+      // falls back to the straight line this view drew before there were
+      // paths at all, which for a walk now means the network could not
+      // route it rather than that a walk is always a straight line.
       const straight: [number, number][] = [[from.lon, from.lat], [to.lon, to.lat]];
-      const drawn = leg.kind === 'ride' && leg.path?.length ? leg.path : straight;
+      const drawn = leg.path?.length ? leg.path : straight;
       features.push({
         type: 'Feature',
         geometry: { type: 'LineString', coordinates: drawn },
@@ -145,10 +147,10 @@ export function initJourneyLayer(map: maplibregl.Map, beforeId?: string) {
       'line-opacity': 0.85,
     },
   }, beforeId);
-  // A walk is a straight line between two points, and now the only thing on
-  // this map that is: a ride follows the path its own pattern drives. Dashing
-  // the walk and drawing it thinner keeps the one straight line from reading
-  // as a street somebody could walk end to end.
+  // A walk now follows the pedestrian network -- sidewalks, alleys and
+  // Pittsburgh's public stairways -- the same way a ride follows the street
+  // its bus drives. Dashing the walk and drawing it thinner is what still
+  // tells the two apart on a map where neither is a straight line any more.
   map.addLayer({
     id: LAYER_WALK,
     type: 'line',
@@ -418,7 +420,7 @@ export function journeyKeyHTML(r: JourneyResult | null): string {
     <div class="lg-row lg-static"><i style="background:${PROP_COLOR}"></i>
       <span class="lg-lab">proposed</span></div>
     <p class="lg-foot">Rides follow the street the bus drives; dashed sections
-      are walks, drawn straight. Assumes a rider will walk up to ${walk} m
-      to change bus — a number nobody publishes, so the panel answers at a
-      stricter one too.</p>`;
+      are walks, routed on sidewalks, alleys and steps. Assumes a rider will
+      walk up to ${walk} m to change bus — a number nobody publishes, so the
+      panel answers at a stricter one too.</p>`;
 }

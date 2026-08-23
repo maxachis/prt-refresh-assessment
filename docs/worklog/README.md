@@ -24,5 +24,6 @@ pass — a reader who stops halfway down must not be misinformed.
 | [The synthesised transfer radius is not neutral between the two networks](transfer-radius-favours-one-network.md) | open, decision owed |
 | [A township is not a point, and the travel-time layer treats it as one](one-point-cannot-represent-a-township.md) | open, decision owed |
 | [A T station reads as a bare number in a drawn itinerary](rail-stops-have-no-name-in-a-journey.md) | open, not fixed |
-| [A walk is drawn — and timed — straight through the blocks](walks-are-drawn-and-timed-in-straight-lines.md) | open, decision owed |
+| [A walk is drawn — and timed — straight through the blocks](walks-are-drawn-and-timed-in-straight-lines.md) | fixed, awaiting close — two judgement calls inside the fix are Max's to overturn |
 | [The last walk doglegs via a bus stop the rider never uses](the-last-walk-doglegs-via-a-stop-nobody-boards.md) | open, decision owed |
+| [A stairway is timed as though it were level ground](stairways-are-timed-as-though-they-were-level.md) | open, decision owed |
