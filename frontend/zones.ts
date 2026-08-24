@@ -41,6 +41,21 @@ const LINE = 'ondemand-line';
 /** Outside the red/blue change scale on purpose — see the module docstring. */
 export const ZONE_COLOR = '#7c5cd6';
 
+/**
+ * The same hue, lightened for text.
+ *
+ * `ZONE_COLOR` is chosen to sit on a near-white basemap under a thin dashed
+ * line. The legend note is 10.5px type on a near-black panel, where that same
+ * violet reads as dim grey — so the panel gets a lighter step of the one hue
+ * rather than a second colour, exactly as the corridor layer keeps two greys
+ * for one idea at two zooms.
+ */
+export const ZONE_INK = '#b3a0ec';
+
+/** The toggle's lit background: the zone violet at wash strength, so the
+ *  control matches the shapes it puts on the map. */
+export const ZONE_TOGGLE_BG = 'rgba(124, 92, 214, 0.22)';
+
 let data: OnDemandLayer | null = null;
 let visible = false;
 
@@ -122,10 +137,30 @@ export function zoneNoteHTML(t: OnDemandTotals): string {
     : `${Math.round(t.lost_pct_inside)}% of the `
       + `${t.lost_km2_citywide!.toFixed(1)} km² that loses all fixed-route `
       + `service is inside one`;
-  return `<div class="lg-foot">${t.zones} proposed on-demand zones. ${share}. `
+  // Carries the overlay's own colour and a dashed swatch matching the boundary
+  // on the map, because this is a KEY, not a caveat about the layer on screen:
+  // it sits directly under the active view's own footnote, and in the same grey
+  // the two would read as one paragraph about one layer.
+  return `<div class="lg-foot lg-zone" style="color:${ZONE_INK};`
+    + `border-left-color:${ZONE_COLOR}">`
+    + `<i style="border-color:${ZONE_COLOR}"></i>`
+    + `${t.zones} proposed on-demand zones. ${share}. `
     + `All ten together run ${t.vehicles_weekday} vehicles over `
     + `${t.zone_km2.toFixed(0)} km², 7am–9pm — a fallback, not a replacement. `
     + `Nothing on this map is netted off against them.</div>`;
+}
+
+/**
+ * Light the toggle in the overlay's own colour while it is on.
+ *
+ * Set here rather than in the stylesheet so the button, the polygons and the
+ * legend note all take their violet from one constant — the control and the
+ * thing it controls cannot drift apart into two nearly-equal purples.
+ */
+export function styleZoneToggle(el: HTMLElement, on: boolean) {
+  el.style.color = on ? ZONE_INK : '';
+  el.style.background = on ? ZONE_TOGGLE_BG : '';
+  el.style.boxShadow = on ? `inset 0 0 0 1px ${ZONE_COLOR}` : '';
 }
 
 export function initZoneLayer(map: maplibregl.Map, beforeId?: string) {

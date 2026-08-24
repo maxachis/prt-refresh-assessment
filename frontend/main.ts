@@ -21,7 +21,7 @@ import {
 } from './oneseat';
 import {
   initZoneLayer, loadZoneLayer, setZoneVisible, zoneLabel, zoneNoteHTML,
-  isVisible as zonesOn, layerData as zoneData, ZONE_LAYERS,
+  styleZoneToggle, isVisible as zonesOn, layerData as zoneData, ZONE_LAYERS,
 } from './zones';
 import {
   initJourneyLayer, setJourneyVisible, drawJourney, journeyUrl,
@@ -322,6 +322,7 @@ async function showZones(on: boolean) {
   if (on && !zoneData()) await loadZoneLayer(map);
   setZoneVisible(map, on);
   $('zone-toggle').classList.toggle('active', on);
+  styleZoneToggle($('zone-toggle'), on);
   refreshLegend();
 }
 

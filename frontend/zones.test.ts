@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
-  toGeoJSON, zoneLabel, zoneNoteHTML, vanCount, ZONE_COLOR,
+  toGeoJSON, zoneLabel, zoneNoteHTML, vanCount, styleZoneToggle,
+  ZONE_COLOR, ZONE_INK, ZONE_TOGGLE_BG,
 } from './zones';
 import { GONE_COLOR, NEW_COLOR } from './surface';
 import { OnDemandLayer, OnDemandZone, OnDemandTotals } from './types';
@@ -122,9 +123,43 @@ describe('zoneNoteHTML', () => {
     expect(zoneNoteHTML(totals())).toContain('netted off');
   });
 
+  it('takes the overlay colour, so it reads as a key and not as a footnote', () => {
+    // It lands directly under the active view's own grey footnote; in the same
+    // grey the two read as one paragraph about one layer.
+    const html = zoneNoteHTML(totals());
+    expect(html).toContain('lg-zone');
+    expect(html).toContain(ZONE_INK);
+    expect(html).toContain(ZONE_COLOR);
+  });
+
   it('drops the percentage when there is no denominator, rather than showing 0%', () => {
     const html = zoneNoteHTML(totals({ lost_km2_citywide: null, lost_pct_inside: null }));
     expect(html).not.toContain('0%');
     expect(html).toContain('18.6 km²');   // the absolute is the fallback only
+  });
+});
+
+describe('styleZoneToggle', () => {
+  /** Enough of an element for a function that only writes three style
+   *  properties — the suite runs in node, with no DOM (see legend.test.ts). */
+  function button() {
+    return { style: { color: '', background: '', boxShadow: '' } } as
+      unknown as HTMLElement;
+  }
+
+  it('lights the control in the colour of the shapes it draws', () => {
+    const b = button();
+    styleZoneToggle(b, true);
+    expect(b.style.background).toBe(ZONE_TOGGLE_BG);
+    expect(b.style.boxShadow).toContain(ZONE_COLOR);
+  });
+
+  it('hands the styling back when off, rather than leaving a dimmed violet', () => {
+    const b = button();
+    styleZoneToggle(b, true);
+    styleZoneToggle(b, false);
+    expect(b.style.background).toBe('');
+    expect(b.style.color).toBe('');
+    expect(b.style.boxShadow).toBe('');
   });
 });

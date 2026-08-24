@@ -26,7 +26,10 @@
       #app { grid-template-columns: 1fr; grid-template-rows: 45vh 55vh; }
       #map { height:auto; }
       #legend-box { max-height:none; }
-      #legend .lg-foot { display:none; }
+      /* Footnotes go, but not the zone key: with the overlay on, hiding it
+         would leave violet shapes on the map with nothing to say what they
+         are — and no way to see that nothing is netted off against them. */
+      #legend .lg-foot:not(.lg-zone) { display:none; }
     }
 
     /* The legend: key, in-view summary and filter in one block. */
@@ -54,6 +57,17 @@
     #legend .lg-row i { box-shadow:inset 0 0 0 1px rgba(255,255,255,.35); }
     .lg-lab { flex:1; }
     .lg-n { font-variant-numeric:tabular-nums; color:var(--muted); }
+    /* The on-demand note is a KEY for a layer, not a caveat about the one on
+       screen, and it lands directly under that layer's own footnote. Left in
+       the same grey the two read as one paragraph about one thing, so this
+       takes the overlay's colour, a rule down its edge, and a swatch dashed
+       the way the zone boundary is dashed on the map. The colours themselves
+       come from `zones.ts`, so the control, the polygons and this cannot
+       drift into three nearly-equal purples. */
+    #legend .lg-foot.lg-zone { border-left:2px solid; padding-left:8px; }
+    #legend .lg-foot.lg-zone i { display:inline-block; width:9px; height:9px;
+      border:1.5px dashed; border-radius:2px; margin-right:5px;
+      vertical-align:-1px; }
     .lg-foot { font-size:10.5px; color:var(--muted); margin:8px 2px 0;
       line-height:1.4; }
     #legend-reset { margin:6px 0 0 2px; }
