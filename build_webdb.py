@@ -74,6 +74,7 @@ data/coverage_change.csv for place labels and boardings).
 
 import argparse
 import csv
+import json
 import sqlite3
 import sys
 from collections import Counter
@@ -98,6 +99,12 @@ DATA = Path("data")
 DB = DATA / "refresh.db"
 COVERAGE = DATA / "coverage_change.csv"
 CORRIDOR = DATA / "corridor_change.csv"
+ZONES = DATA / "coverage_area_ondemand.csv"
+
+# The tier the headline area figure is quoted at: covered on any day, at any
+# frequency. `analyze_coverage_area.py` writes five; this is the one
+# FINDINGS.md's "12% less covered ground" divides by.
+HEADLINE_AREA_TIER = "WEEK-ANY-MINIMUM"
 
 SIDES = ["current", "proposed"]
 
@@ -247,6 +254,37 @@ CREATE TABLE corridor (
     geometry  TEXT NOT NULL           -- "lon,lat lon,lat ..." as the CSV wrote it
 );
 CREATE INDEX ix_corridor_day ON corridor(day);
+
+-- The proposed on-demand zones -- the one part of the plan neither GTFS feed
+-- can express, and the reason a layer for them exists at all. An on-demand
+-- zone has no stops and no timetable, so every table above sees ground inside
+-- one exactly as it sees ground with no bus: a total loss. 23% of the area
+-- that loses all fixed-route service is inside a zone, and painting it plain
+-- red is a half-truth a reader would repeat.
+--
+-- SHOWN BESIDE THE LOSS, NEVER NETTED OFF IT. Each zone gets 1-3 vehicles for
+-- 15-48 km2, all ten are flagged `isHidden` in PRT's project file, and none of
+-- that is a bus route. So the vehicle count travels with the polygon and the
+-- reader weighs it; nothing here subtracts a zone from a loss figure, and no
+-- published number changes because this table exists.
+--
+-- A straight carry-over like `corridor` above: the geometry is the Remix
+-- project file's, read through `analyze_coverage_area.on_demand_zones`, and
+-- every km2 is `data/coverage_area_ondemand.csv`'s verbatim, so the map cannot
+-- disagree with the published area answer.
+CREATE TABLE ondemand_zone (
+    name                     TEXT PRIMARY KEY,
+    vehicles_weekday         INTEGER,          -- for the WHOLE zone, all day
+    weekday_hours            TEXT NOT NULL,    -- "7:00-21:00"
+    service_day_patterns     TEXT NOT NULL,    -- GTFS-style, ";"-joined
+    hidden_in_remix          INTEGER NOT NULL,
+    zone_km2                 REAL,
+    fixed_route_km2_now      REAL,
+    fixed_route_km2_proposed REAL,
+    lost_km2_inside          REAL,
+    gained_km2_inside        REAL,
+    geometry                 TEXT NOT NULL     -- MultiPolygon coordinates, JSON
+);
 -- --------------------------------------------------------------------------
 -- THE ONE-SEAT LAYER: three tables, and the only ones here that are not bus
 -- only.
@@ -476,6 +514,73 @@ def load_corridor():
             for r in csv.DictReader(open(CORRIDOR, encoding="utf-8"))]
 
 
+def load_zones():
+    """([(name, ...)], citywide lost km2) for the on-demand zone layer.
+
+    Two sources, because the zones are split across two of them and neither
+    half is worth recomputing here. The POLYGONS and vehicle counts come from
+    `analyze_coverage_area.on_demand_zones` -- the Remix project file is the
+    only place they exist, and importing the published reader rather than
+    re-parsing the JSON is what stops the app drawing a set of zones the area
+    answer does not count. The KM2 FIGURES come from
+    `data/coverage_area_ondemand.csv` verbatim, so "4.0 km2 of this zone loses
+    its bus" is the number `analyze_coverage_area.py` printed, not a second
+    measurement of the same thing.
+
+    The citywide denominator returned alongside is the lost area at the
+    headline radius and tier, out of `coverage_area.csv` -- the "of the ground
+    that loses all fixed-route service, 23% is inside a zone" sentence has to
+    divide by something, and computing it in the browser from a layer that
+    only carries zones is impossible by construction.
+
+    A missing CSV is fatal, for `load_corridor`'s reason one unit over: zones
+    drawn with no lost-area figures beside them would say "here is what the
+    plan offers instead" while withholding the how-much, which is the exact
+    half-truth this layer exists to correct.
+    """
+    import analyze_coverage_area as area   # root script, like analyze_one_seat
+
+    if not ZONES.exists():
+        sys.exit(f"error: {ZONES} missing -- run "
+                  "`python3 analyze_coverage_area.py` first")
+    stats = {r["zone"]: r
+             for r in csv.DictReader(open(ZONES, encoding="utf-8"))}
+
+    rows = []
+    for z in area.on_demand_zones():
+        s = stats.get(z["name"])
+        if s is None:
+            sys.exit(f"error: zone {z['name']!r} is in the Remix project file "
+                     f"but not in {ZONES} -- rerun analyze_coverage_area.py")
+        rows.append((
+            z["name"], int(s["vehicles_weekday"]), s["weekday_hours"],
+            s["service_day_patterns"], int(s["hidden_in_remix"]),
+            float(s["zone_km2"]), float(s["fixed_route_km2_now"]),
+            float(s["fixed_route_km2_proposed"]), float(s["lost_km2_inside"]),
+            float(s["gained_km2_inside"]),
+            json.dumps(z["polys"], separators=(",", ":")),
+        ))
+    return rows, citywide_lost_km2()
+
+
+def citywide_lost_km2():
+    """Square kilometres that lose all fixed-route service, at the headline
+    radius and tier -- the denominator the zone share is a share of.
+
+    Matched to `query.PRIMARY_RADIUS` and the any-day-any-minimum tier so the
+    share is against the same figure `FINDINGS.md` quotes. None if the file is
+    absent, which leaves the share unknown rather than silently zero.
+    """
+    path = DATA / "coverage_area.csv"
+    if not path.exists():
+        return None
+    for r in csv.DictReader(open(path, encoding="utf-8")):
+        if (int(float(r["radius_m"])) == int(query.PRIMARY_RADIUS)
+                and r["tier"] == HEADLINE_AREA_TIER):
+            return float(r["lost_km2"])
+    return None
+
+
 def load_crosswalk():
     path = DATA / "route_crosswalk.csv"
     if not path.exists():
@@ -511,6 +616,15 @@ def build(out_path):
     corridor = load_corridor()
     con.executemany("INSERT INTO corridor VALUES (?,?,?,?)", corridor)
     print(f"  corridor runs: {len(corridor):,} rows")
+
+    zones, lost_km2 = load_zones()
+    con.executemany("INSERT INTO ondemand_zone VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+                    zones)
+    if lost_km2 is not None:
+        con.execute("INSERT INTO meta VALUES ('lost_km2_citywide', ?)",
+                    (str(lost_km2),))
+    vans = sum(z[1] or 0 for z in zones)
+    print(f"  on-demand zones: {len(zones)} zones, {vans} weekday vehicles")
 
     key_id = 0
     reach_id = 0

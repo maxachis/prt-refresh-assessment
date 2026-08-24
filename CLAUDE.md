@@ -15,8 +15,9 @@ Since both networks gained a real GTFS it also carries **a web app** (`src/refre
 at today's stops, as a continuous 100 m surface, as the street network
 itself gaining and losing buses, as who keeps a one-seat ride to Downtown,
 Oakland or a point you pick, or as how many minutes a trip to one of those
-takes on each network — see
-[`docs/WEBAPP.md`](docs/WEBAPP.md). The pipeline remains the primary artifact and
+takes on each network — with the 10 proposed on-demand zones drawable over any
+of them, so ground offered a van instead of a bus is not read as a plain loss.
+See [`docs/WEBAPP.md`](docs/WEBAPP.md). The pipeline remains the primary artifact and
 stays standard-library only; the app is an optional extra that only reads what
 the pipeline builds. It is deployed at
 <https://prt-refresh.lemaliconsulting.com> (`deploy/README.md`), though nobody
@@ -100,8 +101,8 @@ uv sync --extra web && npm install   # one-time
 npm run build                        # frontend/*.ts -> static/app.js
 uv run refresh serve                 # http://127.0.0.1:8000
 
-uv run pytest                        # 283 tests, incl. served == published
-npx vitest run && npx tsc --noEmit   # 115 frontend tests
+uv run pytest                        # 295 tests, incl. served == published
+npx vitest run && npx tsc --noEmit   # 129 frontend tests
 ```
 
 **Hosting** is `deploy/` — a Hetzner VM behind Caddy, live at
@@ -123,7 +124,9 @@ equity pair. `build_equity_brief.py` reads only published CSVs and re-uses
 `analyze_equity_places.by_place`, so the charts cannot drift from the files
 `docs/answers/` cites. `build_webdb.py` takes the anchor definitions, the HOOD
 labels and the outlier filter from `analyze_one_seat.py`, so the app's Downtown
-and Oakland are the districts `data/oneseat_change.csv` publishes.
+and Oakland are the districts `data/oneseat_change.csv` publishes, and the
+on-demand zone polygons from `analyze_coverage_area.py`, so the zones the map
+draws are the ones the published area answer counts.
 `analyze_equity_change.py` takes the tiers and the whole location test from
 `analyze_coverage_change.py` and the dimension definitions from
 `ingest_census.py`, so a rider's coverage is decided the same way at a house as

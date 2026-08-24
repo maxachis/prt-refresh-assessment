@@ -33,6 +33,7 @@ membership of a radius is decided identically on both sides of the pipeline.
 """
 from __future__ import annotations
 
+import json
 import math
 import sqlite3
 from pathlib import Path
@@ -724,6 +725,69 @@ def corridor_layer(con, day: str = "weekday"):
         "day": day,
         "km": {k: round(v / 1000, 1) for k, v in km.items()},
         "runs": runs,
+    }
+
+
+# --------------------------------------------------------------------------
+# the on-demand zones
+# --------------------------------------------------------------------------
+#
+# Every layer above measures fixed-route service, and none of them can see an
+# on-demand zone: a zone has no stops and no timetable, so ground inside one
+# whose bus is withdrawn reads as a total loss on the dots, the surface and the
+# corridors alike. 23% of the area that loses all fixed-route service is inside
+# a zone. Painting it plain red is a half-truth.
+#
+# So this is an OVERLAY, not a sixth view, and it is never netted off anything.
+# A zone brings 1-3 vehicles to 15-48 km2 for 7am-9pm -- a fallback, not a
+# replacement -- and all ten are flagged hidden in PRT's own project file. The
+# layer therefore ships the vehicle count and that flag alongside every polygon
+# and leaves the weighing to the reader. No published number moves because this
+# exists; it changes what a red patch on the map is allowed to be read as.
+
+def ondemand_layer(con):
+    """The ten proposed on-demand zones, with what the plan says each gets.
+
+    A carry-over like `corridor_layer` -- nothing is recomputed here. The
+    geometry and the km2 figures are `analyze_coverage_area.py`'s, written into
+    the database by `build_webdb.load_zones`.
+
+    `lost_pct_inside` is the share of the ground that loses all fixed-route
+    service which falls inside some zone. It is None rather than 0 when the
+    database carries no citywide denominator: a zero would read as "no lost
+    ground is offered anything", which is the opposite of unknown.
+    """
+    rows = con.execute(
+        "SELECT * FROM ondemand_zone ORDER BY name").fetchall()
+
+    zones = [{
+        "name": r["name"],
+        "vehicles_weekday": r["vehicles_weekday"],
+        "weekday_hours": r["weekday_hours"],
+        "days": r["service_day_patterns"].split(";"),
+        "hidden_in_remix": bool(r["hidden_in_remix"]),
+        "zone_km2": r["zone_km2"],
+        "fixed_route_km2_now": r["fixed_route_km2_now"],
+        "fixed_route_km2_proposed": r["fixed_route_km2_proposed"],
+        "lost_km2_inside": r["lost_km2_inside"],
+        "gained_km2_inside": r["gained_km2_inside"],
+        "geometry": json.loads(r["geometry"]),
+    } for r in rows]
+
+    inside = sum(z["lost_km2_inside"] or 0 for z in zones)
+    citywide = meta(con).get("lost_km2_citywide")
+    citywide = float(citywide) if citywide is not None else None
+
+    return {
+        "zones": zones,
+        "totals": {
+            "zones": len(zones),
+            "vehicles_weekday": sum(z["vehicles_weekday"] or 0 for z in zones),
+            "zone_km2": round(sum(z["zone_km2"] or 0 for z in zones), 2),
+            "lost_km2_inside": round(inside, 2),
+            "lost_km2_citywide": citywide,
+            "lost_pct_inside": (inside / citywide * 100) if citywide else None,
+        },
     }
 
 
