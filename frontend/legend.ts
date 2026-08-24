@@ -180,7 +180,8 @@ export function renderOneSeatLegend(
       still may run only hourly on that day.`
     : `No day type enters this — a route serves a place or it doesn't — so a
       one-seat ride that survives may still be hourly on a Sunday, or take an
-      hour to make. Switch the day-type filter on to ask about one day.`;
+      hour to make. Switch the one-seat control to "Selected day" to ask
+      about one day instead.`;
 
   el.innerHTML = `
     <div class="lg-head">

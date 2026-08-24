@@ -190,22 +190,25 @@ export function oneSeatDayFor(restricted: boolean, day: Day): OneSeatDay {
 }
 
 /**
- * Do the day buttons currently govern only the panel?
+ * Should the day buttons be on screen at all?
  *
- * True in exactly one place: the one-seat view showing its published day-free
- * answer. There the buttons still do something real -- they move the panel's
- * day-by-day trip counts, which is the only thing on screen that can say
- * whether a surviving one-seat ride runs twice an hour or twice a day -- but
- * they leave the dots alone, and a control that visibly does nothing without
- * saying why reads as broken. So they stay live and the toolbar says what
- * they are driving.
+ * Hidden in exactly one place: the one-seat view showing its published
+ * day-free answer. No day type enters that measurement -- a route serves a
+ * place or it doesn't -- so a day control sitting there is a lever attached
+ * to nothing, and a reader who moves it and sees the map hold still has been
+ * told something false about what they are looking at. The one-seat toggle
+ * immediately above it is what brings the buttons back, which is why the day
+ * row is the last control in the toolbar rather than the second: it is
+ * subordinate to the view, and it now reads that way.
  *
- * Deliberately not the same treatment as the walk radius, which IS disabled
- * for Streets and Travel time: there the control means nothing at all in that
- * view, and greying it out is the honest signal. Here it means something.
+ * Deliberately not the greying the walk radius gets on Streets and Travel
+ * time. That control is permanently meaningless in those views, so a
+ * disabled-looking button is a durable statement. This one appears and
+ * disappears with a toggle a click away, and a row of ghosts that flickers
+ * back to life is more confusing than a row that simply isn't there yet.
  */
-export function dayAppliesToPanelOnly(view: string, restricted: boolean): boolean {
-  return view === 'oneseat' && !restricted;
+export function dayControlsShown(view: string, restricted: boolean): boolean {
+  return view !== 'oneseat' || restricted;
 }
 
 export async function loadOneSeatLayer(

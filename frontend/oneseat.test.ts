@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   STATUS_STYLE, STATUS_ORDER, countInBounds, toGeoJSON, dotLabel,
   destinationQuery, destinationLabel, activeDestButton, NO_RIDE_COLOR,
-  oneSeatQuery, oneSeatDayFor, ANY_DAY, dayAppliesToPanelOnly,
+  oneSeatQuery, oneSeatDayFor, ANY_DAY, dayControlsShown,
 } from './oneseat';
 import { GONE_COLOR, NEW_COLOR } from './surface';
 import { KEPT_COLOR } from './corridor';
@@ -182,21 +182,21 @@ describe('the day-restricted variant', () => {
   });
 });
 
-describe('what the day buttons mean while the one-seat view is up', () => {
-  it('says "panel only" when the map is on the published day-free answer', () => {
-    // The buttons are not dead -- they still drive the panel's trip counts,
-    // which is where "the ride survives, but hourly?" gets answered -- so
-    // they stay live and get a hint rather than being greyed out.
-    expect(dayAppliesToPanelOnly('oneseat', false)).toBe(true);
+describe('whether the day buttons are shown at all', () => {
+  it('hides them while the one-seat map is on the published day-free answer', () => {
+    // No day type enters that answer, so a day control there is a lever
+    // attached to nothing on the map. The one-seat toggle sits directly above
+    // it and is what brings it back.
+    expect(dayControlsShown('oneseat', false)).toBe(false);
   });
 
-  it('drops the hint once the map is following the day too', () => {
-    expect(dayAppliesToPanelOnly('oneseat', true)).toBe(false);
+  it('brings them back the moment the one-seat map follows a day', () => {
+    expect(dayControlsShown('oneseat', true)).toBe(true);
   });
 
-  it('says nothing in the views the day control fully governs', () => {
+  it('always shows them in the views the day type governs', () => {
     for (const view of ['dots', 'surface', 'both', 'corridors', 'journey']) {
-      expect(dayAppliesToPanelOnly(view, false)).toBe(false);
+      expect(dayControlsShown(view, false)).toBe(true);
     }
   });
 });

@@ -104,10 +104,6 @@
        catchment -- so the radius control is disabled rather than silently
        ignored while that view is active. */
     .seg button:disabled { opacity:.35; cursor:not-allowed; }
-    /* A control that still does something, but not to the map -- see
-       #day-hint. Quieter than the label beside it: it qualifies the buttons,
-       it is not a second heading for them. */
-    .controls .hint { color:var(--muted); font-size:11px; font-style:italic; }
     .link { background:none; border:0; color:var(--now); cursor:pointer;
       font:inherit; font-size:12px; padding:0; margin-left:auto; }
     /* Two of these now share the row; only the first needs pushing right, and
@@ -258,24 +254,6 @@
              different page, not another layer. -->
         <a class="link" href="/findings">Findings</a>
       </div>
-      <!-- Day type governs the map layer as well as the panel: a place that
-           keeps every weekday bus and loses the weekend reads as untouched on
-           a weekday-only screen, and 152 are in that position. -->
-      <div class="controls">
-        <span class="lbl">day</span>
-        <div class="seg">
-          <button data-day="weekday" class="active">Weekday</button>
-          <button data-day="saturday">Saturday</button>
-          <button data-day="sunday">Sunday</button>
-        </div>
-        <!-- Shown only while the one-seat view is on its published day-free
-             answer, where these buttons move the panel and leave the dots
-             alone. They are not disabled, because they are not meaningless
-             there: the panel's day-by-day counts are the only thing on screen
-             that can say whether a surviving one-seat ride runs twice an hour
-             or twice a day. -->
-        <span class="hint hidden" id="day-hint">panel only</span>
-      </div>
       <!-- Locations vs surface vs streets. Locations and Surface both answer
            a walk-access question -- how much service can I reach on foot from
            here -- at a stop or on a lattice; the dots can only be drawn where
@@ -369,6 +347,24 @@
           <button data-dest="downtown" class="active">Downtown</button>
           <button data-dest="oakland">Oakland</button>
           <button data-dest="pin">Pick a point</button>
+        </div>
+      </div>
+      <!-- Day type governs the map layer as well as the panel: a place that
+           keeps every weekday bus and loses the weekend reads as untouched on
+           a weekday-only screen, and 152 are in that position.
+
+           Last in the toolbar, and below the one-seat controls, because it is
+           subordinate to the view: which day you are asking about only means
+           anything once you have chosen what is being asked. It is also the
+           one control a view can switch off entirely -- the published
+           one-seat answer has no day type -- and the toggle that switches it
+           back on is the row immediately above. -->
+      <div class="controls" id="day-controls">
+        <span class="lbl">day</span>
+        <div class="seg">
+          <button data-day="weekday" class="active">Weekday</button>
+          <button data-day="saturday">Saturday</button>
+          <button data-day="sunday">Sunday</button>
         </div>
       </div>
       <div id="panel"></div>
