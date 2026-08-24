@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   STATUS_STYLE, STATUS_ORDER, countInBounds, toGeoJSON, dotLabel,
   destinationQuery, destinationLabel, activeDestButton, NO_RIDE_COLOR,
-  oneSeatQuery, oneSeatDayFor, ANY_DAY,
+  oneSeatQuery, oneSeatDayFor, ANY_DAY, dayAppliesToPanelOnly,
 } from './oneseat';
 import { GONE_COLOR, NEW_COLOR } from './surface';
 import { KEPT_COLOR } from './corridor';
@@ -179,5 +179,24 @@ describe('the day-restricted variant', () => {
     // Saturday must not silently move this view off the published answer.
     expect(oneSeatDayFor(false, 'sunday')).toBe(ANY_DAY);
     expect(oneSeatDayFor(true, 'sunday')).toBe('sunday');
+  });
+});
+
+describe('what the day buttons mean while the one-seat view is up', () => {
+  it('says "panel only" when the map is on the published day-free answer', () => {
+    // The buttons are not dead -- they still drive the panel's trip counts,
+    // which is where "the ride survives, but hourly?" gets answered -- so
+    // they stay live and get a hint rather than being greyed out.
+    expect(dayAppliesToPanelOnly('oneseat', false)).toBe(true);
+  });
+
+  it('drops the hint once the map is following the day too', () => {
+    expect(dayAppliesToPanelOnly('oneseat', true)).toBe(false);
+  });
+
+  it('says nothing in the views the day control fully governs', () => {
+    for (const view of ['dots', 'surface', 'both', 'corridors', 'journey']) {
+      expect(dayAppliesToPanelOnly(view, false)).toBe(false);
+    }
   });
 });

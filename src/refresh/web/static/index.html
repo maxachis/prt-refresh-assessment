@@ -104,6 +104,10 @@
        catchment -- so the radius control is disabled rather than silently
        ignored while that view is active. */
     .seg button:disabled { opacity:.35; cursor:not-allowed; }
+    /* A control that still does something, but not to the map -- see
+       #day-hint. Quieter than the label beside it: it qualifies the buttons,
+       it is not a second heading for them. */
+    .controls .hint { color:var(--muted); font-size:11px; font-style:italic; }
     .link { background:none; border:0; color:var(--now); cursor:pointer;
       font:inherit; font-size:12px; padding:0; margin-left:auto; }
     /* Two of these now share the row; only the first needs pushing right, and
@@ -264,6 +268,13 @@
           <button data-day="saturday">Saturday</button>
           <button data-day="sunday">Sunday</button>
         </div>
+        <!-- Shown only while the one-seat view is on its published day-free
+             answer, where these buttons move the panel and leave the dots
+             alone. They are not disabled, because they are not meaningless
+             there: the panel's day-by-day counts are the only thing on screen
+             that can say whether a surviving one-seat ride runs twice an hour
+             or twice a day. -->
+        <span class="hint hidden" id="day-hint">panel only</span>
       </div>
       <!-- Locations vs surface vs streets. Locations and Surface both answer
            a walk-access question -- how much service can I reach on foot from

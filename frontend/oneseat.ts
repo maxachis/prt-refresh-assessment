@@ -189,6 +189,25 @@ export function oneSeatDayFor(restricted: boolean, day: Day): OneSeatDay {
   return restricted ? day : ANY_DAY;
 }
 
+/**
+ * Do the day buttons currently govern only the panel?
+ *
+ * True in exactly one place: the one-seat view showing its published day-free
+ * answer. There the buttons still do something real -- they move the panel's
+ * day-by-day trip counts, which is the only thing on screen that can say
+ * whether a surviving one-seat ride runs twice an hour or twice a day -- but
+ * they leave the dots alone, and a control that visibly does nothing without
+ * saying why reads as broken. So they stay live and the toolbar says what
+ * they are driving.
+ *
+ * Deliberately not the same treatment as the walk radius, which IS disabled
+ * for Streets and Travel time: there the control means nothing at all in that
+ * view, and greying it out is the honest signal. Here it means something.
+ */
+export function dayAppliesToPanelOnly(view: string, restricted: boolean): boolean {
+  return view === 'oneseat' && !restricted;
+}
+
 export async function loadOneSeatLayer(
   map: maplibregl.Map, radius: number, dest: Destination,
   day: OneSeatDay = ANY_DAY,

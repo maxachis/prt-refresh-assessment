@@ -16,6 +16,7 @@ import {
 } from './corridor';
 import {
   initOneSeatLayer, loadOneSeatLayer, setOneSeatVisible, oneSeatDayFor,
+  dayAppliesToPanelOnly,
   layerData as oneSeatData, isVisible as oneSeatOn,
   dotLabel as oneSeatDotLabel, HERE_COLOR, Destination, activeDestButton,
 } from './oneseat';
@@ -195,6 +196,7 @@ map.on('load', () => {
   // published answer, and the legend tells them they have.
   segment('[data-oneseat-day]', (b) => {
     oneSeatRestricted = b.dataset.oneseatDay === 'selected';
+    refreshDayHint();
     void reloadOneSeat();
     if (last) void load(last.lat, last.lon);
   });
@@ -222,6 +224,7 @@ map.on('load', () => {
     const picksDestination = view === 'oneseat' || view === 'journey';
     $('dest-controls').classList.toggle('hidden', !picksDestination);
     $('oneseat-day-controls').classList.toggle('hidden', view !== 'oneseat');
+    refreshDayHint();
     if (!picksDestination) setPinMode(false);
     showDestinationMarker();
   });
@@ -447,6 +450,18 @@ async function loadJourney(lat: number, lon: number) {
       `<div class="empty"><h2>No answer for that point</h2>
        <p class="muted">${(err as Error).message}</p></div>`;
   }
+}
+
+/**
+ * Say what the day buttons are driving, when that is not the map.
+ *
+ * Called from both controls that can change the answer -- the view segment
+ * and the one-seat day toggle -- rather than from the day buttons themselves,
+ * which cannot change whether the hint applies.
+ */
+function refreshDayHint() {
+  $('day-hint').classList.toggle(
+    'hidden', !dayAppliesToPanelOnly(view, oneSeatRestricted));
 }
 
 /** Which day the one-seat question is being asked for right now. */
