@@ -709,6 +709,57 @@ def stop_routes(feed, bus_only=True):
     return dict(served), coords
 
 
+def stop_routes_by_day(feed, samples, bus_only=True):
+    """({day: {stop_id: {route_id}}}, {stop_id: (lat, lon)}) -- calendar-resolved.
+
+    The day-typed sibling of `stop_routes` above, and the difference between
+    them is the whole point: that one counts every trip on any calendar,
+    because a stop served once a week is still served. This one asks a
+    narrower question -- is this stop served BY THIS ROUTE on this day type --
+    which is what the app's day-restricted one-seat variant needs.
+
+    Resolved per (stop, route, day) rather than per (route, day). A route
+    running on a Sunday somewhere is not the same claim as it running past a
+    particular corner: the proposed feed's S-variants are exactly that case,
+    a weekend pattern that skips part of its weekday corridor. A route-level
+    day filter would credit those corners with a Sunday bus they do not have.
+
+    Calendars are resolved the way every other analysis here resolves them --
+    real sample dates, holiday calendars excluded -- so a route running Labor
+    Day service does not thereby have weekday service.
+    """
+    feed.check()
+    by_day, occasional, _nominal, _dates_run = resolve_calendars(feed, samples)
+
+    keep_routes = {r["route_id"] for r in feed.rows("routes.txt")
+                   if not bus_only or r["route_type"] == "3"}
+
+    trips = {}
+    for t in feed.rows("trips.txt"):
+        if t["route_id"] not in keep_routes or t["service_id"] in occasional:
+            continue
+        days = [d for d in DAYS if t["service_id"] in by_day[d]]
+        if days:
+            trips[t["trip_id"]] = (t["route_id"], days)
+
+    served = {d: defaultdict(set) for d in DAYS}
+    for st in feed.rows("stop_times.txt"):
+        hit = trips.get(st["trip_id"])
+        if not hit:
+            continue
+        route, days = hit
+        for day in days:
+            served[day][st["stop_id"]].add(route)
+
+    coords = {}
+    for s in feed.rows("stops.txt"):
+        try:
+            coords[s["stop_id"]] = (float(s["stop_lat"]), float(s["stop_lon"]))
+        except (TypeError, ValueError, KeyError):
+            pass
+    return {d: dict(v) for d, v in served.items()}, coords
+
+
 def load_service(feed, samples, period_of=None, to_axis=None, bus_only=True,
                  quiet=False):
     """Departure times per day type for one feed. See module docstring."""

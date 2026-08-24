@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { renderLegend } from './legend';
-import { ChangeLayer } from './types';
+import { renderLegend, renderOneSeatLegend } from './legend';
+import { ChangeLayer, OneSeatDay, OneSeatLayer } from './types';
 
 /** Enough of an HTMLElement for renderLegend, which only sets innerHTML. */
 function stub() {
@@ -67,5 +67,41 @@ describe('renderLegend', () => {
     renderLegend(el, LAYER, 'sunday', BOX);
     expect(el.innerHTML).toContain('not riders');
     expect(el.innerHTML).toContain('a Sunday');
+  });
+});
+
+const WHOLE_COUNTY = { west: -80.4, south: 40.1, east: -79.6, north: 40.8 };
+
+function oneSeatLayer(day: OneSeatDay): OneSeatLayer {
+  return {
+    radius: 400,
+    day,
+    destination: { key: 'downtown', name: 'Downtown', seeds: 44,
+                   lat: null, lon: null },
+    statuses: [
+      { key: 'here', label: 'at the destination' },
+      { key: 'keeps', label: 'keeps a one-seat ride' },
+      { key: 'gains', label: 'gains a one-seat ride' },
+      { key: 'loses', label: 'loses its one-seat ride' },
+      { key: 'none', label: 'no one-seat ride either way' },
+    ],
+    counts: { here: 1, keeps: 2, gains: 1, loses: 1, none: 1 },
+    fields: ['lat', 'lon', 'published', 'status', 'current', 'proposed'],
+    points: [[40.44, -79.99, 1, 1, '61A', '61A']],
+  };
+}
+
+describe('the one-seat legend on a day type', () => {
+  it('says which day it answered for, and that it is not the published one', () => {
+    const el = stub();
+    renderOneSeatLegend(el, oneSeatLayer('sunday'), WHOLE_COUNTY);
+    expect(el.innerHTML).toContain('Sunday');
+    expect(el.innerHTML).toMatch(/published/i);
+  });
+
+  it('says there is no day type at all on the published answer', () => {
+    const el = stub();
+    renderOneSeatLegend(el, oneSeatLayer('any'), WHOLE_COUNTY);
+    expect(el.innerHTML).toContain('No day type');
   });
 });

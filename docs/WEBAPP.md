@@ -319,12 +319,24 @@ whole county repaints for it.
    of routes serving a location with the set serving the destination, both
    recomputed independently per network, so renumbering cannot manufacture a
    loss: the 61A becoming the 61X moves both sets together.
-3. **It has no day type.** A route serves a location or it does not — the
-   published method, and what keeps this comparable to
-   `data/oneseat_change.csv`. The cost is real and the legend says so: a
-   surviving one-seat ride may run hourly on a Sunday, and this test cannot
-   tell that from a ten-minute trunk route. The panel's day-by-day counts are
-   where that question goes.
+3. **Its default has no day type, and a day type can be asked for beside it.**
+   A route serves a location or it does not — the published method, what keeps
+   the default comparable to `data/oneseat_change.csv`, and what the legend
+   says when it is on. The **one-seat** control switches to the day the
+   toolbar is showing, which restricts both ends to routes that call there on
+   that day type, resolved per (stop, route, day) rather than per route: a
+   weekend pattern that skips a corner does not credit that corner with a
+   Sunday bus, which is exactly the S-variants' case. It is an opt-in and not
+   a fourth day button, because the two are **different measurements** — the
+   day-typed counts are not the published ones, and the legend and the panel
+   both say which one is on screen. It exists because the plan's weekend cuts
+   are real: 152 locations keep every weekday bus and lose the weekend
+   outright, and the day-free answer says yes to all of them. Downtown at
+   400 m keeps 4,504 one-seat rides on the published measure and 3,642 on a
+   Sunday.
+
+   What neither answers is *how often*. A ride surviving on a Sunday may still
+   be hourly, and the panel's day-by-day counts are where that question goes.
 4. **It has no travel time.** A route touching both ends is a one-seat ride
    however long it takes; 90 minutes around three sides of the county counts
    the same as 12.
@@ -545,11 +557,11 @@ from the published area answer.
 
 | Endpoint | Returns |
 |---|---|
-| `GET /api/place?lat=&lon=&radius=` | Before and after at one point, all three day types, plus the one-seat verdicts for the named destinations. Optional `dest_lat`/`dest_lon` adds a dropped pin's verdict. The app's purpose; everything else is navigation. |
+| `GET /api/place?lat=&lon=&radius=` | Before and after at one point, all three day types, plus the one-seat verdicts for the named destinations. Optional `dest_lat`/`dest_lon` adds a dropped pin's verdict; `oneseat_day=` follows the map so a dot and its panel cannot answer different questions. The app's purpose; everything else is navigation. |
 | `GET /api/change?radius=` | The citywide layer: every location bucketed, all three day types, columnar. Radius must be 400 or 150 — it is precomputed. ~300 KB, 77 KB gzipped. |
 | `GET /api/surface?radius=` | The magnitude surface: every covered 100 m cell, all three day types, columnar as lattice indices. Radius must be 400 or 150. ~1.3 MB, 198 KB gzipped. |
 | `GET /api/corridors?day=` | Every street run kept, lost or added for one day type, with citywide kilometres by class. No radius — a corridor is pavement, not a catchment. ~290 KB weekday. |
-| `GET /api/oneseat?radius=&dest=` *or* `&dest_lat=&dest_lon=` | Every location's one-seat verdict for one destination, named or dropped. Not precomputed — only its expensive half is, which is what lets the destination be arbitrary. No day type. |
+| `GET /api/oneseat?radius=&dest=` *or* `&dest_lat=&dest_lon=` | Every location's one-seat verdict for one destination, named or dropped. Not precomputed — only its expensive half is, which is what lets the destination be arbitrary. `day=` defaults to `any`, the published day-free answer; a day type restricts both ends and is a different measurement. |
 | `GET /api/journey?lat=&lon=&dest_lat=&dest_lon=&day=` | How long the trip takes door to door, both networks, over every ready-minute of the weekday 07:00–09:00 peak. Answered at both transfer radii, with `sign_flips` where they disagree about which network is faster. Nothing precomputed and no radius control — seconds, not milliseconds. |
 | `GET /api/zones` | The 10 proposed on-demand zones: polygon, weekday vehicle count, hours, and how much ground inside each loses all fixed-route service. No day and no radius — a zone is an area with one set of hours, not a catchment or a timetable. ~15 KB. |
 | `GET /api/destinations` | The named destinations, with seed counts and centres. |

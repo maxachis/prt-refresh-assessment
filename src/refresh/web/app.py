@@ -85,6 +85,11 @@ def create_app(db_path: str | Path = "data/refresh.db") -> FastAPI:
         dest_lat: float | None = Query(None, description="optional one-seat "
                                                          "destination pin"),
         dest_lon: float | None = Query(None),
+        oneseat_day: str = Query(
+            query.ANY_DAY,
+            pattern=f"^({'|'.join(query.ONESEAT_DAYS)})$",
+            description="day type for the one-seat verdicts only; the default "
+                        "is the published day-free answer"),
     ):
         """Before and after at one point, both networks measured identically.
 
@@ -100,7 +105,8 @@ def create_app(db_path: str | Path = "data/refresh.db") -> FastAPI:
             raise HTTPException(400, "give both dest_lat and dest_lon, or neither")
         if dest_lat is not None:
             _check_point(dest_lat, dest_lon)
-        return query.place(con, lat, lon, radius, dest_lat, dest_lon)
+        return query.place(con, lat, lon, radius, dest_lat, dest_lon,
+                           oneseat_day)
 
     @app.get("/api/change")
     def api_change(
@@ -182,6 +188,13 @@ def create_app(db_path: str | Path = "data/refresh.db") -> FastAPI:
         dest: str | None = Query(None, description="a named destination key"),
         dest_lat: float | None = Query(None, description="or a dropped pin"),
         dest_lon: float | None = Query(None),
+        day: str = Query(
+            query.ANY_DAY,
+            pattern=f"^({'|'.join(query.ONESEAT_DAYS)})$",
+            description="restrict to routes that call at both ends on this "
+                        "day type; the default is the published day-free "
+                        "answer, and a day type is a different measurement "
+                        "rather than a sharper one"),
     ):
         """Who keeps, gains and loses a one-seat ride to one destination.
 
@@ -205,7 +218,8 @@ def create_app(db_path: str | Path = "data/refresh.db") -> FastAPI:
             _check_point(dest_lat, dest_lon)
         try:
             return query.oneseat_layer(con, radius, key=dest,
-                                       dest_lat=dest_lat, dest_lon=dest_lon)
+                                       dest_lat=dest_lat, dest_lon=dest_lon,
+                                       day=day)
         except KeyError:
             known = [d["key"] for d in query.destinations(con)]
             raise HTTPException(404, f"no destination {dest!r}; known: {known}")
@@ -329,9 +343,14 @@ CAVEATS = [
         "id": "one-seat",
         "text": "The one-seat view asks a different question from every other "
                 "layer here: can a rider reach the chosen destination without "
-                "transferring? It has no day type and no travel time — a route "
-                "serves a location or it does not — so a surviving one-seat "
-                "ride may be hourly on a Sunday or take an hour to make. It is "
+                "transferring? Its published answer has no day type and no "
+                "travel time — a route serves a location or it does not — so a "
+                "surviving one-seat ride may be hourly on a Sunday or take an "
+                "hour to make. The view can be restricted to a single day "
+                "type, which asks whether a route calls at both ends on that "
+                "day; that is a different measurement from the published one "
+                "and its counts are not the figures the answer documents "
+                "carry. It is "
                 "also the only view that counts rail: the T and the inclines "
                 "are unchanged by the Refresh, but leaving them out would show "
                 "the South Hills losing Downtown rides the Blue Line still "

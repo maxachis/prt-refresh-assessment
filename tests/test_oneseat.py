@@ -234,3 +234,98 @@ def test_an_unknown_destination_key_is_an_error_not_an_empty_map(built):
 def test_a_destination_needs_a_key_or_a_point(built):
     with pytest.raises(ValueError):
         query.oneseat_layer(built, query.PRIMARY_RADIUS)
+
+
+# --------------------------------------------------------------------------
+# the day-restricted variant
+# --------------------------------------------------------------------------
+#
+# The published question has no day type: a route serves a place or it does
+# not. That answer stays the default and stays what `data/oneseat_change.csv`
+# pins. This is the additive variant beside it, and what these tests protect
+# is that it is a genuinely different measurement -- resolved per stop and per
+# day, not a route-level "does the 61C run on Sunday" -- and that widening it
+# can never leak into the published one.
+
+def test_day_route_sets_are_subsets_of_the_any_day_one():
+    """No day can boast a route the all-days index has never seen."""
+    import gtfs
+    feed = gtfs.current()
+    any_day, _ = gtfs.stop_routes(feed, bus_only=False)
+    by_day, _ = gtfs.stop_routes_by_day(feed, gtfs.SAMPLE["current"],
+                                        bus_only=False)
+    assert set(by_day) == set(gtfs.DAYS)
+    for day, served in by_day.items():
+        for sid, routes in served.items():
+            assert routes <= any_day.get(sid, set()), f"{sid} on {day}"
+
+
+def test_sunday_is_strictly_smaller_than_any_day():
+    """The whole reason the variant exists: weekend service is not the week's.
+
+    Checked as stop-route PAIRS rather than as route ids, because a route
+    running on Sunday somewhere is not the same claim as it running past this
+    corner -- that gap is exactly what a route-level day filter would miss.
+    """
+    import gtfs
+    feed = gtfs.current()
+    any_day, _ = gtfs.stop_routes(feed, bus_only=False)
+    by_day, _ = gtfs.stop_routes_by_day(feed, gtfs.SAMPLE["current"],
+                                        bus_only=False)
+    pairs = {(sid, rt) for sid, rts in any_day.items() for rt in rts}
+    sunday = {(sid, rt) for sid, rts in by_day["sunday"].items() for rt in rts}
+    assert len(sunday) < len(pairs) * 0.9
+
+
+def test_rail_survives_the_day_filter():
+    """Control 2 again: the T runs on a Sunday and must still be in the index."""
+    import gtfs
+    by_day, _ = gtfs.stop_routes_by_day(gtfs.current(), gtfs.SAMPLE["current"],
+                                        bus_only=False)
+    for day in gtfs.DAYS:
+        seen = {rt for rts in by_day[day].values() for rt in rts}
+        assert RAIL & seen, f"no rail on {day}"
+
+
+def test_day_restricted_routes_at_a_point_narrow(built):
+    """The stored per-day index narrows what is boardable, never widens it."""
+    lat, lon = DOWNTOWN_POINT
+    wide = query.routes_at(built, lat, lon, query.PRIMARY_RADIUS, "current")
+    for day in query.DAYS:
+        narrow = query.routes_at(built, lat, lon, query.PRIMARY_RADIUS,
+                                 "current", day=day)
+        assert narrow <= wide
+    assert query.routes_at(built, lat, lon, query.PRIMARY_RADIUS, "current",
+                           day="sunday") < wide
+
+
+def test_day_restricted_layer_agrees_with_its_own_panel(built):
+    """The dot and the panel behind it agree on a day, as they do off one."""
+    layer = query.oneseat_layer(built, query.PRIMARY_RADIUS, key="downtown",
+                                day="sunday")
+    assert layer["day"] == "sunday"
+    fields = layer["fields"]
+    lat_i, lon_i, st_i = (fields.index(f) for f in ("lat", "lon", "status"))
+    keys = [s["key"] for s in layer["statuses"]]
+    for row in layer["points"][::400]:
+        panel = query.oneseat_at_place(built, row[lat_i], row[lon_i],
+                                       query.PRIMARY_RADIUS, key="downtown",
+                                       day="sunday")
+        assert panel["status"] == keys[row[st_i]]
+
+
+def test_the_published_answer_is_the_default(built):
+    """Asking for no day is the any-day answer, and it is what the CSV pins."""
+    default = query.oneseat_layer(built, query.PRIMARY_RADIUS, key="downtown")
+    explicit = query.oneseat_layer(built, query.PRIMARY_RADIUS, key="downtown",
+                                   day=query.ANY_DAY)
+    assert default["day"] == query.ANY_DAY
+    assert default["counts"] == explicit["counts"]
+
+
+def test_a_day_loses_one_seat_rides_the_any_day_answer_keeps(built):
+    """Sunday must not read as better connected than the week that contains it."""
+    wide = query.oneseat_layer(built, query.PRIMARY_RADIUS, key="downtown")
+    sunday = query.oneseat_layer(built, query.PRIMARY_RADIUS, key="downtown",
+                                 day="sunday")
+    assert sunday["counts"]["keeps"] < wide["counts"]["keeps"]

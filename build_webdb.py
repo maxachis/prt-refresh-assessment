@@ -311,6 +311,22 @@ CREATE TABLE reach_stop (
     PRIMARY KEY (side, stop_id)
 );
 CREATE VIRTUAL TABLE reach_rtree USING rtree(id, min_lat, max_lat, min_lon, max_lon);
+-- The same index, resolved per day type -- the one-seat view's day-restricted
+-- variant, and NOT the published answer. `reach_stop.routes` above counts a
+-- route calling here on any calendar, which is what data/oneseat_change.csv
+-- means by a one-seat ride; these rows count only the routes that call here
+-- on that day type, resolved per (stop, route, day) rather than per route, so
+-- a weekend pattern that skips this corner is absent here while the route
+-- itself still runs elsewhere. A stop with no row for a day has no service
+-- that day; see query.reach_stops_within.
+CREATE TABLE reach_stop_day (
+    side    TEXT NOT NULL,
+    stop_id TEXT NOT NULL,
+    day     TEXT NOT NULL,
+    routes  TEXT NOT NULL,          -- ';'-joined route ids, sorted
+    PRIMARY KEY (side, stop_id, day)
+);
+
 CREATE TABLE reach_key (
     id      INTEGER PRIMARY KEY,
     side    TEXT NOT NULL,
@@ -337,12 +353,16 @@ CREATE INDEX ix_destination ON destination(dest_key);
 -- 44 seeds and Oakland 93, so measuring them live would put ~270 spatial
 -- queries in front of every click to re-derive something that cannot change
 -- between builds. A pin the reader drops is one point and is measured live.
+-- `day` is query.ANY_DAY for the published, day-free answer and a day type for
+-- the variant beside it. One table, one sentinel, rather than a nullable
+-- column: a caller reading a row cannot then be vague about which it asked.
 CREATE TABLE destination_reach (
     dest_key TEXT NOT NULL,
     radius   INTEGER NOT NULL,
     side     TEXT NOT NULL,
+    day      TEXT NOT NULL,
     routes   TEXT NOT NULL,
-    PRIMARY KEY (dest_key, radius, side)
+    PRIMARY KEY (dest_key, radius, side, day)
 );
 
 -- The routes boardable at each citywide-layer point, per side and radius.
@@ -358,13 +378,14 @@ CREATE TABLE point_reach (
     radius    INTEGER NOT NULL,
     point_id  TEXT NOT NULL,
     side      TEXT NOT NULL,
+    day       TEXT NOT NULL,       -- query.ANY_DAY, or a day type
     lat       REAL NOT NULL,
     lon       REAL NOT NULL,
     published INTEGER NOT NULL,
     routes    TEXT NOT NULL,
-    PRIMARY KEY (radius, point_id, side)
+    PRIMARY KEY (radius, point_id, side, day)
 );
-CREATE INDEX ix_point_reach_radius ON point_reach(radius);
+CREATE INDEX ix_point_reach_radius ON point_reach(radius, day);
 -- --------------------------------------------------------------------------
 -- THE JOURNEY LAYER: the router's own timetable, and the second thing here
 -- that is not bus only.
@@ -715,6 +736,19 @@ def build(out_path):
         con.executemany("INSERT INTO reach_stop VALUES (?,?,?,?,?)", reach_rows)
         con.executemany("INSERT INTO reach_key VALUES (?,?,?)", key_rows)
         con.executemany("INSERT INTO reach_rtree VALUES (?,?,?,?,?)", rtree_rows)
+
+        # The same index resolved per day type, for the day-restricted
+        # variant. A second read of the feed rather than a filter over the
+        # rows above: `stop_routes` deliberately ignores calendars, so the day
+        # answer cannot be recovered from it.
+        placed = {sid for _side, sid, _lat, _lon, _rts in reach_rows}
+        by_day, _ = gtfs.stop_routes_by_day(feed, gtfs.SAMPLE[side],
+                                            bus_only=False)
+        day_rows = [(side, sid, day, ";".join(sorted(rts)))
+                    for day in DAYS
+                    for sid, rts in sorted(by_day[day].items())
+                    if sid in placed and rts]
+        con.executemany("INSERT INTO reach_stop_day VALUES (?,?,?,?)", day_rows)
         if side == "current":
             reach_coords = coords
 
@@ -722,7 +756,8 @@ def build(out_path):
 
         print(f"    -> {len(stop_rows):,} stops, {len(dep_rows):,} departure "
               f"rows, {len(rt_rows)} bus routes, "
-              f"{len(reach_rows):,} all-mode stops for one-seat")
+              f"{len(reach_rows):,} all-mode stops for one-seat "
+              f"({len(day_rows):,} stop-days)")
         print(f"       journey layer: {patterns} patterns, {trips:,} trips, "
               f"{placed_all_modes:,} placed stops, {drawn} drawn on streets")
 
@@ -895,6 +930,18 @@ def load_destinations(coords):
     return rows
 
 
+def _day_route_index(con):
+    """{(side, stop_id, day): frozenset(routes)} -- the whole per-day index.
+
+    ~40,000 rows, held in memory for the length of the build so that the
+    per-point work below stays one spatial query rather than four.
+    """
+    return {(r["side"], r["stop_id"], r["day"]):
+            frozenset(r["routes"].split(";")) if r["routes"] else frozenset()
+            for r in con.execute(
+                "SELECT side, stop_id, day, routes FROM reach_stop_day")}
+
+
 def oneseat_layer(out_path):
     """Fill `destination_reach` and `point_reach` -- the one-seat layer.
 
@@ -904,28 +951,53 @@ def oneseat_layer(out_path):
 
     Cheaper than the other two layers by an order of magnitude because there
     is no timetable in it -- a route serves a stop or it does not -- so this
-    is spatial work only, no departure parsing and no day types.
+    is spatial work only, no departure parsing.
+
+    Every day type is answered from ONE spatial query per point rather than
+    four. The circle a point draws does not depend on the day; only which
+    routes those stops carry does. So the stops are found once and the day
+    index is applied in memory, which keeps this layer as cheap as it was
+    before the variant existed instead of quadrupling the r-tree work.
     """
     read = query.connect(out_path)
     write = sqlite3.connect(out_path)
+    day_routes = _day_route_index(read)
+
+    def reach(lat, lon, radius, side):
+        """{day: routes} within the radius of one point, one spatial query."""
+        found = query.reach_stops_within(read, lat, lon, radius, side)
+        out = {d: set() for d in query.ONESEAT_DAYS}
+        for sid, _lat, _lon, routes in found:
+            out[query.ANY_DAY] |= routes
+            for day in DAYS:
+                out[day] |= day_routes.get((side, sid, day), frozenset())
+        return out
 
     for radius in query.RADII:
         for d in query.destinations(read):
             seeds = query.destination_seeds(read, d["key"])
             for side in SIDES:
-                rts = query.routes_reaching(read, seeds, radius, side)
-                write.execute("INSERT INTO destination_reach VALUES (?,?,?,?)",
-                              (d["key"], int(radius), side, ";".join(sorted(rts))))
+                per = {day: set() for day in query.ONESEAT_DAYS}
+                for lat, lon in seeds:
+                    for day, rts in reach(lat, lon, radius, side).items():
+                        per[day] |= rts
+                write.executemany(
+                    "INSERT INTO destination_reach VALUES (?,?,?,?,?)",
+                    [(d["key"], int(radius), side, day, ";".join(sorted(rts)))
+                     for day, rts in per.items()])
 
         rows = []
         for point_id, lat, lon, published in query.change_points(read, radius):
             for side in SIDES:
-                rts = query.routes_at(read, lat, lon, radius, side)
-                rows.append((int(radius), point_id, side, lat, lon, published,
-                             ";".join(sorted(rts))))
-        write.executemany("INSERT INTO point_reach VALUES (?,?,?,?,?,?,?)", rows)
-        print(f"\none-seat layer @ {radius} m: {len(rows) // len(SIDES):,} "
-              f"locations, {len(rows):,} rows")
+                for day, rts in reach(lat, lon, radius, side).items():
+                    rows.append((int(radius), point_id, side, day, lat, lon,
+                                 published, ";".join(sorted(rts))))
+        write.executemany("INSERT INTO point_reach VALUES (?,?,?,?,?,?,?,?)",
+                          rows)
+        n_days = len(query.ONESEAT_DAYS)
+        print(f"\none-seat layer @ {radius} m: "
+              f"{len(rows) // (len(SIDES) * n_days):,} locations, "
+              f"{len(rows):,} rows over {n_days} day settings")
 
     write.commit()
     # The verdict counts for the named destinations, as a build-time check:
@@ -933,9 +1005,12 @@ def oneseat_layer(out_path):
     # not take a browser to notice.
     for d in query.destinations(read):
         for radius in query.RADII:
-            counts = query.oneseat_layer(read, radius, key=d["key"])["counts"]
-            print(f"    {d['name']} @ {radius} m: "
-                  + ", ".join(f"{v} {k}" for k, v in counts.items() if v))
+            for day in query.ONESEAT_DAYS:
+                counts = query.oneseat_layer(read, radius, key=d["key"],
+                                             day=day)["counts"]
+                label = "published" if day == query.ANY_DAY else day
+                print(f"    {d['name']} @ {radius} m, {label}: "
+                      + ", ".join(f"{v} {k}" for k, v in counts.items() if v))
     write.close()
     read.close()
 

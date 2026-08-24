@@ -91,8 +91,19 @@ export interface DestinationRef {
   lon: number | null;
 }
 
+/**
+ * Which day the one-seat question was asked for.
+ *
+ * 'any' is the PUBLISHED answer -- a route serves a place or it does not,
+ * counted on any calendar -- and it is what `data/oneseat_change.csv` and the
+ * answer documents mean. A day type beside it is a different measurement, not
+ * a sharper one, so anything showing those counts has to say so.
+ */
+export type OneSeatDay = 'any' | Day;
+
 export interface OneSeatLayer {
   radius: number;
+  day: OneSeatDay;
   destination: DestinationRef;
   statuses: { key: OneSeatStatus; label: string }[];
   counts: Record<OneSeatStatus, number>;
@@ -108,6 +119,8 @@ export interface OneSeatVerdict {
   lat: number;
   lon: number;
   status: OneSeatStatus;
+  /** Absent on a database built before the day-restricted variant. */
+  day?: OneSeatDay;
   current: string[];
   proposed: string[];
   kept: string[];
@@ -125,6 +138,8 @@ export interface PlaceResult {
   place: { muni: string; hood: string } | null;
   /** Empty when the database predates the one-seat layer. */
   oneseat: OneSeatVerdict[];
+  /** Which day the verdicts above answered for; 'any' is the published one. */
+  oneseat_day?: OneSeatDay;
 }
 
 /**

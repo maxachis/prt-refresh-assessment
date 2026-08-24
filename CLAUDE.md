@@ -261,15 +261,23 @@ changes published findings.
     connectivity, not volume. Three things follow that look like bugs and are
     not. It is **route-based**, which convention 1 otherwise forbids: it never
     compares route N to route N, it intersects two independently recomputed
-    route sets, so renumbering moves both sides together. It has **no day type
-    and no travel time**: a route serves a place or it does not, so a surviving
-    one-seat ride may be hourly on a Sunday or take an hour to make, and that
-    caveat has to ship with the number. And it **includes the T and the
-    inclines**, where every service figure here drops them — drop them from
+    route sets, so renumbering moves both sides together. Its published answer
+    has **no day type and no travel time**: a route serves a place or it does
+    not, so a surviving one-seat ride may be hourly on a Sunday or take an
+    hour to make, and that caveat has to ship with the number. The app can
+    restrict the question to one day type — routes calling at both ends on
+    that day, resolved per (stop, route, day) so a weekend pattern that skips
+    a corner does not credit it — and that is a **different measurement
+    beside the published one, never a replacement**: it is opt-in, its counts
+    are not the figures `data/oneseat_change.csv` and `docs/answers/` carry,
+    and anything quoting a one-seat number has to say which of the two it
+    used. It still cannot say how often the surviving ride runs. And it
+    **includes the T and the inclines**, where every service figure here drops them — drop them from
     this question and Beechview reads as losing a Downtown ride the Blue Line
     still runs. Do not "fix" that inconsistency; it is control 2 of
     `analyze_one_seat.py`, and the app keeps its all-mode index in separate
-    tables (`reach_stop`, `point_reach`) precisely so that widening the
+    tables (`reach_stop`, `reach_stop_day`, `point_reach`) precisely so that
+    widening the
     universe here can never widen it under a published service number.
 
 14. **A journey is a fifth unit, and it is the only one with a clock.**

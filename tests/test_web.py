@@ -231,6 +231,28 @@ def test_place_carries_the_one_seat_verdicts(client):
         "here", "keeps", "gains", "loses", "none"}
 
 
+def test_oneseat_answers_for_one_day_type(client):
+    """The variant beside the published answer, and it says which it gave."""
+    wide = client.get("/api/oneseat", params={"dest": "downtown"}).json()
+    sunday = client.get("/api/oneseat", params={"dest": "downtown",
+                                                "day": "sunday"}).json()
+    assert wide["day"] == "any"
+    assert sunday["day"] == "sunday"
+    assert sunday["counts"]["keeps"] < wide["counts"]["keeps"]
+
+
+def test_oneseat_rejects_a_day_that_is_not_a_day(client):
+    r = client.get("/api/oneseat", params={"dest": "downtown", "day": "tuesday"})
+    assert r.status_code == 422
+
+
+def test_place_verdicts_follow_the_map_day(client):
+    """A dot and the panel it opens must not answer different questions."""
+    p = client.get("/api/place", params={**DOWNTOWN, "oneseat_day": "sunday"}).json()
+    assert p["oneseat_day"] == "sunday"
+    assert all(d["day"] == "sunday" for d in p["oneseat"])
+
+
 def test_meta_carries_the_one_seat_caveat(client):
     """The view has no day type and no travel time, and must say so."""
     caveats = {c["id"]: c["text"] for c in client.get("/api/meta").json()["caveats"]}

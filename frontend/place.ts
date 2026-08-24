@@ -21,7 +21,7 @@
  */
 import { esc, clock, signed, pct } from './utils';
 import {
-  PKEYS, PERIOD_LABEL, Day, PlaceResult, DayService, OneSeatVerdict,
+  PKEYS, PERIOD_LABEL, Day, PlaceResult, DayService, OneSeatVerdict, OneSeatDay,
 } from './types';
 
 let current: PlaceResult | null = null;
@@ -130,10 +130,12 @@ function bestMedian(s: DayService): number | null {
  *
  * Sits in the panel whichever view is on screen, because it answers something
  * the trip counts above cannot: a corner can keep every bus it has and still
- * lose the ride that got it to Oakland without changing. It is deliberately
+ * lose the ride that got it to Oakland without changing. By default it is
  * the only block here with no day type on it — a route serves a place or it
  * does not — and the note says so rather than letting the reader carry the
- * day control's meaning into it.
+ * day control's meaning into it. It follows the one-seat view's own day
+ * control when that is switched on, so a dot and the panel it opens never
+ * answer different questions; the note then names the day instead.
  *
  * Both sides' route numbers are shown, never a bare verdict. "Loses its
  * one-seat ride to Oakland" is a sentence somebody will screenshot, and it
@@ -147,7 +149,14 @@ const ONESEAT_WORD: Record<string, string> = {
   none: 'no one-seat ride either way',
 };
 
-function oneSeatBlock(verdicts: OneSeatVerdict[]): string {
+const ONESEAT_DAY_WORD: Record<string, string> = {
+  weekday: 'a weekday',
+  saturday: 'a Saturday',
+  sunday: 'a Sunday',
+};
+
+function oneSeatBlock(verdicts: OneSeatVerdict[],
+                      day: OneSeatDay = 'any'): string {
   if (!verdicts.length) return '';
   const rows = verdicts.map((v) => {
     const now = routeList(v.current);
@@ -174,7 +183,13 @@ function oneSeatBlock(verdicts: OneSeatVerdict[]): string {
       <h3>Getting there without changing bus</h3>
       ${rows}
       <p class="note">A one-seat ride means some single route serves both this
-        spot and the destination. It says nothing about how long the trip takes
+        spot and the destination. ${day === 'any'
+          ? `Counted on any calendar, which is the published measure — no day
+             type enters it.`
+          : `Restricted to routes running on ${ONESEAT_DAY_WORD[day] ?? day},
+             which is not the published measure — that one counts a route
+             calling here on any calendar.`}
+        It says nothing about how long the trip takes
         or how often it runs — check the timetable above for that. This is the
         only figure on the panel that counts the T and the inclines: they are
         unchanged by the Refresh, but leaving them out would show the South
@@ -238,7 +253,7 @@ export function render(p: PlaceResult) {
       <dd>${p.current.stops.length} <span class="muted">→</span> ${p.proposed.stops.length}</dd>
     </dl>
 
-    ${oneSeatBlock(p.oneseat ?? [])}
+    ${oneSeatBlock(p.oneseat ?? [], p.oneseat_day ?? 'any')}
 
     <div class="routes">
       <h3>Routes serving this spot</h3>

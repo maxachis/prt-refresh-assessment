@@ -325,14 +325,33 @@
            Oakland are the two BASE_CAMP asks about and the two the published
            place-level answer covers; the pin is there because the layer
            applies its destination per request rather than baking a list in at
-           build time, so anywhere in the county works. There is no day type on
-           this view -- a route serves a place or it doesn't -- and it is the
-           only one that counts the T. -->
+           build time, so anywhere in the county works. Its default answer has
+           no day type -- a route serves a place or it doesn't -- and it is the
+           only view that counts the T. -->
       <!-- Shared by the one-seat and travel-time views, which mean slightly
            different things by "to": the one-seat test runs against every stop
            of the district, while a journey has to arrive somewhere and uses
            the centre of that same seed cloud -- the identical point the
            published travel-time analysis searches to. -->
+      <!-- The one-seat view's day control, and the reason it is not just the
+           day buttons above. The published one-seat answer has no day type at
+           all -- a route serves a place or it doesn't, counted on any
+           calendar -- and that is what data/oneseat_change.csv and the answer
+           documents mean. Restricting to a day is a DIFFERENT measurement,
+           worth having because the plan's weekend cuts are real (152
+           locations keep every weekday bus and lose the weekend outright),
+           but its counts are not the published ones. So it is an opt-in the
+           reader makes deliberately, and the legend says which of the two is
+           on screen. What neither can say is how often the surviving ride
+           runs; the panel's day-by-day trip counts are still the answer to
+           that. -->
+      <div class="controls hidden" id="oneseat-day-controls">
+        <span class="lbl">one-seat</span>
+        <div class="seg">
+          <button data-oneseat-day="any" class="active">Any day</button>
+          <button data-oneseat-day="selected">Selected day</button>
+        </div>
+      </div>
       <div class="controls hidden" id="dest-controls">
         <span class="lbl">to</span>
         <div class="seg">

@@ -23,7 +23,7 @@ import {
 import { KLASS_COLOR, pavementPct } from './corridor';
 import {
   STATUS_STYLE, STATUS_ORDER, countInBounds as countOneSeatInBounds,
-  destinationLabel,
+  destinationLabel, ANY_DAY,
 } from './oneseat';
 
 const DAY_WORD: Record<Day, string> = {
@@ -149,11 +149,14 @@ export function renderCorridorLegend(el: HTMLElement, layer: CorridorLayer) {
  *
  * Two things it has to say that no other legend here does.
  *
- * IT IS NOT A DAY-TYPE ANSWER. The day control still governs the panel and
- * every other layer, and a reader who has been switching Weekday/Saturday all
- * session will assume it governs this too. It does not: a route serves a place
- * or it does not. That is the published method, and the honest consequence --
- * a kept one-seat ride may be hourly on a Sunday -- is the footnote.
+ * WHICH DAY IT ANSWERED FOR, IF ANY. By default this is not a day-type answer
+ * at all: a route serves a place or it does not, which is the published
+ * method, and a reader who has been switching Weekday/Saturday all session
+ * will otherwise assume the day control governs this too. When they do
+ * restrict it to a day, the legend has to say so twice over -- which day, and
+ * that those counts are no longer the published ones -- because the number
+ * beside "loses its one-seat ride" is the thing that gets quoted. The honest
+ * consequence of either -- a surviving ride may be hourly -- is the footnote.
  *
  * IT COUNTS RAIL. Said out loud because every other number on this screen
  * excludes it, and a reader comparing the two would otherwise be comparing
@@ -169,12 +172,22 @@ export function renderOneSeatLegend(
   const label = (k: string) => layer.statuses.find((s) => s.key === k)?.label ?? k;
   const total = STATUS_ORDER.reduce((n, k) => n + (counts[k] ?? 0), 0);
   const to = destinationLabel(layer);
+  const restricted = layer.day && layer.day !== ANY_DAY;
+  const dayNote = restricted
+    ? `Restricted to routes running on ${DAY_WORD[layer.day as Day]
+      } at both ends — <b>not</b> the published day-free answer, which counts a
+      route that calls here on any calendar. A ride shown here as surviving
+      still may run only hourly on that day.`
+    : `No day type enters this — a route serves a place or it doesn't — so a
+      one-seat ride that survives may still be hourly on a Sunday, or take an
+      hour to make. Switch the day-type filter on to ask about one day.`;
 
   el.innerHTML = `
     <div class="lg-head">
       One-seat ride to <b>${esc(to)}</b>
       <span class="muted">· ${total.toLocaleString()} locations in view
-      · ${layer.radius} m walk</span>
+      · ${layer.radius} m walk${restricted
+        ? ` · ${DAY_WORD[layer.day as Day]}` : ' · any day'}</span>
     </div>
     ${STATUS_ORDER.map((k) => `
       <div class="lg-row lg-static">
@@ -187,9 +200,8 @@ export function renderOneSeatLegend(
         `${(layer.counts[k] ?? 0).toLocaleString()} ${esc(label(k))}`).join(' · ')}
     </div>
     <div class="lg-foot">Can a rider reach ${esc(to)} without transferring?
-      No day type and no travel time enter this — a route serves a place or it
-      doesn't — so a one-seat ride that survives may still be hourly on a
-      Sunday, or take an hour to make. Click a dot for that location's actual
+      ${dayNote} No travel time enters it either, so a surviving ride may take
+      an hour to make. Click a dot for that location's actual
       timetable. This is also the only view that counts the T and the inclines:
       they are unchanged by the Refresh, but leaving them out would show the
       South Hills losing rides the Blue Line still runs.</div>`;

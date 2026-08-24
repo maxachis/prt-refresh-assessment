@@ -6,12 +6,15 @@
  * on it. This one measures a CONNECTION, and the difference runs through all
  * of its presentation decisions.
  *
- *  - IT HAS NO DAY TYPE, AND THE LEGEND SAYS SO. A route serves a location or
- *    it does not; that is the method `data/oneseat_change.csv` publishes and
- *    the reason this view's answer does not move when the day control does.
- *    The cost is real: a surviving one-seat ride may run hourly on a Sunday,
- *    and nothing on this layer can tell that from a ten-minute trunk route. So
- *    the legend points at the panel, which does carry the day-by-day counts.
+ *  - ITS DEFAULT HAS NO DAY TYPE, AND THE LEGEND SAYS SO. A route serves a
+ *    location or it does not; that is the method `data/oneseat_change.csv`
+ *    publishes, and it is why the day control does not move this view unless
+ *    the reader opts in. Opting in restricts both ends to routes that call
+ *    there on that day type -- a different measurement, whose counts are not
+ *    the published ones, and which exists because the plan's weekend cuts
+ *    make "can I still do this on a Sunday" a separate question. What neither
+ *    can say is how OFTEN: a ride that survives may run hourly, so the legend
+ *    keeps pointing at the panel, which carries the day-by-day counts.
  *  - IT COUNTS RAIL, ALONE AMONG THE VIEWS. The T and the inclines are
  *    outside the Refresh, so every service figure here drops them — but drop
  *    them from THIS question and Beechview reads as losing a Downtown ride the
@@ -32,7 +35,7 @@
  *    missing data rather than as the finding it is: most of Allegheny County
  *    cannot reach Oakland without transferring, before or after.
  */
-import { OneSeatLayer, OneSeatPoint, OneSeatStatus } from './types';
+import { Day, OneSeatDay, OneSeatLayer, OneSeatPoint, OneSeatStatus } from './types';
 import { fetchJSON } from './utils';
 import { GONE_COLOR, NEW_COLOR } from './surface';
 import { KEPT_COLOR } from './corridor';
@@ -162,11 +165,36 @@ export function activeDestButton(dest: Destination): string {
   return 'key' in dest ? dest.key : PIN_BUTTON;
 }
 
+/**
+ * The published question has no day type; 'any' asks for it and is the default
+ * everywhere. See `OneSeatDay`.
+ */
+export const ANY_DAY: OneSeatDay = 'any';
+
+/** The whole query string for one layer load -- pure, so it can be tested. */
+export function oneSeatQuery(radius: number, dest: Destination,
+                             day: OneSeatDay): string {
+  return `radius=${radius}&${destinationQuery(dest)}&day=${day}`;
+}
+
+/**
+ * Which day the layer should ask for, given the toggle and the toolbar.
+ *
+ * The toggle is the opt-in, deliberately: the day buttons govern every other
+ * view, and letting them silently move this one off the published answer
+ * would mean a reader who switched to Saturday an hour ago is quoting numbers
+ * that are not in `data/oneseat_change.csv` without ever having chosen to.
+ */
+export function oneSeatDayFor(restricted: boolean, day: Day): OneSeatDay {
+  return restricted ? day : ANY_DAY;
+}
+
 export async function loadOneSeatLayer(
   map: maplibregl.Map, radius: number, dest: Destination,
+  day: OneSeatDay = ANY_DAY,
 ) {
   data = await fetchJSON<OneSeatLayer>(
-    `/api/oneseat?radius=${radius}&${destinationQuery(dest)}`);
+    `/api/oneseat?${oneSeatQuery(radius, dest, day)}`);
   (map.getSource(SRC) as maplibregl.GeoJSONSource).setData(toGeoJSON(data) as any);
   return data;
 }

@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   STATUS_STYLE, STATUS_ORDER, countInBounds, toGeoJSON, dotLabel,
   destinationQuery, destinationLabel, activeDestButton, NO_RIDE_COLOR,
+  oneSeatQuery, oneSeatDayFor, ANY_DAY,
 } from './oneseat';
 import { GONE_COLOR, NEW_COLOR } from './surface';
 import { KEPT_COLOR } from './corridor';
@@ -19,6 +20,7 @@ function layer(points: OneSeatLayer['points'],
                destination?: Partial<OneSeatLayer['destination']>): OneSeatLayer {
   return {
     radius: 400,
+    day: 'any',
     destination: {
       key: 'downtown', name: 'Downtown', seeds: 44, lat: null, lon: null,
       ...destination,
@@ -156,5 +158,26 @@ describe('which destination button is lit', () => {
     // Dragging the destination marker turns a named district into a point of
     // the reader's own, and the toolbar has to stop claiming Downtown.
     expect(activeDestButton({ lat: 40.44, lon: -79.99 })).toBe('pin');
+  });
+});
+
+describe('the day-restricted variant', () => {
+  it('asks for the published day-free answer by default', () => {
+    // ANY_DAY is what data/oneseat_change.csv means by a one-seat ride, and
+    // it must stay what the map shows unless the reader asks otherwise.
+    expect(oneSeatQuery(400, { key: 'downtown' }, ANY_DAY))
+      .toBe('radius=400&dest=downtown&day=any');
+  });
+
+  it('carries a day type when the reader restricts to one', () => {
+    expect(oneSeatQuery(400, { key: 'downtown' }, 'sunday'))
+      .toBe('radius=400&dest=downtown&day=sunday');
+  });
+
+  it('reads the toolbar day only while the reader has opted into it', () => {
+    // The toggle is the opt-in, not the day buttons: switching Weekday to
+    // Saturday must not silently move this view off the published answer.
+    expect(oneSeatDayFor(false, 'sunday')).toBe(ANY_DAY);
+    expect(oneSeatDayFor(true, 'sunday')).toBe('sunday');
   });
 });

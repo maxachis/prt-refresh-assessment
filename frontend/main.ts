@@ -15,7 +15,7 @@ import {
   layerData as corridorData, isVisible as corridorOn,
 } from './corridor';
 import {
-  initOneSeatLayer, loadOneSeatLayer, setOneSeatVisible,
+  initOneSeatLayer, loadOneSeatLayer, setOneSeatVisible, oneSeatDayFor,
   layerData as oneSeatData, isVisible as oneSeatOn,
   dotLabel as oneSeatDotLabel, HERE_COLOR, Destination, activeDestButton,
 } from './oneseat';
@@ -28,7 +28,7 @@ import {
   journeyPanelHTML, journeyPromptHTML, journeyKeyHTML,
   isVisible as journeyOn, journeyData, Point,
 } from './journey';
-import { PlaceResult, Day, JourneyResult, NamedDestination } from './types';
+import { PlaceResult, Day, OneSeatDay, JourneyResult, NamedDestination } from './types';
 
 const PGH: [number, number] = [-79.9959, 40.4406];
 const ORIGIN_COLOR = '#e2574c';   // the red "you asked here" pin
@@ -48,6 +48,13 @@ let destMarker: maplibregl.Marker | null = null;
 // reader forgets they are in, and every later click would silently move the
 // destination instead of answering "what changes here?".
 let pinMode = false;
+
+// Whether the one-seat view is restricted to the toolbar's day type. Off by
+// default and deliberately its own control rather than the day buttons: the
+// day-free answer is the published one, and a reader who switched to Saturday
+// for the Locations view must not find the one-seat counts quietly off the
+// figures `data/oneseat_change.csv` carries.
+let oneSeatRestricted = false;
 
 // Which view is on screen. Two of them — one-seat and travel time — take a
 // destination, and one of those two answers on a click rather than on a load,
@@ -170,7 +177,26 @@ map.on('load', () => {
     // screen is re-timed rather than left showing yesterday's day type.
     if (view === 'journey' && last) void loadJourney(last.lat, last.lon);
     if (corridorData()) void setCorridorDay(map, day).then(refreshLegend);
+    // The one-seat layer moves with the day only while the reader has asked
+    // it to; off the toggle it stays on the published day-free answer, and
+    // its legend says which of the two is on screen.
+    if (oneSeatRestricted && oneSeatData()) {
+      void reloadOneSeat();
+      if (last) void load(last.lat, last.lon);
+    }
     refreshLegend();
+  });
+
+  // The one-seat view's own day control. A separate opt-in rather than a
+  // fourth day button because the two answers are not the same measurement:
+  // the day-free one is what the published figures count, and the day-typed
+  // one exists because 152 locations keep every weekday bus and lose the
+  // weekend. Restricting is additive — the reader chooses to leave the
+  // published answer, and the legend tells them they have.
+  segment('[data-oneseat-day]', (b) => {
+    oneSeatRestricted = b.dataset.oneseatDay === 'selected';
+    void reloadOneSeat();
+    if (last) void load(last.lat, last.lon);
   });
 
   // Locations, surface, both, or streets. The surface and the corridors are
@@ -195,6 +221,7 @@ map.on('load', () => {
     // armed behind a hidden control is a click the reader cannot account for.
     const picksDestination = view === 'oneseat' || view === 'journey';
     $('dest-controls').classList.toggle('hidden', !picksDestination);
+    $('oneseat-day-controls').classList.toggle('hidden', view !== 'oneseat');
     if (!picksDestination) setPinMode(false);
     showDestinationMarker();
   });
@@ -422,18 +449,25 @@ async function loadJourney(lat: number, lon: number) {
   }
 }
 
+/** Which day the one-seat question is being asked for right now. */
+function oneSeatDay(): OneSeatDay {
+  return oneSeatDayFor(oneSeatRestricted, activeDay());
+}
+
 /** Turn the one-seat layer on or off, loading it the first time it is asked for. */
 async function showOneSeat(on: boolean) {
   if (on && !oneSeatData()) {
-    await withLoadingLegend(() => loadOneSeatLayer(map, radius, dest));
+    await withLoadingLegend(() =>
+      loadOneSeatLayer(map, radius, dest, oneSeatDay()));
   }
   setOneSeatVisible(map, on);
   refreshLegend();
 }
 
-/** Repaint the one-seat layer for the current destination and radius. */
+/** Repaint the one-seat layer for the current destination, radius and day. */
 async function reloadOneSeat() {
-  await withLoadingLegend(() => loadOneSeatLayer(map, radius, dest));
+  await withLoadingLegend(() =>
+    loadOneSeatLayer(map, radius, dest, oneSeatDay()));
   refreshLegend();
 }
 
@@ -554,7 +588,8 @@ async function load(lat: number, lon: number) {
     const pin = 'lat' in dest
       ? `&dest_lat=${dest.lat.toFixed(6)}&dest_lon=${dest.lon.toFixed(6)}` : '';
     const p = await fetchJSON<PlaceResult>(
-      `/api/place?lat=${lat.toFixed(6)}&lon=${lon.toFixed(6)}&radius=${radius}${pin}`);
+      `/api/place?lat=${lat.toFixed(6)}&lon=${lon.toFixed(6)}&radius=${radius}`
+      + `${pin}&oneseat_day=${oneSeatDay()}`);
     if (mine !== seq) return;       // a newer click already won
     showPlace(map, lat, lon, radius, p.current.stops, p.proposed.stops);
     render(p);
