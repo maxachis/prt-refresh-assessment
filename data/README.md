@@ -36,7 +36,6 @@ For where each source comes from and what it is authoritative for, see
 | `coverage_area.csv` | 10 | `analyze_coverage_area.py` | radius × tier: covered land area now vs proposed, km² lost / gained / retained |
 | `coverage_area_blocks.csv` | 450 | `analyze_coverage_area.py` | every contiguous block of lost or gained coverage over 0.1 km², with place, nearest stop, centroid |
 | `coverage_area_places.csv` | 452 | `analyze_coverage_area.py` | net km² gained or lost per municipality / neighbourhood, per tier |
-| `coverage_area_ondemand.csv` | 10 | `analyze_coverage_area.py` | per proposed on-demand zone: area, fixed-route coverage inside it now vs proposed, lost area, vehicles, hours |
 | `oneseat_change.csv` | 369 | `analyze_one_seat.py` | place × anchor: gains / keeps / loses a one-seat ride |
 | `discontinued_route_ridership_202604.csv` | 20 | `analyze_route_ridership.py` | riders on each discontinued route, Apr 2026 |
 | `route_frequency_change.csv` | 108 | `analyze_route_hours.py` | per corridor group: trips and in-service hours now vs proposed, per day type |
@@ -158,11 +157,13 @@ places goes to whichever stop is nearer, and the HOOD/MUNI labels are
 outlier-filtered but still imperfect. `unplaced` is ground over 2 km from any
 labelled stop, which is where genuinely new coverage shows up.
 
-**`coverage_area_ondemand.csv`** — the 10 proposed on-demand zones from
-`raw/remix_project.json`, the only part of the plan no GTFS can express.
-`lost_km2_inside` is the headline: 18.3 of the 80.1 km² losing all fixed-route
-service sits inside a zone. Read `vehicles_weekday` beside it — 1 to 3 vans for
-the whole zone — and `hidden_in_remix`, which is 1 for all ten.
+**`coverage_area_ondemand.csv` no longer exists.** It held the 10 proposed
+on-demand zones from `raw/remix_project.json` and its `lost_km2_inside` column
+was the source of a "18.3 of the 80.1 km² losing all fixed-route service sits
+inside a zone" claim, **retracted 2026-08-25**: PPT reports PRT is not including
+microtransit in this proposal, and the polygons are flagged hidden in the
+project file. Nothing here measures them
+([worklog](../docs/worklog/the-on-demand-zones-are-retracted.md)).
 
 ### `route_frequency_change.csv` — read the unit before quoting it
 

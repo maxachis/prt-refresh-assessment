@@ -118,7 +118,7 @@ that exist today, so ground the plan adds a bus to is invisible to them. It
 rasterises the union of walk-radius discs on a 100 m lattice — the same cluster
 and gap tests as above, applied at every point rather than at every stop — and
 writes `data/coverage_area.csv`, `coverage_area_blocks.csv`,
-`coverage_area_places.csv` and `coverage_area_ondemand.csv`.
+`coverage_area_places.csv`.
 
 - **The footprint shrinks 12.0%**: 460.4 → 405.1 km² within 400 m of a bus on
   any day. 80.1 km² loses all fixed-route service and 24.8 km² gains it.
@@ -130,7 +130,6 @@ writes `data/coverage_area.csv`, `coverage_area_blocks.csv`,
   Baldwin 5.7 + 4.7, Kennedy 4.9, Mount Lebanon 4.9, Reserve 4.5.
 - **The largest single gain is ground with no PRT stop today** — 3.5 km² up
   Perry Hwy past AHN Wexford, which no location-based method can see.
-- **23% of the lost area falls inside a proposed on-demand zone** (see below).
 
 ## The one blocked question
 
@@ -163,7 +162,7 @@ These apply to every answer here, and each has bitten at least once:
 2. **The Remix map carries no timetables**, which is why proposed service was
    originally taken from the frequency PDFs. Superseded by caveat 9: the analyses
    now count both networks from GTFS, and the PDFs serve as a published
-   cross-check. Remix remains the only source for the microtransit zones.
+   cross-check.
 3. **Boardings are May 2025 weekday averages**, unlinked and unweighted, and
    alightings are unavailable.
 4. **PRT's `HOOD`/`MUNI` labels contain gross errors** — stops mislabelled by up
@@ -227,22 +226,11 @@ These apply to every answer here, and each has bitten at least once:
     excluded as well, since a Downtown stop with 38 routes is never a clean
     substitution ([STOP-ROUTE-REPLACE.md](STOP-ROUTE-REPLACE.md)).
 
-12. **The 10 on-demand zones are counted in area, and nowhere else.**
-    `data/raw/remix_project.json`'s `onDemandZones` polygons are the proposed
-    microtransit areas, and `analyze_coverage_area.py` is the first thing here
-    to measure them: **18.3 of the 80.1 km² losing all fixed-route service —
-    23% — falls inside one**, concentrated in the McCandless zone (8.5 km²) and
-    South Hilltop (5.0). Each zone runs all week, 7am–9pm weekdays and 8am–8pm
-    weekends, on **1 to 3 vehicles for the whole zone**, so a zone is a fallback
-    and not a replacement; the figures are reported beside losses and never
-    netted off them. Two limits on this: every *location-level* answer here
-    (REGION-LOSS, STOP-LOST-SERVICE, the `locations/` files) still ignores the
-    zones and so may overstate loss where one applies; and the zones come from
-    the Remix project file, which flags all ten `isHidden` — nothing verifies
-    PRT has published or committed to them.
-
-## Not yet reflected here
-
-The zones above are counted only in the area answer. Folding them into the
-location-level answers — flagging each affected stop rather than each square
-kilometre — is the obvious next step, and needs no new source.
+12. **RETRACTED: the on-demand zone figures.** This caveat carried "18.3 of the
+    80.1 km² losing all fixed-route service — 23% — falls inside a proposed
+    on-demand zone" until 2026-08-25. **Do not quote it.** PPT reports PRT is
+    not including microtransit in this proposal; all ten polygons are flagged
+    hidden in PRT's Remix project file, do not render on the public map, and
+    appear in no PRT document or feed. Nothing in this repo measures them now,
+    and no loss anywhere here is softened by a van. Evidence:
+    [../worklog/the-on-demand-zones-are-retracted.md](../worklog/the-on-demand-zones-are-retracted.md).

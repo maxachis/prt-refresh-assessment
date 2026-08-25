@@ -166,14 +166,14 @@ attached to the wrong stop, so they are excluded from every example table in
   describes the plan PRT published. PRT sent it to Pittsburghers for Public
   Transit on request and PPT passed it on, so cite it that way rather than as a
   download; no date is recorded for PRT's email (`DATA_SOURCES.md`).
-- **The 10 `onDemandZones` polygons in `data/raw/remix_project.json`** — proposed
-  microtransit areas — are now counted, but only by
-  [COVERAGE-CHANGE.md](COVERAGE-CHANGE.md): 23% of the area losing all
-  fixed-route service falls inside one, at 1–3 vehicles per zone. The
-  location-level answers here still ignore them, so a loss listed in
-  [STOP-LOST-SERVICE.md](STOP-LOST-SERVICE.md) may be offered on-demand service
-  instead of nothing. The zones come from the Remix project file, are flagged
-  `isHidden` in it, and are reported beside losses rather than netted off them.
+- **The 10 `onDemandZones` polygons in `data/raw/remix_project.json` are not
+  counted anywhere, deliberately.** A "23% of the lost area falls inside a
+  proposed on-demand zone" figure was published here until 2026-08-25 and is
+  **retracted**: PPT reports PRT is not including microtransit in this proposal,
+  the polygons are flagged hidden in the project file, they do not render on the
+  public map, and no PRT document or feed mentions them. No loss anywhere in
+  these answers is softened by a van
+  ([worklog](../worklog/the-on-demand-zones-are-retracted.md)).
 
 ## Reproduce
 

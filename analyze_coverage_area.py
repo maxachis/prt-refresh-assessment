@@ -57,12 +57,24 @@ their own place, and unfiltered they would move whole square kilometres to the
 wrong town. It is indicative: a cell midway between two municipalities goes to
 whichever stop is nearer.
 
+THE ON-DEMAND ZONES ARE DELIBERATELY NOT MEASURED HERE
+
+data/raw/remix_project.json carries 10 onDemandZones polygons, and until
+2026-08-25 a section E rasterised them to report that 23% of the area losing
+all fixed-route service fell inside one. That figure is RETRACTED and the
+section is gone. PPT reports PRT is not including microtransit in this
+proposal, and the file agrees: all ten zones carry isHidden and hideZoneName,
+they do not render on the public Remix map, and no PRT document or feed
+mentions them. Measuring them published a softener for a loss that has none.
+
+Do not restore this without a published PRT commitment to point at. See
+docs/worklog/the-on-demand-zones-are-retracted.md.
+
 Run ingest_blr.py first.  Usage: python3 analyze_coverage_area.py [cell_m]
     -> data/coverage_area.csv, data/coverage_area_places.csv
 """
 
 import csv
-import json
 import math
 import sys
 from collections import defaultdict
@@ -75,7 +87,6 @@ from analyze_coverage_change import TIERS, departures_by_direction, hourly
 from analyze_one_seat import drop_outliers, load_labels
 
 DATA = Path("data")
-RAW = DATA / "raw"
 
 # Lattice pitch for the headline figures, and the ladder section A converges
 # over. 100 m is 0.01 km^2 a cell -- finer than the walk radius is honest to.
@@ -345,109 +356,6 @@ def place_report(cur_t, prop_t, cell_m, label_of, gaz, memo, rows):
         print(f"    gaining most: {gaining or 'nowhere'}")
 
 
-# --------------------------------------------------------------------------
-# the on-demand zones -- the one thing only Remix carries
-# --------------------------------------------------------------------------
-
-def on_demand_zones():
-    """The proposed microtransit zones out of the Remix project file.
-
-    Ten polygons, each with a weekday and two weekend service entries carrying
-    hours and a vehicle count. They are the only part of the proposal the GTFS
-    cannot express -- an on-demand zone has no stops and no timetable -- and
-    every other answer in this repo currently ignores them, which makes lost
-    fixed-route coverage inside one read as a total loss when the plan offers
-    something in its place.
-
-    Reported, not netted off. A zone with 3 vehicles over 25 km^2 is not a bus
-    route, and PRT flags all ten `isHidden` in the project file, so this is
-    what the plan file says rather than a verified published commitment.
-    """
-    doc = json.loads((RAW / "remix_project.json").read_text())
-    out = []
-    for z in doc["scenarios"][0].get("onDemandZones", []):
-        g = z["geometry"]
-        polys = (g["coordinates"] if g["type"] == "MultiPolygon"
-                 else [g["coordinates"]])
-        svc = {s["serviceDays"]: s for s in z.get("service", [])}
-        wk = svc.get("1111100", {})
-        out.append({
-            "name": z["name"], "polys": polys, "hidden": bool(z.get("isHidden")),
-            "vehicles_weekday": wk.get("supply"),
-            "hours": (wk.get("startTimeMinutes"), wk.get("endTimeMinutes")),
-            "days": sorted(svc),
-        })
-    return out
-
-
-def in_ring(x, y, ring):
-    """Ray-cast point-in-ring, ring given as projected (x, y) pairs."""
-    inside = False
-    for (x0, y0), (x1, y1) in zip(ring, ring[1:] + ring[:1]):
-        if (y0 > y) != (y1 > y) and x < x0 + (y - y0) * (x1 - x0) / (y1 - y0):
-            inside = not inside
-    return inside
-
-
-def zone_cells(zone, cell_m):
-    """The lattice cells whose centre falls inside one zone, holes respected."""
-    rings = [[project(lat, lon) for lon, lat in ring]
-             for poly in zone["polys"] for ring in poly]
-    xs = [p[0] for r in rings for p in r]
-    ys = [p[1] for r in rings for p in r]
-    cells = set()
-    for ix in range(int(min(xs) // cell_m), int(max(xs) // cell_m) + 1):
-        for iy in range(int(min(ys) // cell_m), int(max(ys) // cell_m) + 1):
-            x, y = centre((ix, iy), cell_m)
-            if sum(in_ring(x, y, r) for r in rings) % 2:
-                cells.add((ix, iy))
-    return cells
-
-
-def on_demand_report(cur_t, prop_t, cell_m, rows):
-    """Section E: how much of the lost fixed-route area a zone is offered for."""
-    zones = on_demand_zones()
-    a, b = cur_t["WEEK-ANY-MINIMUM"], prop_t["WEEK-ANY-MINIMUM"]
-    lost, gained = a - b, b - a
-    print("\n" + "=" * 76)
-    print("E. THE PROPOSED ON-DEMAND ZONES AGAINST THE LOST AREA".center(76))
-    print("=" * 76)
-    print(f"  {'zone':16s} {'zone km2':>9s} {'fixed now':>10s} {'proposed':>9s}"
-          f" {'lost inside':>12s} {'weekday vans':>13s}")
-    covered = set()
-    for z in sorted(zones, key=lambda z: z["name"]):
-        cells = zone_cells(z, cell_m)
-        covered |= cells & lost
-        h0, h1 = z["hours"]
-        rows.append({
-            "zone": z["name"], "zone_km2": round(km2(cells, cell_m), 2),
-            "fixed_route_km2_now": round(km2(cells & a, cell_m), 2),
-            "fixed_route_km2_proposed": round(km2(cells & b, cell_m), 2),
-            "lost_km2_inside": round(km2(cells & lost, cell_m), 2),
-            "gained_km2_inside": round(km2(cells & gained, cell_m), 2),
-            "vehicles_weekday": z["vehicles_weekday"],
-            "weekday_hours": f"{h0 // 60}:{h0 % 60:02d}-{h1 // 60}:{h1 % 60:02d}"
-                             if h0 is not None else "",
-            "service_day_patterns": ";".join(z["days"]),
-            "hidden_in_remix": int(z["hidden"]),
-        })
-        r = rows[-1]
-        print(f"  {z['name'][:16]:16s} {r['zone_km2']:9.1f} "
-              f"{r['fixed_route_km2_now']:10.1f} "
-              f"{r['fixed_route_km2_proposed']:9.1f} {r['lost_km2_inside']:12.1f}"
-              f" {str(r['vehicles_weekday']):>13s}")
-
-    tot = km2(lost, cell_m)
-    inside = km2(covered, cell_m)
-    print(f"\n  Of the {tot:.1f} km2 that loses fixed-route service entirely, "
-          f"{inside:.1f} km2 ({inside / tot:.0%}) falls\n  inside a proposed "
-          f"on-demand zone and {tot - inside:.1f} km2 does not. Every zone runs "
-          "all week,\n  7am-9pm weekdays and 8am-8pm weekends, with 1-3 vehicles "
-          "for the whole zone --\n  a fallback, not a replacement, and all ten "
-          "are flagged hidden in the Remix file.")
-    return inside, tot
-
-
 MIN_BLOCK_KM2 = 0.1
 
 
@@ -556,13 +464,9 @@ def main():
     block_report(*headline, cell_m, label_of, gaz, memo, stop_gaz, names,
                  block_rows)
 
-    zone_rows = []
-    on_demand_report(*headline, cell_m, zone_rows)
-
     for out, data in ((DATA / "coverage_area.csv", rows),
                       (DATA / "coverage_area_places.csv", place_rows),
-                      (DATA / "coverage_area_blocks.csv", block_rows),
-                      (DATA / "coverage_area_ondemand.csv", zone_rows)):
+                      (DATA / "coverage_area_blocks.csv", block_rows)):
         with open(out, "w", newline="", encoding="utf-8") as f:
             w = csv.DictWriter(f, fieldnames=list(data[0].keys()))
             w.writeheader()

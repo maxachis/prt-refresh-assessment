@@ -329,19 +329,21 @@ The lattice is not doing the work: 200/100/50/25 m give 459.0/460.4/460.5/460.5
 km² today and −12.0% at every pitch. At a strict 150 m radius the loss is
 −13.5%.
 
-**23% of the lost area (18.3 km²) falls inside one of the 10 proposed on-demand
-microtransit zones** — mostly the McCandless zone, 8.5 km². Each zone runs
-7am–9pm weekdays and 8am–8pm weekends on 1–3 vehicles for the whole zone, so
-they are reported beside the loss and never subtracted from it. They come from
-the Remix project file, which flags all ten `isHidden`; nothing here verifies
-PRT has committed to them.
+**RETRACTED, 2026-08-25: the on-demand zone figure.** This section previously
+reported that 23% of the lost area (18.3 km²) fell inside one of 10 proposed
+microtransit zones. It should not be quoted. PPT reports that PRT is not
+including microtransit in this proposal, and the source agrees: the 10 polygons
+exist only in PRT's Remix project file, all ten are flagged `isHidden`, they do
+not render on the public map, and no PRT document or feed mentions them. The
+figure softened a loss that has no softener. **Read the 80.1 km² losing all
+fixed-route service as a plain loss.**
 
 Two limits specific to this section. **Area is unweighted land** — Hays Woods,
 the rivers and the airfield count like Brookline, and a population-weighted
 version needs census geography this repo does not carry, so read area as extent
 and section C as who is standing in it. And the **walk radius is straight-line**,
-which flatters both networks equally. Blocks, municipal totals and the zone
-table are in `data/coverage_area_blocks.csv`, `_places.csv` and `_ondemand.csv`;
+which flatters both networks equally. Blocks and municipal totals are in
+`data/coverage_area_blocks.csv` and `_places.csv`;
 the write-up is [docs/answers/COVERAGE-CHANGE.md](docs/answers/COVERAGE-CHANGE.md).
 
 

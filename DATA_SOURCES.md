@@ -153,22 +153,27 @@ inclines, and reused numbers), and all 10,464 sequence rows resolve to a stop.
 - This is an undocumented internal API for a public map. It can change without
   notice; `data/raw/` caches every response so analysis stays reproducible.
 
-### The on-demand zones — the one thing only Remix has
+### The on-demand zones — present in the file, and deliberately unused
 
 `/api/projects/82ea6210` (cached as `data/raw/remix_project.json`) carries
-`scenarios[0].onDemandZones`: **10 microtransit zone polygons** — McCandless,
-Penn Hills, South Hilltop, McKeesport, McKees Rocks, Robinson, South Side,
-Airport Area, Highlands Area, USC-BP — each with a weekday and two weekend
-service entries giving hours (7am–9pm weekdays, 8am–8pm weekends) and a vehicle
-count (`supply`, 1–3 per zone). No GTFS can express them: an on-demand zone has
-no stops and no timetable.
+`scenarios[0].onDemandZones`: 10 microtransit zone polygons — McCandless, Penn
+Hills, South Hilltop, McKeesport, McKees Rocks, Robinson, South Side, Airport
+Area, Highlands Area, USC-BP — each with hours (7am–9pm weekdays, 8am–8pm
+weekends) and a vehicle count (`supply`, 1–3 per zone).
 
-`analyze_coverage_area.py` is the only consumer, and it rasterises the polygons
-onto the same lattice as the coverage tiers to ask how much of the lost
-fixed-route area they cover — 23%. Two cautions before citing them: all ten
-carry `isHidden: true` in the project file, and nothing here checks them against
-a published PRT document, so treat them as what the plan file says rather than
-as a commitment. They are reported beside the losses, never netted off.
+**Nothing in this repo reads them, and a figure derived from them was retracted
+on 2026-08-25.** `analyze_coverage_area.py` used to rasterise the polygons and
+report that 23% of the lost fixed-route area fell inside one. That is withdrawn:
+PPT reports PRT is not including microtransit in this proposal, and the file
+agrees — all ten carry `isHidden: true` **and** `hideZoneName: true`, they do
+not render on the public map, and no PRT document or feed mentions them (checked
+against the three frequency-and-hours PDFs, `exhibit_a.pdf`, `findmyroute.html`
+and the proposed GTFS, which carries no GTFS-Flex parts at all).
+
+The polygons are still here because the cache is verbatim. Treat them as a
+modelled option that was shelved, not as part of the plan, and do not restore an
+analysis of them without a published PRT commitment to point at. Reasoning:
+[docs/worklog/the-on-demand-zones-are-retracted.md](docs/worklog/the-on-demand-zones-are-retracted.md).
 
 ## The WPRDC stop-usage package: what its removal actually costs
 
@@ -271,7 +276,6 @@ Outputs, all in `data/`:
 | `coverage_area.csv` | 10 | radius × tier: covered land area now vs proposed, km² lost / gained / retained |
 | `coverage_area_blocks.csv` | 450 | each contiguous block of lost or gained coverage over 0.1 km², with place, nearest stop and centroid |
 | `coverage_area_places.csv` | 452 | net km² gained or lost per municipality / neighbourhood, per tier |
-| `coverage_area_ondemand.csv` | 10 | per proposed on-demand zone: zone area, fixed-route coverage now vs proposed inside it, lost area inside it, vehicles and hours |
 
 Raw downloads are cached in `data/raw/` and reused.
 

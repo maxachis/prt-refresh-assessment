@@ -121,11 +121,12 @@ something like `data/trip_time_change.csv` for the app to be tested against.
    from the future network. `bus_only` in `gtfs.py` keys on `"3"` and is
    therefore safe; anything keying on `"2"` is not.
 
-4. **On-demand zones cannot be routed.** A trip the plan expects one of the 10
-   microtransit vans to serve reads as unreachable — the same gap already open
-   for the surface layer (`docs/WEBAPP.md`, "Before it goes public", item 2),
-   but worse here, because "no trip exists" is a stronger claim than "this
-   ground lost fixed-route service".
+4. ~~**On-demand zones cannot be routed.**~~ **Closed 2026-08-25 — there are no
+   zones to route.** This warned that a trip the plan expects one of 10
+   microtransit vans to serve would read as unreachable. The zones are
+   retracted: PPT reports PRT is not including microtransit in this proposal
+   ([[the-on-demand-zones-are-retracted]]). An unreachable
+   origin-destination pair now means what it says.
 
 5. **Scheduled, not observed, on both sides.** Today's side could in principle
    be compared against real vehicle history (`pgh-ghost-bus` sits alongside as

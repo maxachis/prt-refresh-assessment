@@ -7,8 +7,8 @@ Sources 1-5 verified live 2026-08-17:
   2. Service tables   - three PDFs with a clean text layer (span + headway by period)
   3. Exhibit A        - official major-service-change narrative (30pp, text layer)
   4. Current GTFS     - the baseline to compare the proposal against
-  5. Remix public API - proposed stops/routes; now superseded for service by (6),
-                        but still the only source for the on-demand zones
+  5. Remix public API - proposed stops/routes; now superseded for service by (6).
+                        Its 10 on-demand zone polygons are deliberately unused
   6. Proposed GTFS    - PRT's own feed for the proposed network, obtained from
                         PRT directly. NOT fetchable; committed verbatim under
                         data/raw/proposed_gtfs/. This step only checks it is
@@ -420,8 +420,7 @@ def main():
     print("NOTE: the proposed network now has a real GTFS, obtained from\n"
           "      PRT directly and committed under data/raw/proposed_gtfs/. It is\n"
           "      authoritative for proposed stops and service; the Frequency &\n"
-          "      Hours PDFs are a published cross-check, and the Remix dumps\n"
-          "      remain the only source for the on-demand microtransit zones.\n"
+          "      Hours PDFs are a published cross-check.\n"
           "      Run verify_proposed_gtfs.py to re-check the feed against the\n"
           "      PDFs before relying on it.")
 

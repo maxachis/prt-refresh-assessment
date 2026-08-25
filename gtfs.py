@@ -42,8 +42,7 @@ distribution is where it fails:
     its base feed is 2023, which forced an "unverifiable" confidence tier onto
     any stop that looked dropped. PRT's own feed removes the need for it.
 
-The PDFs remain an independent published cross-check. Remix remains the only
-source for the on-demand microtransit zones.
+The PDFs remain an independent published cross-check.
 
 SEMANTICS, identical for both feeds:
 

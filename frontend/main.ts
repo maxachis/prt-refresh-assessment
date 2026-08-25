@@ -21,10 +21,6 @@ import {
   dotLabel as oneSeatDotLabel, HERE_COLOR, Destination, activeDestButton,
 } from './oneseat';
 import {
-  initZoneLayer, loadZoneLayer, setZoneVisible, zoneLabel, zoneNoteHTML,
-  styleZoneToggle, isVisible as zonesOn, layerData as zoneData, ZONE_LAYERS,
-} from './zones';
-import {
   initJourneyLayer, setJourneyVisible, drawJourney, journeyUrl,
   journeyPanelHTML, journeyPromptHTML, journeyKeyHTML,
   isVisible as journeyOn, journeyData, Point,
@@ -96,10 +92,6 @@ map.on('load', () => {
   initSurfaceLayer(map, 'change-dots');   // under the dots, so 'Both' reads
   initCorridorLayer(map, 'change-dots');  // same slot; corridors and dots/surface are mutually exclusive
   initOneSeatLayer(map, 'walk-fill');     // the dots' own slot; the two never show together
-  // Above the surface and the streets, below the dots: the zones have to be
-  // legible ON TOP OF the loss they qualify, but they are an annotation and
-  // must never hide a dot a reader is trying to click.
-  initZoneLayer(map, 'change-dots');
   initJourneyLayer(map);                  // on top: two drawn trips, over everything
   renderEmpty($('panel'));
 
@@ -149,18 +141,6 @@ map.on('load', () => {
     popup.setLngLat((f.geometry as any).coordinates)
       .setHTML(oneSeatDotLabel(f.properties, d)).addTo(map);
   });
-
-  // A zone popup follows the cursor rather than snapping to a centroid: a
-  // zone is an area, and a label pinned to its middle would suggest the
-  // service is concentrated there. The cursor is not a claim about anything.
-  // Nothing here changes the cursor to a pointer — a zone is not clickable,
-  // and a click inside one must still open the panel for the point clicked.
-  map.on('mousemove', ZONE_LAYERS[0], (e: any) => {
-    const f = e.features?.[0];
-    if (!f || !zonesOn()) return;
-    popup.setLngLat(e.lngLat).setHTML(zoneLabel(f.properties)).addTo(map);
-  });
-  map.on('mouseleave', ZONE_LAYERS[0], () => { popup.remove(); });
 
   map.on('moveend', refreshLegend);
 
@@ -245,12 +225,6 @@ map.on('load', () => {
   // destinations BASE_CAMP asks about and the two the published place-level
   // answer covers; "pick a point" is the reason the layer applies its
   // destination per request rather than baking a list in at build time.
-  // The zone overlay is a toggle, not a member of the view segment: it has to
-  // be able to sit on top of whichever view is showing the loss it qualifies.
-  $('zone-toggle').addEventListener('click', () => {
-    void showZones(!zonesOn());
-  });
-
   segment('[data-dest]', (b) => {
     const key = b.dataset.dest!;
     if (key === 'pin') {
@@ -402,18 +376,9 @@ function toggleSide() {
   map.resize();
 }
 
-/**
- * The legend, plus the zone note when the overlay is on.
- *
- * The note is APPENDED to whichever legend the active view drew, rather than
- * replacing it, because the zones qualify the layer underneath rather than
- * answering in its place — the same relationship on the map as in the panel.
- */
+/** The legend for whichever view is active. */
 function refreshLegend() {
   renderLegendBody();
-  if (!zonesOn()) return;
-  const z = zoneData();
-  if (z) $('legend').insertAdjacentHTML('beforeend', zoneNoteHTML(z.totals));
 }
 
 function renderLegendBody() {
@@ -464,21 +429,6 @@ async function showSurface(on: boolean) {
     }
   }
   setSurfaceVisible(map, on);
-  refreshLegend();
-}
-
-/**
- * Turn the on-demand zone overlay on or off, fetching it the first time.
- *
- * Ten polygons and ~250 points, so the fetch is trivial — it is deferred only
- * because a reader who never asks the question should not pay for the answer,
- * the same rule the surface and the corridors follow at a much larger size.
- */
-async function showZones(on: boolean) {
-  if (on && !zoneData()) await loadZoneLayer(map);
-  setZoneVisible(map, on);
-  $('zone-toggle').classList.toggle('active', on);
-  styleZoneToggle($('zone-toggle'), on);
   refreshLegend();
 }
 

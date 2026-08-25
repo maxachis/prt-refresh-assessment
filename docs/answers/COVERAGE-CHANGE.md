@@ -156,32 +156,27 @@ today, so no location-based method could ever have found it. It is also the same
 corridor as the largest loss: McCandless township's coverage falls by a net
 8.8 km² of side streets while the trunk extends north past AHN Wexford.
 
-## The on-demand zones, counted for the first time
+## RETRACTED: the on-demand zone figure
 
-`data/raw/remix_project.json` carries 10 `onDemandZones` polygons — proposed
-microtransit areas — which nothing in this repo had ever counted. On the same
-lattice:
+**This answer previously reported that 18.3 km² — 23% — of the 80.1 km² losing
+all fixed-route service fell inside one of 10 proposed on-demand zones, with a
+per-zone table. Retracted 2026-08-25. Do not quote it.**
 
-**Of the 80.1 km² that loses fixed-route service entirely, 18.3 km² (23%) falls
-inside a proposed on-demand zone. 61.8 km² does not.**
+PPT reports that PRT is not including microtransit in this proposal. The source
+agrees: the 10 polygons exist only in PRT's Remix project file, all ten are
+flagged `isHidden` *and* `hideZoneName`, they do not render on the public map at
+`platform.remix.com/project/82ea6210`, and no PRT document or feed mentions
+them — not the three frequency-and-hours PDFs, not Exhibit A, not the trip
+planner, and not the proposed GTFS, which carries none of the GTFS-Flex parts a
+demand-responsive zone needs.
 
-| Zone | Zone km² | Fixed-route now | Proposed | Lost inside | Weekday vans |
-|---|---:|---:|---:|---:|---:|
-| McCandless | 25.8 | 15.4 | 7.4 | **8.5** | 3 |
-| South Hilltop | 14.6 | 11.6 | 6.6 | **5.0** | 3 |
-| Penn Hills | 28.8 | 15.1 | 14.5 | 2.2 | 3 |
-| Highlands Area | 15.3 | 7.4 | 7.4 | 1.1 | 2 |
-| USC-BP | 10.5 | 1.0 | 0.0 | 1.0 | 1 |
-| McKees Rocks | 8.4 | 7.6 | 7.2 | 0.4 | 2 |
-| Airport, McKeesport, Robinson, South Side | 72.5 | 21.6 | 24.5 | &lt;0.1 | 1–3 |
+The measurement itself was sound; its subject was not part of the plan. The
+error ran in the direction that flatters the proposal — it published a softener
+for a loss that has none. `analyze_coverage_area.py` no longer measures the
+zones and `data/coverage_area_ondemand.csv` is gone.
 
-Every zone runs all week — 7am–9pm weekdays, 8am–8pm weekends — with **1 to 3
-vehicles for the whole zone**. Two readings are defensible and both belong in a
-comment: McCandless's 8.5 km² is not being abandoned, and 3 vans across 25.8 km²
-is not what a bus route was. What is not defensible is either extreme — calling
-the 80 km² a clean loss, or treating a zone as coverage restored.
-
-Full detail in `data/coverage_area_ondemand.csv`. Provenance caveat below.
+**Read the 80.1 km² as a plain loss.** Reasoning and the evidence:
+[docs/worklog/the-on-demand-zones-are-retracted.md](../worklog/the-on-demand-zones-are-retracted.md).
 
 ## Caveats
 
@@ -213,11 +208,6 @@ is not 400 m of walking, so every area figure is an upper bound on real access �
 in both networks equally, which is why the *change* survives the objection
 better than the levels do.
 
-**The on-demand zones come from the Remix project file, not from a published PRT
-document**, and all ten are flagged `isHidden` in it. Vehicle counts and hours
-are what that file records; nothing here verifies PRT has committed to them.
-They are reported alongside the loss, never subtracted from it.
-
 Shared method and caveats: [METHOD-coverage.md](METHOD-coverage.md).
 
 ## Reproduce
@@ -226,8 +216,7 @@ Shared method and caveats: [METHOD-coverage.md](METHOD-coverage.md).
 python3 analyze_coverage_change.py   # -> data/coverage_change.csv
 python3 analyze_coverage_area.py     # -> data/coverage_area.csv,
                                      #    coverage_area_blocks.csv,
-                                     #    coverage_area_places.csv,
-                                     #    coverage_area_ondemand.csv
+                                     #    coverage_area_places.csv
 ```
 
 `analyze_coverage_area.py` takes an optional lattice size in metres

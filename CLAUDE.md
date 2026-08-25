@@ -15,9 +15,7 @@ Since both networks gained a real GTFS it also carries **a web app** (`src/refre
 at today's stops, as a continuous 100 m surface, as the street network
 itself gaining and losing buses, as who keeps a one-seat ride to Downtown,
 Oakland or a point you pick, or as how many minutes a trip to one of those
-takes on each network — with the 10 proposed on-demand zones drawable over any
-of them, so ground offered a van instead of a bus is not read as a plain loss.
-See [`docs/WEBAPP.md`](docs/WEBAPP.md). The pipeline remains the primary artifact and
+takes on each network. See [`docs/WEBAPP.md`](docs/WEBAPP.md). The pipeline remains the primary artifact and
 stays standard-library only; the app is an optional extra that only reads what
 the pipeline builds. It is deployed at
 <https://prt-refresh.lemaliconsulting.com> (`deploy/README.md`), though nobody
@@ -124,9 +122,7 @@ equity pair. `build_equity_brief.py` reads only published CSVs and re-uses
 `analyze_equity_places.by_place`, so the charts cannot drift from the files
 `docs/answers/` cites. `build_webdb.py` takes the anchor definitions, the HOOD
 labels and the outlier filter from `analyze_one_seat.py`, so the app's Downtown
-and Oakland are the districts `data/oneseat_change.csv` publishes, and the
-on-demand zone polygons from `analyze_coverage_area.py`, so the zones the map
-draws are the ones the published area answer counts.
+and Oakland are the districts `data/oneseat_change.csv` publishes.
 `analyze_equity_change.py` takes the tiers and the whole location test from
 `analyze_coverage_change.py` and the dimension definitions from
 `ingest_census.py`, so a rider's coverage is decided the same way at a house as
@@ -174,9 +170,7 @@ side. Everything that counts service now reads it through `gtfs.py` —
 `analyze_one_seat.py`, `analyze_corridor_change.py`. The PDFs survive as a published cross-check only: deriving
 proposed service from them drops the S-variants (absent from Remix) and doubles
 the peak-only limiteds. The Remix trips endpoint returns `[]`, so Remix itself
-remains timetable-free — but it is still the only source for the 10 on-demand
-microtransit zones, which `analyze_coverage_area.py` reads from
-`remix_project.json`.
+remains timetable-free.
 
 Be exact about that feed's provenance, because three separate claims get run
 together if you are careless. What the feed evidences: `feed_info.txt` names PRT
@@ -186,6 +180,15 @@ supplied it to Pittsburghers for Public Transit by email at PPT's request, and
 PPT passed it on. That last one is Max's account, recorded in `DATA_SOURCES.md`;
 **no date is known for PRT's email**, so do not write one, and do not describe
 the feed as published, downloadable, or fetchable — it is none of those.
+
+`remix_project.json` also carries 10 on-demand microtransit zone polygons, and
+**nothing reads them, deliberately.** A "23% of the lost area falls inside a
+zone" figure and a map overlay were retracted on 2026-08-25: PPT reports PRT is
+not including microtransit in this proposal, the polygons are flagged hidden in
+the project file, they do not render on the public Remix map, and no PRT
+document or feed mentions them. Do not restore an analysis or a layer without a
+published PRT commitment to point at —
+[`docs/worklog/the-on-demand-zones-are-retracted.md`](docs/worklog/the-on-demand-zones-are-retracted.md).
 
 ## Analytical conventions that must be preserved
 

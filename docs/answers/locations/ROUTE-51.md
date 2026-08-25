@@ -278,11 +278,14 @@ corridor — lose their all-week flyers and keep a peak-only limited.
    ([LOSE](../LOSE-SERVICE-HOURS.md), [GAIN](../GAIN-SERVICE-HOURS.md)). Its
    limit is different from the retired staleness note and still stands: a group
    is not a corridor, so its −10.5% for the 51 must not be quoted without the 45.
-7. **`data/raw/remix_project.json` carries 10 `onDemandZones` polygons** that no
-   answer in this repo accounts for. If one covers the Y45's Baldwin Manor loop
-   or the 44's Churchview branch, the stranded-stop figures above overstate the
-   outcome — those riders would be offered microtransit rather than nothing.
-   **Check this before quoting the stranded segments publicly.**
+7. **The stranded segments are safe to quote — the microtransit worry is
+   resolved.** This item asked whether one of 10 `onDemandZones` polygons in
+   `data/raw/remix_project.json` covered the Y45's Baldwin Manor loop or the
+   44's Churchview branch, which would have meant the stranded-stop figures
+   overstate the outcome. They do not, because the zones are **retracted**: PPT
+   reports PRT is not including microtransit in this proposal, and the polygons
+   are flagged hidden in PRT's own project file
+   ([worklog](../../worklog/the-on-demand-zones-are-retracted.md)).
 
 ## Reproduce
 

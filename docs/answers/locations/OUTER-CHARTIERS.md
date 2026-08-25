@@ -161,13 +161,13 @@ Extension pay for it.
    cannot reach them at all. Read them as **corridor groups**, not routes: the
    six above happen to be one-to-one or discontinued, so route and group coincide
    here, which is not true generally.
-4. **The 10 proposed on-demand zones do not cover this corridor — checked.**
-   `analyze_coverage_area.py` now rasterises `remix_project.json`'s
-   `onDemandZones`, and neither the Chartiers City hillside nor the far
-   Extension falls inside one. The nearest is the McKees Rocks zone, which
-   covers McKees Rocks borough, Stowe, Bellevue, Brighton Heights and two Esplen
-   stops, and only 0.4 km² of ground losing all service sits inside it. The
-   losses above are not softened by microtransit.
+4. **Nothing softens the losses above.** A note here checked this corridor
+   against 10 proposed on-demand zones and found it outside all of them; the
+   check is now moot, because the zones themselves are **retracted** — PPT
+   reports PRT is not including microtransit in this proposal, and they exist
+   only as hidden polygons in PRT's Remix project file
+   ([worklog](../../worklog/the-on-demand-zones-are-retracted.md)).
+   The conclusion is unchanged and now holds everywhere, not just here.
 5. **One row in the corridor profile is spurious and should be ignored:**
    `CHARTIERS AVE AT ST JOHN ST`, which plots at longitude −79.85, in Turtle
    Creek. This is not the known `HOOD`/`MUNI` labelling error — it is a

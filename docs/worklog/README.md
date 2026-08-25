@@ -27,3 +27,4 @@ pass — a reader who stops halfway down must not be misinformed.
 | [A walk is drawn — and timed — straight through the blocks](walks-are-drawn-and-timed-in-straight-lines.md) | fixed, awaiting close — two judgement calls inside the fix are Max's to overturn |
 | [The last walk doglegs via a bus stop the rider never uses](the-last-walk-doglegs-via-a-stop-nobody-boards.md) | open, decision owed |
 | [A stairway is timed as though it were level ground](stairways-are-timed-as-though-they-were-level.md) | open, decision owed |
+| [The ten on-demand zones are retracted, figure and map layer both](the-on-demand-zones-are-retracted.md) | fixed, awaiting close — retracted; whether the retraction needs to travel is Max's |

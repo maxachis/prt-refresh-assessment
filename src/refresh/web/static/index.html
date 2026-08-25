@@ -82,17 +82,6 @@
     #legend .lg-row i { box-shadow:inset 0 0 0 1px rgba(255,255,255,.35); }
     .lg-lab { flex:1; }
     .lg-n { font-variant-numeric:tabular-nums; color:var(--muted); }
-    /* The on-demand note is a KEY for a layer, not a caveat about the one on
-       screen, and it lands directly under that layer's own footnote. Left in
-       the same grey the two read as one paragraph about one thing, so this
-       takes the overlay's colour, a rule down its edge, and a swatch dashed
-       the way the zone boundary is dashed on the map. The colours themselves
-       come from `zones.ts`, so the control, the polygons and this cannot
-       drift into three nearly-equal purples. */
-    #legend .lg-foot.lg-zone { border-left:2px solid; padding-left:8px; }
-    #legend .lg-foot.lg-zone i { display:inline-block; width:9px; height:9px;
-      border:1.5px dashed; border-radius:2px; margin-right:5px;
-      vertical-align:-1px; }
     .lg-foot { font-size:10.5px; color:var(--muted); margin:8px 2px 0;
       line-height:1.4; }
     #legend-reset { margin:6px 0 0 2px; }
@@ -412,10 +401,9 @@
          only its top edge would show -- a stripe with no meaning. */
       #app:has(#side[data-snap="half"]) #legend-box,
       #app:has(#side[data-snap="full"]) #legend-box { display:none; }
-      /* Footnotes go, but not the zone key: with the overlay on, hiding it
-         would leave violet shapes on the map with nothing to say what they
-         are — and no way to see that nothing is netted off against them. */
-      #legend .lg-foot:not(.lg-zone) { display:none; }
+      /* Footnotes go: at sheet height the key has room for the swatches
+         and nothing else. */
+      #legend .lg-foot { display:none; }
 
       /* OpenFreeMap and OpenStreetMap have to stay readable: the sheet was
          sitting exactly where the attribution is drawn, so it moves up with
@@ -434,7 +422,7 @@
     @media (pointer: coarse) {
       .seg button { min-height:44px; padding:10px 14px; }
       #legend .lg-row { min-height:40px; }
-      #legend-collapse, #side-toggle, #methods-close, #zone-toggle {
+      #legend-collapse, #side-toggle, #methods-close {
         min-width:34px; min-height:34px; }
       /* The two small map buttons keep their drawn size and grow their hit
          area outward, because a 44 px square drawn in the corner of a 250 px
@@ -528,26 +516,6 @@
             <button data-view="corridors">Streets</button>
             <button data-view="oneseat">One-seat</button>
             <button data-view="journey">Travel time</button>
-          </div>
-        </div>
-        <!-- The on-demand zones are an OVERLAY rather than a sixth view, and the
-             distinction is the whole point of them. Every view here measures
-             fixed-route service, and none of them can see a zone: a zone has no
-             stops and no timetable, so ground inside one whose bus is withdrawn
-             is painted as a total loss by the locations, the surface and the
-             streets alike. 23% of the area losing all fixed-route service is
-             inside a zone, and leaving that solid red is a half-truth. But a
-             separate view would be the mirror-image error — it would show what
-             the plan offers while hiding what it takes away — so this sits on
-             top of whichever view is running, and nothing anywhere in the app is
-             netted off against it. What the zone brings is 1-3 vehicles for
-             15-48 km2, 7am-9pm, and all ten are flagged hidden in PRT's own
-             project file: a fallback, not a replacement, and the reader is the
-             one who gets to weigh that. -->
-        <div class="controls">
-          <span class="lbl">overlay</span>
-          <div class="seg">
-            <button id="zone-toggle">On-demand zones</button>
           </div>
         </div>
         <!-- The one-seat view asks a different KIND of question from the other

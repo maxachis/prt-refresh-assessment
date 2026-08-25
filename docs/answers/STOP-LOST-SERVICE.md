@@ -103,14 +103,12 @@ is 30 people whose trip changes.
 The 5,751 locations are stops served today **with a ridership record**, so stops
 without one are not in the denominator.
 
-**The 10 proposed on-demand zones are not accounted for at stop level.** They are
-now measured in area — 23% of the ground losing all fixed-route service falls
-inside one ([COVERAGE-CHANGE.md](COVERAGE-CHANGE.md)) — so some of the losses
-counted here would be offered microtransit rather than nothing. The zones with
-lost ground inside them are McCandless, South Hilltop, Penn Hills, Highlands
-Area, USC-BP and McKees Rocks; a loss anywhere else is unaffected by them. Each
-zone runs on 1–3 vehicles, so a zone is a reason to qualify a loss, not to drop
-it.
+**No loss counted here is softened by an on-demand zone.** A caveat published
+until 2026-08-25 said some of these losses would be offered microtransit
+instead of nothing, citing a 23% area figure that is now **retracted**: the
+zones exist only as hidden polygons in PRT's Remix project file, and PPT reports
+PRT is not including microtransit in this proposal
+([worklog](../worklog/the-on-demand-zones-are-retracted.md)).
 
 Shared method and caveats: [METHOD-coverage.md](METHOD-coverage.md).
 

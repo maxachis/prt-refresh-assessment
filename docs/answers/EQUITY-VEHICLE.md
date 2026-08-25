@@ -93,10 +93,6 @@ All eight in [METHOD-equity.md](METHOD-equity.md) apply. For this question:
 - **A household with one vehicle and three adults** is functionally car-free for
   two of them. The one-vehicle row is included for that reason and should not be
   read as "has a car".
-- The **on-demand microtransit zones** in the proposed network are not counted
-  in any tier here — see `analyze_coverage_area.py` — so ground served only by
-  those zones reads as uncovered. That understates the plan's provision
-  specifically for car-free households in the ten zones.
 
 ## Reproduce
 

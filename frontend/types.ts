@@ -184,46 +184,6 @@ export interface CorridorLayer {
 }
 
 /**
- * A proposed on-demand zone — the one part of the plan neither timetable can
- * express, and so the one thing every other layer here paints as a plain loss.
- *
- * `vehicles_weekday` is for the WHOLE zone all day, which is the number that
- * decides whether this reads as a replacement or a fallback: 1-3 vans over
- * 15-48 km2. `hidden_in_remix` is PRT's own flag on all ten in the project
- * file, and is why this is "what the plan file says" rather than a commitment.
- * The km2 figures are `analyze_coverage_area.py`'s, carried over verbatim.
- */
-export interface OnDemandZone {
-  name: string;
-  vehicles_weekday: number | null;
-  weekday_hours: string;
-  days: string[];
-  hidden_in_remix: boolean;
-  zone_km2: number | null;
-  fixed_route_km2_now: number | null;
-  fixed_route_km2_proposed: number | null;
-  lost_km2_inside: number | null;
-  gained_km2_inside: number | null;
-  /** MultiPolygon coordinates: polygon -> ring -> [lon, lat]. */
-  geometry: [number, number][][][];
-}
-
-export interface OnDemandTotals {
-  zones: number;
-  vehicles_weekday: number;
-  zone_km2: number;
-  lost_km2_inside: number;
-  /** Null when the database carries no denominator — unknown, not zero. */
-  lost_km2_citywide: number | null;
-  lost_pct_inside: number | null;
-}
-
-export interface OnDemandLayer {
-  zones: OnDemandZone[];
-  totals: OnDemandTotals;
-}
-
-/**
  * How long the trip actually takes — the only measure on this site with a
  * clock, and the only one whose answer is a distribution rather than a number.
  *

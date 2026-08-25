@@ -58,7 +58,6 @@ data/raw/proposed_gtfs/    ─┘      (stdlib)         (43 MB, ~2.5 min)     re
 | `frontend/change.ts`, `legend.ts` | The citywide layer and the legend that summarises and filters it. |
 | `frontend/surface.ts` | The magnitude surface — the same layer as a continuous field. |
 | `frontend/oneseat.ts` | The one-seat layer and its destination picker. |
-| `frontend/zones.ts` | The on-demand zones — an overlay over any view, never netted off one. |
 | `frontend/statebar.ts` | The line above the panel saying which question the panel is answering. |
 | `frontend/sheet.ts` | The phone layout: the answer panel as a bottom sheet over a full-height map. |
 
@@ -68,7 +67,7 @@ esbuild-bundled TypeScript, vendored MapLibre, pytest + vitest.
 
 ### Why the controls sit on the map and the panel is only content
 
-Every control — walk radius, view, on-demand overlay, one-seat day, destination,
+Every control — walk radius, view, one-seat day, destination,
 day type — changes what the map draws, and none of them changes what the panel
 is a panel *of*. They ride on the map for that reason, docked as a strip of
 groups along its top edge, and the side panel holds nothing but the answer for
@@ -589,50 +588,23 @@ leaving the buttons live would let them mean nothing silently. The day control
 does apply: the published answer is the weekday peak, but a Saturday or Sunday
 trip is a fair question and re-times the answer on screen.
 
-## The on-demand zones
+## The on-demand zones: removed, 2026-08-25
 
-An **overlay**, not a sixth view, and that distinction is the whole of what it
-is for.
+The app used to carry a violet overlay of 10 proposed microtransit zones,
+switchable over any view, with a legend note reporting that 23% of the ground
+losing all fixed-route service fell inside one. **It is gone, along with
+`/api/zones`, the `ondemand_zone` table and `frontend/zones.ts`.**
 
-Every layer above measures fixed-route service, and none of them can see an
-on-demand zone: a zone has no stops and no timetable, so ground inside one whose
-bus is withdrawn is painted as a total loss by the dots, the surface and the
-streets alike. 23% of the 80.1 km² that loses all fixed-route service is inside
-a zone. Leaving that solid red is a half-truth a reader would repeat and PRT
-would be right to object to.
+PPT reports that PRT is not including microtransit in this proposal. The source
+agrees: the polygons live only in PRT's Remix project file, all ten are flagged
+`isHidden` and `hideZoneName`, they do not render on the public Remix map, and
+no PRT document or feed mentions them. The overlay existed to stop a reader
+taking a red patch as a plain loss where the plan offered a van — and there is
+no van, so the overlay was arguing the plan's case for it with nothing behind
+the claim. Red means gone, everywhere, with nothing qualifying it.
 
-The correction has to be careful in both directions, so three rules hold it in
-place:
-
-- **It sits on top of the loss rather than replacing it.** A separate view would
-  be the mirror-image error — it would show what the plan offers while hiding
-  what it takes away. The zones can be switched on over any view, and the loss
-  stays visible underneath.
-- **Nothing is netted off.** No count, percentage or bucket anywhere in the app
-  changes when the overlay is on. A zone is not coverage; it is an offer of a
-  van. The moment a zone cancels a loss inside a number, the number has silently
-  decided a question that belongs to the reader.
-- **The vehicle count leads the label.** One to three vehicles for 15–48 km², 7am–9pm
-  weekdays, is the entire difference between a replacement and a fallback, and a
-  zone drawn as a plain shaded blob implies the former. So the count is the first
-  thing the hover says, and the citywide version — 22 vehicles over 176 km² — is
-  in the legend note.
-
-Colour sits outside the change palette on purpose. Red means gone and blue means
-gained everywhere else here; an amber zone would read as a third value on that
-same scale, "partly gone", which is exactly the netting-off the layer refuses to
-do. Violet belongs to no scale on this map, so it reads as annotation rather than
-data. The wash is fainter than it wants to be for the same reason: it lies over
-the surface, whose colour *is* its value, and every point of opacity shifts a
-reading a reader is meant to take off the ramp.
-
-Two provenance points ship with it. All ten zones are flagged `isHidden` in PRT's
-own project file, so this is what the plan file says rather than a published
-commitment; and the polygons are the only part of the proposal that exists solely
-in Remix, since neither GTFS feed can express an on-demand zone. The geometry is
-read through `analyze_coverage_area.on_demand_zones` and every km² is carried
-over verbatim from `data/coverage_area_ondemand.csv`, so the overlay cannot drift
-from the published area answer.
+Reasoning and evidence:
+[worklog/the-on-demand-zones-are-retracted.md](worklog/the-on-demand-zones-are-retracted.md).
 
 ## API
 
@@ -644,7 +616,6 @@ from the published area answer.
 | `GET /api/corridors?day=` | Every street run kept, lost or added for one day type, with citywide kilometres by class. No radius — a corridor is pavement, not a catchment. ~290 KB weekday. |
 | `GET /api/oneseat?radius=&dest=` *or* `&dest_lat=&dest_lon=` | Every location's one-seat verdict for one destination, named or dropped. Not precomputed — only its expensive half is, which is what lets the destination be arbitrary. `day=` defaults to `any`, the published day-free answer; a day type restricts both ends and is a different measurement. |
 | `GET /api/journey?lat=&lon=&dest_lat=&dest_lon=&day=` | How long the trip takes door to door, both networks, over every ready-minute of the weekday 07:00–09:00 peak. Answered at both transfer radii, with `sign_flips` where they disagree about which network is faster. Nothing precomputed and no radius control — seconds, not milliseconds. |
-| `GET /api/zones` | The 10 proposed on-demand zones: polygon, weekday vehicle count, hours, and how much ground inside each loses all fixed-route service. No day and no radius — a zone is an area with one set of hours, not a catchment or a timetable. ~15 KB. |
 | `GET /api/destinations` | The named destinations, with seed counts and centres. |
 | `GET /api/stops?side=&lat=&lon=&radius=` | Stops one network puts inside the radius. |
 | `GET /api/routes?side=` | Bus routes with trips, revenue hours and span per day type. |
@@ -742,14 +713,6 @@ or heartbeat to maintain. See [`deploy/README.md`](../deploy/README.md).
   never boards, because only a stop inside the destination's own 400 m
   radius may be the final alighting point —
   `docs/worklog/the-last-walk-doglegs-via-a-stop-nobody-boards.md`.
-- **The 10 on-demand microtransit zones used to be undrawn**; that gap is
-  closed. They are an overlay — a toggle above the view control rather than a
-  sixth view — so they sit on top of whichever layer is painting the loss they
-  qualify, and nothing anywhere in the app is netted off against them. Still
-  open, and it is a question rather than a defect: the weekend hours differ
-  from the weekday ones (8am–8pm against 7am–9pm) and only the weekday pair is
-  labelled, because a zone's hours do not vary by the day control the way a
-  timetable does and wiring one to the other would imply it did.
 - The equity findings are a page, not a layer: nothing on the map is
   coloured by who lives there, and per convention 12 a block group is
   covered or not at a single point, so a map of it would overstate its own

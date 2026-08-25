@@ -159,18 +159,6 @@ def create_app(db_path: str | Path = "data/refresh.db") -> FastAPI:
         """
         return query.corridor_layer(con, day)
 
-    @app.get("/api/zones")
-    def api_zones():
-        """The ten proposed on-demand zones, drawn over any other layer.
-
-        No `day` and no `radius`, and neither is an oversight: a zone has one
-        set of hours all week and is an area rather than a catchment, so both
-        controls would be decoration. It is an overlay rather than a view
-        because its whole purpose is to sit *on top of* a loss the other
-        layers are correctly painting — see `query.ondemand_layer`.
-        """
-        return query.ondemand_layer(con)
-
     @app.get("/api/destinations")
     def api_destinations():
         """The named destinations the one-seat view offers, with their centres.
@@ -413,11 +401,5 @@ CAVEATS = [
         "id": "bus-only",
         "text": "Bus only. Rail and the inclines are outside the Refresh and "
                 "are dropped from both sides.",
-    },
-    {
-        "id": "microtransit",
-        "text": "The proposal's 10 on-demand microtransit zones are not counted "
-                "here, so a place slated for on-demand service instead of "
-                "fixed route may read as a loss.",
     },
 ]
