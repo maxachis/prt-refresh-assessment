@@ -59,10 +59,35 @@ data/raw/proposed_gtfs/    ─┘      (stdlib)         (43 MB, ~2.5 min)     re
 | `frontend/surface.ts` | The magnitude surface — the same layer as a continuous field. |
 | `frontend/oneseat.ts` | The one-seat layer and its destination picker. |
 | `frontend/zones.ts` | The on-demand zones — an overlay over any view, never netted off one. |
+| `frontend/statebar.ts` | The line above the panel saying which question the panel is answering. |
 
 The stack follows `pgh-ghost-bus` (kept as a gitignored reference checkout at
 `pgh-ghost-bus/`): uv, `src/` package, an optional web extra, read-only SQLite,
 esbuild-bundled TypeScript, vendored MapLibre, pytest + vitest.
+
+### Why the controls sit on the map and the panel is only content
+
+Every control — walk radius, view, on-demand overlay, one-seat day, destination,
+day type — changes what the map draws, and none of them changes what the panel
+is a panel *of*. They ride on the map for that reason, docked as a strip of
+groups along its top edge, and the side panel holds nothing but the answer for
+the point last clicked. It collapses to a rail, which gives the map the window.
+
+The move was forced by the phone layout rather than chosen for tidiness. With
+the controls stacked in the panel, a 390 px screen showed four rows of buttons,
+a clipped fifth, and no answer text at all above the fold; the map got the
+remaining 55% of the screen, most of which the legend covered. The controls are
+now one horizontally scrolling strip on the map, in the same reading order, and
+the legend collapses to its own head line.
+
+What that costs is proximity: the day type and the walk radius used to sit two
+centimetres above the numbers they were measured at. **The state line puts that
+back** (`frontend/statebar.ts`), pinned above the panel where it cannot scroll
+away — "One-seat ride to Downtown · any day · 400 m walk". That is not
+decoration. The one-seat view can be showing either of two different
+measurements, only one of which is what `data/oneseat_change.csv` publishes, and
+convention 13 requires anything quoting a one-seat number to say which; the
+legend says it for the map, and this says it for the panel, in the same words.
 
 ### Why departure times are stored, not trip counts
 

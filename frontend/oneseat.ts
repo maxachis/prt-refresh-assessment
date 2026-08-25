@@ -197,8 +197,8 @@ export function oneSeatDayFor(restricted: boolean, day: Day): OneSeatDay {
  * place or it doesn't -- so a day control sitting there is a lever attached
  * to nothing, and a reader who moves it and sees the map hold still has been
  * told something false about what they are looking at. The one-seat toggle
- * immediately above it is what brings the buttons back, which is why the day
- * row is the last control in the toolbar rather than the second: it is
+ * immediately before it is what brings the buttons back, which is why the day
+ * group is the last control in the toolbar rather than the second: it is
  * subordinate to the view, and it now reads that way.
  *
  * Deliberately not the greying the walk radius gets on Streets and Travel

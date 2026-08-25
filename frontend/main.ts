@@ -29,6 +29,7 @@ import {
   journeyPanelHTML, journeyPromptHTML, journeyKeyHTML,
   isVisible as journeyOn, journeyData, Point,
 } from './journey';
+import { questionLineHTML } from './statebar';
 import { PlaceResult, Day, OneSeatDay, JourneyResult, NamedDestination } from './types';
 
 const PGH: [number, number] = [-79.9959, 40.4406];
@@ -260,20 +261,70 @@ map.on('load', () => {
     refreshLegend();
   });
 
+  // The key and the toolbar together were most of a phone's map. Collapsing
+  // leaves the head line, which is the one that carries the count and the
+  // measurement, so nothing on screen becomes unattributed.
+  $('legend-collapse').addEventListener('click', () => {
+    const box = $('legend-box');
+    const collapsed = box.classList.toggle('collapsed');
+    const b = $('legend-collapse');
+    b.textContent = collapsed ? '+' : '–';
+    b.title = collapsed ? 'Show the key' : 'Collapse the key';
+    b.setAttribute('aria-expanded', String(!collapsed));
+  });
+
+  $('side-toggle').addEventListener('click', toggleSide);
+
+  refreshStateLine();
   void loadChangeLayer(map, radius, activeDay()).then(refreshLegend);
   void loadMeta();
   void loadDestinations();
 });
 
-/** Wire one segmented control: mark the clicked button active, then act. */
+/**
+ * Wire one segmented control: mark the clicked button active, then act.
+ *
+ * Every control in the toolbar goes through here, so the state line is
+ * refreshed here too rather than in each handler -- the toolbar now sits on
+ * the map, and the line is the only place the panel says what it is a panel
+ * OF. A control that forgot to redraw it would leave the panel claiming a day
+ * type or a walk radius that is no longer the one the numbers were measured
+ * at.
+ */
 function segment(sel: string, onPick: (b: HTMLButtonElement) => void) {
   document.querySelectorAll<HTMLButtonElement>(sel).forEach((b) => {
     b.addEventListener('click', () => {
       document.querySelectorAll(sel).forEach((o) =>
         o.classList.toggle('active', o === b));
       onPick(b);
+      refreshStateLine();
     });
   });
+}
+
+/** Say, above the panel, which question the panel is answering. */
+function refreshStateLine() {
+  $('statebar').innerHTML = questionLineHTML({
+    view, day: activeDay(), radius, oneSeatRestricted,
+    destination: destinationName(),
+  });
+}
+
+/**
+ * Give the map the whole window, or the panel its column back.
+ *
+ * MapLibre sizes its canvas from the container it was handed, so a column
+ * that changes width behind its back leaves the map rendering at the old size
+ * -- clicks then land on the wrong coordinates, which on this map means the
+ * wrong answer rather than merely the wrong pixel.
+ */
+function toggleSide() {
+  const collapsed = $('app').classList.toggle('side-collapsed');
+  const b = $('side-toggle');
+  b.textContent = collapsed ? '›' : '‹';
+  b.title = collapsed ? 'Show the panel' : 'Hide the panel';
+  b.setAttribute('aria-expanded', String(!collapsed));
+  map.resize();
 }
 
 /**
@@ -508,6 +559,9 @@ function setDestination(next: Destination) {
   setPinMode(false);
   syncDestinationButtons();
   showDestinationMarker();
+  // A dragged marker reaches here without any button having been clicked, so
+  // the state line is redrawn here rather than only in `segment`.
+  refreshStateLine();
   if (view === 'journey') {
     if (last) void loadJourney(last.lat, last.lon);
     refreshLegend();
@@ -665,6 +719,7 @@ function askAt(lat: number, lon: number) {
 async function loadDestinations() {
   try {
     named = await fetchJSON<NamedDestination[]>('/api/destinations');
+    refreshStateLine();   // it was showing the key until the name arrived
   } catch {
     /* the travel-time view falls back to a dropped pin */
   }

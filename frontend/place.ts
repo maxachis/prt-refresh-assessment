@@ -17,7 +17,9 @@
  *    and 152 locations are in exactly that position. The day control lives in
  *    the toolbar rather than in this panel because it now governs the citywide
  *    layer too, and two independent day selectors would let the map and the
- *    panel show different days at the same time.
+ *    panel show different days at the same time. That toolbar sits on the map
+ *    now, well away from these numbers, which is what the state line above the
+ *    panel is for: see `statebar.ts`.
  */
 import { esc, clock, signed, pct } from './utils';
 import {
@@ -41,7 +43,8 @@ export function renderEmpty(el: HTMLElement) {
     <div class="empty">
       <h2>What changes here?</h2>
       <p>The map draws the whole city at once, one of five ways depending on
-         the view above. Pan and zoom to read a neighbourhood.</p>
+         the view chosen in the toolbar on the map. Pan and zoom to read a
+         neighbourhood.</p>
       <p><b>Locations</b> draws one dot per place a bus stops today, coloured
          by what the plan does to the buses within a short walk.
          <b>Surface</b> measures that same walk-access comparison at every
@@ -71,8 +74,10 @@ export function renderEmpty(el: HTMLElement) {
       <p>Click anywhere on the map for the full before-and-after.</p>
       <p class="muted">Both networks are measured inside the same circle, so
          renumbered routes and consolidated stops don't distort the comparison.
-         Switch day type in the toolbar: some places keep every weekday bus and
-         lose the weekend entirely.</p>
+         Switch day type in the toolbar on the map: some places keep every
+         weekday bus and lose the weekend entirely. The line above this panel
+         always says which day and which walk radius its numbers are
+         measured at.</p>
     </div>`;
 }
 

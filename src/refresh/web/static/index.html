@@ -20,11 +20,30 @@
     /* dvh tracks the visible viewport so mobile browser chrome can't push the
        bottom of the panel off-screen; the vh line is the fallback. */
     #side { background:var(--panel); border-right:1px solid var(--line);
-      display:flex; flex-direction:column; overflow:hidden; }
+      display:flex; flex-direction:column; overflow:hidden; position:relative; }
     #map { height:100vh; height:100dvh; position:relative; }
+    /* Collapsed, the panel keeps a rail wide enough for the button that
+       brings it back, and the map takes the rest. No transition: the map
+       needs a resize() at the new width, and animating the column would have
+       it resizing against a size that is still moving. */
+    #app.side-collapsed { grid-template-columns: 34px 1fr; }
+    #app.side-collapsed #side > *:not(#side-toggle) { display:none; }
+    #side-toggle { position:absolute; top:10px; right:8px; z-index:3;
+      width:20px; height:22px; padding:0; line-height:1; cursor:pointer;
+      background:#0c0e12; color:var(--muted); border:1px solid var(--line);
+      border-radius:6px; font:inherit; font-size:13px; }
+    #side-toggle:hover { color:var(--ink); }
+    #app.side-collapsed #side-toggle { right:7px; }
+    .side-links { display:flex; gap:14px; margin-top:8px; }
     @media (max-width: 820px) {
-      #app { grid-template-columns: 1fr; grid-template-rows: 45vh 55vh; }
+      /* The map leads on a phone now that it carries its own controls: the
+         panel is a drawer under it rather than a wall in front of it. */
+      #app { grid-template-columns: 1fr; grid-template-rows: 58vh 42vh; }
+      #app.side-collapsed { grid-template-columns: 1fr;
+                            grid-template-rows: 1fr 40px; }
+      #app.side-collapsed #side { border-top:1px solid var(--line); }
       #map { height:auto; }
+      #side { order:2; border-right:0; }
       #legend-box { max-height:none; }
       /* Footnotes go, but not the zone key: with the overlay on, hiding it
          would leave violet shapes on the map with nothing to say what they
@@ -37,6 +56,15 @@
       background:rgba(20,23,29,.93); border:1px solid var(--line);
       border-radius:10px; padding:10px 10px 8px; width:250px;
       backdrop-filter:blur(3px); }
+    #legend-collapse { position:absolute; top:6px; right:6px; width:18px;
+      height:18px; padding:0; line-height:1; cursor:pointer; background:none;
+      color:var(--muted); border:0; font:inherit; font-size:13px; }
+    #legend-collapse:hover { color:var(--ink); }
+    /* Collapsed keeps the head line -- every legend here opens with one, and
+       it is the sentence carrying the count, the day and the walk radius. */
+    #legend-box.collapsed #legend > *:not(.lg-head) { display:none; }
+    #legend-box.collapsed #legend-reset { display:none; }
+    #legend-box.collapsed .lg-head { margin-bottom:0; padding-right:14px; }
     .lg-head { font-size:12px; margin:0 2px 8px; }
     .lg-head b { font-size:14px; }
     #legend .lg-row { display:flex; align-items:center; gap:8px; width:100%;
@@ -90,10 +118,39 @@
     header .sub { color:var(--muted); font-size:12px; margin-top:3px; }
     #feedline { color:var(--muted); font-size:11px; margin-top:6px; }
 
-    .controls { display:flex; gap:8px; align-items:center; padding:10px 16px;
-      border-bottom:1px solid var(--line); flex-wrap:wrap; }
+    /* The toolbar rides on the map, because every control in it changes what
+       the map draws and none of them changes the panel's subject. It is
+       docked to the top edge rather than floating in a corner: a strip costs
+       the map one band of geography and keeps its position while the reader
+       switches views, where scattered pills would fight the legend for the
+       corners and move under their own wrapping. It stops short of the
+       navigation control at top right rather than covering the zoom buttons.
+       What the panel loses by the move -- the framing that used to sit two
+       centimetres above the numbers -- the state line puts back. */
+    #mapbar { position:absolute; top:10px; left:10px; right:58px; z-index:2;
+      display:flex; flex-wrap:wrap; align-items:flex-start; gap:6px; }
+    /* Each group carries its own ground rather than the bar carrying one for
+       all of them. A single slab has to be as wide as the window and as tall
+       as its worst wrap, so a row holding one control blacks out a band of
+       city to the right of it; the groups give that space back to the map and
+       still read as one strip, because they are in one line at one edge. */
+    .controls { display:flex; gap:8px; align-items:center; flex-wrap:nowrap;
+      background:rgba(20,23,29,.93); border:1px solid var(--line);
+      border-radius:10px; padding:5px 10px; backdrop-filter:blur(3px); }
     .controls .lbl { color:var(--muted); font-size:11px; text-transform:uppercase;
       letter-spacing:.06em; }
+    @media (max-width: 820px) {
+      /* One scrolling strip rather than five stacked pills, which on a phone
+         filled the map. The groups keep their reading order, so what runs off
+         the right edge is the day control -- subordinate to the view, and the
+         one a reader reaches last. This block sits after the desktop rules
+         above rather than with the other phone rules at the top of the sheet,
+         because it overrides them at equal specificity. */
+      #mapbar { flex-wrap:nowrap; overflow-x:auto; gap:8px;
+                padding:0 0 4px; scrollbar-width:none; }
+      #mapbar::-webkit-scrollbar { display:none; }
+      #mapbar .controls { flex:none; }
+    }
     .seg { display:inline-flex; border:1px solid var(--line); border-radius:8px;
       overflow:hidden; }
     .seg button { border:0; border-right:1px solid var(--line); background:#0c0e12;
@@ -105,13 +162,19 @@
        ignored while that view is active. */
     .seg button:disabled { opacity:.35; cursor:not-allowed; }
     .link { background:none; border:0; color:var(--now); cursor:pointer;
-      font:inherit; font-size:12px; padding:0; margin-left:auto; }
-    /* Two of these now share the row; only the first needs pushing right, and
-       the second would otherwise re-eat the gap between them. */
-    .link + .link { margin-left:0; }
+      font:inherit; font-size:12px; padding:0; }
     a.link { text-decoration:none; }
     a.link:hover { text-decoration:underline; }
 
+    /* Which question the panel below is answering, in the toolbar's own
+       words. It does not scroll with the answer: a figure that has been
+       scrolled away from its day type and its walk radius is a figure with no
+       measurement attached, and for the one-seat view it would be a figure
+       that does not say which of two different measurements produced it. */
+    #statebar { padding:9px 16px; border-bottom:1px solid var(--line);
+      border-top:1px solid var(--line); color:var(--muted); font-size:12px;
+      background:#12151b; }
+    #statebar b { color:var(--ink); font-weight:600; }
     #panel { padding:16px; overflow:auto; flex:1; }
     #panel.loading { opacity:.5; }
     .empty h2 { font-size:16px; margin:8px 0; }
@@ -236,143 +299,162 @@
 <body>
   <div id="app">
     <div id="side">
+      <!-- Collapsing the panel gives the map the whole window, which is what
+           a reader wanting to see a neighbourhood — or screenshot one — is
+           usually after. It leaves a rail rather than vanishing: a control
+           that hides itself along with the thing it hides is one nobody finds
+           their way back from. -->
+      <button id="side-toggle" aria-expanded="true"
+              aria-controls="panel" title="Hide the panel">‹</button>
       <header>
         <h1>Bus Line Refresh — what changes here?</h1>
         <div class="sub">PRT's network today vs the Proposed Final Network</div>
         <div id="feedline"></div>
+        <div class="side-links">
+          <button class="link" id="methods-open">Method &amp; caveats</button>
+          <!-- The map answers "what changes here?" one point at a time and can
+               never answer "who does this fall on?", which is a ratio against a
+               county baseline rather than anything with a location. That is a
+               different page, not another layer. -->
+          <a class="link" href="/findings">Findings</a>
+        </div>
       </header>
-      <div class="controls">
-        <span class="lbl">walk</span>
-        <div class="seg">
-          <button data-radius="400" class="active">400 m</button>
-          <button data-radius="150">150 m</button>
-        </div>
-        <button class="link" id="methods-open">Method &amp; caveats</button>
-        <!-- The map answers "what changes here?" one point at a time and can
-             never answer "who does this fall on?", which is a ratio against a
-             county baseline rather than anything with a location. That is a
-             different page, not another layer. -->
-        <a class="link" href="/findings">Findings</a>
-      </div>
-      <!-- Locations vs surface vs streets. Locations and Surface both answer
-           a walk-access question -- how much service can I reach on foot from
-           here -- at a stop or on a lattice; the dots can only be drawn where
-           a stop stands today, so they scatter and cannot show ground the plan
-           adds a bus to, and the surface measures the same comparison on a
-           100 m lattice. They are complements, not alternatives — the plan
-           reads as roughly service-neutral per location and as 12% less
-           covered ground, and either figure alone is a talking point rather
-           than a finding. Streets answers a different question with no walk
-           radius at all: on this piece of street, does a bus run today, under
-           the plan, or both? A location can keep full walk access while a
-           specific street loses its only bus, if a parallel block picks up
-           the trip instead — real loss of pavement, possibly no loss of
-           access. It is a third complement, not a replacement for the other
-           two, which is why the walk-radius control above is disabled while
-           it is active rather than left to silently mean nothing. Travel
-           time is the fifth and the only one with a clock: how long the trip
-           from a clicked point to the chosen destination takes on each
-           network, waiting for the bus included. It takes no walk radius
-           either -- the walking in a journey is the router's own -- and it is
-           the only view that answers on the click rather than from a layer
-           loaded in advance, because both of its ends belong to the reader
-           and there is nothing to precompute. -->
-      <div class="controls">
-        <span class="lbl">view</span>
-        <div class="seg">
-          <button data-view="dots" class="active">Locations</button>
-          <button data-view="surface">Surface</button>
-          <button data-view="both">Both</button>
-          <button data-view="corridors">Streets</button>
-          <button data-view="oneseat">One-seat</button>
-          <button data-view="journey">Travel time</button>
-        </div>
-      </div>
-      <!-- The on-demand zones are an OVERLAY rather than a sixth view, and the
-           distinction is the whole point of them. Every view above measures
-           fixed-route service, and none of them can see a zone: a zone has no
-           stops and no timetable, so ground inside one whose bus is withdrawn
-           is painted as a total loss by the locations, the surface and the
-           streets alike. 23% of the area losing all fixed-route service is
-           inside a zone, and leaving that solid red is a half-truth. But a
-           separate view would be the mirror-image error — it would show what
-           the plan offers while hiding what it takes away — so this sits on
-           top of whichever view is running, and nothing anywhere in the app is
-           netted off against it. What the zone brings is 1-3 vehicles for
-           15-48 km2, 7am-9pm, and all ten are flagged hidden in PRT's own
-           project file: a fallback, not a replacement, and the reader is the
-           one who gets to weigh that. -->
-      <div class="controls">
-        <span class="lbl">overlay</span>
-        <div class="seg">
-          <button id="zone-toggle">On-demand zones</button>
-        </div>
-      </div>
-      <!-- The one-seat view asks a different KIND of question from the other
-           four: not how much service is within a walk, but whether a rider can
-           reach a chosen destination without transferring. Downtown and
-           Oakland are the two BASE_CAMP asks about and the two the published
-           place-level answer covers; the pin is there because the layer
-           applies its destination per request rather than baking a list in at
-           build time, so anywhere in the county works. Its default answer has
-           no day type -- a route serves a place or it doesn't -- and it is the
-           only view that counts the T. -->
-      <!-- Shared by the one-seat and travel-time views, which mean slightly
-           different things by "to": the one-seat test runs against every stop
-           of the district, while a journey has to arrive somewhere and uses
-           the centre of that same seed cloud -- the identical point the
-           published travel-time analysis searches to. -->
-      <!-- The one-seat view's day control, and the reason it is not just the
-           day buttons above. The published one-seat answer has no day type at
-           all -- a route serves a place or it doesn't, counted on any
-           calendar -- and that is what data/oneseat_change.csv and the answer
-           documents mean. Restricting to a day is a DIFFERENT measurement,
-           worth having because the plan's weekend cuts are real (152
-           locations keep every weekday bus and lose the weekend outright),
-           but its counts are not the published ones. So it is an opt-in the
-           reader makes deliberately, and the legend says which of the two is
-           on screen. What neither can say is how often the surviving ride
-           runs; the panel's day-by-day trip counts are still the answer to
-           that. -->
-      <div class="controls hidden" id="oneseat-day-controls">
-        <span class="lbl">one-seat</span>
-        <div class="seg">
-          <button data-oneseat-day="any" class="active">Any day</button>
-          <button data-oneseat-day="selected">Selected day</button>
-        </div>
-      </div>
-      <div class="controls hidden" id="dest-controls">
-        <span class="lbl">to</span>
-        <div class="seg">
-          <button data-dest="downtown" class="active">Downtown</button>
-          <button data-dest="oakland">Oakland</button>
-          <button data-dest="pin">Pick a point</button>
-        </div>
-      </div>
-      <!-- Day type governs the map layer as well as the panel: a place that
-           keeps every weekday bus and loses the weekend reads as untouched on
-           a weekday-only screen, and 152 are in that position.
-
-           Last in the toolbar, and below the one-seat controls, because it is
-           subordinate to the view: which day you are asking about only means
-           anything once you have chosen what is being asked. It is also the
-           one control a view can switch off entirely -- the published
-           one-seat answer has no day type -- and the toggle that switches it
-           back on is the row immediately above. -->
-      <div class="controls" id="day-controls">
-        <span class="lbl">day</span>
-        <div class="seg">
-          <button data-day="weekday" class="active">Weekday</button>
-          <button data-day="saturday">Saturday</button>
-          <button data-day="sunday">Sunday</button>
-        </div>
-      </div>
+      <div id="statebar"></div>
       <div id="panel"></div>
     </div>
     <div id="map">
+      <div id="mapbar">
+        <div class="controls">
+          <span class="lbl">walk</span>
+          <div class="seg">
+            <button data-radius="400" class="active">400 m</button>
+            <button data-radius="150">150 m</button>
+          </div>
+        </div>
+        <!-- Locations vs surface vs streets. Locations and Surface both answer
+             a walk-access question -- how much service can I reach on foot from
+             here -- at a stop or on a lattice; the dots can only be drawn where
+             a stop stands today, so they scatter and cannot show ground the plan
+             adds a bus to, and the surface measures the same comparison on a
+             100 m lattice. They are complements, not alternatives — the plan
+             reads as roughly service-neutral per location and as 12% less
+             covered ground, and either figure alone is a talking point rather
+             than a finding. Streets answers a different question with no walk
+             radius at all: on this piece of street, does a bus run today, under
+             the plan, or both? A location can keep full walk access while a
+             specific street loses its only bus, if a parallel block picks up
+             the trip instead — real loss of pavement, possibly no loss of
+             access. It is a third complement, not a replacement for the other
+             two, which is why the walk-radius control beside it is disabled while
+             it is active rather than left to silently mean nothing. Travel
+             time is the fifth and the only one with a clock: how long the trip
+             from a clicked point to the chosen destination takes on each
+             network, waiting for the bus included. It takes no walk radius
+             either -- the walking in a journey is the router's own -- and it is
+             the only view that answers on the click rather than from a layer
+             loaded in advance, because both of its ends belong to the reader
+             and there is nothing to precompute. -->
+        <div class="controls">
+          <span class="lbl">view</span>
+          <div class="seg">
+            <button data-view="dots" class="active">Locations</button>
+            <button data-view="surface">Surface</button>
+            <button data-view="both">Both</button>
+            <button data-view="corridors">Streets</button>
+            <button data-view="oneseat">One-seat</button>
+            <button data-view="journey">Travel time</button>
+          </div>
+        </div>
+        <!-- The on-demand zones are an OVERLAY rather than a sixth view, and the
+             distinction is the whole point of them. Every view here measures
+             fixed-route service, and none of them can see a zone: a zone has no
+             stops and no timetable, so ground inside one whose bus is withdrawn
+             is painted as a total loss by the locations, the surface and the
+             streets alike. 23% of the area losing all fixed-route service is
+             inside a zone, and leaving that solid red is a half-truth. But a
+             separate view would be the mirror-image error — it would show what
+             the plan offers while hiding what it takes away — so this sits on
+             top of whichever view is running, and nothing anywhere in the app is
+             netted off against it. What the zone brings is 1-3 vehicles for
+             15-48 km2, 7am-9pm, and all ten are flagged hidden in PRT's own
+             project file: a fallback, not a replacement, and the reader is the
+             one who gets to weigh that. -->
+        <div class="controls">
+          <span class="lbl">overlay</span>
+          <div class="seg">
+            <button id="zone-toggle">On-demand zones</button>
+          </div>
+        </div>
+        <!-- The one-seat view asks a different KIND of question from the other
+             four: not how much service is within a walk, but whether a rider can
+             reach a chosen destination without transferring. Downtown and
+             Oakland are the two BASE_CAMP asks about and the two the published
+             place-level answer covers; the pin is there because the layer
+             applies its destination per request rather than baking a list in at
+             build time, so anywhere in the county works. Its default answer has
+             no day type -- a route serves a place or it doesn't -- and it is the
+             only view that counts the T. -->
+        <!-- Shared by the one-seat and travel-time views, which mean slightly
+             different things by "to": the one-seat test runs against every stop
+             of the district, while a journey has to arrive somewhere and uses
+             the centre of that same seed cloud -- the identical point the
+             published travel-time analysis searches to. -->
+        <!-- The one-seat view's day control, and the reason it is not just the
+             day buttons beside it. The published one-seat answer has no day type at
+             all -- a route serves a place or it doesn't, counted on any
+             calendar -- and that is what data/oneseat_change.csv and the answer
+             documents mean. Restricting to a day is a DIFFERENT measurement,
+             worth having because the plan's weekend cuts are real (152
+             locations keep every weekday bus and lose the weekend outright),
+             but its counts are not the published ones. So it is an opt-in the
+             reader makes deliberately, and the legend says which of the two is
+             on screen. What neither can say is how often the surviving ride
+             runs; the panel's day-by-day trip counts are still the answer to
+             that. -->
+        <div class="controls hidden" id="oneseat-day-controls">
+          <span class="lbl">one-seat</span>
+          <div class="seg">
+            <button data-oneseat-day="any" class="active">Any day</button>
+            <button data-oneseat-day="selected">Selected day</button>
+          </div>
+        </div>
+        <div class="controls hidden" id="dest-controls">
+          <span class="lbl">to</span>
+          <div class="seg">
+            <button data-dest="downtown" class="active">Downtown</button>
+            <button data-dest="oakland">Oakland</button>
+            <button data-dest="pin">Pick a point</button>
+          </div>
+        </div>
+        <!-- Day type governs the map layer as well as the panel: a place that
+             keeps every weekday bus and loses the weekend reads as untouched on
+             a weekday-only screen, and 152 are in that position.
+
+             Last in the toolbar, after the one-seat controls, because it is
+             subordinate to the view: which day you are asking about only means
+             anything once you have chosen what is being asked. It is also the
+             one control a view can switch off entirely -- the published
+             one-seat answer has no day type -- and the toggle that switches it
+             back on is the group immediately before it. -->
+        <div class="controls" id="day-controls">
+          <span class="lbl">day</span>
+          <div class="seg">
+            <button data-day="weekday" class="active">Weekday</button>
+            <button data-day="saturday">Saturday</button>
+            <button data-day="sunday">Sunday</button>
+          </div>
+        </div>
+      </div>
       <!-- The legend is the summary and the filter as well as the key: the
            counts are for what is on screen, so panning is the interaction. -->
       <div id="legend-box">
+        <!-- The key collapses to its own first line, which is the summary
+             sentence — "2,688 locations in view · a weekday · 400 m walk".
+             On a phone this box and the toolbar together were most of the
+             map; collapsed, the reader still has the count and the
+             measurement, and can see the ground. -->
+        <button id="legend-collapse" aria-expanded="true"
+                title="Collapse the key">–</button>
         <div id="legend"></div>
         <button class="link" id="legend-reset">Show all</button>
       </div>
