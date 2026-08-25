@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { questionLine, questionLineHTML } from './statebar';
+import { questionLine, questionLineHTML, viewLabel } from './statebar';
 
 const BASE = {
   view: 'dots',
@@ -63,5 +63,20 @@ describe('questionLineHTML', () => {
     expect(questionLineHTML({ ...BASE, view: 'journey',
                               destination: '<b>40.4</b>' }))
       .toBe('<b>Travel time to &lt;b&gt;40.4&lt;/b&gt;</b> · a weekday');
+  });
+});
+
+describe('viewLabel', () => {
+  // The phone toolbar shuts into one button carrying this, so it has to agree
+  // with the state line rather than being a second set of names for the same
+  // six views.
+  it('names a view the way the state line names it', () => {
+    for (const view of ['dots', 'surface', 'both', 'corridors', 'oneseat', 'journey']) {
+      expect(questionLine({ ...BASE, view }).startsWith(viewLabel(view))).toBe(true);
+    }
+  });
+
+  it('falls back to the raw key rather than going blank', () => {
+    expect(viewLabel('nonesuch')).toBe('nonesuch');
   });
 });

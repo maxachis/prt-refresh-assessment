@@ -42,6 +42,18 @@ const VIEW_LABEL: Record<string, string> = {
   journey: 'Travel time',
 };
 
+/**
+ * What to call the view where there is only room for its name.
+ *
+ * The phone toolbar closes into a single button, and that button has to say
+ * which view is up -- it is the only thing on screen naming it while the
+ * controls are shut. Same labels as the line below, so the button and the
+ * state line cannot come to call the same view two things.
+ */
+export function viewLabel(view: string): string {
+  return VIEW_LABEL[view] ?? view;
+}
+
 const DAY_WORD: Record<Day, string> = {
   weekday: 'a weekday',
   saturday: 'a Saturday',

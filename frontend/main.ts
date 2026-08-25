@@ -29,7 +29,8 @@ import {
   journeyPanelHTML, journeyPromptHTML, journeyKeyHTML,
   isVisible as journeyOn, journeyData, Point,
 } from './journey';
-import { questionLineHTML } from './statebar';
+import { questionLineHTML, viewLabel } from './statebar';
+import { initSheet, Sheet } from './sheet';
 import { PlaceResult, Day, OneSeatDay, JourneyResult, NamedDestination } from './types';
 
 const PGH: [number, number] = [-79.9959, 40.4406];
@@ -63,6 +64,11 @@ let oneSeatRestricted = false;
 // so the click handler and the day control both have to know which is active.
 let view = 'dots';
 
+// The answer panel, as a bottom sheet on a phone and as an inert stub in the
+// two-column layout. Created once the map exists, because moving it changes
+// how much map is left to aim at.
+let sheet: Sheet;
+
 // The named destinations' centres, fetched once. The one-seat view measures to
 // a district — 44 stops for Downtown, 93 for Oakland — but a journey has to
 // have somewhere to arrive, so the travel-time view uses the centre of that
@@ -76,6 +82,11 @@ const map = new maplibregl.Map({
   style: 'https://tiles.openfreemap.org/styles/positron',
   center: PGH,
   zoom: 12,
+  // Folded to its (i) button rather than spelled out along the bottom edge.
+  // The credit is a condition of using the tiles and stays one tap away on
+  // every screen; what it must not do on a phone is take a full-width band of
+  // map directly above the sheet, which is where the map is thinnest.
+  attributionControl: { compact: true },
 });
 map.addControl(new maplibregl.NavigationControl(), 'top-right');
 
@@ -265,15 +276,30 @@ map.on('load', () => {
   // leaves the head line, which is the one that carries the count and the
   // measurement, so nothing on screen becomes unattributed.
   $('legend-collapse').addEventListener('click', () => {
-    const box = $('legend-box');
-    const collapsed = box.classList.toggle('collapsed');
-    const b = $('legend-collapse');
-    b.textContent = collapsed ? '+' : '–';
-    b.title = collapsed ? 'Show the key' : 'Collapse the key';
-    b.setAttribute('aria-expanded', String(!collapsed));
+    collapseLegend(!$('legend-box').classList.contains('collapsed'));
   });
 
   $('side-toggle').addEventListener('click', toggleSide);
+
+  // The map keeps padding under the sheet so that everything it centres or
+  // fits lands in the strip of map the sheet is not covering. This is the
+  // whole reason the sheet does not need to resize the map: the container is
+  // always the full window, and only the usable middle of it moves.
+  sheet = initSheet({
+    onMove(height, bottomPadding) {
+      document.documentElement.style.setProperty('--sheet-h', `${height}px`);
+      map.setPadding({ top: 0, right: 0, bottom: bottomPadding, left: 0 });
+    },
+    // On a phone the key is folded to its head line. Expanded it was 36% of
+    // the map and it covered the centre, so the point a reader taps first was
+    // the one point that was not the map. Folded it still carries the sentence
+    // with the count, the day and the walk radius in it. Done on the layout
+    // flip rather than once at startup, so a rotation into the phone layout
+    // gets the same treatment a phone-sized load does.
+    onLayoutChange: collapseLegend,
+  });
+
+  initControlSheet();
 
   refreshStateLine();
   void loadChangeLayer(map, radius, activeDay()).then(refreshLegend);
@@ -308,6 +334,55 @@ function refreshStateLine() {
     view, day: activeDay(), radius, oneSeatRestricted,
     destination: destinationName(),
   });
+  refreshControlsButton();
+}
+
+/** Fold the key down to its head line, or open it back up. */
+function collapseLegend(collapsed: boolean) {
+  $('legend-box').classList.toggle('collapsed', collapsed);
+  const b = $('legend-collapse');
+  b.textContent = collapsed ? '+' : '–';
+  b.title = collapsed ? 'Show the key' : 'Collapse the key';
+  b.setAttribute('aria-expanded', String(!collapsed));
+}
+
+/**
+ * The phone toolbar: one button that opens the lot, and three ways to shut it.
+ *
+ * The controls stay in one DOM in both layouts -- a strip on the map at
+ * desktop width, a sheet down from the top edge on a phone -- so every handler
+ * wired above applies to both and neither can gain a control the other lacks.
+ * What changes is only where the box is and whether it is on screen.
+ *
+ * It does not close when a control is used, because these controls interact:
+ * choosing the one-seat view is what makes the destination and the one-seat
+ * day rows appear, and a sheet that shut on the first tap would hide the rows
+ * that tap had just revealed.
+ */
+function initControlSheet() {
+  const open = (on: boolean) => {
+    $('app').classList.toggle('controls-open', on);
+    $('controls-toggle').setAttribute('aria-expanded', String(on));
+  };
+  $('controls-toggle').addEventListener('click', () => {
+    open(!$('app').classList.contains('controls-open'));
+  });
+  $('controls-scrim').addEventListener('click', () => open(false));
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') open(false);
+  });
+}
+
+/**
+ * Say which view is up on the button the toolbar closes into.
+ *
+ * While the controls are shut this is the only thing on screen naming the
+ * view, and the phone layout has no room for the state line to be the first
+ * place a reader looks -- it is inside the sheet, which may be an inch tall.
+ */
+function refreshControlsButton() {
+  $('controls-toggle').firstChild?.remove();
+  $('controls-toggle').prepend(document.createTextNode(viewLabel(view)));
 }
 
 /**
@@ -702,6 +777,11 @@ function placeMarker(lat: number, lon: number) {
  * can never answer a different question from a clicked one.
  */
 function askAt(lat: number, lon: number) {
+  // A click is a request for an answer, so the sheet comes up to where the
+  // answer is readable -- but only up. A reader who has already pulled it to
+  // full and is comparing two corners should not have it drop back to half
+  // under them on the second click.
+  sheet.atLeast('half');
   if (view === 'journey') {
     void loadJourney(lat, lon);
     return;
@@ -728,9 +808,14 @@ async function loadDestinations() {
 async function loadMeta() {
   try {
     const m = await fetchJSON<any>('/api/meta');
-    $('feedline').textContent =
-      `today: ${m.feeds.current_feed_version || 'current GTFS'} · ` +
-      `proposed: ${m.feeds.proposed_feed_version || 'proposed-network feed'}`;
+    const line = `today: ${m.feeds.current_feed_version || 'current GTFS'} · `
+      + `proposed: ${m.feeds.proposed_feed_version || 'proposed-network feed'}`;
+    $('feedline').textContent = line;
+    // The phone masthead is one line and does not carry this. Repeating it in
+    // the methods dialog is what keeps the data vintage reachable there rather
+    // than dropped -- it is a stated convention that the vintage travels with
+    // the numbers, not a decoration on a wide screen.
+    $('feedline-methods').textContent = line;
     $('caveats').innerHTML = m.caveats
       .map((c: any) => `<li>${c.text}</li>`).join('');
   } catch {

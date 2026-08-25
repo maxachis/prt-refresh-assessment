@@ -60,6 +60,7 @@ data/raw/proposed_gtfs/    ─┘      (stdlib)         (43 MB, ~2.5 min)     re
 | `frontend/oneseat.ts` | The one-seat layer and its destination picker. |
 | `frontend/zones.ts` | The on-demand zones — an overlay over any view, never netted off one. |
 | `frontend/statebar.ts` | The line above the panel saying which question the panel is answering. |
+| `frontend/sheet.ts` | The phone layout: the answer panel as a bottom sheet over a full-height map. |
 
 The stack follows `pgh-ghost-bus` (kept as a gitignored reference checkout at
 `pgh-ghost-bus/`): uv, `src/` package, an optional web extra, read-only SQLite,
@@ -76,9 +77,9 @@ the point last clicked. It collapses to a rail, which gives the map the window.
 The move was forced by the phone layout rather than chosen for tidiness. With
 the controls stacked in the panel, a 390 px screen showed four rows of buttons,
 a clipped fifth, and no answer text at all above the fold; the map got the
-remaining 55% of the screen, most of which the legend covered. The controls are
-now one horizontally scrolling strip on the map, in the same reading order, and
-the legend collapses to its own head line.
+remaining 55% of the screen, most of which the legend covered. On a phone the
+strip is not a strip — see below — but the principle holds in both layouts:
+controls belong to the map, the panel holds only the answer.
 
 What that costs is proximity: the day type and the walk radius used to sit two
 centimetres above the numbers they were measured at. **The state line puts that
@@ -88,6 +89,61 @@ decoration. The one-seat view can be showing either of two different
 measurements, only one of which is what `data/oneseat_change.csv` publishes, and
 convention 13 requires anything quoting a one-seat number to say which; the
 legend says it for the map, and this says it for the panel, in the same words.
+
+### The phone layout: one window, three things that wanted it
+
+A desktop gives the map and the panel a column each and they never compete. A
+phone has one short window, and the first attempt divided it — 58% map, 42%
+panel — which made both useless at once. Measured on a 390x844 screen: the map
+got 490 px of which the legend covered 250x277 (36%), and `elementFromPoint` at
+the centre of the screen returned the legend, so the one point a reader taps
+first was the one point that was not the map. The panel got 354 px of which the
+masthead took 138 and the state line 38, leaving under 180 px for the answer.
+Meanwhile the toolbar held 1,135 px of controls in a 322 px window with the
+scrollbar hidden, so the view switcher — the control the whole app turns on —
+was off the right edge with nothing to say it existed. A landscape phone was
+worse still: the breakpoint tested width alone at 820 px, so an 844x390 handset
+fell through to the desktop layout and got a toolbar wrapped into four rows over
+about 60% of the map.
+
+Nothing is divided any more. The map is the whole window and the three things
+that were fighting over it take turns:
+
+- **The answer is a bottom sheet** (`frontend/sheet.ts`) with three stops —
+  peek, half, full. Peek carries the state line, the place name and the
+  before/after figures over a nearly whole map; a click on the map raises the
+  sheet to half, but only ever upward, so a reader comparing two corners at full
+  height does not have it drop under them on the second click. Drag it anywhere
+  and it settles on the nearest stop, or tap the handle to climb a stop at a
+  time and wrap back to the peek. The masthead is hidden at the peek: a reader
+  peeking at an answer needs the site's title least of anything on that strip,
+  and the subtitle and feed vintage move into the methods dialog rather than off
+  the site.
+- **The toolbar is a mode you enter**, opened from one button that says which
+  view is up and closed by the scrim, the button or Escape. It is the same DOM
+  as the desktop strip — every handler applies to both, so neither layout can
+  gain a control the other lacks. It does not close when a control is used,
+  because these controls interact: choosing the one-seat view is what makes the
+  destination and one-seat-day rows appear.
+- **The key opens folded** to its head line, which is the sentence carrying the
+  count, the day and the walk radius, and it rides above the sheet rather than
+  over the middle of the city. Folding happens on the layout *flip*, not once at
+  startup, so rotating a tablet into the phone layout gets the same treatment a
+  phone-sized load does.
+
+Two details are load-bearing. The breakpoint is declared once, as a `--compact`
+custom property in the stylesheet, and read back from TypeScript; a `matchMedia`
+copy of the query would drift into the sheet's geometry and its appearance
+disagreeing about whether there is a sheet at all. And the map keeps bottom
+padding under the sheet, which is why moving the sheet needs no `map.resize()` —
+the container is always the full window and only the usable middle of it moves.
+That matters beyond tidiness: a MapLibre canvas resized behind the map's back
+puts clicks on the wrong coordinates, and on this map a wrong coordinate is a
+wrong answer rather than a wrong pixel.
+
+The tile attribution moves up with the sheet. It is a condition of using
+OpenFreeMap's tiles, and the sheet's first version parked itself exactly on top
+of it.
 
 ### Why departure times are stored, not trip counts
 
