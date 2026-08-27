@@ -28,3 +28,4 @@ pass — a reader who stops halfway down must not be misinformed.
 | [The last walk doglegs via a bus stop the rider never uses](the-last-walk-doglegs-via-a-stop-nobody-boards.md) | open, decision owed |
 | [A stairway is timed as though it were level ground](stairways-are-timed-as-though-they-were-level.md) | open, decision owed |
 | [The ten on-demand zones are retracted, figure and map layer both](the-on-demand-zones-are-retracted.md) | fixed, awaiting close — retracted; whether the retraction needs to travel is Max's |
+| [The deploy box runs out of memory building the database](the-deploy-box-runs-out-of-memory-building-the-database.md) | open, decision owed — unblocked by a hand-added swapfile the repo does not know about |
