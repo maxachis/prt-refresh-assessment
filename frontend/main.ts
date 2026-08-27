@@ -1,6 +1,6 @@
 import { $, fetchJSON, esc } from './utils';
 import { initMapLayers, showPlace } from './mapview';
-import { render, renderEmpty, setDay, activeDay } from './place';
+import { render, renderEmpty, setDay, activeDay, placeLabel } from './place';
 import { oneSeatPanelHTML, oneSeatPromptHTML } from './oneseatpanel';
 import {
   initChangeLayer, loadChangeLayer, setChangeDay, toggleBucket, resetBuckets,
@@ -27,11 +27,68 @@ import {
   isVisible as journeyOn, journeyData, Point,
 } from './journey';
 import { questionLineHTML, viewLabel } from './statebar';
-import { initSheet, Sheet } from './sheet';
+import {
+  Camera, UrlState, isFramed, parseUrlState, toSearch,
+} from './urlstate';
+import { fullViewLabel, isEmbedded, withEmbed, withoutEmbed } from './embed';
+import { initSheet, onLayoutFlip, Sheet } from './sheet';
 import { PlaceResult, Day, OneSeatDay, JourneyResult, NamedDestination } from './types';
 
 const PGH: [number, number] = [-79.9959, 40.4406];
+const PGH_ZOOM = 12;              // the county, near enough
 const ORIGIN_COLOR = '#e2574c';   // the red "you asked here" pin
+
+/**
+ * The toolbar's controls, addressed by the attribute that carries their value.
+ *
+ * Named here because two things now need them: `segment` wires each row up,
+ * and a link or an embed arriving with a question already in it has to press
+ * the same buttons a reader would. Pressing them, rather than assigning the
+ * variables behind them, is what keeps a linked view identical to a clicked
+ * one -- every side effect a control has is in its handler, and there is no
+ * second path that could acquire fewer of them.
+ */
+const CONTROL = {
+  radius: 'data-radius',
+  day: 'data-day',
+  oneSeatDay: 'data-oneseat-day',
+  view: 'data-view',
+  dest: 'data-dest',
+} as const;
+
+/**
+ * What this load was asked to open at, if a link or an embed said.
+ *
+ * Read before the map is constructed because the camera is a construction
+ * argument: opening at the default view and then flying to the asked-for one
+ * would fetch a countyful of tiles nobody wanted to see.
+ */
+const opening = parseUrlState(location.search);
+
+/**
+ * Whether this load is furniture in somebody else's page.
+ *
+ * Decided before the map is built, because it changes the map's own column:
+ * the answer panel goes and the map takes the width. Adding the class after
+ * MapLibre had measured its container would leave the canvas sized for a
+ * window it no longer has, and a canvas resized behind the map's back puts
+ * clicks on the wrong coordinates -- here, the wrong answer rather than
+ * merely the wrong pixel.
+ */
+const embedded = isEmbedded(location.search);
+if (embedded) $('app').classList.add('embed');
+
+/**
+ * Stands in for the sheet where there is no panel to move.
+ *
+ * An embed is often narrow enough to be in the phone layout, and the sheet
+ * would otherwise go on reserving map padding and driving `--sheet-h` for a
+ * drawer that is not on screen.
+ */
+const NO_SHEET: Sheet = { at: () => 'full', atLeast() { /* nothing to move */ } };
+
+/** Where the map is looking, once someone has moved it. */
+let camera: Camera | null = null;
 
 let radius = 400;
 let marker: maplibregl.Marker | null = null;
@@ -80,8 +137,14 @@ let named: NamedDestination[] = [];
 const map = new maplibregl.Map({
   container: 'map',
   style: 'https://tiles.openfreemap.org/styles/positron',
-  center: PGH,
-  zoom: 12,
+  center: opening.camera ? [opening.camera.lon, opening.camera.lat] : PGH,
+  zoom: opening.camera?.zoom ?? PGH_ZOOM,
+  // Embedded in someone else's page, the wheel is theirs: a reader scrolling
+  // past a map they were not using should not have it swallow the scroll and
+  // zoom out to the Atlantic. Ctrl+wheel and two fingers still work, and
+  // MapLibre says so on the map the first time a plain scroll is refused.
+  // Off when we are the whole page, where the wheel has nothing else to do.
+  cooperativeGestures: isFramed(window),
   // Folded to its (i) button rather than spelled out along the bottom edge.
   // The credit is a condition of using the tiles and stays one tap away on
   // every screen; what it must not do on a phone is take a full-width band of
@@ -146,12 +209,20 @@ map.on('load', () => {
       .setHTML(oneSeatDotLabel(f.properties, d)).addTo(map);
   });
 
-  map.on('moveend', refreshLegend);
+  map.on('moveend', () => {
+    // Recorded on every move, including the ones the app makes itself when it
+    // fits a click's walk circle: what the link reproduces is what is on
+    // screen, not only what was reached by dragging.
+    const c = map.getCenter();
+    camera = { lat: c.lat, lon: c.lng, zoom: map.getZoom() };
+    refreshLegend();
+    syncUrl();
+  });
 
   // Radius is a control, not a constant: 400 m is the headline quarter-mile
   // access distance and 150 m the strict same-corner test, and where the two
   // disagree that disagreement is the finding (the station consolidations).
-  segment('[data-radius]', (b) => {
+  segment(CONTROL.radius, (b) => {
     radius = Number(b.dataset.radius);
     void loadChangeLayer(map, radius, activeDay()).then(refreshLegend);
     if (surfaceData()) {
@@ -164,7 +235,7 @@ map.on('load', () => {
   // Day type governs the citywide layer and the panel together. 152 locations
   // keep every weekday bus and lose the weekend entirely, and on a
   // weekday-only map they are invisible.
-  segment('[data-day]', (b) => {
+  segment(CONTROL.day, (b) => {
     const day = b.dataset.day as Day;
     setDay(day);
     // The panel carries the day type too -- as its headline in the Locations
@@ -194,7 +265,7 @@ map.on('load', () => {
   // one exists because 152 locations keep every weekday bus and lose the
   // weekend. Restricting is additive — the reader chooses to leave the
   // published answer, and the legend tells them they have.
-  segment('[data-oneseat-day]', (b) => {
+  segment(CONTROL.oneSeatDay, (b) => {
     oneSeatRestricted = b.dataset.oneseatDay === 'selected';
     refreshDayControls();
     void reloadOneSeat();
@@ -205,7 +276,7 @@ map.on('load', () => {
   // both fetched on first use rather than at startup: the surface is ~48,500
   // cells against ~5,900 dots and the corridors are ~200 KB per day type, and
   // a reader who never switches views should not pay for either.
-  segment('[data-view]', (b) => {
+  segment(CONTROL.view, (b) => {
     const previous = view;
     view = b.dataset.view!;
     map.setLayoutProperty('change-dots', 'visibility',
@@ -241,7 +312,7 @@ map.on('load', () => {
   // destinations BASE_CAMP asks about and the two the published place-level
   // answer covers; "pick a point" is the reason the layer applies its
   // destination per request rather than baking a list in at build time.
-  segment('[data-dest]', (b) => {
+  segment(CONTROL.dest, (b) => {
     const key = b.dataset.dest!;
     if (key === 'pin') {
       setPinMode(true);
@@ -283,7 +354,13 @@ map.on('load', () => {
   // fits lands in the strip of map the sheet is not covering. This is the
   // whole reason the sheet does not need to resize the map: the container is
   // always the full window, and only the usable middle of it moves.
-  sheet = initSheet({
+  // An embed has no sheet, so it has no layout hook either -- and the key
+  // still has to fold when the frame is narrow enough to be in the phone
+  // layout. Expanded it was over half of a 340 px embed, which is most of the
+  // map the embed exists to show; folded it keeps its head line, the sentence
+  // carrying the count, the day and the walk radius.
+  if (embedded) onLayoutFlip(collapseLegend);
+  sheet = embedded ? NO_SHEET : initSheet({
     onMove(height, bottomPadding) {
       document.documentElement.style.setProperty('--sheet-h', `${height}px`);
       map.setPadding({ top: 0, right: 0, bottom: bottomPadding, left: 0 });
@@ -300,7 +377,10 @@ map.on('load', () => {
   initControlSheet();
 
   refreshStateLine();
-  void loadChangeLayer(map, radius, activeDay()).then(refreshLegend);
+  refreshEmbedLink();
+  if (!applyOpening(opening)) {
+    void loadChangeLayer(map, radius, activeDay()).then(refreshLegend);
+  }
   void loadMeta();
   void loadDestinations();
 });
@@ -315,15 +395,110 @@ map.on('load', () => {
  * type or a walk radius that is no longer the one the numbers were measured
  * at.
  */
-function segment(sel: string, onPick: (b: HTMLButtonElement) => void) {
+function segment(control: string, onPick: (b: HTMLButtonElement) => void) {
+  const sel = `[${control}]`;
   document.querySelectorAll<HTMLButtonElement>(sel).forEach((b) => {
     b.addEventListener('click', () => {
       document.querySelectorAll(sel).forEach((o) =>
         o.classList.toggle('active', o === b));
       onPick(b);
       refreshStateLine();
+      syncUrl();
     });
   });
+}
+
+/**
+ * Press one button of a segmented control, as a reader would.
+ *
+ * Returns whether there was one to press: a URL naming a view or a radius this
+ * build does not have leaves the control where it was, rather than the link
+ * failing outright.
+ */
+function press(control: string, value: string): boolean {
+  const b = document.querySelector<HTMLButtonElement>(`[${control}="${value}"]`);
+  b?.click();
+  return b !== null;
+}
+
+/**
+ * Open at the question a link or an embed asked for.
+ *
+ * Order matters: the radius, the day and the destination are set before the
+ * view, so that switching to a view that fetches a layer fetches it once, at
+ * the values asked for, instead of once at the defaults and again a moment
+ * later.
+ *
+ * Returns whether the citywide change layer has already been fetched as a
+ * side effect -- the radius and the day are the two controls that reload it,
+ * and the caller's own opening fetch would otherwise duplicate theirs.
+ */
+function applyOpening(s: Partial<UrlState>): boolean {
+  let loadedChangeLayer = false;
+  if (s.radius !== undefined) {
+    loadedChangeLayer = press(CONTROL.radius, String(s.radius)) || loadedChangeLayer;
+  }
+  if (s.day) loadedChangeLayer = press(CONTROL.day, s.day) || loadedChangeLayer;
+  if (s.oneSeatRestricted !== undefined) {
+    press(CONTROL.oneSeatDay, s.oneSeatRestricted ? 'selected' : 'any');
+  }
+  if (s.dest) {
+    // A dropped pin has no button to press; a named district does, and
+    // pressing it lights the toolbar as well as moving the destination.
+    if ('key' in s.dest) press(CONTROL.dest, s.dest.key);
+    else setDestination(s.dest);
+  }
+  if (s.view) press(CONTROL.view, s.view);
+  // Last, because it answers the question the controls above have just
+  // finished describing.
+  if (s.at) askAt(s.at.lat, s.at.lon);
+  return loadedChangeLayer;
+}
+
+/**
+ * Put the question on screen into the address bar.
+ *
+ * `replaceState`, never `push`: inside an iframe the two share a history stack
+ * with the page around us, so pushing would quietly turn the host page's back
+ * button into a control for our toolbar. Any hash is kept -- it is not ours.
+ */
+function syncUrl() {
+  const state: UrlState = {
+    view,
+    day: activeDay(),
+    radius,
+    oneSeatRestricted,
+    dest,
+    at: last,
+    camera,
+  };
+  const search = toSearch(state);
+  // The mode is not part of the question, so it is not in what `toSearch`
+  // writes; put it back, or an embed would drop its own mode the first time
+  // anyone touched a control -- invisibly, until the frame reloaded as the
+  // whole app in a 300 px box.
+  history.replaceState(null, '', (embedded ? withEmbed(search) : search) + location.hash);
+  refreshEmbedLink(search);
+}
+
+/**
+ * Point the corner link at the view on screen, and say what it offers.
+ *
+ * The link is the embed's only provenance and its only door to the method,
+ * the caveats and the answer panel, so it tracks the question rather than
+ * pointing at the county default. It goes to the FULL site: an "open the
+ * full map" that opened another stripped map is the one thing it must not
+ * do.
+ */
+function refreshEmbedLink(search = withoutEmbed(location.search)) {
+  if (!embedded) return;
+  const a = $('embed-link') as HTMLAnchorElement;
+  a.href = `${location.pathname}${search}${location.hash}`;
+  // A click has produced an answer even here -- the panel computed it, the
+  // embed simply has nowhere to put it -- so the link says so, or the click
+  // reads as having done nothing at all.
+  const place = last ? (lastPlace ? placeLabel(lastPlace) : 'this point') : null;
+  a.querySelector('.el-action')!.textContent = fullViewLabel(place);
 }
 
 /** Say, above the panel, which question the panel is answering. */
@@ -504,6 +679,11 @@ function renderPanel({ scrollToTop = false } = {}) {
   // where the last answer was read would open the next one below its own
   // headline. A day change is not a new answer and keeps the reader's place.
   if (scrollToTop) $('panel').scrollTop = 0;
+  // The answer is what the corner link is offering to show in full, so the
+  // link is refreshed wherever the answer is, rather than only where the URL
+  // changes -- the URL is written when the click is made, which is before the
+  // answer it names has arrived.
+  refreshEmbedLink();
   if (!lastPlace) {
     if (view === 'oneseat') $('panel').innerHTML = oneSeatPromptHTML(destinationName());
     else renderEmpty($('panel'));
@@ -552,6 +732,7 @@ function showJourney(on: boolean, leaving = false) {
 async function loadJourney(lat: number, lon: number) {
   const mine = ++seq;
   last = { lat, lon };
+  syncUrl();
   placeMarker(lat, lon);
 
   const to = destinationPoint();
@@ -575,6 +756,7 @@ async function loadJourney(lat: number, lon: number) {
     drawJourney(map, r);
     $('panel').innerHTML = journeyPanelHTML(r, name);
     refreshLegend();
+    refreshEmbedLink();
   } catch (err) {
     if (mine !== seq) return;
     drawJourney(map, null);
@@ -641,8 +823,10 @@ function setDestination(next: Destination) {
   syncDestinationButtons();
   showDestinationMarker();
   // A dragged marker reaches here without any button having been clicked, so
-  // the state line is redrawn here rather than only in `segment`.
+  // the state line and the address bar are redrawn here rather than only in
+  // `segment`.
   refreshStateLine();
+  syncUrl();
   if (view === 'journey') {
     if (last) void loadJourney(last.lat, last.lon);
     refreshLegend();
@@ -735,6 +919,7 @@ function setPinMode(on: boolean) {
 async function load(lat: number, lon: number) {
   const mine = ++seq;
   last = { lat, lon };
+  syncUrl();
   $('panel').classList.add('loading');
 
   placeMarker(lat, lon);

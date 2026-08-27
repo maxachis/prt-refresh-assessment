@@ -655,6 +655,98 @@ Reasoning and evidence:
 Two pages, not one endpoint each: `GET /` is the map and `GET /findings` is the
 equity brief.
 
+## Linking to a view, and embedding one
+
+The map's own state lives in its query string, so a view can be sent to
+somebody or dropped into another organisation's page. Every control is written
+out, defaults included: omitting them would mean keeping a fourth copy of what
+the defaults are — they are already in `main.ts`'s initial values and in the
+`active` class in `index.html` — and that copy would drift silently into links
+that no longer show what they showed. It also makes an embed's `src`
+self-documenting.
+
+| Parameter | Value |
+|---|---|
+| `view` | `dots`, `surface`, `both`, `corridors`, `oneseat`, `journey` |
+| `day` | `weekday`, `saturday`, `sunday` |
+| `radius` | `400` or `150` (convention 4's two radii) |
+| `oneseatday` | `any` — the published day-free measure — or `selected` (convention 13) |
+| `dest` | `downtown`, `oakland`, or `lat,lon` for a dropped pin |
+| `at` | `lat,lon` — where the reader asked; opens the answer panel |
+| `map` | `lat,lon,zoom` — where the map is looking |
+| `embed` | `1` — map and key only, for an iframe; see below |
+
+A parameter that fails to parse is ignored and its control left at the default,
+because these URLs are meant to be hand-edited by someone building an embed: a
+typo is the expected input, not the exceptional one. `dest=pin` is refused
+outright — "pick a point" is a mode the next click consumes, and a map that
+loaded already armed would spend a reader's first tap moving the destination
+instead of answering. The parameters are a published interface the moment
+anyone pastes an iframe into a page, so renaming one breaks every embed already
+in the wild, in a way that looks to the embedder like the map ignoring them.
+
+A link is applied by pressing the toolbar buttons a reader would have pressed,
+not by assigning the variables behind them, so a linked view cannot acquire
+fewer side effects than a clicked one. `at` and `map` interact: a point to ask
+at fits the map to that point's walk circle, which overrides the camera the
+link asked for.
+
+Nothing is written to the address bar until something is used, so an
+unadorned visit stays unadorned. Writing is `replaceState`, never `push`: in an
+iframe the two share a history stack with the page around them, and pushing
+would quietly turn the host page's back button into a control for our toolbar.
+
+Framed, the map also takes **cooperative gestures** — a plain wheel scrolls the
+host page instead of zooming the map, and it takes Ctrl+wheel or two fingers to
+work the map, with MapLibre saying so on the map the first time a scroll is
+refused. It is off when the map is the whole page, where the wheel has nothing
+else to do. Nothing blocks framing at the HTTP level: no `X-Frame-Options` and
+no `frame-ancestors`, so anyone can embed this, not only whoever was asked.
+
+### `embed=1`: the map, the key, and a way back
+
+An organisation putting this in an article has a column a few hundred pixels
+wide and a reader who did not come looking for a transit tool. The answer panel
+is the first thing that does not fit: at embed widths it either takes the whole
+frame or becomes the phone's bottom sheet, and in both cases the map — the
+thing worth embedding — is what disappears. So `?embed=1` keeps the map, the
+toolbar and the key, and drops the panel.
+
+```html
+<iframe src="https://prt-refresh.lemaliconsulting.com/?embed=1&view=oneseat&dest=oakland&radius=150"
+        width="100%" height="520" style="border:0" loading="lazy"
+        title="Bus Line Refresh: what changes here?"></iframe>
+```
+
+What survives is more than it sounds: the key's head line is the summary
+sentence for whatever is on screen ("2,688 locations in view · a weekday ·
+400 m walk"), the toolbar still switches views, and a click still asks — the
+walk circle, the routed trips and the recoloured dots are all map-side answers.
+What is lost is the panel's prose and figures.
+
+That loss is why **the corner link is not optional furniture**. It is the only
+thing on an embedded map that says whose map it is, and the only route to the
+method and the caveats, which this project requires to travel with any number
+it shows. It tracks the view: before anyone has clicked it offers the full map,
+and after a click it offers the full answer for the place that was clicked,
+opening in a new tab at the same question the embed is showing — with `embed`
+stripped, so "open the full map" can never open another stripped one.
+
+Three details worth knowing before changing any of this. The mode is asked for
+in the URL rather than inferred from being framed: cooperative gestures are a
+safe thing to do to anyone who frames us, but taking the answer panel away is
+an editorial choice the embedder makes. The mode is re-written into the address
+bar on every control the reader touches, because the state written back is
+built from the question alone and an embed would otherwise silently lose its
+own mode. And the panel stays in the DOM and is still filled — one code path
+answers a click whether or not there is anywhere to show the answer — so
+nothing here has a second, quieter version of itself to keep in step.
+
+An embed is usually narrow enough to be in the phone layout while sitting on a
+desktop, which has two consequences: the key folds to its head line, and the
+zoom buttons stay on screen, since the phone's answer to zoom is pinch and the
+wheel now belongs to the host page.
+
 ## The findings page
 
 `/findings` is the one part of the site that is not the map, because the

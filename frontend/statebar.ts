@@ -43,6 +43,15 @@ const VIEW_LABEL: Record<string, string> = {
 };
 
 /**
+ * Every view there is, which makes this the list a URL is checked against.
+ *
+ * Derived from the labels rather than written out again: `urlstate.ts` has to
+ * reject a view a link asks for that does not exist, and a second hand-kept
+ * list would answer that question differently from the one that names them.
+ */
+export const VIEWS = Object.keys(VIEW_LABEL);
+
+/**
  * What to call the view where there is only room for its name.
  *
  * The phone toolbar closes into a single button, and that button has to say

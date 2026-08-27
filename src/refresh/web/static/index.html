@@ -99,6 +99,32 @@
                        margin-top:6px; color:var(--muted); }
     #legend .lg-area b { color:var(--ink); font-weight:600; }
 
+    /* --- embedded in someone else's page --- */
+    /* Map, toolbar and key; no answer column. The panel stays in the DOM and
+       is still filled on a click -- one code path answers whether or not
+       there is anywhere to show the answer -- so nothing here has a second,
+       quieter version of itself that could fall out of step. */
+    #app.embed { grid-template-columns:1fr; }
+    #app.embed #side { display:none; }
+    /* An embed is usually narrow enough to be in the phone layout while
+       sitting on a desktop, where pinch -- the phone's answer to zoom -- does
+       not exist and the wheel belongs to the host page. Without this the
+       reader is left with ctrl+wheel and nothing else. */
+    #app.embed .maplibregl-ctrl-top-right { display:block; }
+    /* Whose map this is, and the way to the answer the embed has no room for.
+       See `embed.ts`: on an embedded map this is the only provenance on
+       screen and the only route to the method and caveats. */
+    #embed-link { position:absolute; right:10px; bottom:26px; z-index:3;
+      display:none; flex-direction:column; gap:1px; max-width:48%;
+      padding:7px 10px; border:1px solid var(--line); border-radius:10px;
+      background:rgba(20,23,29,.93); backdrop-filter:blur(3px);
+      color:var(--ink); text-decoration:none; font-size:12px; line-height:1.35; }
+    #app.embed #embed-link { display:flex; }
+    #embed-link:hover { border-color:#39414f; }
+    #embed-link .el-site { color:var(--muted); font-size:10px;
+      text-transform:uppercase; letter-spacing:.06em; }
+    #embed-link .el-action { color:var(--now); }
+
     header { padding:14px 16px; border-bottom:1px solid var(--line); }
     header h1 { margin:0; font-size:15px; letter-spacing:.01em; }
     header .sub { color:var(--muted); font-size:12px; margin-top:3px; }
@@ -445,6 +471,28 @@
         bottom:min(var(--sheet-h), 60dvh);
         transition:bottom .22s cubic-bezier(.4,0,.2,1); }
 
+      /* At embed widths the key already spans the bottom of the map, so the
+         link cannot sit on top of it: it becomes a strip beneath, and the key
+         moves up by its height. It stops short of the tile attribution's (i)
+         rather than covering it. */
+      #app.embed #embed-link { left:10px; right:auto; bottom:6px;
+        max-width:calc(100% - 64px); flex-direction:row; align-items:baseline;
+        gap:8px; overflow:hidden; }
+      /* One line, whatever the place is called: wrapped to two it grows up
+         into the tile credit, and the credit is not ours to cover. */
+      #app.embed #embed-link .el-site { white-space:nowrap; }
+      #app.embed #embed-link .el-action { white-space:nowrap; overflow:hidden;
+        text-overflow:ellipsis; }
+      /* Three things share the bottom edge of an embedded map and none of
+         them may cover another: the link, the tile credit above it (a
+         condition of using the tiles), and the key above that. */
+      #app.embed .maplibregl-ctrl-bottom-left,
+      #app.embed .maplibregl-ctrl-bottom-right { bottom:34px; }
+      /* Clear of two lines of credit, because at these widths that is what it
+         wraps to and a key sitting on the credit is the one thing down here
+         that would breach the tile licence. */
+      #app.embed #legend-box { bottom:88px; margin-bottom:0; }
+
       #methods .card { max-height:88dvh; border-radius:14px; margin:12px; }
     }
 
@@ -624,6 +672,14 @@
         <div id="legend"></div>
         <button class="link" id="legend-reset">Show all</button>
       </div>
+      <!-- Shown only in an embed, where it is the whole of the site's
+           identity and the only door back to the answer panel, the method and
+           the caveats. It opens in a new tab: a link that navigated the
+           iframe would leave the host page holding a full app in a column. -->
+      <a id="embed-link" href="/" target="_blank" rel="noopener">
+        <span class="el-site">Bus Line Refresh</span>
+        <span class="el-action">Open the full map ↗</span>
+      </a>
     </div>
   </div>
 

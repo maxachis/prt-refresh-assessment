@@ -128,6 +128,28 @@ export function isCompact(): boolean {
     .getPropertyValue('--compact').trim() === '1';
 }
 
+/**
+ * Call back with the layout now, and thereafter only when it actually flips.
+ *
+ * A rotation is the case that matters: it arrives as an ordinary resize, and
+ * anything sized for a wide window -- the key above all, at 250x314 over a
+ * 390 px map -- is still sized for one afterwards. Returned as well as
+ * registered, so a caller with resize work of its own can put the flip first
+ * rather than depending on which listener was added earlier.
+ */
+export function onLayoutFlip(cb: (compact: boolean) => void): () => void {
+  let was: boolean | null = null;
+  const check = () => {
+    const compact = isCompact();
+    if (compact === was) return;
+    was = compact;
+    cb(compact);
+  };
+  window.addEventListener('resize', check);
+  check();
+  return check;
+}
+
 /** A drag shorter than this in space and time was a tap on the handle. */
 const TAP_SLOP_PX = 8;
 const TAP_MS = 400;
@@ -234,6 +256,8 @@ export function initSheet(hooks: SheetHooks): Sheet {
     if (isCompact()) settle(snapAfterTap(snap));
   });
 
+  const checkFlip = onLayoutFlip(hooks.onLayoutChange);
+
   /**
    * Leaving the phone layout has to give the inline height back.
    *
@@ -241,14 +265,11 @@ export function initSheet(hooks: SheetHooks): Sheet {
    * window widens into the two-column layout, and the panel then scrolls
    * inside a column that has stopped being full height.
    */
-  let wasCompact: boolean | null = null;
   function reflow() {
-    const compact = isCompact();
-    if (compact !== wasCompact) {
-      wasCompact = compact;
-      hooks.onLayoutChange(compact);
-    }
-    if (!compact) {
+    // Before the geometry, so anything the flip re-sizes is re-sized against
+    // the layout this pass is about to settle into.
+    checkFlip();
+    if (!isCompact()) {
       side.style.height = '';
       side.removeAttribute('data-snap');
       hooks.onMove(0, 0);
