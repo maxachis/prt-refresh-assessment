@@ -26,16 +26,22 @@ import {
   PKEYS, PERIOD_LABEL, Day, PlaceResult, DayService, OneSeatVerdict, OneSeatDay,
 } from './types';
 
-let current: PlaceResult | null = null;
 let day: Day = 'weekday';
 
 export function activeDay(): Day {
   return day;
 }
 
-export function setDay(d: Day, rerender = true) {
+/**
+ * Set the day type these panels count in.
+ *
+ * Deliberately does not redraw: which panel is on screen is the view's call,
+ * not this module's, and `main.renderPanel` makes it from the answer already
+ * fetched. This module rendering itself would have the one-seat view flash the
+ * report it replaced on every day change.
+ */
+export function setDay(d: Day) {
   day = d;
-  if (rerender && current) render(current);
 }
 
 export function renderEmpty(el: HTMLElement) {
@@ -112,7 +118,7 @@ function periodRows(before: DayService, after: DayService): string {
   }).join('');
 }
 
-function routeList(routes: string[]): string {
+export function routeList(routes: string[]): string {
   if (!routes.length) return `<span class="muted">none</span>`;
   return routes.map((r) => `<span class="route">${esc(r)}</span>`).join(' ');
 }
@@ -202,25 +208,43 @@ function oneSeatBlock(verdicts: OneSeatVerdict[],
     </div>`;
 }
 
-export function render(p: PlaceResult) {
-  current = p;
-  const el = document.getElementById('panel')!;
-  const before = p.current.days[day];
-  const after = p.proposed.days[day];
+/** What to call the clicked point in a heading. */
+export function placeLabel(p: PlaceResult): string {
+  return p.place?.hood || p.place?.muni || 'this location';
+}
+
+/** How many buses, both directions, on the day type on screen. */
+export function dayWord(d: Day): string {
+  return d === 'weekday' ? 'weekday' : d;
+}
+
+/**
+ * One line of service at a point, for a panel that is answering something else.
+ *
+ * The one-seat panel carries this collapsed rather than dropping it: "loses the
+ * one-seat ride to Oakland, and the corridor drops from 84 buses to 71" is one
+ * thought, and a reader who has to change view to finish it will quote half.
+ */
+export function serviceSummaryText(p: PlaceResult, d: Day): string {
+  const before = p.current.days[d];
+  const after = p.proposed.days[d];
+  return `${before.trips} → ${after.trips} buses per ${dayWord(d)}`;
+}
+
+/**
+ * Everything this app knows about the service at a point, minus the heading.
+ *
+ * Split out of `render` so the one-seat panel can carry the same numbers under
+ * its own question without a second copy of them drifting from this one.
+ */
+export function serviceBodyHTML(p: PlaceResult, d: Day, middle = ''): string {
+  const before = p.current.days[d];
+  const after = p.proposed.days[d];
   const delta = after.trips - before.trips;
   const dcls = delta > 0 ? 'up' : delta < 0 ? 'down' : 'flat';
-
-  const label = p.place?.hood || p.place?.muni || 'this location';
   const bm = bestMedian(before), am = bestMedian(after);
 
-  el.innerHTML = `
-    <div class="place-head">
-      <h2>${esc(label)}</h2>
-      <div class="muted">
-        ${p.lat.toFixed(5)}, ${p.lon.toFixed(5)} · within ${p.radius} m
-      </div>
-    </div>
-
+  return `
     <div class="headline">
       <div class="hl-side">
         <div class="hl-label">today</div>
@@ -236,7 +260,7 @@ export function render(p: PlaceResult) {
         <div class="muted">${pct(before.trips, after.trips)}</div>
       </div>
     </div>
-    <div class="sub">buses per ${day === 'weekday' ? 'weekday' : day}, both directions</div>
+    <div class="sub">buses per ${dayWord(d)}, both directions</div>
 
     <div class="tiers">${tierBadge(before.hourly, after.hourly)}</div>
 
@@ -258,7 +282,7 @@ export function render(p: PlaceResult) {
       <dd>${p.current.stops.length} <span class="muted">→</span> ${p.proposed.stops.length}</dd>
     </dl>
 
-    ${oneSeatBlock(p.oneseat ?? [], p.oneseat_day ?? 'any')}
+    ${middle}
 
     <div class="routes">
       <h3>Routes serving this spot</h3>
@@ -268,4 +292,17 @@ export function render(p: PlaceResult) {
          60X/61X/62X, and the P-flyers become L-limiteds. Differences between
          these two lists overstate how much actually changes on the ground.</p>
     </div>`;
+}
+
+export function render(p: PlaceResult) {
+  const el = document.getElementById('panel')!;
+
+  el.innerHTML = `
+    <div class="place-head">
+      <h2>${esc(placeLabel(p))}</h2>
+      <div class="muted">
+        ${p.lat.toFixed(5)}, ${p.lon.toFixed(5)} · within ${p.radius} m
+      </div>
+    </div>
+    ${serviceBodyHTML(p, day, oneSeatBlock(p.oneseat ?? [], p.oneseat_day ?? 'any'))}`;
 }

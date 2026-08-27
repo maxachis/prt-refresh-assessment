@@ -58,12 +58,42 @@ data/raw/proposed_gtfs/    ─┘      (stdlib)         (43 MB, ~2.5 min)     re
 | `frontend/change.ts`, `legend.ts` | The citywide layer and the legend that summarises and filters it. |
 | `frontend/surface.ts` | The magnitude surface — the same layer as a continuous field. |
 | `frontend/oneseat.ts` | The one-seat layer and its destination picker. |
+| `frontend/oneseatpanel.ts` | The one-seat view's own answer panel — a verdict about a destination, not a count at a point. |
 | `frontend/statebar.ts` | The line above the panel saying which question the panel is answering. |
 | `frontend/sheet.ts` | The phone layout: the answer panel as a bottom sheet over a full-height map. |
 
 The stack follows `pgh-ghost-bus` (kept as a gitignored reference checkout at
 `pgh-ghost-bus/`): uv, `src/` package, an optional web extra, read-only SQLite,
 esbuild-bundled TypeScript, vendored MapLibre, pytest + vitest.
+
+### Why the one-seat view has a panel of its own
+
+Locations and Surface share one panel because they are one measurement drawn
+two ways: a quantity of service, answered at a point. One-seat is a different
+unit (convention 13) — a connection, with no day type and no clock — and while
+it shared that panel the view had two markers of visibly unequal weight. The
+red origin rewrote the whole panel; the dark destination, which recolours every
+dot on the map, changed one row most of a scroll down. A reader could
+reasonably conclude the destination marker did nothing, which was Max's report
+and the reason this exists.
+
+So `frontend/oneseatpanel.ts` makes the destination the subject: it is the
+heading, and the headline under it is the verdict — keeps, gains, loses — in
+the map's own colours rather than a pair of trip counts. Both sides' route
+lists stay, because "loses its one-seat ride to Downtown" is a sentence
+somebody will screenshot and it should arrive checkable; but they are now
+diffed into kept / lost / gained, which the server had been computing and
+nobody was showing. At Downtown that is the difference between reading fourteen
+route numbers against fourteen and reading three short lists.
+
+Two things it deliberately does not do. It does not drop the service figures —
+"loses the Oakland ride, and the corridor drops from 599 buses to 587" is one
+thought, so they ride along collapsed, with the trip counts in the summary line
+so the fact is on screen closed. And it does not become a second answer: it is
+rendered from the same `/api/place` response the shared panel uses, dispatched
+by `main.renderPanel`, so switching views redraws rather than refetches and the
+two can never answer differently. Travel time already worked this way and is
+unchanged.
 
 ### Why the controls sit on the map and the panel is only content
 

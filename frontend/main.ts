@@ -1,6 +1,7 @@
 import { $, fetchJSON, esc } from './utils';
 import { initMapLayers, showPlace } from './mapview';
 import { render, renderEmpty, setDay, activeDay } from './place';
+import { oneSeatPanelHTML, oneSeatPromptHTML } from './oneseatpanel';
 import {
   initChangeLayer, loadChangeLayer, setChangeDay, toggleBucket, resetBuckets,
   layerData, dotLabel,
@@ -35,6 +36,9 @@ const ORIGIN_COLOR = '#e2574c';   // the red "you asked here" pin
 let radius = 400;
 let marker: maplibregl.Marker | null = null;
 let last: { lat: number; lon: number } | null = null;
+// The last answer, kept so the panel can be redrawn for a different view or a
+// different day without asking the server the same question again.
+let lastPlace: PlaceResult | null = null;
 let seq = 0;   // guards against a slow response overwriting a newer click
 
 // The one-seat view's destination. A named district by default; a dropped pin
@@ -93,7 +97,7 @@ map.on('load', () => {
   initCorridorLayer(map, 'change-dots');  // same slot; corridors and dots/surface are mutually exclusive
   initOneSeatLayer(map, 'walk-fill');     // the dots' own slot; the two never show together
   initJourneyLayer(map);                  // on top: two drawn trips, over everything
-  renderEmpty($('panel'));
+  renderPanel();
 
   map.on('click', (e: any) => {
     if (pinMode) {
@@ -163,6 +167,10 @@ map.on('load', () => {
   segment('[data-day]', (b) => {
     const day = b.dataset.day as Day;
     setDay(day);
+    // The panel carries the day type too -- as its headline in the Locations
+    // and Surface views, and as the collapsed service summary under a one-seat
+    // verdict -- so it is redrawn from the answer already in hand.
+    if (view !== 'journey') renderPanel();
     setChangeDay(map, day);
     setSurfaceDay(map, day);
     // A journey has a day type of its own — a Sunday trip is a fair question
@@ -206,6 +214,14 @@ map.on('load', () => {
     void showCorridors(view === 'corridors');
     void showOneSeat(view === 'oneseat');
     showJourney(view === 'journey', previous === 'journey');
+    // One-seat and the shared location report answer different questions from
+    // the same fetched answer, so switching between them redraws rather than
+    // refetches. Leaving the journey view is handled by `showJourney`, which
+    // has to refetch: a timed trip is not in `lastPlace`.
+    if (view !== 'journey' && previous !== 'journey'
+        && (view === 'oneseat' || previous === 'oneseat')) {
+      renderPanel({ scrollToTop: true });
+    }
     // Neither the street view nor the travel-time view has a walk radius: a
     // corridor is a piece of street, and a journey's walk is the router's own
     // (`journey.CONSTANTS`), not a control. Disabled rather than left
@@ -251,6 +267,14 @@ map.on('load', () => {
   // measurement, so nothing on screen becomes unattributed.
   $('legend-collapse').addEventListener('click', () => {
     collapseLegend(!$('legend-box').classList.contains('collapsed'));
+  });
+
+  // The one-seat panel lists the destinations it is NOT measuring to, with
+  // their verdicts, and each is a control: it is where a reader discovers the
+  // others exist, so switching should not mean finding the toolbar again.
+  $('panel').addEventListener('click', (e) => {
+    const b = (e.target as HTMLElement).closest<HTMLElement>('[data-goto-dest]');
+    if (b) setDestination({ key: b.dataset.gotoDest! });
   });
 
   $('side-toggle').addEventListener('click', toggleSide);
@@ -465,6 +489,38 @@ function setRadiusEnabled(on: boolean) {
  * they click. What the panel shows in the meantime is the prompt, which is
  * also where the "this takes a moment" warning lives.
  */
+/**
+ * Fill the panel with whichever answer the view on screen owns.
+ *
+ * Locations and Surface share one report because they are the same
+ * measurement drawn two ways. One-seat does not: it asks about a connection
+ * rather than a quantity, and its destination is the subject of the answer,
+ * so it gets a panel where moving the destination marker rewrites the
+ * heading. The travel-time view fills the panel itself, from its own request.
+ */
+function renderPanel({ scrollToTop = false } = {}) {
+  // A new answer starts at its own top. The heading now carries the
+  // destination and the line under it the verdict, so a panel left scrolled
+  // where the last answer was read would open the next one below its own
+  // headline. A day change is not a new answer and keeps the reader's place.
+  if (scrollToTop) $('panel').scrollTop = 0;
+  if (!lastPlace) {
+    if (view === 'oneseat') $('panel').innerHTML = oneSeatPromptHTML(destinationName());
+    else renderEmpty($('panel'));
+    return;
+  }
+  if (view === 'oneseat') {
+    // Empty when the database predates the one-seat layer, in which case the
+    // shared report still answers something rather than the view going blank.
+    const html = oneSeatPanelHTML(lastPlace, dest, activeDay());
+    if (html) {
+      $('panel').innerHTML = html;
+      return;
+    }
+  }
+  render(lastPlace);
+}
+
 function showJourney(on: boolean, leaving = false) {
   setJourneyVisible(map, on);
   refreshLegend();
@@ -474,7 +530,7 @@ function showJourney(on: boolean, leaving = false) {
     // answered side by side, with only the heading to say which is which.
     if (leaving) {
       if (last) void load(last.lat, last.lon);
-      else renderEmpty($('panel'));
+      else renderPanel();
     }
     return;
   }
@@ -592,6 +648,13 @@ function setDestination(next: Destination) {
     refreshLegend();
     return;
   }
+  // The panel's verdicts are measured to this destination, so a moved marker
+  // re-asks the question at the clicked point as well as recolouring the map.
+  // With nothing clicked yet the one-seat panel is a prompt naming the
+  // destination, which is redrawn here so that moving the marker visibly does
+  // something on an empty panel.
+  if (last) void load(last.lat, last.lon);
+  else renderPanel({ scrollToTop: true });
   void reloadOneSeat();
 }
 
@@ -686,7 +749,8 @@ async function load(lat: number, lon: number) {
       + `${pin}&oneseat_day=${oneSeatDay()}`);
     if (mine !== seq) return;       // a newer click already won
     showPlace(map, lat, lon, radius, p.current.stops, p.proposed.stops);
-    render(p);
+    lastPlace = p;
+    renderPanel({ scrollToTop: true });
   } catch (err) {
     if (mine !== seq) return;
     $('panel').innerHTML =

@@ -226,6 +226,39 @@
     .os-routes { margin-top:5px; }
     .os-routes .rrow { margin-bottom:4px; }
 
+    /* The one-seat view's own panel. Its headline is a verdict rather than a
+       pair of numbers, because the question is a connection and not a
+       quantity -- and it takes the map's colours so the sentence and the dot
+       under the reader's pin cannot appear to disagree. */
+    .os-verdict { margin:14px 0 0; font-size:20px; line-height:1.25; }
+    .os-verdict.loses { color:var(--down); }
+    .os-verdict.gains { color:#6fb6ef; }
+    .os-verdict.keeps { color:var(--ink); }
+    .os-verdict.none, .os-verdict.here { color:var(--muted); }
+
+    /* The destinations this panel is NOT measuring to: a verdict apiece, and
+       a control rather than a report -- switching should not mean going back
+       to the toolbar on the map. */
+    .os-others { display:flex; flex-direction:column; gap:6px; }
+    button.os-other { display:flex; gap:8px; align-items:baseline; width:100%;
+      padding:7px 9px; background:#0c0e12; border:1px solid var(--line);
+      border-radius:5px; color:var(--ink); font:inherit; cursor:pointer;
+      text-align:left; }
+    button.os-other:hover { border-color:#3a4150; }
+    button.os-other .os-status { margin-left:auto; }
+
+    /* Service at the clicked point, carried under a one-seat verdict: the
+       corridor's trip counts belong in the same thought as the ride that
+       corridor no longer provides, but not above it. */
+    details.svc { margin-top:20px; border-top:1px solid var(--line);
+      padding-top:14px; }
+    details.svc > summary { cursor:pointer; font-size:12px; color:var(--muted);
+      list-style:none; }
+    details.svc > summary::-webkit-details-marker { display:none; }
+    details.svc > summary::before { content:'▸ '; }
+    details.svc[open] > summary::before { content:'▾ '; }
+    details.svc > summary:hover { color:var(--ink); }
+
     /* The travel-time view's itinerary: one line per leg, with the waits
        between them spelled out rather than left implicit in a gap between two
        clock times -- the wait is most of what a headway change does to a

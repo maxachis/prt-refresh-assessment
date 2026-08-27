@@ -99,8 +99,8 @@ uv sync --extra web && npm install   # one-time
 npm run build                        # frontend/*.ts -> static/app.js
 uv run refresh serve                 # http://127.0.0.1:8000
 
-uv run pytest                        # 295 tests, incl. served == published
-npx vitest run && npx tsc --noEmit   # 129 frontend tests
+uv run pytest                        # 293 tests, incl. served == published
+npx vitest run && npx tsc --noEmit   # 167 frontend tests
 ```
 
 **Hosting** is `deploy/` — a Hetzner VM behind Caddy, live at
