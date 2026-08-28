@@ -271,7 +271,13 @@ export function serviceBodyHTML(p: PlaceResult, d: Day, middle = ''): string {
     <div class="legend">
       <span><i class="sw-now"></i> today</span>
       <span><i class="sw-prop"></i> proposed</span>
+      <span><i class="sw-walk"></i> the ${p.radius} m walk</span>
+      <span><i class="sw-pin"></i> where you clicked</span>
     </div>
+    <div class="key-note">The same colours mark the map: each dot is one stop,
+      blue for today and orange for the plan, and a stop both networks keep
+      draws as a blue dot inside an orange ring rather than as two marks. Only
+      the stops inside the dashed circle are counted above.</div>
 
     <dl class="facts">
       <dt>First and last bus</dt>

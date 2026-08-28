@@ -11,6 +11,10 @@
     :root {
       --bg:#0f1115; --panel:#171a21; --line:#262a33; --ink:#e8eaed; --muted:#98a0ac;
       --now:#4aa3ff; --prop:#ffa23a; --up:#4ec98a; --down:#ff6b6b;
+      /* The two marks the map draws that carry no data of their own:
+         the walk radius the answer was measured in, and the point the
+         reader asked from. Kept in step with mapview.ts and main.ts. */
+      --walk:#8fb7ff; --pin:#e2574c;
       /* The one non-data colour: what "you have chosen this" looks like. */
       --sel:#e9edf4;
       /* Whether the phone layout is on, declared here so the breakpoint below
@@ -223,10 +227,15 @@
     td.bar span { display:block; height:5px; border-radius:2px; min-width:1px; }
     .b-now { background:var(--now); margin-bottom:2px; }
     .b-prop { background:var(--prop); }
-    .legend { display:flex; gap:14px; font-size:11px; color:var(--muted); margin-top:8px; }
+    .legend { display:flex; flex-wrap:wrap; gap:5px 14px; font-size:11px;
+      color:var(--muted); margin-top:8px; }
     .legend i { display:inline-block; width:10px; height:5px; border-radius:2px;
       margin-right:5px; vertical-align:middle; }
     .sw-now { background:var(--now); } .sw-prop { background:var(--prop); }
+    .sw-walk { background:none; border:1px dashed var(--walk); height:7px; }
+    .sw-pin { background:var(--pin); width:7px; height:7px; border-radius:50%; }
+    .key-note { font-size:11px; color:var(--muted); margin-top:6px;
+      line-height:1.45; }
 
     dl.facts { margin:18px 0 0; font-size:13px; }
     dl.facts dt { color:var(--muted); font-size:11px; text-transform:uppercase;
