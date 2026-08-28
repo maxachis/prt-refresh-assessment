@@ -6,7 +6,9 @@ import {
   initChangeLayer, loadChangeLayer, setChangeDay, toggleBucket, resetBuckets,
   layerData, dotLabel,
 } from './change';
-import { renderLegend, renderCorridorLegend, renderOneSeatLegend } from './legend';
+import {
+  renderLegend, renderCorridorLegend, renderOneSeatLegend, pinKeyHTML,
+} from './legend';
 import {
   initSurfaceLayer, loadSurfaceLayer, setSurfaceDay, setSurfaceVisible,
   layerData as surfaceData, isVisible as surfaceOn,
@@ -934,6 +936,7 @@ async function load(lat: number, lon: number) {
       + `${pin}&oneseat_day=${oneSeatDay()}`);
     if (mine !== seq) return;       // a newer click already won
     showPlace(map, lat, lon, radius, p.current.stops, p.proposed.stops);
+    showPinKey();
     lastPlace = p;
     renderPanel({ scrollToTop: true });
   } catch (err) {
@@ -944,6 +947,19 @@ async function load(lat: number, lon: number) {
   } finally {
     if (mine === seq) $('panel').classList.remove('loading');
   }
+}
+
+/**
+ * Reveal the key for the marks a click leaves on the map.
+ *
+ * Called where the marks are drawn rather than from the legend render, which
+ * runs on every pan and every view switch: the marks outlive both, and the
+ * key has to say the radius they were drawn at, not the one now selected in
+ * the toolbar.
+ */
+function showPinKey() {
+  $('pin-key').innerHTML = pinKeyHTML(radius);
+  $('pin-key').classList.remove('hidden');
 }
 
 /**

@@ -208,6 +208,36 @@ export function renderOneSeatLegend(
       South Hills losing rides the Blue Line still runs.</div>`;
 }
 
+/**
+ * The key for the four marks a click puts on the map: the pin, the walk
+ * circle, and one dot per stop in each network.
+ *
+ * It sits under the layer key rather than in the panel because that is where a
+ * reader looks to ask what a colour on the map means, and unlike everything
+ * above it, these marks are the same in every view that answers at a point.
+ *
+ * Swatches only, deliberately. What the marks *mean* -- that two stop
+ * inventories are drawn over the same ground, and that a stop both networks
+ * keep draws as one mark rather than two -- stays in the panel beside the
+ * stop count it explains, so there is one explanation rather than two of
+ * different lengths that drift apart.
+ *
+ * The heading is the exception to swatches-only, and it is load-bearing: the
+ * layer keys above use a red and a blue of their own (losing all service,
+ * gaining it), so without a line saying this group is about the pin, one box
+ * would carry two reds meaning different things. That collision is already on
+ * the map -- a red pin lands among red dots -- but a key that reproduced it
+ * silently would be the place a reader gets it wrong.
+ */
+export function pinKeyHTML(radius: number) {
+  return `
+    <div class="pk-head">Around the pin</div>
+    <span><i class="sw-pin"></i>the pin</span>
+    <span><i class="sw-walk"></i>the ${radius} m walk</span>
+    <span><i class="sw-now"></i>stop today</span>
+    <span><i class="sw-prop"></i>stop proposed</span>`;
+}
+
 export function renderLegend(
   el: HTMLElement, layer: ChangeLayer, day: Day,
   bounds: { west: number; south: number; east: number; north: number },

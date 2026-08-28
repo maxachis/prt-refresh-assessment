@@ -59,6 +59,16 @@
       background:rgba(20,23,29,.93); border:1px solid var(--line);
       border-radius:10px; padding:10px 10px 8px; width:250px;
       backdrop-filter:blur(3px); }
+    /* The marks a click puts on the map, keyed under whichever layer key is
+       up. It borrows the panel key's `.legend` styles so the two can never
+       show the same mark two ways, and it is hidden until a pin is down. */
+    #pin-key { margin:8px 2px 0; padding-top:8px; border-top:1px solid var(--line); }
+    /* Round, unlike the panel key's bars: here the swatch is standing in
+       for a mark on the map, and every one of those four marks is a
+       circle -- including the dashed walk radius. */
+    #pin-key i { width:8px; height:8px; border-radius:50%; }
+    #pin-key .pk-head { width:100%; margin-bottom:2px; }
+    #legend-box.collapsed #pin-key { display:none; }
     #legend-collapse { position:absolute; top:6px; right:6px; width:18px;
       height:18px; padding:0; line-height:1; cursor:pointer; background:none;
       color:var(--muted); border:0; font:inherit; font-size:13px; }
@@ -232,8 +242,9 @@
     .legend i { display:inline-block; width:10px; height:5px; border-radius:2px;
       margin-right:5px; vertical-align:middle; }
     .sw-now { background:var(--now); } .sw-prop { background:var(--prop); }
-    .sw-walk { background:none; border:1px dashed var(--walk); height:7px; }
-    .sw-pin { background:var(--pin); width:7px; height:7px; border-radius:50%; }
+    .legend .sw-walk { background:none; border:1px dashed var(--walk); height:7px; }
+    .legend .sw-pin { background:var(--pin); width:7px; height:7px;
+      border-radius:50%; }
     .key-note { font-size:11px; color:var(--muted); margin-top:6px;
       line-height:1.45; }
 
@@ -690,6 +701,7 @@
                 title="Collapse the key">–</button>
         <div id="legend"></div>
         <button class="link" id="legend-reset">Show all</button>
+        <div id="pin-key" class="legend hidden"></div>
       </div>
       <!-- Shown only in an embed, where it is the whole of the site's
            identity and the only door back to the answer panel, the method and

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { renderLegend, renderOneSeatLegend } from './legend';
+import { renderLegend, renderOneSeatLegend, pinKeyHTML } from './legend';
 import { ChangeLayer, OneSeatDay, OneSeatLayer } from './types';
 
 /** Enough of an HTMLElement for renderLegend, which only sets innerHTML. */
@@ -103,5 +103,28 @@ describe('the one-seat legend on a day type', () => {
     const el = stub();
     renderOneSeatLegend(el, oneSeatLayer('any'), WHOLE_COUNTY);
     expect(el.innerHTML).toContain('No day type');
+  });
+});
+
+describe('the key for the marks around the pin', () => {
+  // These four marks are on the map in every view that answers at a point,
+  // while the box above them changes with the view. Swatches only: the
+  // explanation lives beside the stop count in the panel, which is what it
+  // explains.
+  it('names all four marks, at the radius the answer used', () => {
+    const html = pinKeyHTML(150);
+    expect(html).toContain('sw-now');
+    expect(html).toContain('sw-prop');
+    expect(html).toContain('sw-pin');
+    expect(html).toContain('sw-walk');
+    expect(html).toContain('150 m');
+    expect(html).toContain('Around the pin');
+  });
+
+  it('carries no prose, so it cannot restate the panel at a different length', () => {
+    // Anything past the four short labels belongs in the panel, next to the
+    // "stops within 400 m" line it is a key for.
+    const words = pinKeyHTML(400).replace(/<[^>]*>/g, ' ').trim().split(/\s+/);
+    expect(words.length).toBeLessThanOrEqual(16);
   });
 });
