@@ -216,6 +216,16 @@ export function renderOneSeatLegend(
  * reader looks to ask what a colour on the map means, and unlike everything
  * above it, these marks are the same in every view that answers at a point.
  *
+ * Three stop swatches, not two. The map draws each network's stops
+ * independently, so a location both networks stop at is not a third colour
+ * but the two marks on top of each other -- a blue dot inside an orange ring
+ * -- and inside a walk circle that is usually the commonest mark there. A key
+ * with only the two ingredients leaves the reader to derive it, and the
+ * derivation they are likelier to make is that something has been drawn
+ * twice. It says "same spot" because that is the condition: PRT renumbers and
+ * nudges stops across intersections, and a kept stop moved twenty metres
+ * draws as two separate dots, correctly.
+ *
  * Swatches only, deliberately. What the marks *mean* -- that two stop
  * inventories are drawn over the same ground, and that a stop both networks
  * keep draws as one mark rather than two -- stays in the panel beside the
@@ -235,7 +245,8 @@ export function pinKeyHTML(radius: number) {
     <span><i class="sw-pin"></i>the pin</span>
     <span><i class="sw-walk"></i>the ${radius} m walk</span>
     <span><i class="sw-now"></i>stop today</span>
-    <span><i class="sw-prop"></i>stop proposed</span>`;
+    <span><i class="sw-prop"></i>stop proposed</span>
+    <span><i class="sw-both"></i>both, same spot</span>`;
 }
 
 export function renderLegend(

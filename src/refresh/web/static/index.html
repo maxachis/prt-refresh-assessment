@@ -67,7 +67,18 @@
        for a mark on the map, and every one of those four marks is a
        circle -- including the dashed walk radius. */
     #pin-key i { width:8px; height:8px; border-radius:50%; }
+    /* Sized as the map draws them: the proposed dot is the larger of the
+       two, which is what makes a kept stop read as a ring around a core
+       rather than as one dot hiding another. */
+    #pin-key .sw-now { width:6px; height:6px; }
+    #pin-key .sw-prop, #pin-key .sw-both { width:11px; height:11px; }
     #pin-key .pk-head { width:100%; margin-bottom:2px; }
+    /* The mark a location both networks serve draws as: not a colour of
+       its own, but the proposed dot with the smaller current one on top
+       of it, which is what the map is doing. */
+    .legend .sw-both { background:var(--prop); position:relative; }
+    .legend .sw-both::after { content:''; position:absolute;
+      inset:3px; border-radius:50%; background:var(--now); }
     #legend-box.collapsed #pin-key { display:none; }
     #legend-collapse { position:absolute; top:6px; right:6px; width:18px;
       height:18px; padding:0; line-height:1; cursor:pointer; background:none;

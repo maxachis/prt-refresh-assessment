@@ -121,10 +121,17 @@ describe('the key for the marks around the pin', () => {
     expect(html).toContain('Around the pin');
   });
 
+  it('shows the mark a stop kept by both networks actually draws as', () => {
+    // Two swatches cannot key three marks: a location both networks stop at
+    // draws as neither a blue dot nor an orange one but as a blue dot inside
+    // an orange ring, and that is the commonest mark inside the circle.
+    expect(pinKeyHTML(400)).toContain('sw-both');
+  });
+
   it('carries no prose, so it cannot restate the panel at a different length', () => {
     // Anything past the four short labels belongs in the panel, next to the
     // "stops within 400 m" line it is a key for.
     const words = pinKeyHTML(400).replace(/<[^>]*>/g, ' ').trim().split(/\s+/);
-    expect(words.length).toBeLessThanOrEqual(16);
+    expect(words.length).toBeLessThanOrEqual(22);
   });
 });

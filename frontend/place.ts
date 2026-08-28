@@ -275,9 +275,11 @@ export function serviceBodyHTML(p: PlaceResult, d: Day, middle = ''): string {
       <span><i class="sw-pin"></i> where you clicked</span>
     </div>
     <div class="key-note">The same colours mark the map: each dot is one stop,
-      blue for today and orange for the plan, and a stop both networks keep
-      draws as a blue dot inside an orange ring rather than as two marks. Only
-      the stops inside the dashed circle are counted above.</div>
+      blue for today and orange for the plan. A stop both networks keep at the
+      same spot draws as a blue dot inside an orange ring rather than as two
+      marks; one the plan nudges across the intersection draws as two, which is
+      renumbering rather than a change in service. Only the stops inside the
+      dashed circle are counted above.</div>
 
     <dl class="facts">
       <dt>First and last bus</dt>
