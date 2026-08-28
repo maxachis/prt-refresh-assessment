@@ -718,6 +718,14 @@ toolbar and the key, and drops the panel.
         title="Bus Line Refresh: what changes here?"></iframe>
 ```
 
+[`docs/embed-example.html`](embed-example.html) is the worked version of that:
+a pretend article carrying three live embeds — one dropped in as-is, one
+opened at a specific question, one in a 300 px sidebar. Open it from the
+filesystem; nothing serves it. It is hand-written, unlike the generated
+`equity-brief.html` beside it, so a change to the parameters above is a change
+to that file too. It is also the fastest check that a deploy did not break the
+embed, since its iframes are against the live site.
+
 What survives is more than it sounds: the key's head line is the summary
 sentence for whatever is on screen ("2,688 locations in view · a weekday ·
 400 m walk"), the toolbar still switches views, and a click still asks — the
