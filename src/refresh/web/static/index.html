@@ -11,6 +11,8 @@
     :root {
       --bg:#0f1115; --panel:#171a21; --line:#262a33; --ink:#e8eaed; --muted:#98a0ac;
       --now:#4aa3ff; --prop:#ffa23a; --up:#4ec98a; --down:#ff6b6b;
+      /* The one non-data colour: what "you have chosen this" looks like. */
+      --sel:#e9edf4;
       /* Whether the phone layout is on, declared here so the breakpoint below
          is the ONE place it is decided. `sheet.ts` reads this back rather than
          keeping a matchMedia copy of the query: two copies drift the first
@@ -156,7 +158,15 @@
     .seg button { border:0; border-right:1px solid var(--line); background:#0c0e12;
       color:var(--muted); padding:5px 11px; font:inherit; font-size:12px; cursor:pointer; }
     .seg button:last-child { border-right:0; }
-    .seg button.active { background:#1b1f27; color:var(--ink); }
+    /* The selected pill inverts rather than lightening a shade. Five groups
+       ride in the strip and each has exactly one selection, so "which one is
+       on" has to survive being read at a glance, from the corner of the eye,
+       over a moving basemap -- #1b1f27 on #0c0e12 was a 1.2:1 step and did
+       not. It is a neutral, deliberately: every colour in this app already
+       means something on the map (blue today, orange proposed, green gained,
+       red lost), and a per-control accent would spend the data palette on
+       chrome. */
+    .seg button.active { background:var(--sel); color:#0c0e12; font-weight:600; }
     /* Streets has no walk radius -- a corridor is a piece of street, not a
        catchment -- so the radius control is disabled rather than silently
        ignored while that view is active. */
@@ -442,7 +452,7 @@
         overflow:visible; }
       #mapbar .seg button { flex:1 1 auto; border:1px solid var(--line);
         border-radius:9px; padding:9px 12px; font-size:13px; }
-      #mapbar .seg button.active { border-color:#39414f; }
+      #mapbar .seg button.active { border-color:var(--sel); }
 
       /* --- the key --- */
       /* It was 250x277 of a 390x490 map -- 36% -- and it sat over the middle,
