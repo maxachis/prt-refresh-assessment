@@ -25,7 +25,9 @@
  *    buses and lose the weekend entirely; on a weekday-only map they are
  *    invisible, so the day control governs this layer and not just the panel.
  */
-import { ChangeLayer, ChangePoint, Day, DAYS, BUCKET, CUR, PROP } from './types';
+import {
+  ChangeLayer, ChangePoint, Day, DAYS, BUCKET, CUR, PROP, field, riders,
+} from './types';
 import { fetchJSON } from './utils';
 
 /**
@@ -86,12 +88,66 @@ export function countInBounds(
   const out: Record<string, number> = {};
   for (const k of keys) out[k] = 0;
   for (const p of points) {
-    const lat = p[0], lon = p[1];
-    if (lat < south || lat > north || lon < west || lon > east) continue;
-    const key = keys[p[BUCKET(dayIndex)]];
+    if (!inBounds(p, west, south, east, north)) continue;
+    const key = keys[field(p, BUCKET(dayIndex))];
     if (key !== undefined) out[key]++;
   }
   return out;
+}
+
+function inBounds(p: ChangePoint, west: number, south: number,
+                  east: number, north: number): boolean {
+  const lat = field(p, 0), lon = field(p, 1);
+  return lat >= south && lat <= north && lon >= west && lon <= east;
+}
+
+/** Boardings in view per bucket, and how much of the view they speak for. */
+export interface RiderTally {
+  /** Observed daily boardings, summed per bucket. */
+  riders: Record<string, number>;
+  /** How many locations each of those totals is made of. */
+  measured: Record<string, number>;
+  /** Locations in view with no ridership record at all — see below. */
+  unmeasured: number;
+}
+
+/**
+ * The same points as `countInBounds`, weighted by who boards at them.
+ *
+ * The second denominator for one set of dots (convention 15). Counting
+ * locations says the plan strands 593 places; counting boardings says those
+ * places carry 0.7% of the system's riders. Both are true, which is why this
+ * sits beside the location count rather than replacing it.
+ *
+ * A location with no ridership record is kept out of every total and counted
+ * separately, never folded in as a zero. Those are the places the proposed
+ * network serves and today's does not: no bus stops there now, so nobody
+ * boards there now, and a 0 in the `new` row would read as a finding about the
+ * plan's gains rather than as the absence of any way to measure them. The
+ * legend renders `unmeasured` as a sentence for that reason.
+ */
+export function sumRidersInBounds(
+  points: ChangePoint[], dayIndex: number, keys: string[],
+  west: number, south: number, east: number, north: number,
+): RiderTally {
+  const tally: RiderTally = { riders: {}, measured: {}, unmeasured: 0 };
+  for (const k of keys) {
+    tally.riders[k] = 0;
+    tally.measured[k] = 0;
+  }
+  for (const p of points) {
+    if (!inBounds(p, west, south, east, north)) continue;
+    const key = keys[field(p, BUCKET(dayIndex))];
+    if (key === undefined) continue;
+    const n = riders(p, dayIndex);
+    if (n === null) {
+      if (key !== 'none') tally.unmeasured++;
+      continue;
+    }
+    tally.riders[key] += n;
+    tally.measured[key]++;
+  }
+  return tally;
 }
 
 function toGeoJSON(layer: ChangeLayer) {
@@ -102,14 +158,14 @@ function toGeoJSON(layer: ChangeLayer) {
       // `none` is not drawn: a location with no bus on either side on this day
       // is not a change, and 464 of them on a Saturday would read as a fifth
       // colour of outcome rather than as an absence.
-      .filter((p) => DAYS.some((_d, i) => keys[p[BUCKET(i)]] !== 'none'))
+      .filter((p) => DAYS.some((_d, i) => keys[field(p, BUCKET(i))] !== 'none'))
       .map((p) => ({
         type: 'Feature' as const,
         geometry: { type: 'Point' as const, coordinates: [p[1], p[0]] },
         properties: {
           published: p[2],
           ...Object.fromEntries(DAYS.flatMap((_d, i) => [
-            [`b${i}`, keys[p[BUCKET(i)]]],
+            [`b${i}`, keys[field(p, BUCKET(i))]],
             [`c${i}`, p[CUR(i)]],
             [`p${i}`, p[PROP(i)]],
           ])),

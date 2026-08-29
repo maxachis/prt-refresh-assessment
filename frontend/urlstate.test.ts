@@ -6,6 +6,7 @@ const FULL: UrlState = {
   day: 'saturday',
   radius: 150,
   oneSeatRestricted: true,
+  weight: 'riders',
   dest: { key: 'oakland' },
   at: { lat: 40.4406, lon: -79.9959 },
   camera: { lat: 40.44, lon: -80.0, zoom: 13.5 },
@@ -19,6 +20,14 @@ describe('toSearch', () => {
     expect(p.get('radius')).toBe('150');
     expect(p.get('oneseatday')).toBe('selected');
     expect(p.get('dest')).toBe('oakland');
+    expect(p.get('weight')).toBe('riders');
+  });
+
+  it('leaves the ridership weighting out of a link that is not using it', () => {
+    // The default is locations; a `weight=locations` in every URL would make
+    // the weighting look like a setting the reader had chosen.
+    const p = new URLSearchParams(toSearch({ ...FULL, weight: 'locations' }));
+    expect(p.has('weight')).toBe(false);
   });
 
   it('writes a dropped destination pin as coordinates', () => {
@@ -67,6 +76,7 @@ describe('parseUrlState', () => {
     ['?radius=wide', 'radius'],
     ['?radius=-400', 'radius'],
     ['?oneseatday=maybe', 'oneSeatRestricted'],
+    ['?weight=people', 'weight'],
     ['?at=40.44', 'at'],
     ['?at=here,there', 'at'],
     ['?map=40.44,-79.99', 'camera'],

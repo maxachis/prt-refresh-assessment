@@ -518,6 +518,47 @@ def compute_change(con, radius: float = PRIMARY_RADIUS):
     return out
 
 
+# How a packed point is laid out: three fixed columns, then one group per day
+# type. Defined here rather than spelled as literals at the two places that
+# read it, because the client mirrors these offsets in frontend/types.ts and a
+# stride that drifts on one side silently recolours the map on the other.
+POINT_STRIDE = 4
+def CUR_AT(day: int) -> int: return 3 + POINT_STRIDE * day
+def PROP_AT(day: int) -> int: return 4 + POINT_STRIDE * day
+def BUCKET_AT(day: int) -> int: return 5 + POINT_STRIDE * day
+def RIDERS_AT(day: int) -> int: return 6 + POINT_STRIDE * day
+
+
+def point_boardings(con) -> dict[str, dict[str, float | None]]:
+    """Observed daily boardings at each published point, by day type.
+
+    From the May 2025 usage extract, carried into `stop_place` by
+    `build_webdb.py`. Three things about this number decide how it may be
+    drawn, and all three are convention 15:
+
+    It exists only on today's side. The published points ARE the usage
+    extract's stops -- `change_points` builds them from this table -- so every
+    one of them has a figure and none is missing. The points the proposed
+    network adds are absent here, and they are absent because a network that
+    has not run has no observed riders. A missing figure is therefore returned
+    as `None` and never as 0: the difference between "nobody boards here" and
+    "nobody can have boarded here yet" is the whole asymmetry of weighting this
+    map by ridership.
+
+    It is boardings, not people: unlinked and unweighted, so one rider's round
+    trip with a transfer is up to four of them.
+
+    And it is PRT's own count, carrying PRT's own disclaimer -- unadjusted,
+    unofficial totals that may understate ridership by up to 30%.
+    """
+    return {f"c:{r['stop_id']}": {"weekday": r["weekday_boardings"],
+                                  "saturday": r["saturday_boardings"],
+                                  "sunday": r["sunday_boardings"]}
+            for r in con.execute(
+                "SELECT stop_id, weekday_boardings, saturday_boardings, "
+                "  sunday_boardings FROM stop_place")}
+
+
 def change_layer(con, radius: float = PRIMARY_RADIUS):
     """The citywide layer at one radius, all three day types, packed for the wire.
 
@@ -528,21 +569,26 @@ def change_layer(con, radius: float = PRIMARY_RADIUS):
     memory instead of refetching -- 152 locations keep their weekday buses and
     lose the weekend entirely, and that comparison should cost nothing.
 
-    Each row is [lat, lon, published, then per day: cur, prop, bucket index].
+    Each row is [lat, lon, published, then per day: cur, prop, bucket index,
+    boardings]. Boardings are `null`, never 0, at a point the proposed network
+    serves and today's does not -- see `point_boardings`.
     """
     rows = con.execute(
         "SELECT point_id, day, lat, lon, published, cur_trips, prop_trips, "
         "  bucket FROM change WHERE radius = ? ORDER BY point_id",
         (int(radius),)).fetchall()
 
+    boardings = point_boardings(con)
     idx = {k: i for i, k in enumerate(BUCKET_KEYS)}
     packed: dict[str, list] = {}
     for r in rows:
         p = packed.setdefault(
             r["point_id"], [round(r["lat"], 6), round(r["lon"], 6),
-                            r["published"], 0, 0, 0, 0, 0, 0, 0, 0, 0])
-        at = 3 + 3 * DAYS.index(r["day"])
-        p[at:at + 3] = [r["cur_trips"], r["prop_trips"], idx[r["bucket"]]]
+                            r["published"], *([0] * (POINT_STRIDE * len(DAYS)))])
+        day = DAYS.index(r["day"])
+        p[CUR_AT(day):RIDERS_AT(day) + 1] = [
+            r["cur_trips"], r["prop_trips"], idx[r["bucket"]],
+            boardings.get(r["point_id"], {}).get(r["day"])]
 
     return {
         "radius": int(radius),
@@ -550,7 +596,7 @@ def change_layer(con, radius: float = PRIMARY_RADIUS):
         "buckets": [{"key": k, "label": lab} for k, lab in BUCKETS],
         "fields": ["lat", "lon", "published",
                    *[f"{d}_{f}" for d in DAYS
-                     for f in ("cur", "prop", "bucket")]],
+                     for f in ("cur", "prop", "bucket", "riders")]],
         "points": list(packed.values()),
     }
 

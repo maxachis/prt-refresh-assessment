@@ -52,7 +52,11 @@ export function renderEmpty(el: HTMLElement) {
          the view chosen in the toolbar on the map. Pan and zoom to read a
          neighbourhood.</p>
       <p><b>Locations</b> draws one dot per place a bus stops today, coloured
-         by what the plan does to the buses within a short walk.
+         by what the plan does to the buses within a short walk. Its key counts
+         those places, or — on the Riders setting — the boardings PRT records
+         at them, which is the same map read as who is affected rather than
+         where. Boardings exist only where a bus stops today, so that reading
+         can weigh what is at risk and never what is gained.
          <b>Surface</b> measures that same walk-access comparison at every
          point on a 100 m grid, so it can also show ground the plan adds a bus
          to — but it is extent, not people: a hillside counts like a city

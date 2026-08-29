@@ -387,9 +387,14 @@ CAVEATS = [
     },
     {
         "id": "boardings",
-        "text": "Boardings are May 2025 weekday averages, unlinked and "
-                "unweighted. PRT's own disclaimer calls them unadjusted, "
-                "unofficial totals that may understate ridership by up to 30%.",
+        "text": "Boardings are May 2025 daily averages, unlinked and "
+                "unweighted — one rider's round trip with a transfer is up "
+                "to four of them. PRT's own disclaimer calls them unadjusted, "
+                "unofficial totals that may understate ridership by up to "
+                "30%. They are observed at stops that run today, so weighting "
+                "the map by them measures what is at risk and never what is "
+                "gained: a location the plan adds a bus to has no ridership "
+                "record, which is not the same as having no riders.",
     },
     {
         "id": "day-types",

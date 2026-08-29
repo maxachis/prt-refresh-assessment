@@ -107,6 +107,11 @@
        A hairline ring keeps every swatch legible on both grounds without
        changing the colour the map is actually painted with. */
     #legend .lg-row i { box-shadow:inset 0 0 0 1px rgba(255,255,255,.35); }
+    /* Locations or riders: the same dots under two denominators, so the switch
+       sits inside the key with the counts it changes rather than in the
+       toolbar with the controls that change the question. */
+    #legend .lg-weight { margin:6px 0 4px; }
+    #legend .lg-weight button { padding:3px 9px; font-size:11px; }
     .lg-lab { flex:1; }
     .lg-n { font-variant-numeric:tabular-nums; color:var(--muted); }
     .lg-foot { font-size:10.5px; color:var(--muted); margin:8px 2px 0;
@@ -502,8 +507,12 @@
       #app:has(#side[data-snap="half"]) #legend-box,
       #app:has(#side[data-snap="full"]) #legend-box { display:none; }
       /* Footnotes go: at sheet height the key has room for the swatches
-         and nothing else. */
-      #legend .lg-foot { display:none; }
+         and nothing else. The ridership footer stays, and is the one
+         exception: it is not a note about the counts, it is the half of them
+         that says they can weigh what is lost and not what is gained, and a
+         boardings figure screenshotted without it is the misreading
+         convention 15 exists to prevent. The key scrolls. */
+      #legend .lg-foot:not(.lg-foot-riders) { display:none; }
 
       /* OpenFreeMap and OpenStreetMap have to stay readable: the sheet was
          sitting exactly where the attribution is drawn, so it moves up with

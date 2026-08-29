@@ -22,21 +22,25 @@ const LAYER: ChangeLayer = {
   ],
   fields: [],
   points: [
-    //  lat     lon     pub  weekday      saturday     sunday
-    [40.44, -79.99, 1, 40, 0, 0, 30, 0, 0, 20, 0, 0],   // gone
-    [40.45, -79.98, 1, 40, 0, 0, 30, 0, 0, 20, 0, 0],   // gone
-    [40.44, -79.97, 1, 10, 40, 5, 8, 30, 5, 5, 20, 5],  // doubled
-    [40.44, -79.96, 1, 10, 10, 7, 0, 0, 7, 0, 0, 7],    // none
-    [41.90, -79.99, 1, 40, 0, 0, 30, 0, 0, 20, 0, 0],   // gone, out of view
+    //  lat     lon     pub  weekday          saturday        sunday
+    [40.44, -79.99, 1, 40, 0, 0, 100, 30, 0, 0, 60, 20, 0, 0, 40],   // gone
+    [40.45, -79.98, 1, 40, 0, 0, 25, 30, 0, 0, 15, 20, 0, 0, 10],    // gone
+    [40.44, -79.97, 1, 10, 40, 5, 400, 8, 30, 5, 200, 5, 20, 5, 90], // doubled
+    [40.44, -79.96, 1, 10, 10, 7, 0, 0, 0, 7, 0, 0, 0, 7, 0],        // none
+    [41.90, -79.99, 1, 40, 0, 0, 900, 30, 0, 0, 500, 20, 0, 0, 300], // out of view
   ],
 };
+
+/** A location the plan adds a bus to: served proposed, nothing there today. */
+const NEW_POINT = [40.44, -79.95, 0, 0, 30, 6, null, 0, 20, 6, null,
+                   0, 10, 6, null];
 
 const BOX = { west: -80.1, south: 40.3, east: -79.9, north: 40.5 };
 
 describe('renderLegend', () => {
   it('counts only what is in view, and says which day type', () => {
     const el = stub();
-    renderLegend(el, LAYER, 'weekday', BOX);
+    renderLegend(el, { layer: LAYER, day: 'weekday', bounds: BOX, weight: 'locations' });
     expect(el.innerHTML).toContain('a weekday');
     expect(el.innerHTML).toContain('400 m');
     // 2 gone + 1 doubled in view; the fifth point is outside the box, and
@@ -46,7 +50,7 @@ describe('renderLegend', () => {
 
   it('never lists "no service either way" as an outcome of the plan', () => {
     const el = stub();
-    renderLegend(el, LAYER, 'weekday', BOX);
+    renderLegend(el, { layer: LAYER, day: 'weekday', bounds: BOX, weight: 'locations' });
     expect(el.innerHTML).not.toContain('no service either way');
     expect(el.innerHTML).toContain('loses all service');
   });
@@ -55,18 +59,72 @@ describe('renderLegend', () => {
     // A bucket that drops out when its count hits zero reads as "this cannot
     // happen here" rather than "this does not happen here".
     const el = stub();
-    renderLegend(el, LAYER, 'weekday', BOX);
+    renderLegend(el, { layer: LAYER, day: 'weekday', bounds: BOX, weight: 'locations' });
     for (const b of LAYER.buckets) {
       if (b.key === 'none') continue;
       expect(el.innerHTML).toContain(`data-bucket="${b.key}"`);
     }
   });
 
+  it('offers the rider weighting without switching to it', () => {
+    const el = stub();
+    renderLegend(el, { layer: LAYER, day: 'weekday', bounds: BOX,
+                       weight: 'locations' });
+    expect(el.innerHTML).toContain('data-weight="riders"');
+    expect(el.innerHTML).toMatch(/data-weight="locations"[^>]*aria-pressed="true"/);
+  });
+
   it('says the counts are locations rather than riders', () => {
     const el = stub();
-    renderLegend(el, LAYER, 'sunday', BOX);
+    renderLegend(el, { layer: LAYER, day: 'sunday', bounds: BOX, weight: 'locations' });
     expect(el.innerHTML).toContain('not riders');
     expect(el.innerHTML).toContain('a Sunday');
+  });
+});
+
+describe('renderLegend weighted by ridership', () => {
+  const opts = { layer: LAYER, day: 'weekday' as const, bounds: BOX,
+                 weight: 'riders' as const };
+
+  it('heads with the boardings in view, not the locations', () => {
+    const el = stub();
+    renderLegend(el, opts);
+    // 100 + 25 + 400 in view; the fifth point is outside the box.
+    expect(el.innerHTML).toMatch(/<b>525<\/b>\s*daily boardings in view/);
+    expect(el.innerHTML).toContain('a weekday');
+  });
+
+  it('puts the boardings on each bucket row', () => {
+    const el = stub();
+    renderLegend(el, opts);
+    expect(el.innerHTML).toMatch(/data-bucket="gone"[\s\S]*?>125</);
+  });
+
+  it('reads the day type it was given', () => {
+    const el = stub();
+    renderLegend(el, { ...opts, day: 'sunday' });
+    expect(el.innerHTML).toMatch(/<b>140<\/b>/);
+  });
+
+  it('never prints a zero for a location the plan adds a bus to', () => {
+    // 0 boardings would read as "nobody will use it". There is no record,
+    // because no bus stops there today.
+    const el = stub();
+    renderLegend(el, {
+      ...opts, layer: { ...LAYER, points: [...LAYER.points, NEW_POINT] } });
+    expect(el.innerHTML).toMatch(/data-bucket="new"[\s\S]*?>—</);
+    expect(el.innerHTML).toMatch(/1 location in view/);
+  });
+
+  it('carries the ridership caveats wherever the number is', () => {
+    const el = stub();
+    renderLegend(el, opts);
+    // Marked so the phone layout, which drops the other footnotes for room,
+    // cannot drop the one that says what the number means.
+    expect(el.innerHTML).toContain('lg-foot-riders');
+    expect(el.innerHTML).toContain('May 2025');
+    expect(el.innerHTML).toContain('30%');
+    expect(el.innerHTML).toMatch(/not people/);
   });
 });
 

@@ -34,7 +34,9 @@ import {
 } from './urlstate';
 import { fullViewLabel, isEmbedded, withEmbed, withoutEmbed } from './embed';
 import { initSheet, onLayoutFlip, Sheet } from './sheet';
-import { PlaceResult, Day, OneSeatDay, JourneyResult, NamedDestination } from './types';
+import {
+  PlaceResult, Day, OneSeatDay, JourneyResult, NamedDestination, Weight,
+} from './types';
 
 const PGH: [number, number] = [-79.9959, 40.4406];
 const PGH_ZOOM = 12;              // the county, near enough
@@ -117,6 +119,12 @@ let pinMode = false;
 // for the Locations view must not find the one-seat counts quietly off the
 // figures `data/oneseat_change.csv` carries.
 let oneSeatRestricted = false;
+
+// What the change legend counts: the dots themselves, or the riders who board
+// at them. A second denominator over one set of points (convention 15), and it
+// lives here rather than in the toolbar because it changes how the key reads
+// rather than which question the map is answering.
+let weight: Weight = 'locations';
 
 // Which view is on screen. Two of them — one-seat and travel time — take a
 // destination, and one of those two answers on a click rather than on a load,
@@ -325,6 +333,13 @@ map.on('load', () => {
   });
 
   $('legend').addEventListener('click', (e) => {
+    const w = (e.target as HTMLElement).closest<HTMLElement>('[data-weight]');
+    if (w) {
+      weight = w.dataset.weight as Weight;
+      refreshLegend();
+      syncUrl();
+      return;
+    }
     const row = (e.target as HTMLElement).closest<HTMLElement>('[data-bucket]');
     if (!row) return;
     toggleBucket(map, row.dataset.bucket!, activeDay());
@@ -444,6 +459,9 @@ function applyOpening(s: Partial<UrlState>): boolean {
   if (s.oneSeatRestricted !== undefined) {
     press(CONTROL.oneSeatDay, s.oneSeatRestricted ? 'selected' : 'any');
   }
+  // No button to press: the weighting is drawn by the legend, which is
+  // rendered after the layer arrives.
+  if (s.weight) weight = s.weight;
   if (s.dest) {
     // A dropped pin has no button to press; a named district does, and
     // pressing it lights the toolbar as well as moving the destination.
@@ -470,6 +488,7 @@ function syncUrl() {
     day: activeDay(),
     radius,
     oneSeatRestricted,
+    weight,
     dest,
     at: last,
     camera,
@@ -613,10 +632,16 @@ function renderLegendBody() {
   const d = layerData();
   if (!d) return;
   const b = map.getBounds();
-  renderLegend($('legend'), d, activeDay(), {
-    west: b.getWest(), south: b.getSouth(),
-    east: b.getEast(), north: b.getNorth(),
-  }, surfaceOn() ? surfaceData() : null);
+  renderLegend($('legend'), {
+    layer: d,
+    day: activeDay(),
+    bounds: {
+      west: b.getWest(), south: b.getSouth(),
+      east: b.getEast(), north: b.getNorth(),
+    },
+    weight,
+    surface: surfaceOn() ? surfaceData() : null,
+  });
 }
 
 /** Turn the surface on or off, loading it the first time it is asked for. */

@@ -301,6 +301,49 @@ Three decisions worth keeping:
    screen, recomputed from the raw rows on every `moveend` — not from
    `queryRenderedFeatures`, which only sees what survived the filter, so
    switching a bucket off would otherwise look like those losses had gone away.
+4. **The legend counts two things, and says which.** A Locations/Riders switch
+   inside the key flips every count from dots to the boardings observed at
+   them. See below — it is the one control here that changes what the numbers
+   mean rather than which question is asked.
+
+### Locations or riders: the legend's second denominator
+
+`?weight=riders`. The same dots in the same buckets, counted by PRT's May 2025
+boardings instead of by place — the numbers come from `stop_place`, carried
+into `refresh.db` from `data/coverage_change.csv`, and ship in the change
+payload as a fourth field per day type (`weekday_riders`, …) so switching the
+day moves the riders with the buses.
+
+It exists because the two denominators answer the same question in opposite
+tones. Citywide on a weekday at 400 m, the plan strands **593 locations** —
+and those locations carry **488 of the system's 67,619 daily boardings**,
+0.7%. The first sentence is the reason to comment on the plan; the second is
+the reason PRT drew it. Convention 15, and neither is quotable alone.
+
+Three things the drawing has to get right, all of them about the same
+asymmetry:
+
+- **A location with no ridership record is not a location with no riders.**
+  The 121 new-coverage points have no bus today, so no observed boardings can
+  exist for them, ever. They travel as `null` rather than 0
+  (`query.point_boardings`), are excluded from every total, and are reported
+  as a sentence — "7 locations in view gain a bus where none stops today" —
+  because a 0 in the *new service* row would read as a finding about the
+  plan's gains. A bucket whose in-view locations are all unmeasured shows an
+  em dash, not a zero.
+- **This weighting can measure what is at risk and never what is gained**, and
+  the legend's footer says exactly that whenever it is on.
+- **The caveats travel with the number, not with the methods list.** Unlinked
+  trips rather than people, and PRT's own up-to-30% understatement, are
+  rendered under the counts — this is the figure most likely to be
+  screenshotted out of context.
+
+Deliberately *not* done: sizing the dots by boardings. The median stop has 1.95
+weekday boardings and the top 10% of stops carry 73% of the total, so a
+proportional radius is a dozen discs and five thousand invisible specks —
+misleading in the direction of "nothing is happening out here". The skew lives
+in the counts, where it can be read, rather than in the geometry, where it
+cannot.
 
 ## The magnitude surface
 
@@ -641,7 +684,7 @@ Reasoning and evidence:
 | Endpoint | Returns |
 |---|---|
 | `GET /api/place?lat=&lon=&radius=` | Before and after at one point, all three day types, plus the one-seat verdicts for the named destinations. Optional `dest_lat`/`dest_lon` adds a dropped pin's verdict; `oneseat_day=` follows the map so a dot and its panel cannot answer different questions. The app's purpose; everything else is navigation. |
-| `GET /api/change?radius=` | The citywide layer: every location bucketed, all three day types, columnar. Radius must be 400 or 150 — it is precomputed. ~300 KB, 77 KB gzipped. |
+| `GET /api/change?radius=` | The citywide layer: every location bucketed, all three day types, columnar, each with the boardings observed there — `null`, never 0, where the plan adds a bus and nothing stops today. Radius must be 400 or 150 — it is precomputed. ~340 KB, 88 KB gzipped. |
 | `GET /api/surface?radius=` | The magnitude surface: every covered 100 m cell, all three day types, columnar as lattice indices. Radius must be 400 or 150. ~1.3 MB, 198 KB gzipped. |
 | `GET /api/corridors?day=` | Every street run kept, lost or added for one day type, with citywide kilometres by class. No radius — a corridor is pavement, not a catchment. ~290 KB weekday. |
 | `GET /api/oneseat?radius=&dest=` *or* `&dest_lat=&dest_lon=` | Every location's one-seat verdict for one destination, named or dropped. Not precomputed — only its expensive half is, which is what lets the destination be arbitrary. `day=` defaults to `any`, the published day-free answer; a day type restricts both ends and is a different measurement. |
@@ -671,6 +714,7 @@ self-documenting.
 | `day` | `weekday`, `saturday`, `sunday` |
 | `radius` | `400` or `150` (convention 4's two radii) |
 | `oneseatday` | `any` — the published day-free measure — or `selected` (convention 13) |
+| `weight` | `riders` to count the change map by boardings instead of locations (convention 15). Absent means locations, so a link only carries this when the reader chose it |
 | `dest` | `downtown`, `oakland`, or `lat,lon` for a dropped pin |
 | `at` | `lat,lon` — where the reader asked; opens the answer panel |
 | `map` | `lat,lon,zoom` — where the map is looking |

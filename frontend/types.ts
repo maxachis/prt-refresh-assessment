@@ -47,19 +47,49 @@ export interface SideResult {
  * One row of the citywide layer, columnar to keep ~5,900 locations under a few
  * hundred kilobytes on the wire:
  *
- *   [lat, lon, published, wCur, wProp, wBucket, sCur, ..., uBucket]
+ *   [lat, lon, published, wCur, wProp, wBucket, wRiders, sCur, ..., uRiders]
  *
  * All three day types travel together so switching between them repaints from
  * memory rather than refetching — 152 locations keep their weekday buses and
  * lose the weekend entirely, and that comparison should be instant.
+ *
+ * `riders` is the only field that can be absent, and it is `null` rather than
+ * 0 when it is: at a location the plan adds a bus to, nobody boards today
+ * because no bus stops there today. Zero would read as "nobody uses this",
+ * which is a claim about the plan's gains that no observed number can make.
  */
-export type ChangePoint = number[];
+export type ChangePoint = (number | null)[];
 
-/** Offsets into a ChangePoint for day `i` of DAYS. */
-export const CUR = (i: number) => 3 + 3 * i;
-export const PROP = (i: number) => 4 + 3 * i;
-export const BUCKET = (i: number) => 5 + 3 * i;
+/**
+ * Offsets into a ChangePoint for day `i` of DAYS.
+ *
+ * The stride is mirrored from `query.POINT_STRIDE`. If the two disagree the
+ * map recolours itself without a single number changing on the server, so the
+ * offsets are pinned by frontend/change.test.ts as well as by the API tests.
+ */
+export const POINT_STRIDE = 4;
+export const CUR = (i: number) => 3 + POINT_STRIDE * i;
+export const PROP = (i: number) => 4 + POINT_STRIDE * i;
+export const BUCKET = (i: number) => 5 + POINT_STRIDE * i;
+export const RIDERS = (i: number) => 6 + POINT_STRIDE * i;
 export const PUBLISHED = 2;
+
+/** A packed field that is always present. */
+export const field = (p: ChangePoint, i: number): number => p[i] as number;
+
+/** Boardings on day `i`, or null where there is no record — see ChangePoint. */
+export const riders = (p: ChangePoint, i: number): number | null =>
+  p[RIDERS(i)] as number | null;
+
+/**
+ * What the change legend is counting: places, or the riders who board at them.
+ *
+ * Two denominators for one set of dots, and the reason both exist is
+ * convention 15 — the plan concentrates service where ridership already is, so
+ * counting locations and counting boardings give opposite-sounding answers to
+ * the same question and neither is the whole one.
+ */
+export type Weight = 'locations' | 'riders';
 
 export interface ChangeLayer {
   radius: number;

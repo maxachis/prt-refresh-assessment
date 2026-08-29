@@ -1,25 +1,30 @@
 import { describe, it, expect } from 'vitest';
-import { countInBounds, STYLE } from './change';
-import { BUCKET, CUR, PROP, PUBLISHED } from './types';
+import { countInBounds, sumRidersInBounds, STYLE } from './change';
+import { BUCKET, CUR, PROP, PUBLISHED, RIDERS, ChangePoint } from './types';
 
 // The wire format is positional, so an off-by-one in the offsets recolours the
 // whole map and miscounts the legend without changing a single number on the
 // server. These pin the offsets against a hand-built row.
 //
-//   [lat, lon, published, wCur, wProp, wBucket, sCur, sProp, sBucket, ...]
+//   [lat, lon, published, wCur, wProp, wBucket, wRiders, sCur, ...]
 const KEYS = ['gone', 'halved', 'less', 'same', 'more', 'doubled', 'new', 'none'];
 
-function row(lat: number, lon: number, weekdayBucket: number): number[] {
-  return [lat, lon, 1, 40, 20, weekdayBucket, 30, 15, 1, 20, 10, 1];
+function row(lat: number, lon: number, weekdayBucket: number,
+             riders: number | null = 10): ChangePoint {
+  return [lat, lon, riders === null ? 0 : 1,
+          40, 20, weekdayBucket, riders, 30, 15, 1, riders, 20, 10, 1, riders];
 }
 
 describe('ChangePoint offsets', () => {
   it('reads each day type from its own slot', () => {
-    const p = [40.44, -79.99, 1, 40, 20, 1, 30, 15, 5, 20, 0, 0];
+    const p = [40.44, -79.99, 1, 40, 20, 1, 99, 30, 15, 5, 50, 20, 0, 0, 25];
     expect(p[PUBLISHED]).toBe(1);
-    expect([CUR(0), PROP(0), BUCKET(0)].map((i) => p[i])).toEqual([40, 20, 1]);
-    expect([CUR(1), PROP(1), BUCKET(1)].map((i) => p[i])).toEqual([30, 15, 5]);
-    expect([CUR(2), PROP(2), BUCKET(2)].map((i) => p[i])).toEqual([20, 0, 0]);
+    expect([CUR(0), PROP(0), BUCKET(0), RIDERS(0)].map((i) => p[i]))
+      .toEqual([40, 20, 1, 99]);
+    expect([CUR(1), PROP(1), BUCKET(1), RIDERS(1)].map((i) => p[i]))
+      .toEqual([30, 15, 5, 50]);
+    expect([CUR(2), PROP(2), BUCKET(2), RIDERS(2)].map((i) => p[i]))
+      .toEqual([20, 0, 0, 25]);
   });
 });
 
@@ -71,5 +76,46 @@ describe('the ramp', () => {
     expect(STYLE.gone.size).toBeGreaterThan(STYLE.halved.size);
     expect(STYLE.halved.size).toBeGreaterThan(STYLE.less.size);
     expect(STYLE.less.size).toBeGreaterThan(STYLE.same.size);
+  });
+});
+
+
+describe('sumRidersInBounds', () => {
+  const pts = [
+    row(40.44, -79.99, 0, 100),    // gone,    inside, 100 boardings
+    row(40.45, -79.98, 0, 25),     // gone,    inside,  25 boardings
+    row(40.44, -79.97, 5, 400),    // doubled, inside
+    row(40.44, -79.96, 6, null),   // new,     inside, no record at all
+    row(41.90, -79.99, 0, 900),    // gone,    north of the box
+  ];
+  const BOX = { w: -80.1, s: 40.3, e: -79.9, n: 40.5 };
+
+  it('sums the boardings of what is in view, by bucket', () => {
+    const t = sumRidersInBounds(pts, 0, KEYS, BOX.w, BOX.s, BOX.e, BOX.n);
+    expect(t.riders.gone).toBe(125);
+    expect(t.riders.doubled).toBe(400);
+    expect(t.riders.halved).toBe(0);
+  });
+
+  it('keeps a location with no ridership record out of every total', () => {
+    // The plan adds a bus here. Counting it as 0 riders would say nobody will
+    // use it, which is a claim no observed number can make.
+    const t = sumRidersInBounds(pts, 0, KEYS, BOX.w, BOX.s, BOX.e, BOX.n);
+    expect(t.riders.new).toBe(0);
+    expect(t.measured.new).toBe(0);
+    expect(t.unmeasured).toBe(1);
+  });
+
+  it('counts the measured locations behind each total', () => {
+    const t = sumRidersInBounds(pts, 0, KEYS, BOX.w, BOX.s, BOX.e, BOX.n);
+    expect(t.measured.gone).toBe(2);
+    expect(t.measured.doubled).toBe(1);
+  });
+
+  it('reads the day type it is asked for', () => {
+    // Every row is bucket 1 (halved) on a Saturday.
+    const sat = sumRidersInBounds(pts, 1, KEYS, BOX.w, BOX.s, BOX.e, BOX.n);
+    expect(sat.riders.halved).toBe(525);
+    expect(sat.riders.gone).toBe(0);
   });
 });

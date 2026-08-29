@@ -6,17 +6,21 @@
  * locations lose all service and 88 at least double" is the sentence a reader
  * wants for their own neighbourhood, and it is a sentence they can screenshot.
  *
- * Counts are of LOCATIONS, never of people, and the wording says so. A dot is
- * a place where a bus stops, not the ridership at it — 5,751 of them carry a
- * boardings figure, and weighting the map by that figure is a different map
- * with a different caveat (PRT's own disclaimer puts the stop-level numbers up
- * to 30% low).
+ * Counts are of LOCATIONS unless the reader asks for riders, and the wording
+ * always says which. A dot is a place where a bus stops, not the ridership at
+ * it; 5,751 of them carry a boardings figure, and counting those instead is a
+ * second denominator over the same dots rather than a correction to the first
+ * (convention 15). The two answer the same question in opposite tones — 593
+ * locations stranded, 0.7% of boardings — so the switch between them is
+ * visible in the key and the caveats travel with the number rather than
+ * sitting in the methods list.
  */
 import { esc } from './utils';
 import {
   Day, ChangeLayer, SurfaceLayer, CorridorLayer, CorridorKlass, OneSeatLayer,
+  Weight,
 } from './types';
-import { STYLE, countInBounds, isHidden } from './change';
+import { STYLE, countInBounds, sumRidersInBounds, isHidden } from './change';
 import {
   RAMP, GONE_COLOR, NEW_COLOR, summariseInBounds,
 } from './surface';
@@ -249,32 +253,101 @@ export function pinKeyHTML(radius: number) {
     <span><i class="sw-both"></i>both, same spot</span>`;
 }
 
-export function renderLegend(
-  el: HTMLElement, layer: ChangeLayer, day: Day,
-  bounds: { west: number; south: number; east: number; north: number },
-  surface?: SurfaceLayer | null,
-) {
-  const keys = layer.buckets.map((b) => b.key);
-  const counts = countInBounds(
-    layer.points, layer.days.indexOf(day), keys,
-    bounds.west, bounds.south, bounds.east, bounds.north);
+/**
+ * The head line's subject, which is also what the toggle switches.
+ *
+ * "3 locations in view" and "525 weekday boardings in view" are the same dots
+ * counted two ways, and the wording has to make which one is on screen
+ * impossible to miss — a reader who screenshots the wrong one has quoted a
+ * different finding than they think.
+ */
+const WEIGHT_LABEL: Record<Weight, string> = {
+  locations: 'Locations',
+  riders: 'Riders',
+};
 
+/**
+ * The caveats that travel with a boardings figure, in the legend itself.
+ *
+ * Not in the methods list, where the other caveats live: this one changes what
+ * the number on screen means rather than qualifying it, and the number is
+ * designed to be screenshotted. All three are convention 15.
+ */
+function riderFoot(unmeasured: number) {
+  const n = unmeasured.toLocaleString();
+  const places = `${n} location${unmeasured === 1 ? '' : 's'} in view`;
+  const gain = unmeasured === 1 ? 'gains' : 'gain';
+  const gains = unmeasured
+    ? `<b>${places}</b> ${gain} a bus where none stops today, so there is no `
+      + 'ridership to weigh there — this weighting can measure what is at risk '
+      + 'and never what is gained.'
+    : 'Nothing observed can weigh a location the plan adds a bus to, so this '
+      + 'weighting measures what is at risk and never what is gained.';
+  // Its own class because the phone layout hides `.lg-foot` for room: this
+  // one is not a footnote, it is what the number above it means, and the
+  // stylesheet exempts it by name.
+  return `<div class="lg-foot lg-foot-riders">${gains}
+    Boardings are PRT's May 2025 daily averages at stops that exist today —
+    unlinked trips, not people, and by PRT's own disclaimer unofficial totals
+    that may understate ridership by up to 30%.</div>`;
+}
+
+export interface LegendOptions {
+  layer: ChangeLayer;
+  day: Day;
+  bounds: { west: number; south: number; east: number; north: number };
+  /** Locations, or the riders who board at them. */
+  weight: Weight;
+  surface?: SurfaceLayer | null;
+}
+
+export function renderLegend(el: HTMLElement, opts: LegendOptions) {
+  const { layer, day, bounds, weight, surface } = opts;
+  const keys = layer.buckets.map((b) => b.key);
+  const dayIndex = layer.days.indexOf(day);
+  const { west, south, east, north } = bounds;
   const shown = visible(layer);
-  const total = shown.reduce((n, b) => n + counts[b.key], 0);
+
+  const counts = countInBounds(
+    layer.points, dayIndex, keys, west, south, east, north);
+  const tally = weight === 'riders'
+    ? sumRidersInBounds(layer.points, dayIndex, keys, west, south, east, north)
+    : null;
+
+  // An em dash, not a 0: a bucket whose locations in view all lack a ridership
+  // record has nothing to report, which is not the same as reporting nothing.
+  const cell = (key: string) => (tally
+    ? (tally.measured[key] ? Math.round(tally.riders[key]).toLocaleString() : '—')
+    : counts[key].toLocaleString());
+
+  // Not "weekday boardings": the muted suffix beside it already names the day
+  // type, and the head line is the one that gets screenshotted, so saying it
+  // twice costs the room the caveat needs.
+  const head = tally
+    ? `<b>${Math.round(shown.reduce((n, b) => n + tally.riders[b.key], 0))
+        .toLocaleString()}</b> daily boardings in view`
+    : `<b>${shown.reduce((n, b) => n + counts[b.key], 0).toLocaleString()}</b>
+       locations in view`;
 
   el.innerHTML = `
     <div class="lg-head">
-      <b>${total.toLocaleString()}</b> locations in view
+      ${head}
       <span class="muted">· ${DAY_WORD[day]} · ${layer.radius} m walk</span>
+    </div>
+    <div class="seg lg-weight" role="group" aria-label="Count the dots by">
+      ${(Object.keys(WEIGHT_LABEL) as Weight[]).map((w) => `
+        <button data-weight="${w}" aria-pressed="${weight === w}"
+                class="${weight === w ? 'active' : ''}">${WEIGHT_LABEL[w]}</button>`).join('')}
     </div>
     ${shown.map((b) => `
       <button class="lg-row ${isHidden(b.key) ? 'off' : ''}" data-bucket="${esc(b.key)}"
               aria-pressed="${!isHidden(b.key)}">
         <i style="background:${STYLE[b.key]?.color ?? '#666'}"></i>
         <span class="lg-lab">${esc(b.label)}</span>
-        <span class="lg-n">${counts[b.key].toLocaleString()}</span>
+        <span class="lg-n">${cell(b.key)}</span>
       </button>`).join('')}
     ${surface ? surfaceKey(surface, day, bounds) : ''}
+    ${tally ? riderFoot(tally.unmeasured) : `
     <div class="lg-foot">Buses per day within the walk radius, both directions.
-      Counts are locations, not riders.</div>`;
+      Counts are locations, not riders.</div>`}`;
 }

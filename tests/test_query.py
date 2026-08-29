@@ -288,9 +288,10 @@ def test_change_layer_packs_every_point_and_day(con):
                     (query.PRIMARY_RADIUS,)).fetchone()[0]
     assert len(layer["points"]) == n
     assert [b["key"] for b in layer["buckets"]] == list(query.BUCKET_KEYS)
-    # [lat, lon, published] + 3 fields x 3 day types
-    assert all(len(p) == 12 for p in layer["points"])
-    assert len(layer["fields"]) == 12
+    # [lat, lon, published] + 4 fields x 3 day types
+    width = 3 + query.POINT_STRIDE * len(query.DAYS)
+    assert all(len(p) == width for p in layer["points"])
+    assert len(layer["fields"]) == width
 
 
 def test_change_layer_bucket_indices_resolve_to_the_stored_bucket(con):
@@ -303,7 +304,7 @@ def test_change_layer_bucket_indices_resolve_to_the_stored_bucket(con):
                 "SELECT lat, lon, bucket FROM change WHERE radius = ? "
                 "AND day = 'weekday'", (query.PRIMARY_RADIUS,))}
     for p in layer["points"][:400]:
-        assert keys[p[5]] == rows[(p[0], p[1])]
+        assert keys[p[query.BUCKET_AT(0)]] == rows[(p[0], p[1])]
 
 
 def test_change_points_are_the_same_set_at_both_radii(con):
@@ -323,3 +324,66 @@ def test_unpublished_points_have_no_bus_within_the_headline_radius(con):
         (query.PRIMARY_RADIUS,)).fetchall()
     assert rows, "no new-coverage points at all -- change_points() found none"
     assert all(r["cur_trips"] == 0 for r in rows)
+
+
+# --------------------------------------------------------------------------
+# ridership weighting
+# --------------------------------------------------------------------------
+
+def test_change_layer_carries_each_days_own_boardings(con):
+    """The day control has to move the riders as well as the buses.
+
+    Boardings differ by day type -- Sunday is 43% of the weekday total -- so a
+    layer that shipped one figure for all three would report weekday riders
+    under a Sunday map's losses.
+    """
+    layer = query.change_layer(con, query.PRIMARY_RADIUS)
+    want = {r["stop_id"]: r for r in con.execute(
+        "SELECT stop_id, weekday_boardings, saturday_boardings, "
+        "  sunday_boardings FROM stop_place")}
+    by_point = {(round(r["lat"], 6), round(r["lon"], 6)): r["point_id"]
+                for r in con.execute(
+                    "SELECT DISTINCT point_id, lat, lon FROM change "
+                    "WHERE radius = ?", (query.PRIMARY_RADIUS,))}
+
+    seen_published = seen_new = 0
+    for p in layer["points"]:
+        point_id = by_point[(p[0], p[1])]
+        for i, day in enumerate(query.DAYS):
+            riders = p[query.RIDERS_AT(i)]
+            if p[2]:
+                assert riders == want[point_id[2:]][f"{day}_boardings"]
+                seen_published += 1
+            else:
+                # Not zero: no bus stops here today, so there is no ridership
+                # record to be zero. Convention 15 -- the gains side of this
+                # weighting is unmeasurable, and it says so in the data.
+                assert riders is None
+                seen_new += 1
+    assert seen_published and seen_new
+
+
+def test_boardings_reproduce_the_published_shares(con):
+    """The numbers the weighted legend will be quoted on.
+
+    A weekday location that loses all service carries 488 of the system's
+    67,619 daily boardings -- 0.7%. That figure is the strongest thing the
+    plan's defenders can say and it is drawn from PRT's own usage extract, so
+    it has to be pinned the way the bucket counts are: if it moves, either the
+    usage join broke or the buckets did.
+    """
+    layer = query.change_layer(con, query.PRIMARY_RADIUS)
+    day = query.DAYS.index("weekday")
+    keys = [b["key"] for b in layer["buckets"]]
+
+    total = 0.0
+    gone = 0.0
+    for p in layer["points"]:
+        riders = p[query.RIDERS_AT(day)]
+        if riders is None:
+            continue
+        total += riders
+        if keys[p[query.BUCKET_AT(day)]] == "gone":
+            gone += riders
+    assert round(total) == 67619
+    assert round(gone) == 488

@@ -27,6 +27,7 @@
  * value it has no button for.
  */
 import { Day, DAYS } from './types';
+import { Weight } from './types';
 import { Destination } from './oneseat';
 import { VIEWS } from './statebar';
 
@@ -43,6 +44,7 @@ export const PARAM = {
   radius: 'radius',
   oneSeatDay: 'oneseatday',
   dest: 'dest',
+  weight: 'weight',
   at: 'at',
   camera: 'map',
 } as const;
@@ -69,6 +71,8 @@ export interface UrlState {
   radius: number;
   /** Whether the one-seat question has been restricted to `day` (convention 13). */
   oneSeatRestricted: boolean;
+  /** Whether the change legend is counting locations or boardings. */
+  weight: Weight;
   dest: Destination;
   /** Where the reader asked, or null while the panel is still a prompt. */
   at: Point | null;
@@ -95,6 +99,11 @@ export function toSearch(s: UrlState): string {
   p.set(PARAM.oneSeatDay,
     s.oneSeatRestricted ? ONESEAT_DAY.selected : ONESEAT_DAY.any);
   p.set(PARAM.dest, 'key' in s.dest ? s.dest.key : coords(s.dest));
+  // Written only when it is on, unlike the controls above: weighting by
+  // ridership is a second reading of the same dots rather than one of the
+  // parameters of the question, and a `weight=locations` in every link would
+  // put a denominator in the URL of every reader who never chose one.
+  if (s.weight === 'riders') p.set(PARAM.weight, s.weight);
   // Both of these are absences rather than defaults: no point has been asked
   // about, and the map has not been moved off wherever it opened.
   if (s.at) p.set(PARAM.at, coords(s.at));
@@ -115,6 +124,9 @@ export function parseUrlState(search: string): Partial<UrlState> {
 
   const radius = Number(p.get(PARAM.radius));
   if (p.has(PARAM.radius) && Number.isFinite(radius) && radius > 0) s.radius = radius;
+
+  if (p.get(PARAM.weight) === 'riders') s.weight = 'riders';
+  else if (p.get(PARAM.weight) === 'locations') s.weight = 'locations';
 
   const oneSeatDay = p.get(PARAM.oneSeatDay);
   if (oneSeatDay === ONESEAT_DAY.selected) s.oneSeatRestricted = true;

@@ -99,8 +99,8 @@ uv sync --extra web && npm install   # one-time
 npm run build                        # frontend/*.ts -> static/app.js
 uv run refresh serve                 # http://127.0.0.1:8000
 
-uv run pytest                        # 293 tests, incl. served == published
-npx vitest run && npx tsc --noEmit   # 167 frontend tests
+uv run pytest                        # 295 tests, incl. served == published
+npx vitest run && npx tsc --noEmit   # 217 frontend tests
 ```
 
 **Hosting** is `deploy/` — a Hetzner VM behind Caddy, live at
@@ -363,6 +363,44 @@ changes published findings.
     scheduled times, not its observed ones, because the proposed side has no
     observed times and never will. Symmetric, and not the same as saying a
     trip will take that long. Say so wherever a number is quoted.
+
+15. **Ridership is a weighting, not a sixth unit — and it can only weigh
+    what already exists.** The map's Locations view can count boardings
+    instead of dots (`query.point_boardings`, `frontend/change.sumRidersInBounds`,
+    and the Locations/Riders switch in the legend). It is the same points in
+    the same buckets under a second denominator, so it is not a new unit of
+    analysis the way conventions 10–14 are; it is convention 10's "never quote
+    one alone" arriving inside a single view. Three things govern it.
+
+    **It is one-sided, structurally and permanently.** Boardings are observed
+    counts from the May 2025 usage extract, so they exist at stops that run
+    today and can never exist for a network that has not run. A location the
+    plan adds a bus to therefore carries `null`, never 0 — the difference
+    between "nobody boards here" and "nobody can have boarded here yet" is the
+    whole asymmetry, and a 0 would state a finding about the plan's gains that
+    no observed number can support. The legend counts those locations in a
+    sentence instead of folding them into a total. So this weighting measures
+    what is at risk and never what is gained; say so wherever it is quoted.
+
+    **Boardings are not people.** Unlinked and unweighted, so one rider's round
+    trip with a transfer is up to four of them, and PRT's own disclaimer calls
+    them unadjusted, unofficial totals that may understate ridership by up to
+    30%. Take them from the `All Routes` row (convention 7) — `stop_place` in
+    `refresh.db` already does.
+
+    **And the measure is circular, which is exactly why it ships.** The Refresh
+    is a redesign that concentrates service where ridership already is, so
+    scoring it against today's boardings asks whether it did the thing it was
+    optimised to do, and the answer flatters it: on a weekday at 400 m the 593
+    locations that lose all service carry 488 of the system's 67,619 daily
+    boardings, 0.7% (1,270 of 67,619, 1.9%, at the strict 150 m radius; the
+    weekend shares are 0.6%). Those figures are pinned by
+    `tests/test_query.py::test_boardings_reproduce_the_published_shares`, the
+    way the bucket counts are. Report them as plainly as the losses — but never
+    alone: the location view says roughly service-neutral, the area view 12%
+    less ground, the street view 22% less pavement, and this says 99.3% of
+    boardings untouched. All four are true and each one alone is a talking
+    point.
 
 State data vintage and PRT's own accuracy disclaimer (stop figures are
 "unadjusted, unofficial totals" that may understate ridership by up to 30%)
