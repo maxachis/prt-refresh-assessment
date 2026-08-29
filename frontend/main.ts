@@ -385,6 +385,12 @@ map.on('load', () => {
   $('panel').addEventListener('click', (e) => {
     const b = (e.target as HTMLElement).closest<HTMLElement>('[data-goto-dest]');
     if (b) setDestination({ key: b.dataset.gotoDest! });
+
+    // A figure's provenance is written once, in the drawer. Opening it at the
+    // top would leave the reader to find which of fourteen entries they asked
+    // for, so the entry is scrolled to and marked.
+    const m = (e.target as HTMLElement).closest<HTMLElement>('[data-caveat]');
+    if (m) showCaveat(m.dataset.caveat!);
   });
 
   $('side-toggle').addEventListener('click', toggleSide);
@@ -1111,13 +1117,26 @@ async function loadMeta() {
     // than dropped -- it is a stated convention that the vintage travels with
     // the numbers, not a decoration on a wide screen.
     $('feedline-methods').textContent = line;
+    // Each entry is addressable so that a figure in the answer panel can send
+    // the reader to its own method rather than restating it underneath.
     $('caveats').innerHTML = m.caveats
-      .map((c: any) => `<li>${c.text}</li>`).join('');
+      .map((c: any) => `<li id="caveat-${c.id}">${c.text}</li>`).join('');
   } catch {
     /* the methods panel is not load-bearing; the map still works without it */
   }
 }
 
 // Methods drawer
+/** Open the method drawer at one entry, and say which one was asked for. */
+function showCaveat(id: string) {
+  $('methods').classList.add('open');
+  const li = document.getElementById(`caveat-${id}`);
+  if (!li) return;   // the drawer is not load-bearing; it may not have loaded
+  li.scrollIntoView({ block: 'center' });
+  li.classList.remove('asked');
+  void li.offsetWidth;               // restart the mark for a repeated click
+  li.classList.add('asked');
+}
+
 $('methods-open').addEventListener('click', () => $('methods').classList.add('open'));
 $('methods-close').addEventListener('click', () => $('methods').classList.remove('open'));

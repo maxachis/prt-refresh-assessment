@@ -391,7 +391,11 @@ CAVEATS = [
         "text": "Comparisons are between the same circle on the ground in both "
                 "networks, never between route N and route N. The plan "
                 "re-splits corridors and renumbers routes, so route-to-route "
-                "deltas are meaningless.",
+                "deltas are meaningless. The route lists in the answer "
+                "panel differ by more than the service does for the same "
+                "reason: the 61A-D become the 60X/61X/62X and the "
+                "P-flyers become L-limiteds, which is renumbering rather "
+                "than replacement.",
     },
     {
         "id": "cluster-max",
@@ -414,7 +418,10 @@ CAVEATS = [
                 "30%. They are observed at stops that run today, so weighting "
                 "the map by them measures what is at risk and never what is "
                 "gained: a location the plan adds a bus to has no ridership "
-                "record, which is not the same as having no riders.",
+                "record, which is not the same as having no riders. And they "
+                "are counted where people get on, not where they live, so "
+                "at a busy transfer point most of them belong to riders "
+                "from somewhere else entirely.",
     },
     {
         "id": "population",

@@ -119,6 +119,33 @@ measurements, only one of which is what `data/oneseat_change.csv` publishes, and
 convention 13 requires anything quoting a one-seat number to say which; the
 legend says it for the map, and this says it for the panel, in the same words.
 
+### What the panel says, and what the drawer says instead
+
+An answer used to arrive with about 350 words of prose around twenty numbers:
+five caveat blocks, the longest 96 words. Every sentence in them was there for
+a reason, and none of them was being read.
+
+The split is by what a sentence *does*, not by how long it is. A clause that
+changes how the number beside it reads stays on the panel, cut to one line —
+boardings are today's stops only, a one-seat ride has no frequency in it, the
+residents figure is the whole place on any day of the week, two route lists
+differ by renumbering rather than by service. Take any of those away and the
+number above it means something else. Provenance — the May 2025 vintage,
+unlinked trips, the ACS weighting, the file that reproduces the ranking —
+qualifies a number without changing what it says, so it is written once in the
+method drawer and reached from the figure by a `method` link, which opens the
+drawer scrolled to that entry and marks it. The whole panel is now under 220
+words, pinned by a test, because prose grows back one useful sentence at a time.
+
+One thing deliberately did not move. PRT's own disclaimer — unofficial totals
+that may understate ridership by up to 30% — stays visible next to the number,
+here and in the legend, because this audience screenshots figures off the map
+and a caveat behind a click is not in the screenshot.
+
+Collapsing the prose behind disclosure triangles was considered and rejected
+for that same reason: a closed `<details>` fails the test the caveats exist to
+pass, and five of them are their own kind of clutter.
+
 ### The phone layout: one window, three things that wanted it
 
 A desktop gives the map and the panel a column each and they never compete. A
@@ -345,20 +372,20 @@ the circle the usage extract has no figure for said out loud beside it — 11 of
 29 in the Golden Triangle, and treating those as zeros would quietly understate
 every busy place. It is kept out of the today → proposed headline on purpose:
 there is no proposed half and never can be, so an empty column there would read
-as a fall to zero. One caveat is the panel's own, because a point invites it
-where a viewport does not — boardings are counted where people get on, not
-where they live, so at a transfer point most of them belong to riders from
-somewhere else entirely.
+as a fall to zero. Beside it the panel keeps the one clause PRT asks to travel
+with the figure everywhere — unofficial totals that may understate ridership by
+up to 30% — and sends the rest to the method drawer.
 
 **And the panel says who lives in the place, once.** Under the service
 figures, a "who lives here" block: *1,923 residents lose every bus · 0 gain
 one*, for the whole named place rather than for the walk radius above it.
-Three things separate it from everything else on the panel, and it says all
-three on screen. It is a **place** figure — a point has no population worth
+Three things separate it from everything else on the panel. It is a **place** figure — a point has no population worth
 quoting, and a count inside the walk circle would be a fourth people-number
 disagreeing with the map key's reading of the same spot. It answers on **any
 bus in a week**, the measure `analyze_equity_places.py` ranks on, so it does
-not move with the day switch. And it is **Allegheny only**: outside the county
+not move with the day switch — which it says on screen, because a figure that
+ignores a switch directly above it otherwise looks broken. And it is
+**Allegheny only**: outside the county
 the equity work never asked, so the block is absent rather than showing a zero
 — while inside it, a place with no published row shows a real zero, "nobody in
 Whitehall borough loses or gains every bus under the plan", because the file

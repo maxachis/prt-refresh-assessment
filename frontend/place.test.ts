@@ -88,7 +88,9 @@ describe('boardings in the panel', () => {
 
   it('says the figure is today\'s only, and cannot ever have a proposed half', () => {
     const html = serviceBodyHTML(PLACE, 'weekday');
-    expect(html).toMatch(/what is at risk/);
+    expect(html).toMatch(/today's stops only/i);
+    // PRT asks this one to travel with the number itself, so it stays on
+    // screen rather than moving behind the method link with the rest.
     expect(html).toMatch(/30%/);
   });
 
@@ -150,5 +152,29 @@ describe('the place\'s residents in the panel', () => {
     const html = serviceBodyHTML({ ...PLACE, population: null }, 'weekday');
     expect(html).not.toMatch(/residents/i);
     expect(html).not.toMatch(/lose every bus/i);
+  });
+});
+
+
+// The panel says only what changes the reading of the number beside it; the
+// provenance behind each figure lives once in the method drawer, reachable
+// from the figure rather than restated under it.
+describe('the panel points at its own method', () => {
+  it('sends every caveated figure to the drawer entry that explains it', () => {
+    const html = serviceBodyHTML(PLACE, 'weekday');
+    for (const id of ['boardings', 'place-population', 'location-not-route']) {
+      expect(html).toContain(`data-caveat="${id}"`);
+    }
+  });
+
+  it('does not offer a method link for a figure it is not showing', () => {
+    const html = serviceBodyHTML({ ...PLACE, population: null }, 'weekday');
+    expect(html).not.toContain('data-caveat="place-population"');
+  });
+
+  it('keeps the panel short enough to take in at a glance', () => {
+    const words = serviceBodyHTML(PLACE, 'weekday')
+      .replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().split(' ').length;
+    expect(words).toBeLessThan(220);
   });
 });

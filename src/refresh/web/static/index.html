@@ -278,6 +278,12 @@
     .route { display:inline-block; font-size:11px; padding:1px 6px; border-radius:4px;
       background:#0c0e12; border:1px solid var(--line); font-variant-numeric:tabular-nums; }
     .note { font-size:11px; color:var(--muted); margin:10px 0 0; line-height:1.45; }
+    /* The way from a figure to its method. Reads as part of the caveat line,
+       not as a button competing with the controls above it. */
+    .howto { font:inherit; color:var(--muted); background:none; border:0;
+      border-bottom:1px dotted currentColor; padding:0; cursor:pointer;
+      white-space:nowrap; }
+    .howto:hover { color:var(--ink); }
 
     /* Who lives here: a place figure, so it is sectioned like the route list
        rather than sitting in the walk-radius facts above it. */
@@ -374,7 +380,12 @@
       border-radius:12px; max-width:620px; max-height:80vh; overflow:auto;
       padding:22px 24px; }
     #methods h2 { margin:0 0 12px; font-size:16px; }
-    #methods li { margin-bottom:10px; font-size:13px; color:var(--ink); }
+    #methods li { margin-bottom:10px; font-size:13px; color:var(--ink);
+      border-left:2px solid transparent; padding-left:8px; margin-left:-10px;
+      transition:border-color .3s, background .3s; }
+    /* The entry a figure in the panel asked for, marked long enough to find. */
+    #methods li.asked { border-left-color:var(--prop);
+      background:rgba(255,162,58,.08); }
     #methods button { margin-top:14px; background:#0c0e12; color:var(--ink);
       border:1px solid var(--line); border-radius:8px; padding:6px 14px;
       font:inherit; cursor:pointer; }

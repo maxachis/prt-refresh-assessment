@@ -198,19 +198,28 @@ function oneSeatBlock(verdicts: OneSeatVerdict[],
     <div class="oneseat">
       <h3>Getting there without changing bus</h3>
       ${rows}
-      <p class="note">A one-seat ride means some single route serves both this
-        spot and the destination. ${day === 'any'
-          ? `Counted on any calendar, which is the published measure — no day
-             type enters it.`
-          : `Restricted to routes running on ${ONESEAT_DAY_WORD[day] ?? day},
-             which is not the published measure — that one counts a route
-             calling here on any calendar.`}
-        It says nothing about how long the trip takes
-        or how often it runs — check the timetable above for that. This is the
-        only figure on the panel that counts the T and the inclines: they are
-        unchanged by the Refresh, but leaving them out would show the South
-        Hills losing Downtown rides the Blue Line still runs.</p>
+      <p class="note">${day === 'any'
+          ? `One route serving both ends, on any calendar — the published
+             measure.`
+          : `Only routes running on ${ONESEAT_DAY_WORD[day] ?? day} — not the
+             published measure, which counts any calendar.`}
+        No frequency: a surviving ride may be hourly on a Sunday. Counts the T
+        and the inclines.${methodLink('one-seat')}</p>
     </div>`;
+}
+
+/**
+ * The way out of the panel and into the method for one figure.
+ *
+ * The panel keeps only the clause that changes how the number beside it
+ * reads; provenance -- vintage, weighting, what the count is of -- lives once
+ * in the method drawer and is reached from the figure rather than restated
+ * under every one of them. Rendered as a button because it is a control on
+ * this page, not a destination: `main.ts` opens the drawer at the matching
+ * entry.
+ */
+function methodLink(id: string): string {
+  return ` <button class="howto" data-caveat="${id}">method</button>`;
 }
 
 /** What to call the clicked point in a heading. */
@@ -260,14 +269,9 @@ function boardingsFact(b: Boardings | null, d: Day): string {
 /** What that figure does and does not say. Ships with it or not at all. */
 function boardingsNote(b: Boardings | null): string {
   if (!b || b.total == null) return '';
-  return `<p class="note">PRT's May 2025 daily averages, at stops that exist
-    today — so this measures what is at risk here and never what the plan
-    gains: a stop the plan adds has no ridership to weigh. They are unlinked
-    trips rather than people, one round trip with a transfer counting up to
-    four times, and by PRT's own disclaimer they are unofficial totals that may
-    understate ridership by up to 30%. Boardings are counted where people get
-    on, not where they live, so at a busy transfer point most of them are
-    riders from somewhere else entirely.</p>`;
+  return `<p class="note">Today's stops only — the plan's gains have no riders
+    to weigh. PRT calls these unofficial totals that may understate ridership
+    by up to 30%.${methodLink('boardings')}</p>`;
 }
 
 /**
@@ -294,13 +298,8 @@ function residentsBlock(pop: PlacePopulation | null): string {
     <div class="people">
       <h3>Who lives in ${place}</h3>
       ${body}
-      <p class="note">Across the whole of ${place}, not just this corner, and
-        counted on any day of the week — so this figure does not move with the
-        day above. 2020 census residents weighted to ACS estimates, which
-        describes where people live rather than who rides; Allegheny County
-        only, and the place name is the nearest labelled stop's, which PRT's
-        own labels sometimes get wrong. The same figures rank every place in
-        <code>data/equity_places.csv</code>.</p>
+      <p class="note">The whole of ${place}, any day of the week — it does not
+        move with the day above.${methodLink('place-population')}</p>
     </div>`;
 }
 
@@ -347,12 +346,9 @@ export function serviceBodyHTML(p: PlaceResult, d: Day, middle = ''): string {
       <span><i class="sw-walk"></i> the ${p.radius} m walk</span>
       <span><i class="sw-pin"></i> where you clicked</span>
     </div>
-    <div class="key-note">The same colours mark the map: each dot is one stop,
-      blue for today and orange for the plan. A stop both networks keep at the
-      same spot draws as a blue dot inside an orange ring rather than as two
-      marks; one the plan nudges across the intersection draws as two, which is
-      renumbering rather than a change in service. Only the stops inside the
-      dashed circle are counted above.</div>
+    <div class="key-note">A stop both networks keep draws as a blue dot in an
+      orange ring. Two marks mean the plan nudged it across the intersection —
+      renumbering, not a change in service.</div>
 
     <dl class="facts">
       <dt>First and last bus</dt>
@@ -373,9 +369,8 @@ export function serviceBodyHTML(p: PlaceResult, d: Day, middle = ''): string {
       <h3>Routes serving this spot</h3>
       <div class="rrow"><span class="rlab">today</span>${routeList(before.routes)}</div>
       <div class="rrow"><span class="rlab">proposed</span>${routeList(after.routes)}</div>
-      <p class="note">Renumbering is not replacement — the 61A–D become the
-         60X/61X/62X, and the P-flyers become L-limiteds. Differences between
-         these two lists overstate how much actually changes on the ground.</p>
+      <p class="note">Renumbering is not replacement: the 61A–D become the
+         60X/61X/62X.${methodLink('location-not-route')}</p>
     </div>`;
 }
 
