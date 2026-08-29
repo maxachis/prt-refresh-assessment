@@ -98,6 +98,14 @@ import ingest_osm_walk  # noqa: E402  (root script, like analyze_one_seat above)
 DATA = Path("data")
 DB = DATA / "refresh.db"
 COVERAGE = DATA / "coverage_change.csv"
+CENSUS_BLOCKS = DATA / "census_blocks.csv"
+CENSUS_BLOCK_GROUPS = DATA / "census_block_groups.csv"
+
+# The ACS column the equity work counts people in. `population` is the other
+# candidate and is wrong: the published figures are weighted by `race_total`,
+# and the two differ by about 12,000 people in Allegheny alone -- more than
+# half the plan's gain side.
+ACS_UNIVERSE = "race_total"
 CORRIDOR = DATA / "corridor_change.csv"
 
 SIDES = ["current", "proposed"]
@@ -229,6 +237,27 @@ CREATE TABLE surface (
     PRIMARY KEY (radius, day, ix, iy)
 );
 CREATE INDEX ix_surface_radius ON surface(radius);
+
+-- Who lives on that ground. The same before-and-after coverage test as the
+-- two layers above, but measured at the interior point of every populated
+-- census block and summed into the surface's own cells, so the map can be
+-- read as people rather than as stops or as square kilometres (convention 12).
+-- `county` is here because the published equity figures are Allegheny-only
+-- while the map paints all three counties PRT stops in; without it the served
+-- number could not be checked against the one docs/answers/ prints.
+CREATE TABLE cell_population (
+    radius  INTEGER NOT NULL,   -- 400 | 150, both built
+    day     TEXT NOT NULL,
+    ix      INTEGER NOT NULL,   -- the surface's lattice, cell for cell
+    iy      INTEGER NOT NULL,
+    county  TEXT NOT NULL,
+    lost    REAL NOT NULL,      -- a bus today, none proposed
+    gained  REAL NOT NULL,
+    kept    REAL NOT NULL,
+    neither REAL NOT NULL,      -- no bus either way: the denominator
+    PRIMARY KEY (radius, day, ix, iy, county)
+);
+CREATE INDEX ix_cell_population_radius ON cell_population(radius);
 
 -- The corridor layer: does a bus run on THIS STREET, not what a rider can
 -- reach from a point. `analyze_corridor_change.py`'s module docstring is the
@@ -678,6 +707,7 @@ def build(out_path):
 
     change_layer(out_path)
     surface_layer(out_path)
+    population_layer(out_path)
     oneseat_layer(out_path)
 
     mb = out_path.stat().st_size / 1e6
@@ -783,6 +813,78 @@ def surface_layer(out_path):
         print(f"\nsurface @ {radius} m: {cells:,} cells "
               f"({cells * query.CELL_M ** 2 / 1e6:.1f} km2 of lattice), "
               f"{served:,} with weekday service either side")
+    write.commit()
+    write.close()
+    read.close()
+
+
+def load_residents():
+    """[(lat, lon, people, county)] -- every populated census block, ACS-weighted.
+
+    Two files, and each answers half of "how many people live here". The 2020
+    block file says WHERE inside a block group people are, at the block's
+    interior point; the ACS block-group file says HOW MANY there are, which is
+    the universe `analyze_equity_change.py` reports in. A block therefore
+    carries its own share of its group's ACS population, and summing the
+    blocks reproduces the published county total rather than the 2020 count,
+    which differs by about 1%.
+
+    Missing census files are fatal here for the same reason the corridor and
+    walk-network files are: a database that built without them would serve a
+    map whose People reading is silently absent, and the failure would surface
+    as a blank number rather than as a build error.
+    """
+    for path in (CENSUS_BLOCKS, CENSUS_BLOCK_GROUPS):
+        if not path.exists():
+            sys.exit(f"error: {path} missing -- run `python3 ingest_census.py` "
+                     "first")
+
+    with open(CENSUS_BLOCK_GROUPS, encoding="utf-8") as f:
+        groups = {r["geoid"]: (float(r[ACS_UNIVERSE] or 0), r["county"])
+                  for r in csv.DictReader(f)}
+
+    with open(CENSUS_BLOCKS, encoding="utf-8") as f:
+        blocks = [(r["block_group_geoid"], int(r["population"]),
+                   float(r["lat"]), float(r["lon"]))
+                  for r in csv.DictReader(f) if int(r["population"]) > 0]
+
+    lived_in = Counter()
+    for geoid, people, _lat, _lon in blocks:
+        lived_in[geoid] += people
+
+    out = []
+    for geoid, people, lat, lon in blocks:
+        acs, county = groups.get(geoid, (0.0, ""))
+        if not acs or not county:
+            continue      # a block group the ACS has no estimate for cannot
+                          # be weighted, and counting it raw would mix the two
+                          # universes inside one total
+        out.append((lat, lon, people / lived_in[geoid] * acs, county))
+    return out
+
+
+def population_layer(out_path):
+    """Fill `cell_population` -- the map's people, measured at their own doors.
+
+    Fast, unlike the two layers above, and for a reason worth writing down:
+    coverage is a yes/no question, so this needs one r-tree query per block per
+    radius and none of the departure arithmetic a trips count needs. 33,131
+    blocks cost seconds where the surface's 48,500 cells cost minutes.
+    """
+    read = query.connect(out_path)
+    write = sqlite3.connect(out_path)
+    residents = load_residents()
+    for radius in query.RADII:
+        rows = query.compute_cell_population(read, residents, radius)
+        write.executemany(
+            "INSERT INTO cell_population VALUES (?,?,?,?,?,?,?,?,?)", rows)
+        cells = len({(r[2], r[3]) for r in rows})
+        weekday = [r for r in rows if r[1] == "weekday"]
+        lost = sum(r[5] for r in weekday if r[4] == "Allegheny")
+        gained = sum(r[6] for r in weekday if r[4] == "Allegheny")
+        print(f"\npeople @ {radius} m: {cells:,} inhabited cells, "
+              f"{sum(r[5] + r[6] + r[7] + r[8] for r in weekday):,.0f} residents; "
+              f"Allegheny weekday -{lost:,.0f} / +{gained:,.0f} with any bus")
     write.commit()
     write.close()
     read.close()

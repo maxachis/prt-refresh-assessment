@@ -198,6 +198,45 @@ export interface SurfaceLayer {
   cells: SurfaceCell[];
 }
 
+/**
+ * Ground, or the people who live on it — the surface key's own switch, in the
+ * same spirit as the change legend's `Weight`: two denominators over one
+ * lattice rather than a correction to the first (convention 10, sharpened by
+ * conventions 12 and 15 for population specifically).
+ */
+export type SurfaceUnit = 'area' | 'people';
+
+/**
+ * One cell of the population surface — the same 100 m lattice as
+ * `SurfaceCell`, but counting residents in each of the four outcomes instead
+ * of buses per day:
+ *
+ *   [ix, iy, wLost, wGained, wKept, wNone, sLost, ..., uNone]
+ *
+ * Position means exactly what it means on `SurfaceLayer`: a lattice index
+ * against the same `origin`, not a coordinate, so the two layers' cells line
+ * up without either shipping its own copy of the grid.
+ */
+export type PopulationCell = number[];
+
+/** Offsets into a PopulationCell for day `i` of DAYS. */
+export const POP_STRIDE = 4;
+export const POP_LOST = (i: number) => 2 + POP_STRIDE * i;
+export const POP_GAINED = (i: number) => 3 + POP_STRIDE * i;
+export const POP_KEPT = (i: number) => 4 + POP_STRIDE * i;
+export const POP_NONE = (i: number) => 5 + POP_STRIDE * i;
+
+export interface PopulationLayer {
+  radius: number;
+  days: Day[];
+  classes: { key: string; label: string }[];
+  cell_m: number;
+  /** South-west corner of cell (ix, iy) is (lat0 + iy*dlat, lon0 + ix*dlon). */
+  origin: { lat0: number; lon0: number; dlat: number; dlon: number };
+  fields: string[];
+  cells: PopulationCell[];
+}
+
 /** A run's outcome: whether a bus runs on this piece of street today, under the plan, or both. */
 export type CorridorKlass = 'kept' | 'lost' | 'added';
 

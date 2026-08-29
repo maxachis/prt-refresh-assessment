@@ -51,7 +51,13 @@ python3 analyze_travel_time.py      # -> data/trip_time_change.csv (the pooled
                                     #    searched from all of its block groups.
                                     #    Needs analyze_one_seat.py and
                                     #    ingest_census.py to have run.
-python3 build_webdb.py              # -> data/refresh.db, for the web app only
+python3 build_webdb.py              # -> data/refresh.db, for the web app only.
+                                    #    Now needs ingest_census.py to have run
+                                    #    as well: the map's People reading is
+                                    #    built from census_blocks.csv and
+                                    #    census_block_groups.csv, and a missing
+                                    #    one is a build error rather than a
+                                    #    silently absent layer.
 ```
 
 **The pedestrian network** is a third independent ingest, because it reads
@@ -126,7 +132,9 @@ and Oakland are the districts `data/oneseat_change.csv` publishes.
 `analyze_equity_change.py` takes the tiers and the whole location test from
 `analyze_coverage_change.py` and the dimension definitions from
 `ingest_census.py`, so a rider's coverage is decided the same way at a house as
-at a stop. Otherwise: `analyze_frequency_change.py` takes `MONTH`, `fnum` and `load_usage` from
+at a stop; `build_webdb.py` reads the same two census files to build the map's
+People reading, and reproduces that script's published totals rather than
+importing it, with `tests/test_population.py` pinning the two together. Otherwise: `analyze_frequency_change.py` takes `MONTH`, `fnum` and `load_usage` from
 `analyze_service_loss.py`; `analyze_coverage_change.py` takes the periods, radii
 and `Grid` from `analyze_frequency_change.py`; and `analyze_coverage_area.py`
 takes the tier list and the hourly test from `analyze_coverage_change.py` plus
@@ -248,15 +256,32 @@ changes published findings.
 
 12. **Population is a third denominator, and it needs its own scope stated.**
     `analyze_equity_change.py` runs the identical location test at the
-    population-weighted centre of every census block group, so the five tiers
-    can be reported as people rather than stops or square kilometres. Two
-    traps. First, *which people*: two thirds of the three-county population
-    lives where PRT has never run a bus, so dividing by all of it makes every
-    change look small; Allegheny County is the headline denominator and the
-    script writes all three so the choice is visible. Second, it is an
-    **ecological** measure — it describes the places a group lives, not its
-    members — and a block group is covered or not at a single point. Quote it
-    beside the location and area figures, per convention 10, never alone.
+    interior point of every populated census block — 33,131 of them — and
+    weights each block group's ACS population by the share of its residents
+    whose block clears a tier, so the five tiers can be reported as people
+    rather than stops or square kilometres. A block group is therefore a
+    fraction, not a flag. Two traps. First, *which people*: two thirds of the
+    three-county population lives where PRT has never run a bus, so dividing
+    by all of it makes every change look small; Allegheny County is the
+    headline denominator and the script writes all three so the choice is
+    visible. Second, it is an **ecological** measure — it describes the places
+    a group lives, not its members — and a block's residents are all counted
+    at that one interior point. Quote it beside the location and area figures,
+    per convention 10, never alone.
+
+    **The map draws this, and the drawing has one rule that is not obvious.**
+    The surface's key switches between Ground and People
+    (`query.compute_cell_population`, `?surfaceunit=people`), summing
+    residents over the same 100 m cells the surface paints. Coverage is
+    decided **at the resident's own block point and only drawn in the cell**;
+    deciding it at the cell centre instead moves a person up to 70 m before
+    asking whether they have a bus and shifts the citywide answer about 3%,
+    which would put a different loss figure under the cursor than the one
+    `/findings` prints. The consequence is deliberate: a cell the surface
+    colours "loses all service" can hold residents this counts as keeping a
+    bus, because the colour describes the ground and the number describes the
+    people. The served totals are pinned against `data/equity_change.csv` by
+    `tests/test_population.py`, so the map and the brief cannot drift.
 
 13. **A one-seat ride is a fourth unit, and it is the only measure in this
     repo that counts rail.** `analyze_one_seat.py` and the app's one-seat view

@@ -27,7 +27,7 @@
  * value it has no button for.
  */
 import { Day, DAYS } from './types';
-import { Weight } from './types';
+import { Weight, SurfaceUnit } from './types';
 import { Destination } from './oneseat';
 import { VIEWS } from './statebar';
 
@@ -45,6 +45,7 @@ export const PARAM = {
   oneSeatDay: 'oneseatday',
   dest: 'dest',
   weight: 'weight',
+  surfaceUnit: 'surfaceunit',
   at: 'at',
   camera: 'map',
 } as const;
@@ -73,6 +74,8 @@ export interface UrlState {
   oneSeatRestricted: boolean;
   /** Whether the change legend is counting locations or boardings. */
   weight: Weight;
+  /** Whether the surface key is showing ground or the people on it. */
+  surfaceUnit: SurfaceUnit;
   dest: Destination;
   /** Where the reader asked, or null while the panel is still a prompt. */
   at: Point | null;
@@ -104,6 +107,10 @@ export function toSearch(s: UrlState): string {
   // parameters of the question, and a `weight=locations` in every link would
   // put a denominator in the URL of every reader who never chose one.
   if (s.weight === 'riders') p.set(PARAM.weight, s.weight);
+  // Same reasoning as `weight` just above: `area` is the default, so writing
+  // it into every link would make the switch look like a setting the reader
+  // had chosen rather than the map's own starting point.
+  if (s.surfaceUnit === 'people') p.set(PARAM.surfaceUnit, s.surfaceUnit);
   // Both of these are absences rather than defaults: no point has been asked
   // about, and the map has not been moved off wherever it opened.
   if (s.at) p.set(PARAM.at, coords(s.at));
@@ -127,6 +134,9 @@ export function parseUrlState(search: string): Partial<UrlState> {
 
   if (p.get(PARAM.weight) === 'riders') s.weight = 'riders';
   else if (p.get(PARAM.weight) === 'locations') s.weight = 'locations';
+
+  if (p.get(PARAM.surfaceUnit) === 'people') s.surfaceUnit = 'people';
+  else if (p.get(PARAM.surfaceUnit) === 'area') s.surfaceUnit = 'area';
 
   const oneSeatDay = p.get(PARAM.oneSeatDay);
   if (oneSeatDay === ONESEAT_DAY.selected) s.oneSeatRestricted = true;

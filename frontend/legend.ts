@@ -18,12 +18,13 @@
 import { esc } from './utils';
 import {
   Day, ChangeLayer, SurfaceLayer, CorridorLayer, CorridorKlass, OneSeatLayer,
-  Weight,
+  Weight, SurfaceUnit, PopulationLayer,
 } from './types';
 import { STYLE, countInBounds, sumRidersInBounds, isHidden } from './change';
 import {
   RAMP, GONE_COLOR, NEW_COLOR, summariseInBounds,
 } from './surface';
+import { summarisePopulationInBounds } from './population';
 import { KLASS_COLOR, pavementPct } from './corridor';
 import {
   STATUS_STYLE, STATUS_ORDER, countInBounds as countOneSeatInBounds,
@@ -47,20 +48,14 @@ function visible(layer: ChangeLayer) {
   return layer.buckets.filter((b) => b.key !== 'none');
 }
 
+const UNIT_LABEL: Record<SurfaceUnit, string> = { area: 'Ground', people: 'People' };
+
 /**
- * The surface's key and in-view area, when the surface is on screen.
- *
- * A continuous strip rather than a list of swatches, deliberately: swatches
- * would imply the ramp has categories, and the categories in this app are
- * published criteria with counts behind them. The two steps below the strip
- * are the exceptions — losing all service and gaining service where there was
- * none are outcomes, not points on a scale.
- *
- * The area line reports km2 and says "of ground", because the whole hazard of
- * an area map is being read as a population map: a square kilometre of
- * hillside paints exactly like a square kilometre of Brookline.
+ * The area line's four figures, in km², labelled "of ground" — convention
+ * 10's warning made explicit: a square kilometre of hillside paints exactly
+ * like a square kilometre of Brookline.
  */
-export function surfaceKey(
+function areaLines(
   layer: SurfaceLayer, day: Day,
   bounds: { west: number; south: number; east: number; north: number },
 ) {
@@ -70,6 +65,72 @@ export function surfaceKey(
     bounds.west, bounds.south, bounds.east, bounds.north,
     layer.origin, cellKm2);
   const n = (v: number) => v.toFixed(v < 10 ? 1 : 0);
+  return `
+      <div class="lg-area">
+        <span><b>${n(km.gone)}</b> km² lose all service</span>
+        <span><b>${n(km.less)}</b> km² less</span>
+        <span><b>${n(km.more)}</b> km² more</span>
+        <span><b>${n(km.new)}</b> km² new</span>
+      </div>
+      <div class="lg-ends" style="margin-top:4px">of ground in view, not of people</div>`;
+}
+
+/**
+ * The area line's population counterpart — the same in-view test, but
+ * residents rather than square kilometres, and PopulationLayer's own four
+ * classes rather than the ramp's outcomes (lost/gained/kept/none, not
+ * gone/less/more/new). Nothing paints during the fetch, so a caller with no
+ * layer yet gets a muted "loading…" rather than a row of zeroes that would
+ * read as a finding — nobody has lost or gained anything, the data simply
+ * has not arrived.
+ */
+function populationLines(
+  day: Day,
+  bounds: { west: number; south: number; east: number; north: number },
+  population: PopulationLayer | null | undefined,
+) {
+  const note = '<div class="lg-ends" style="margin-top:4px">where people live '
+    + 'in view — 2020 census, counted at home, not where they board</div>';
+  if (!population) {
+    return `<div class="lg-area"><span class="muted">loading…</span></div>${note}`;
+  }
+  const people = summarisePopulationInBounds(
+    population.cells, population.days.indexOf(day),
+    bounds.west, bounds.south, bounds.east, bounds.north, population.origin);
+  const n = (v: number) => Math.round(v).toLocaleString();
+  return `
+      <div class="lg-area">
+        <span><b>${n(people.lost)}</b> people lose all service</span>
+        <span><b>${n(people.gained)}</b> gain service</span>
+        <span><b>${n(people.kept)}</b> keep a bus</span>
+        <span><b>${n(people.none)}</b> have no bus either way</span>
+      </div>
+      ${note}`;
+}
+
+/**
+ * The surface's key and in-view figures, when the surface is on screen.
+ *
+ * A continuous strip rather than a list of swatches, deliberately: swatches
+ * would imply the ramp has categories, and the categories in this app are
+ * published criteria with counts behind them. The two steps below the strip
+ * are the exceptions — losing all service and gaining service where there was
+ * none are outcomes, not points on a scale.
+ *
+ * Below the strip is a second switch, Ground vs People — the same idea as the
+ * change legend's Locations/Riders switch, and for the same reason
+ * (convention 15): the surface can report square kilometres or residents over
+ * the identical cells, and neither is a correction to the other, so the
+ * reader is told which one they are looking at rather than left to assume.
+ */
+export function surfaceKey(opts: {
+  layer: SurfaceLayer;
+  day: Day;
+  bounds: { west: number; south: number; east: number; north: number };
+  unit: SurfaceUnit;
+  population?: PopulationLayer | null;
+}) {
+  const { layer, day, bounds, unit, population } = opts;
   const gradient = RAMP.map(([stop, color]) =>
     `${color} ${((stop + 2) / 4 * 100).toFixed(1)}%`).join(', ');
 
@@ -82,13 +143,13 @@ export function surfaceKey(
         <span><i style="background:${GONE_COLOR}"></i>loses all service</span>
         <span><i style="background:${NEW_COLOR}"></i>new service</span>
       </div>
-      <div class="lg-area">
-        <span><b>${n(km.gone)}</b> km² lose all service</span>
-        <span><b>${n(km.less)}</b> km² less</span>
-        <span><b>${n(km.more)}</b> km² more</span>
-        <span><b>${n(km.new)}</b> km² new</span>
+      <div class="seg lg-weight" role="group" aria-label="Show the surface as">
+        ${(Object.keys(UNIT_LABEL) as SurfaceUnit[]).map((u) => `
+          <button data-surface-unit="${u}" aria-pressed="${unit === u}"
+                  class="${unit === u ? 'active' : ''}">${UNIT_LABEL[u]}</button>`).join('')}
       </div>
-      <div class="lg-ends" style="margin-top:4px">of ground in view, not of people</div>
+      ${unit === 'people' ? populationLines(day, bounds, population)
+                           : areaLines(layer, day, bounds)}
     </div>`;
 }
 
@@ -299,10 +360,16 @@ export interface LegendOptions {
   /** Locations, or the riders who board at them. */
   weight: Weight;
   surface?: SurfaceLayer | null;
+  /** Ground, or the people who live on it. Only meaningful with `surface`. */
+  unit?: SurfaceUnit;
+  /** The surface's population reading; absent until it has been fetched. */
+  population?: PopulationLayer | null;
 }
 
 export function renderLegend(el: HTMLElement, opts: LegendOptions) {
-  const { layer, day, bounds, weight, surface } = opts;
+  const {
+    layer, day, bounds, weight, surface, unit = 'area', population,
+  } = opts;
   const keys = layer.buckets.map((b) => b.key);
   const dayIndex = layer.days.indexOf(day);
   const { west, south, east, north } = bounds;
@@ -346,7 +413,7 @@ export function renderLegend(el: HTMLElement, opts: LegendOptions) {
         <span class="lg-lab">${esc(b.label)}</span>
         <span class="lg-n">${cell(b.key)}</span>
       </button>`).join('')}
-    ${surface ? surfaceKey(surface, day, bounds) : ''}
+    ${surface ? surfaceKey({ layer: surface, day, bounds, unit, population }) : ''}
     ${tally ? riderFoot(tally.unmeasured) : `
     <div class="lg-foot">Buses per day within the walk radius, both directions.
       Counts are locations, not riders.</div>`}`;

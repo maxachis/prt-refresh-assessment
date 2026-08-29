@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { renderLegend, renderOneSeatLegend, pinKeyHTML } from './legend';
-import { ChangeLayer, OneSeatDay, OneSeatLayer } from './types';
+import {
+  ChangeLayer, OneSeatDay, OneSeatLayer, SurfaceLayer, PopulationLayer,
+} from './types';
 
 /** Enough of an HTMLElement for renderLegend, which only sets innerHTML. */
 function stub() {
@@ -161,6 +163,71 @@ describe('the one-seat legend on a day type', () => {
     const el = stub();
     renderOneSeatLegend(el, oneSeatLayer('any'), WHOLE_COUNTY);
     expect(el.innerHTML).toContain('No day type');
+  });
+});
+
+const SURFACE_ORIGIN = { lat0: 40.45, lon0: -79.98, dlat: 0.000898, dlon: 0.001181 };
+
+/** [ix, iy, wCur, wProp, sCur, sProp, uCur, uProp] */
+const SURFACE: SurfaceLayer = {
+  radius: 400, cell_m: 100,
+  days: ['weekday', 'saturday', 'sunday'],
+  origin: SURFACE_ORIGIN, fields: [],
+  cells: [[0, 0, 10, 0, 0, 0, 0, 0]],   // gone, weekday
+};
+
+/** [ix, iy, wLost, wGained, wKept, wNone, sLost, ..., uNone] */
+const POPULATION: PopulationLayer = {
+  radius: 400, cell_m: 100,
+  days: ['weekday', 'saturday', 'sunday'],
+  classes: [
+    { key: 'lost', label: 'lose all bus service' },
+    { key: 'gained', label: 'gain bus service' },
+    { key: 'kept', label: 'keep a bus' },
+    { key: 'none', label: 'no bus either way' },
+  ],
+  origin: SURFACE_ORIGIN, fields: [],
+  cells: [[0, 0, 240, 0, 1500, 12, 100, 0, 700, 12, 50, 0, 600, 12]],
+};
+
+describe('the surface key\'s ground/people switch', () => {
+  const opts = { layer: LAYER, day: 'weekday' as const, bounds: BOX,
+                 weight: 'locations' as const, surface: SURFACE };
+
+  it('renders the switch pressed on ground by default', () => {
+    const el = stub();
+    renderLegend(el, { ...opts, unit: 'area' });
+    expect(el.innerHTML).toMatch(/data-surface-unit="area"[^>]*aria-pressed="true"/);
+    expect(el.innerHTML).toMatch(/data-surface-unit="people"[^>]*aria-pressed="false"/);
+  });
+
+  it('shows square kilometres on ground, not population figures', () => {
+    const el = stub();
+    renderLegend(el, { ...opts, unit: 'area' });
+    expect(el.innerHTML).toContain('km²');
+    expect(el.innerHTML).toContain('of ground in view, not of people');
+    expect(el.innerHTML).not.toContain('counted at home');
+  });
+
+  it('shows the four population lines and the census note on people', () => {
+    const el = stub();
+    renderLegend(el, { ...opts, unit: 'people', population: POPULATION });
+    expect(el.innerHTML).toMatch(/data-surface-unit="people"[^>]*aria-pressed="true"/);
+    expect(el.innerHTML).toMatch(/<b>240<\/b>\s*people lose all service/);
+    expect(el.innerHTML).toMatch(/<b>0<\/b>\s*gain service/);
+    expect(el.innerHTML).toMatch(/<b>1,500<\/b>\s*keep a bus/);
+    expect(el.innerHTML).toMatch(/<b>12<\/b>\s*have no bus either way/);
+    expect(el.innerHTML)
+      .toContain('where people live in view — 2020 census, counted at home, not where they board');
+    expect(el.innerHTML).not.toContain('km²');
+  });
+
+  it('shows a loading note instead of zeroes when the population layer has not arrived', () => {
+    const el = stub();
+    renderLegend(el, { ...opts, unit: 'people', population: null });
+    expect(el.innerHTML).toMatch(/data-surface-unit="people"[^>]*aria-pressed="true"/);
+    expect(el.innerHTML).toContain('loading…');
+    expect(el.innerHTML).not.toMatch(/<b>0<\/b>/);
   });
 });
 

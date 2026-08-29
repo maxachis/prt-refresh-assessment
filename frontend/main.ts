@@ -14,6 +14,9 @@ import {
   layerData as surfaceData, isVisible as surfaceOn,
 } from './surface';
 import {
+  loadPopulationLayer, layerData as populationData,
+} from './population';
+import {
   initCorridorLayer, loadCorridorLayer, setCorridorDay, setCorridorVisible,
   layerData as corridorData, isVisible as corridorOn,
 } from './corridor';
@@ -36,6 +39,7 @@ import { fullViewLabel, isEmbedded, withEmbed, withoutEmbed } from './embed';
 import { initSheet, onLayoutFlip, Sheet } from './sheet';
 import {
   PlaceResult, Day, OneSeatDay, JourneyResult, NamedDestination, Weight,
+  SurfaceUnit,
 } from './types';
 
 const PGH: [number, number] = [-79.9959, 40.4406];
@@ -125,6 +129,12 @@ let oneSeatRestricted = false;
 // lives here rather than in the toolbar because it changes how the key reads
 // rather than which question the map is answering.
 let weight: Weight = 'locations';
+
+// What the surface key counts: ground, or the people who live on it. Lives
+// here for the same reason `weight` does -- it changes how the surface's own
+// key reads, not which question the surface is answering -- and it has no
+// toolbar button of its own, only the switch drawn inside the key itself.
+let surfaceUnit: SurfaceUnit = 'area';
 
 // Which view is on screen. Two of them — one-seat and travel time — take a
 // destination, and one of those two answers on a click rather than on a load,
@@ -238,6 +248,11 @@ map.on('load', () => {
     if (surfaceData()) {
       void loadSurfaceLayer(map, radius, activeDay()).then(refreshLegend);
     }
+    // Same lazy-refetch rule as the surface itself: only reload the
+    // population lattice if a reader has already asked for it at least once.
+    if (populationData()) {
+      void loadPopulationLayer(radius).then(refreshLegend);
+    }
     if (oneSeatData()) void reloadOneSeat();
     if (last) void load(last.lat, last.lon);
   });
@@ -337,6 +352,13 @@ map.on('load', () => {
     if (w) {
       weight = w.dataset.weight as Weight;
       refreshLegend();
+      syncUrl();
+      return;
+    }
+    const u = (e.target as HTMLElement).closest<HTMLElement>('[data-surface-unit]');
+    if (u) {
+      surfaceUnit = u.dataset.surfaceUnit as SurfaceUnit;
+      void showSurfaceUnit(surfaceUnit);
       syncUrl();
       return;
     }
@@ -462,6 +484,10 @@ function applyOpening(s: Partial<UrlState>): boolean {
   // No button to press: the weighting is drawn by the legend, which is
   // rendered after the layer arrives.
   if (s.weight) weight = s.weight;
+  // Same reasoning, and no fetch here either -- `showSurface` above already
+  // sees the final `surfaceUnit` by the time `view` is pressed below, so
+  // opening straight onto People fetches the population lattice exactly once.
+  if (s.surfaceUnit) surfaceUnit = s.surfaceUnit;
   if (s.dest) {
     // A dropped pin has no button to press; a named district does, and
     // pressing it lights the toolbar as well as moving the destination.
@@ -489,6 +515,7 @@ function syncUrl() {
     radius,
     oneSeatRestricted,
     weight,
+    surfaceUnit,
     dest,
     at: last,
     camera,
@@ -641,6 +668,8 @@ function renderLegendBody() {
     },
     weight,
     surface: surfaceOn() ? surfaceData() : null,
+    unit: surfaceUnit,
+    population: populationData(),
   });
 }
 
@@ -655,6 +684,32 @@ async function showSurface(on: boolean) {
     }
   }
   setSurfaceVisible(map, on);
+  // A link can open straight onto People (surfaceunit=people) before the
+  // reader has ever clicked the switch, so the surface turning on is also a
+  // moment the population lattice might need fetching.
+  if (on && surfaceUnit === 'people') await ensurePopulationLoaded();
+  refreshLegend();
+}
+
+/** Fetch the population lattice once, the first time People is asked for. */
+async function ensurePopulationLoaded() {
+  if (populationData()) return;
+  $('legend').classList.add('loading');
+  try {
+    await loadPopulationLayer(radius);
+  } finally {
+    $('legend').classList.remove('loading');
+  }
+}
+
+/**
+ * Switch the surface key between Ground and People, fetching the population
+ * lattice the first time it is asked for -- mirroring how `showSurface` lazily
+ * loads the surface itself, so a reader who never touches the switch never
+ * pays for either fetch.
+ */
+async function showSurfaceUnit(unit: SurfaceUnit) {
+  if (unit === 'people' && surfaceOn()) await ensurePopulationLoaded();
   refreshLegend();
 }
 

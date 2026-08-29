@@ -145,6 +145,26 @@ def create_app(db_path: str | Path = "data/refresh.db") -> FastAPI:
                      "is precomputed at those two")
         return query.surface_layer(con, radius)
 
+    @app.get("/api/population")
+    def api_population(
+        radius: float = Query(query.PRIMARY_RADIUS,
+                              description="walk radius in metres; must be one "
+                                          "of the precomputed radii"),
+    ):
+        """Who lives on the ground the surface paints, by lattice cell.
+
+        The third denominator (convention 12), and the only layer here whose
+        numbers are somebody else's published answer: the citywide totals are
+        `data/equity_change.csv`'s, because coverage is decided at each census
+        block's own point rather than at the cell it is drawn in. Precomputed
+        at the same two radii as the surface, and for the same reason.
+        """
+        if int(radius) not in query.RADII:
+            raise HTTPException(
+                400, f"radius must be one of {list(query.RADII)} — the people "
+                     "layer is precomputed at those two")
+        return query.population_layer(con, radius)
+
     @app.get("/api/corridors")
     def api_corridors(
         day: str = Query("weekday", pattern=f"^({'|'.join(query.DAYS)})$"),
@@ -395,6 +415,16 @@ CAVEATS = [
                 "the map by them measures what is at risk and never what is "
                 "gained: a location the plan adds a bus to has no ridership "
                 "record, which is not the same as having no riders.",
+    },
+    {
+        "id": "population",
+        "text": "People are 2020 census residents counted at home, scaled to "
+                "the ACS estimates the equity work reports in, and a census "
+                "block's residents are all counted at one point. It is an "
+                "ecological measure — it describes the places people live, "
+                "not whether any of them ride. Coverage is decided at that "
+                "point, not at the 100 m cell the answer is drawn in, so the "
+                "totals are the ones docs/answers/ publishes.",
     },
     {
         "id": "day-types",

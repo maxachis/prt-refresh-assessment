@@ -395,9 +395,44 @@ Five decisions worth keeping:
 10). The plan reads as roughly service-neutral per location and as 12% less
 covered ground; either alone is a talking point rather than a finding. So the
 view control offers *Both*, the legend shows the location counts and the area
-km² together, and the area line says "of ground in view, not of people" — a
+km² together, and the area line said "of ground in view, not of people" — a
 square kilometre of hillside paints exactly like a square kilometre of
-Brookline.
+Brookline. That sentence is now a switch: see below.
+
+### Ground or people: the surface's second denominator
+
+`?surfaceunit=people`. The same cells in the same viewport, summed by who
+lives in them instead of by how much ground they cover — the answer to the
+hillside-versus-Brookline problem the line above names.
+
+**Where the numbers come from.** Every populated census block (33,131 of them)
+is placed on the surface's own lattice, carrying its share of its block
+group's ACS population. Coverage is decided **at the block's point, not at the
+cell's centre**, which is the one rule here worth defending: the citywide
+totals then *are* `data/equity_change.csv`'s — 68,989 Allegheny residents
+losing all bus service on a weekday at 400 m, 20,223 gaining it — rather than
+a second answer 3% away from the published one. `tests/test_population.py`
+pins them. One figure to keep straight: `/findings` prints the *week-any* row
+— the same 68,989 losing, but 20,095 gaining — because the key answers per day
+type and a place that gains only weekend service passes a week-any test and
+fails a weekday one.
+
+The price of that rule is a deliberate mismatch inside one view: a cell the
+surface colours *loses all service*, decided at its centre, can hold residents
+this counts as keeping a bus, decided at theirs. The colour describes the
+ground; the number describes the people. Any other arrangement puts a figure
+under the reader's cursor that the findings page contradicts.
+
+**Four classes, not the ramp.** People are counted as losing all service,
+gaining it, keeping a bus, or having none either way — coverage, not
+magnitude, because that is the question the published equity work answers. The
+fourth is not padding: it is the denominator, and without it a "1,200 people
+lose their bus" line has nothing to be read against.
+
+**What it is not.** Ecological, per convention 12 — it describes the places
+people live, not whether any of them ride, and a block's residents all sit at
+one point. And it is 2020 census population against a 2026 network, which is a
+different vintage from everything else on the site.
 
 ## The street layer
 
@@ -685,6 +720,7 @@ Reasoning and evidence:
 |---|---|
 | `GET /api/place?lat=&lon=&radius=` | Before and after at one point, all three day types, plus the one-seat verdicts for the named destinations. Optional `dest_lat`/`dest_lon` adds a dropped pin's verdict; `oneseat_day=` follows the map so a dot and its panel cannot answer different questions. The app's purpose; everything else is navigation. |
 | `GET /api/change?radius=` | The citywide layer: every location bucketed, all three day types, columnar, each with the boardings observed there — `null`, never 0, where the plan adds a bus and nothing stops today. Radius must be 400 or 150 — it is precomputed. ~340 KB, 88 KB gzipped. |
+| `GET /api/population?radius=` | Residents per 100 m cell, split into lose-all / gain / keep / neither, all three day types. Same lattice as the surface; citywide totals are `equity_change.csv`'s. Radius must be 400 or 150. |
 | `GET /api/surface?radius=` | The magnitude surface: every covered 100 m cell, all three day types, columnar as lattice indices. Radius must be 400 or 150. ~1.3 MB, 198 KB gzipped. |
 | `GET /api/corridors?day=` | Every street run kept, lost or added for one day type, with citywide kilometres by class. No radius — a corridor is pavement, not a catchment. ~290 KB weekday. |
 | `GET /api/oneseat?radius=&dest=` *or* `&dest_lat=&dest_lon=` | Every location's one-seat verdict for one destination, named or dropped. Not precomputed — only its expensive half is, which is what lets the destination be arbitrary. `day=` defaults to `any`, the published day-free answer; a day type restricts both ends and is a different measurement. |
@@ -715,6 +751,7 @@ self-documenting.
 | `radius` | `400` or `150` (convention 4's two radii) |
 | `oneseatday` | `any` — the published day-free measure — or `selected` (convention 13) |
 | `weight` | `riders` to count the change map by boardings instead of locations (convention 15). Absent means locations, so a link only carries this when the reader chose it |
+| `surfaceunit` | `people` to read the surface as residents rather than km² (convention 12). Absent means ground, on the same only-when-chosen rule as `weight` |
 | `dest` | `downtown`, `oakland`, or `lat,lon` for a dropped pin |
 | `at` | `lat,lon` — where the reader asked; opens the answer panel |
 | `map` | `lat,lon,zoom` — where the map is looking |
@@ -887,10 +924,15 @@ or heartbeat to maintain. See [`deploy/README.md`](../deploy/README.md).
   never boards, because only a stop inside the destination's own 400 m
   radius may be the final alighting point —
   `docs/worklog/the-last-walk-doglegs-via-a-stop-nobody-boards.md`.
-- The equity findings are a page, not a layer: nothing on the map is
-  coloured by who lives there, and per convention 12 a block group is
-  covered or not at a single point, so a map of it would overstate its own
-  precision. `/findings` is the answer for now.
+- **The equity findings are half a layer now.** The surface's key can be read
+  as people (`?surfaceunit=people`), so the map answers "how many residents
+  here lose a bus" — but nothing on the map is *coloured* by who lives there,
+  and no demographic breakdown is on the map at all: race, age, income,
+  vehicle access, disability and language remain `/findings` only. The old
+  reason recorded here — that a block group is covered or not at a single
+  point — is out of date: `analyze_equity_change.py` has measured at every
+  populated block's interior point since the blocks were brought in, which is
+  what made a map of it defensible. The ecological caveat still stands.
 - **The travel-time view is fixed to the morning peak.** The window is the
   published one — weekday 07:00–09:00 — and there is no control for it, so a
   reader cannot ask what the same trip looks like at 8pm, which is where this

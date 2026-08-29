@@ -7,6 +7,7 @@ const FULL: UrlState = {
   radius: 150,
   oneSeatRestricted: true,
   weight: 'riders',
+  surfaceUnit: 'people',
   dest: { key: 'oakland' },
   at: { lat: 40.4406, lon: -79.9959 },
   camera: { lat: 40.44, lon: -80.0, zoom: 13.5 },
@@ -21,6 +22,7 @@ describe('toSearch', () => {
     expect(p.get('oneseatday')).toBe('selected');
     expect(p.get('dest')).toBe('oakland');
     expect(p.get('weight')).toBe('riders');
+    expect(p.get('surfaceunit')).toBe('people');
   });
 
   it('leaves the ridership weighting out of a link that is not using it', () => {
@@ -28,6 +30,12 @@ describe('toSearch', () => {
     // the weighting look like a setting the reader had chosen.
     const p = new URLSearchParams(toSearch({ ...FULL, weight: 'locations' }));
     expect(p.has('weight')).toBe(false);
+  });
+
+  it('leaves the surface unit out of a link that is showing ground', () => {
+    // Same reasoning as `weight`: `area` is the default, so it stays implicit.
+    const p = new URLSearchParams(toSearch({ ...FULL, surfaceUnit: 'area' }));
+    expect(p.has('surfaceunit')).toBe(false);
   });
 
   it('writes a dropped destination pin as coordinates', () => {
@@ -77,6 +85,7 @@ describe('parseUrlState', () => {
     ['?radius=-400', 'radius'],
     ['?oneseatday=maybe', 'oneSeatRestricted'],
     ['?weight=people', 'weight'],
+    ['?surfaceunit=ground', 'surfaceUnit'],
     ['?at=40.44', 'at'],
     ['?at=here,there', 'at'],
     ['?map=40.44,-79.99', 'camera'],

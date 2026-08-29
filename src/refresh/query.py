@@ -602,6 +602,138 @@ def change_layer(con, radius: float = PRIMARY_RADIUS):
 
 
 # --------------------------------------------------------------------------
+# people on the same ground
+# --------------------------------------------------------------------------
+
+# The four outcomes a resident can have, and they are a partition: everybody
+# alive in the three counties is in exactly one of them on every day type.
+# Deliberately coarser than the surface's ramp beside it -- this is coverage,
+# not magnitude, because that is the question `analyze_equity_change.py`
+# publishes an answer to and a second, differently-defined people-number is
+# the one thing this layer must not introduce (convention 12).
+POP_CLASSES = (
+    ("lost", "lose all bus service"),
+    ("gained", "gain bus service"),
+    ("kept", "keep a bus"),
+    ("none", "no bus either way"),
+)
+POP_CLASS_KEYS = tuple(k for k, _ in POP_CLASSES)
+
+# `none` is a keyword-shaped column name, so the table spells it `neither`.
+POP_COLUMN = {"none": "neither"}
+
+# A packed cell is [ix, iy] then one group of four per day type, in
+# POP_CLASSES order -- the same shape as a packed change point, mirrored in
+# frontend/types.ts.
+POP_STRIDE = len(POP_CLASSES)
+
+
+def POP_AT(day: int, klass: str) -> int:
+    return 2 + POP_STRIDE * day + POP_CLASS_KEYS.index(klass)
+
+
+def served_stop_ids(con, side: str, day: str) -> set[str]:
+    """Stops of one network with at least one departure on one day type.
+
+    The whole coverage test, and no more than that: "any bus at all" is the
+    published WEEKDAYS-ANY-MINIMUM tier, which asks whether a bus comes, not
+    how often. Frequency is the surface's question and lives beside this one.
+    """
+    return {r[0] for r in con.execute(
+        "SELECT DISTINCT stop_id FROM departures "
+        "WHERE side = ? AND day = ? AND n > 0", (side, day))}
+
+
+def compute_cell_population(con, residents, radius: float = PRIMARY_RADIUS):
+    """Rows for `cell_population`: who gains and loses a bus, by lattice cell.
+
+    The third denominator (convention 12), measured so that it cannot disagree
+    with the published one. Two decisions do that work.
+
+    **Coverage is decided at the resident's own point, never at the cell's.**
+    Each populated census block is tested where its people actually are, and
+    the cell it falls in is only where the answer is *drawn*. Testing at the
+    cell centre instead would move a person up to 70 m before asking whether
+    they have a bus, and the citywide answer drifts about 3% -- enough to put
+    a different loss figure under the reader's cursor than the one the
+    findings page prints. The consequence is deliberate and worth knowing: a
+    cell painted "loses all service" by the surface, which is a centre test,
+    can hold residents counted here as keeping a bus. The colour describes the
+    ground; the number describes the people.
+
+    **A resident weighs what the ACS says they weigh.** `residents` carries
+    2020 block populations already rescaled to the ACS universe the equity
+    work counts in -- blocks say where inside a block group people live, the
+    ACS says how many there are, and the published figures are the product.
+    Using raw block counts moves the county total by about 1%.
+
+    Returns (radius, day, ix, iy, county, lost, gained, kept, neither). County
+    rides along because the published figures are Allegheny-only while the map
+    paints all three counties, and without it the served number could not be
+    checked against them.
+    """
+    served = {(side, day): served_stop_ids(con, side, day)
+              for side in SIDES for day in DAYS}
+    cells: dict[tuple, dict[str, float]] = {}
+
+    for lat, lon, people, county in residents:
+        ix, iy = cell_of(lat, lon)
+        near = {side: [s[0] for s in stops_within(con, lat, lon, radius, side)]
+                for side in SIDES}
+        for day in DAYS:
+            cur = any(sid in served[("current", day)] for sid in near["current"])
+            prop = any(sid in served[("proposed", day)]
+                       for sid in near["proposed"])
+            klass = ("lost" if cur and not prop else
+                     "gained" if prop and not cur else
+                     "kept" if cur else "none")
+            at = cells.setdefault((day, ix, iy, county),
+                                  dict.fromkeys(POP_CLASS_KEYS, 0.0))
+            at[klass] += people
+
+    return [(int(radius), day, ix, iy, county,
+             *(round(at[k], 3) for k in POP_CLASS_KEYS))
+            for (day, ix, iy, county), at in sorted(cells.items())]
+
+
+def population_layer(con, radius: float = PRIMARY_RADIUS):
+    """The people layer at one radius, all three day types, packed for the wire.
+
+    Columnar for the same reason the change layer is, and county is summed
+    away here: a reader panning a map is asking about a viewport, not about a
+    county, and the scope that matters to them is named in the key instead.
+    """
+    packed: dict[tuple[int, int], list] = {}
+    for r in con.execute(
+            "SELECT ix, iy, day, lost, gained, kept, neither "
+            "FROM cell_population WHERE radius = ? ORDER BY ix, iy",
+            (int(radius),)):
+        cell = packed.setdefault(
+            (r["ix"], r["iy"]),
+            [r["ix"], r["iy"], *([0.0] * (POP_STRIDE * len(DAYS)))])
+        day = DAYS.index(r["day"])
+        for klass in POP_CLASS_KEYS:
+            at = POP_AT(day, klass)
+            cell[at] = round(cell[at] + r[POP_COLUMN.get(klass, klass)], 1)
+
+    return {
+        "radius": int(radius),
+        "cell_m": CELL_M,
+        "days": list(DAYS),
+        "classes": [{"key": k, "label": lab} for k, lab in POP_CLASSES],
+        "origin": {
+            "lat0": LAT0,
+            "lon0": LON0,
+            "dlat": CELL_M / METERS_PER_DEGREE,
+            "dlon": CELL_M / M_PER_DEG_LON,
+        },
+        "fields": ["ix", "iy",
+                   *[f"{d}_{k}" for d in DAYS for k in POP_CLASS_KEYS]],
+        "cells": list(packed.values()),
+    }
+
+
+# --------------------------------------------------------------------------
 # the magnitude surface
 # --------------------------------------------------------------------------
 #
