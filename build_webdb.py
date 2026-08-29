@@ -98,6 +98,7 @@ import ingest_osm_walk  # noqa: E402  (root script, like analyze_one_seat above)
 DATA = Path("data")
 DB = DATA / "refresh.db"
 COVERAGE = DATA / "coverage_change.csv"
+EQUITY_PLACES = DATA / "equity_places.csv"
 CENSUS_BLOCKS = DATA / "census_blocks.csv"
 CENSUS_BLOCK_GROUPS = DATA / "census_block_groups.csv"
 
@@ -181,6 +182,21 @@ CREATE TABLE crosswalk (
     category       TEXT,
     related_routes TEXT,
     route_page     TEXT
+);
+
+-- What the equity work published for each named place: how many residents lose
+-- every bus, and how many gain one. Allegheny only, and on WEEK-ANY-MINIMUM --
+-- any bus on any day -- which is the measure `analyze_equity_places.py` ranks
+-- on and the one /findings quotes, not the day type the panel's switch moves.
+-- `key` is the label with PRT's " (Allegheny, PA)" suffix stripped and cased
+-- down, because the panel looks these up by the same HOOD/MUNI label it prints
+-- in its heading and PRT spells the two differently.
+CREATE TABLE place_population (
+    key             TEXT PRIMARY KEY,
+    place           TEXT NOT NULL,
+    block_groups    INTEGER NOT NULL,
+    residents_lost  REAL NOT NULL,
+    residents_gained REAL NOT NULL
 );
 
 -- Place labels and boardings, carried over from coverage_change.csv so the app
@@ -556,6 +572,10 @@ def build(out_path):
         "VALUES (?,?,?,?,?,?,?)",
         [(sid, *row) for sid, row in places.items()])
 
+    equity = load_place_population()
+    con.executemany("INSERT INTO place_population VALUES (?,?,?,?,?)", equity)
+    print(f"  place population: {len(equity)} places that changed")
+
     cw = load_crosswalk()
     con.executemany("INSERT INTO crosswalk VALUES (?,?,?,?,?)", cw)
     print(f"  place labels: {len(places):,} stops   crosswalk: {len(cw)} rows")
@@ -816,6 +836,44 @@ def surface_layer(out_path):
     write.commit()
     write.close()
     read.close()
+
+
+def load_place_population():
+    """[(key, place, block_groups, lost, gained)] -- the published place table.
+
+    Straight out of `data/equity_places.csv`, rolled up from block groups to
+    places exactly as `analyze_equity_places.by_place` does, so the panel
+    cannot print a figure the brief and `docs/answers/` do not. Unnamed block
+    groups -- those with no labelled stop within `LABEL_RADIUS_M` -- are
+    dropped here rather than pooled: the panel looks a place up by name, and
+    "" is not a place a reader clicked in.
+
+    Missing file is fatal for the same reason the census files are: the panel
+    would silently lose a line rather than the build failing.
+    """
+    if not EQUITY_PLACES.exists():
+        sys.exit(f"error: {EQUITY_PLACES} missing -- run "
+                 "`python3 analyze_equity_places.py` first")
+
+    # Rolled up by key rather than by the raw label, because one place can
+    # arrive under two spellings: Trafford borough straddles the county line,
+    # so some of its block groups take their name from a stop PRT labels
+    # "Trafford borough (Westmoreland, PA)" and some from an unsuffixed one.
+    # They are one borough, the rows are Allegheny either way, and keying on
+    # the label would split the borough in half and then collide on insert.
+    rolled: dict[str, list] = {}
+    with open(EQUITY_PLACES, encoding="utf-8") as f:
+        for row in csv.DictReader(f):
+            place = (row["place"] or "").strip()
+            if not place:
+                continue
+            entry = rolled.setdefault(query.place_key(place),
+                                      [query.place_display(place), 0, 0.0, 0.0])
+            entry[1] += 1
+            entry[2] += float(row["residents_lost"] or 0)
+            entry[3] += float(row["residents_gained"] or 0)
+    return [(key, place, groups, lost, gained)
+            for key, (place, groups, lost, gained) in rolled.items()]
 
 
 def load_residents():

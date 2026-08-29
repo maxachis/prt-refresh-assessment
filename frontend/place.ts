@@ -24,6 +24,7 @@
 import { esc, clock, signed, pct } from './utils';
 import {
   PKEYS, PERIOD_LABEL, Day, PlaceResult, DayService, OneSeatVerdict, OneSeatDay,
+  Boardings, PlacePopulation,
 } from './types';
 
 let day: Day = 'weekday';
@@ -236,6 +237,74 @@ export function serviceSummaryText(p: PlaceResult, d: Day): string {
 }
 
 /**
+ * The riders at the stops the panel is already drawing, or nothing.
+ *
+ * Deliberately not in the today → proposed headline above: there is no
+ * proposed half and never will be, so a column standing empty beside a
+ * today figure would read as a fall to zero rather than as an absence.
+ */
+function boardingsFact(b: Boardings | null, d: Day): string {
+  if (!b) return '';
+  const stops = b.measured + b.unmeasured;
+  const gap = b.unmeasured
+    ? `<div class="muted">${b.unmeasured} of the ${stops} stops
+         ${b.unmeasured === 1 ? 'has' : 'have'} no count of their own</div>`
+    : '';
+  const value = b.total == null
+    ? '<span class="muted">not counted here</span>'
+    : `${Math.round(b.total).toLocaleString()}
+       <span class="muted">on an average ${dayWord(d)}, today only</span>`;
+  return `<dt>Boardings at those stops</dt><dd>${value}${gap}</dd>`;
+}
+
+/** What that figure does and does not say. Ships with it or not at all. */
+function boardingsNote(b: Boardings | null): string {
+  if (!b || b.total == null) return '';
+  return `<p class="note">PRT's May 2025 daily averages, at stops that exist
+    today — so this measures what is at risk here and never what the plan
+    gains: a stop the plan adds has no ridership to weigh. They are unlinked
+    trips rather than people, one round trip with a transfer counting up to
+    four times, and by PRT's own disclaimer they are unofficial totals that may
+    understate ridership by up to 30%. Boardings are counted where people get
+    on, not where they live, so at a busy transfer point most of them are
+    riders from somewhere else entirely.</p>`;
+}
+
+/**
+ * The people of the place the reader clicked in, as the equity work counted
+ * them.
+ *
+ * A place figure, deliberately: a point has no population worth quoting, and
+ * a count inside the walk radius would be a fourth people-number on this site
+ * disagreeing with the map key's reading of the same spot. It answers on
+ * *any bus in a week*, so it does not move with the day switch above, and it
+ * says so rather than looking like it should have.
+ */
+function residentsBlock(pop: PlacePopulation | null): string {
+  if (!pop) return '';
+  const place = esc(pop.place);
+  const body = pop.lost || pop.gained
+    ? `<p class="people-n"><b>${Math.round(pop.lost).toLocaleString()}</b>
+         residents lose every bus
+         <span class="muted">·</span>
+         <b>${Math.round(pop.gained).toLocaleString()}</b> gain one</p>`
+    : `<p class="people-n">Nobody in ${place} loses or gains every bus under
+         the plan.</p>`;
+  return `
+    <div class="people">
+      <h3>Who lives in ${place}</h3>
+      ${body}
+      <p class="note">Across the whole of ${place}, not just this corner, and
+        counted on any day of the week — so this figure does not move with the
+        day above. 2020 census residents weighted to ACS estimates, which
+        describes where people live rather than who rides; Allegheny County
+        only, and the place name is the nearest labelled stop's, which PRT's
+        own labels sometimes get wrong. The same figures rank every place in
+        <code>data/equity_places.csv</code>.</p>
+    </div>`;
+}
+
+/**
  * Everything this app knows about the service at a point, minus the heading.
  *
  * Split out of `render` so the one-seat panel can carry the same numbers under
@@ -292,9 +361,13 @@ export function serviceBodyHTML(p: PlaceResult, d: Day, middle = ''): string {
       <dd>${bm == null ? '—' : `${bm} min`} <span class="muted">→</span> ${am == null ? '—' : `${am} min`}</dd>
       <dt>Stops within ${p.radius} m</dt>
       <dd>${p.current.stops.length} <span class="muted">→</span> ${p.proposed.stops.length}</dd>
+      ${boardingsFact(before.boardings, d)}
     </dl>
+    ${boardingsNote(before.boardings)}
 
     ${middle}
+
+    ${residentsBlock(p.population)}
 
     <div class="routes">
       <h3>Routes serving this spot</h3>

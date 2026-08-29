@@ -35,6 +35,7 @@ from __future__ import annotations
 
 import json
 import math
+import re
 import sqlite3
 from pathlib import Path
 
@@ -311,6 +312,37 @@ def headways(by_dir):
 # the place query
 # --------------------------------------------------------------------------
 
+BOARDINGS_COLUMN = {"weekday": "weekday_boardings",
+                    "saturday": "saturday_boardings",
+                    "sunday": "sunday_boardings"}
+
+
+def stop_boardings(con, stop_ids, day: str):
+    """What PRT counted boarding at these stops on an average day of this type.
+
+    The panel's second denominator, and convention 15 governs every part of
+    it. It is one-sided: the usage extract counted stops that run today, so a
+    proposed-side call would be asking a network that has not run how many
+    people boarded it. `side_at_place` therefore never asks.
+
+    A stop the extract has no figure for is counted as unmeasured rather than
+    as zero, and a place where none of the stops has one gets `None` rather
+    than a 0 total, for the same reason the change layer does: "nobody boards
+    here" and "nobody counted here" are different sentences, and only the
+    first is a finding.
+    """
+    if not stop_ids:
+        return {"total": None, "measured": 0, "unmeasured": 0}
+    column = BOARDINGS_COLUMN[day]
+    counted = [r["v"] for r in con.execute(
+        f"SELECT {column} AS v FROM stop_place "
+        f"WHERE stop_id IN ({','.join('?' * len(stop_ids))})", stop_ids)
+        if r["v"] is not None]
+    return {"total": sum(counted) if counted else None,
+            "measured": len(counted),
+            "unmeasured": len(stop_ids) - len(counted)}
+
+
 def side_at_place(con, side: str, lat: float, lon: float, radius: float):
     """Everything one network offers at one location, all three day types."""
     stops = stops_within(con, lat, lon, radius, side)
@@ -331,6 +363,11 @@ def side_at_place(con, side: str, lat: float, lon: float, radius: float):
             "routes": routes,
             "first": min((min(t) for t in by_dir.values() if t), default=None),
             "last": max((max(t) for t in by_dir.values() if t), default=None),
+            # Observed riders exist on today's side only, permanently, so the
+            # proposed side carries no key rather than an empty tally -- a
+            # tally of zero stops reads too much like a tally of zero riders.
+            "boardings": (stop_boardings(con, stop_ids, day)
+                          if side == "current" else None),
         }
 
     return {
@@ -366,6 +403,7 @@ def place(con, lat: float, lon: float, radius: float = PRIMARY_RADIUS,
         for day in DAYS
     }
     out["place"] = nearest_place_label(con, lat, lon)
+    out["population"] = place_residents(con, out["place"])
     # The one-seat verdicts ride along with the panel rather than sitting
     # behind their own request: they answer a question about this same point,
     # and two round trips would let the panel show a corner's trip counts
@@ -924,6 +962,78 @@ def corridor_layer(con, day: str = "weekday"):
         "km": {k: round(v / 1000, 1) for k, v in km.items()},
         "runs": runs,
     }
+
+
+# The equity work is Allegheny-only (`analyze_equity_change.py` reports three
+# scopes and `analyze_equity_places.py` names places in one of them), so a
+# point outside the county has no answer rather than an answer of zero.
+EQUITY_COUNTY = "Allegheny"
+
+# PRT writes a municipality as "Whitehall borough (Allegheny, PA)"; the census
+# work writes the same place as "Whitehall borough". One suffix, and it also
+# carries the only county the panel can read off a label.
+_COUNTY_SUFFIX = re.compile(r"\s*\(([^,()]+),\s*[A-Za-z]{2}\)\s*$")
+
+
+def place_key(label: str) -> str:
+    """A HOOD or MUNI label reduced to what both sides spell the same way."""
+    return _COUNTY_SUFFIX.sub("", (label or "").strip()).casefold()
+
+
+def place_display(label: str) -> str:
+    """The same label as a reader would write it, county suffix removed."""
+    return _COUNTY_SUFFIX.sub("", (label or "").strip())
+
+
+def place_county(label: str) -> str | None:
+    """The county PRT's own municipality label names, if it names one."""
+    found = _COUNTY_SUFFIX.search((label or "").strip())
+    return found.group(1) if found else None
+
+
+def place_residents(con, label):
+    """How many people this named place loses and gains every bus for.
+
+    The panel's population line, and it is a *place* figure, not a figure for
+    the walk radius the rest of the panel measures -- a point has no
+    population worth quoting, and computing one here would put a fourth
+    people-number on the site that disagrees with the surface key reading the
+    cell under the cursor.
+
+    Three rules, and each is a different kind of nothing:
+
+    A place looked up by the same label the heading prints, weak as convention
+    6 says that label is. A second way of deciding which place a point sits in
+    would let the heading and the number below it name different places.
+
+    Outside Allegheny there is no answer at all -- `None` -- because the equity
+    work never asked there. Reporting 0 would say the plan changes nothing for
+    anyone in Beaver County, which is a finding nobody has earned.
+
+    Inside Allegheny, a place absent from the published table is a real zero:
+    the file holds every block group that changed, so absence means nobody
+    here loses or gains every bus. That is worth printing, and it is why this
+    returns a measured zero rather than `None`.
+    """
+    if not label:
+        return None
+    hood, muni = (label.get("hood") or "").strip(), (label.get("muni") or "").strip()
+    if place_county(muni) != EQUITY_COUNTY:
+        return None
+
+    # Only ever the most specific label that exists: falling back from a
+    # neighbourhood to "Pittsburgh city" would report a whole city's losses
+    # under a neighbourhood's heading.
+    named = hood or muni
+    row = con.execute(
+        "SELECT place, block_groups, residents_lost, residents_gained "
+        "FROM place_population WHERE key = ?", (place_key(named),)).fetchone()
+    if row is None:
+        return {"place": place_display(named), "lost": 0.0, "gained": 0.0,
+                "block_groups": 0, "measured": True}
+    return {"place": row["place"], "lost": row["residents_lost"],
+            "gained": row["residents_gained"],
+            "block_groups": row["block_groups"], "measured": True}
 
 
 def nearest_place_label(con, lat: float, lon: float):

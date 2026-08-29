@@ -387,3 +387,106 @@ def test_boardings_reproduce_the_published_shares(con):
             gone += riders
     assert round(total) == 67619
     assert round(gone) == 488
+
+
+# --------------------------------------------------------------------------
+# boardings at one place
+# --------------------------------------------------------------------------
+
+def test_place_carries_todays_boardings_and_the_plan_carries_none(con,
+                                                                  coverage_rows):
+    """The panel's second denominator, one-sided the way convention 15 says.
+
+    A place is a walk radius around a point, and the stops inside it are the
+    stops the usage extract counted. Summing them is the same set the panel
+    already prints as "stops within 400 m", read as riders instead of as
+    service. The proposed side has no figure at all -- not 0 -- because a
+    network that has not run has no observed riders.
+    """
+    r = coverage_rows[0]
+    p = query.place(con, float(r["lat"]), float(r["lon"]))
+    for day in query.DAYS:
+        cur = p["current"]["days"][day]["boardings"]
+        assert cur["total"] is None or cur["total"] >= 0
+        assert cur["measured"] + cur["unmeasured"] == len(p["current"]["stops"])
+        assert p["proposed"]["days"][day]["boardings"] is None
+
+
+def test_place_boardings_sum_the_stops_inside_the_walk(con, coverage_rows):
+    """The figure is the stops on screen, not a nearby aggregate.
+
+    If these drift apart, the panel is quoting riders for a set of stops it is
+    not drawing, which no reader could detect.
+    """
+    r = coverage_rows[0]
+    p = query.place(con, float(r["lat"]), float(r["lon"]))
+    ids = [s["stop_id"] for s in p["current"]["stops"]]
+    if not ids:
+        pytest.skip("the first published location has no current stop")
+    want = con.execute(
+        "SELECT sum(weekday_boardings) n FROM stop_place "
+        f"WHERE stop_id IN ({','.join('?' * len(ids))})", ids).fetchone()["n"]
+    got = p["current"]["days"]["weekday"]["boardings"]["total"]
+    assert (got is None and want is None) or round(got, 3) == round(want, 3)
+
+
+# --------------------------------------------------------------------------
+# the place's residents
+# --------------------------------------------------------------------------
+
+def _a_place_that_lost_residents(con):
+    """A published place with a loss, and a stop the panel would label with it."""
+    row = con.execute(
+        "SELECT place, residents_lost FROM place_population "
+        "WHERE residents_lost > 0 ORDER BY residents_lost DESC LIMIT 1"
+    ).fetchone()
+    stop = con.execute(
+        "SELECT s.stop_id, s.lat, s.lon FROM stops s "
+        "JOIN stop_place p ON p.stop_id = s.stop_id "
+        "WHERE s.side = 'current' AND p.id_name_mismatch = 0 "
+        "  AND (p.hood = ? OR p.muni LIKE ?) LIMIT 1",
+        (row["place"], row["place"] + " (%")).fetchone()
+    return row, stop
+
+
+def test_place_carries_the_published_residents_of_its_own_place(con):
+    """The panel names a place; this is what the equity work published for it.
+
+    Deliberately the same label the heading shows, however weak that label is
+    (convention 6): a second way of deciding which place a point is in would
+    let the heading and the population line disagree on screen.
+    """
+    row, stop = _a_place_that_lost_residents(con)
+    p = query.place(con, stop["lat"], stop["lon"])
+    got = p["population"]
+    assert got["place"] == row["place"]
+    assert round(got["lost"], 1) == round(row["residents_lost"], 1)
+    assert got["measured"] is True
+
+
+def test_a_place_the_plan_does_not_change_says_so_rather_than_nothing(con):
+    """Absence from the equity file is a finding, inside Allegheny.
+
+    The file holds only block groups that changed, so a labelled Allegheny
+    place with no row has nobody losing or gaining every bus -- which is worth
+    printing, and is not the same as not having asked.
+    """
+    unchanged = con.execute(
+        "SELECT muni FROM stop_place WHERE muni LIKE '% (Allegheny, PA)' "
+        "  AND (hood IS NULL OR hood = '') "
+        "  AND lower(replace(muni, ' (Allegheny, PA)', '')) NOT IN "
+        "      (SELECT key FROM place_population) LIMIT 1").fetchone()["muni"]
+    assert query.place_residents(con, {"muni": unchanged, "hood": ""}) == {
+        "place": query.place_display(unchanged), "lost": 0.0, "gained": 0.0,
+        "block_groups": 0, "measured": True}
+
+
+def test_outside_allegheny_the_question_was_never_asked(con):
+    """The equity work is Allegheny-only, so elsewhere there is no answer.
+
+    Reporting 0 there would say the plan changes nothing for anyone in Beaver
+    County, which the repo has not measured either way.
+    """
+    assert query.place_residents(
+        con, {"muni": "Ambridge borough (Beaver, PA)", "hood": ""}) is None
+    assert query.place_residents(con, None) is None

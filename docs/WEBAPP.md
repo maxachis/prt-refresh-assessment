@@ -338,6 +338,39 @@ asymmetry:
   rendered under the counts — this is the figure most likely to be
   screenshotted out of context.
 
+**The panel carries the same figure for one point.** Under "stops within
+400 m", where it is the same set of stops read as riders rather than as
+service: *4,714 on an average weekday, today only*, with the count of stops in
+the circle the usage extract has no figure for said out loud beside it — 11 of
+29 in the Golden Triangle, and treating those as zeros would quietly understate
+every busy place. It is kept out of the today → proposed headline on purpose:
+there is no proposed half and never can be, so an empty column there would read
+as a fall to zero. One caveat is the panel's own, because a point invites it
+where a viewport does not — boardings are counted where people get on, not
+where they live, so at a transfer point most of them belong to riders from
+somewhere else entirely.
+
+**And the panel says who lives in the place, once.** Under the service
+figures, a "who lives here" block: *1,923 residents lose every bus · 0 gain
+one*, for the whole named place rather than for the walk radius above it.
+Three things separate it from everything else on the panel, and it says all
+three on screen. It is a **place** figure — a point has no population worth
+quoting, and a count inside the walk circle would be a fourth people-number
+disagreeing with the map key's reading of the same spot. It answers on **any
+bus in a week**, the measure `analyze_equity_places.py` ranks on, so it does
+not move with the day switch. And it is **Allegheny only**: outside the county
+the equity work never asked, so the block is absent rather than showing a zero
+— while inside it, a place with no published row shows a real zero, "nobody in
+Whitehall borough loses or gains every bus under the plan", because the file
+holds every block group that changed.
+
+The lookup is by the label the heading already prints, weak as convention 6
+says that label is, so the two can never name different places. `refresh.db`
+carries the rollup in `place_population`, keyed on the label with PRT's
+" (Allegheny, PA)" suffix stripped — the census work and PRT spell the same
+borough differently, and Trafford arrives under both spellings because the
+borough straddles the county line.
+
 Deliberately *not* done: sizing the dots by boardings. The median stop has 1.95
 weekday boardings and the top 10% of stops carry 73% of the total, so a
 proportional radius is a dozen discs and five thousand invisible specks —

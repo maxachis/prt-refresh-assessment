@@ -27,8 +27,25 @@ export interface StopRef {
   metres: number;
 }
 
+/**
+ * Observed boardings at the stops inside one walk radius, on one day type.
+ *
+ * One-sided by construction (convention 15): today's stops were counted, the
+ * plan's cannot have been. `total` is null where nothing was counted at all,
+ * never 0, and `unmeasured` says how many of the stops on screen the usage
+ * extract has no figure for — a place is never quietly credited with the
+ * riders of the stops nobody counted.
+ */
+export interface Boardings {
+  total: number | null;
+  measured: number;
+  unmeasured: number;
+}
+
 export interface DayService {
   trips: number;
+  /** Today's side only; null on the proposed side, which has no observed riders. */
+  boardings: Boardings | null;
   periods: Record<string, number>;
   hourly: boolean;
   headways: Record<string, { median: number | null; max_gap_6a_6p: number | null }>;
@@ -158,6 +175,14 @@ export interface OneSeatVerdict {
   gained: string[];
 }
 
+export interface PlacePopulation {
+  place: string;
+  lost: number;
+  gained: number;
+  block_groups: number;
+  measured: boolean;
+}
+
 export interface PlaceResult {
   lat: number;
   lon: number;
@@ -166,6 +191,13 @@ export interface PlaceResult {
   proposed: SideResult;
   change: Record<Day, { trips: number; hourly: [boolean, boolean] }>;
   place: { muni: string; hood: string } | null;
+  /**
+   * What the equity work published for the *place* this point sits in — not
+   * for the walk radius the rest of the panel measures. Null outside
+   * Allegheny, where the question was never asked; a measured zero inside it,
+   * where the answer is that nobody here loses or gains every bus.
+   */
+  population: PlacePopulation | null;
   /** Empty when the database predates the one-seat layer. */
   oneseat: OneSeatVerdict[];
   /** Which day the verdicts above answered for; 'any' is the published one. */

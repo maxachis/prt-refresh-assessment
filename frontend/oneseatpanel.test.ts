@@ -7,6 +7,7 @@ import { Day, DayService, PlaceResult, OneSeatVerdict, SideResult } from './type
 function service(over: Partial<DayService> = {}): DayService {
   return {
     trips: 84,
+    boardings: null,
     periods: { am_6_9a: 12, mid_9a_3p: 30 },
     hourly: true,
     headways: { in: { median: 10, max_gap_6a_6p: 20 } },
@@ -50,6 +51,7 @@ function place(verdicts: OneSeatVerdict[], over: Partial<PlaceResult> = {}): Pla
     lat: 40.4,
     lon: -80.01,
     radius: 400,
+    population: null,
     current: side('current', 84),
     proposed: side('proposed', 71),
     change: {

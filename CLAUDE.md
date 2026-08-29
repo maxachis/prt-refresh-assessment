@@ -269,6 +269,16 @@ changes published findings.
     at that one interior point. Quote it beside the location and area figures,
     per convention 10, never alone.
 
+    **The panel draws it a second way, at the place rather than the point.**
+    The answer panel prints what `data/equity_places.csv` published for the
+    named place a reader clicked in (`query.place_residents`), which is a
+    different unit from the surface's viewport and deliberately not a count
+    inside the walk radius: a point has no population, and computing one
+    would put a figure on screen that contradicts the key reading the same
+    spot. It is Allegheny-only and day-free — losing every bus on any day of
+    the week — so it must never be read as the day type the panel's switch is
+    set to.
+
     **The map draws this, and the drawing has one rule that is not obvious.**
     The surface's key switches between Ground and People
     (`query.compute_cell_population`, `?surfaceunit=people`), summing
@@ -392,7 +402,10 @@ changes published findings.
 15. **Ridership is a weighting, not a sixth unit — and it can only weigh
     what already exists.** The map's Locations view can count boardings
     instead of dots (`query.point_boardings`, `frontend/change.sumRidersInBounds`,
-    and the Locations/Riders switch in the legend). It is the same points in
+    and the Locations/Riders switch in the legend), and the panel prints the
+    same figure for the stops inside one walk radius (`query.stop_boardings`),
+    where the stops with no figure of their own are named rather than summed
+    as zeros. It is the same points in
     the same buckets under a second denominator, so it is not a new unit of
     analysis the way conventions 10–14 are; it is convention 10's "never quote
     one alone" arriving inside a single view. Three things govern it.

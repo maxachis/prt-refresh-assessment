@@ -427,6 +427,17 @@ CAVEATS = [
                 "totals are the ones docs/answers/ publishes.",
     },
     {
+        "id": "place-population",
+        "text": "The panel's \u201cwho lives here\u201d figure is for the whole "
+                "named place, not for the walk radius the rest of the panel "
+                "measures, and it counts losing every bus on any day of the "
+                "week rather than the day type selected above. Allegheny "
+                "County only — elsewhere the equity work never asked, so "
+                "nothing is shown rather than a zero. The place is named by "
+                "the nearest labelled stop, which PRT's own HOOD/MUNI fields "
+                "sometimes get wrong.",
+    },
+    {
         "id": "day-types",
         "text": "Day types are resolved for real sample dates, not read off "
                 "calendar.txt columns — the current feed carries two holiday "
