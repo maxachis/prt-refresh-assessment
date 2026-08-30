@@ -32,3 +32,5 @@ pass — a reader who stops halfway down must not be misinformed.
 | [The site has two numbers that look like people](the-site-has-two-numbers-that-look-like-people.md) | open, wording decision owed — raised by Max |
 | [The map counts places, not riders](the-map-counts-places-not-riders.md) | fixed, awaiting close — built as the legend's Riders switch; a BASE_CAMP question ID is owed |
 | [The deploy box runs out of memory building the database](the-deploy-box-runs-out-of-memory-building-the-database.md) | open, decision owed — unblocked by a hand-added swapfile the repo does not know about |
+| [The stop marks outlive the click that drew them](stop-marks-outlive-the-click-that-drew-them.md) | open, not fixed |
+| [The place number has no view of its own](the-place-number-has-no-view-of-its-own.md) | open, decision owed — raised by Max |
