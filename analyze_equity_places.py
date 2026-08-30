@@ -52,6 +52,7 @@ from analyze_one_seat import build_grid, drop_outliers, load_labels, near
 DATA = Path(__file__).resolve().parent / "data"
 SOURCE_CSV = DATA / "equity_block_groups.csv"
 OUT_CSV = DATA / "equity_places.csv"
+TOTALS_CSV = DATA / "equity_place_totals.csv"
 
 COUNTY = "Allegheny"
 
@@ -148,6 +149,57 @@ def by_place(located):
     return sorted(rolled, key=lambda e: e["residents_net"])
 
 
+def place_totals(block_groups, grid):
+    """[{place, block_groups, residents, lat, lon}] -- every named place's own size.
+
+    The denominator, and it needs a file of its own because `OUT_CSV` cannot
+    carry it. That file holds only the block groups the plan *changed*, so its
+    `population` column is the population of a place's changed part -- and it
+    is the 2020 decennial count besides, where every loss here is weighted by
+    ACS `race_total`. Reserve township is the case that makes the mismatch
+    unarguable: 1,430 in that column against 1,629 residents lost. Dividing one
+    by the other would print a share above 100% under a straight face.
+
+    So this walks *all* of Allegheny's block groups through the same labelling
+    `locate` uses -- the same grid, the same radius, the same nearest surviving
+    labelled stop -- and sums the same ACS universe the losses are weighted by.
+    A share built from the two is then residents of one place measured one way.
+
+    Two deliberate carry-overs from `locate`. Block groups beyond
+    `LABEL_RADIUS_M` are totalled under "" rather than dropped, so a consumer
+    listing only named places can state its residual instead of quietly losing
+    it. And other counties are skipped, because the loss side never asked
+    there and a denominator with no numerator is worse than no answer.
+
+    The centre is population-weighted. A place has no boundary anywhere in this
+    repo -- that is objection 2 in
+    `docs/worklog/the-place-number-has-no-view-of-its-own.md` -- so a view that
+    wants to put a place on screen has only its residents to aim at, and an
+    unweighted mean of block-group points would pull a borough towards
+    whichever half the census happened to cut into more pieces.
+    """
+    grouped = defaultdict(list)
+    for bg in block_groups:
+        if bg["county"] != COUNTY:
+            continue
+        lat, lon = float(bg["lat"]), float(bg["lon"])
+        place, _ = label_for(lat, lon, grid)
+        grouped[tidy(place)].append((lat, lon, float(bg["race_total"])))
+
+    totals = []
+    for place, rows in grouped.items():
+        people = sum(r[2] for r in rows)
+        weight = people or len(rows)
+        totals.append({
+            "place": place,
+            "block_groups": len(rows),
+            "residents": people,
+            "lat": sum(r[0] * (r[2] or 1) for r in rows) / weight,
+            "lon": sum(r[1] * (r[2] or 1) for r in rows) / weight,
+        })
+    return sorted(totals, key=lambda t: (-t["residents"], t["place"]))
+
+
 # --------------------------------------------------------------------------
 # loading, writing, reporting
 # --------------------------------------------------------------------------
@@ -185,6 +237,15 @@ def read_located(path=OUT_CSV):
         return [{k: (float(v or 0) if k in numeric else v)
                  for k, v in row.items()}
                 for row in csv.DictReader(f)]
+
+
+def write_totals(totals):
+    fields = ["place", "block_groups", "residents", "lat", "lon"]
+    with open(TOTALS_CSV, "w", newline="", encoding="utf-8") as f:
+        writer = csv.DictWriter(f, fieldnames=fields)
+        writer.writeheader()
+        for row in totals:
+            writer.writerow({k: _rounded(k, v) for k, v in row.items()})
 
 
 def write(located):
@@ -242,6 +303,16 @@ def main():
 
     write(located)
     print(f"  wrote {OUT_CSV.relative_to(DATA.parent)}")
+
+    print("Totalling every place, changed or not...")
+    totals = place_totals(load_block_groups(), grid)
+    named = [t for t in totals if t["place"]]
+    residual = sum(t["residents"] for t in totals if not t["place"])
+    print(f"  {len(named)} named places hold "
+          f"{sum(t['residents'] for t in named):,.0f} residents; "
+          f"{residual:,.0f} live beyond {LABEL_RADIUS_M} m of a labelled stop")
+    write_totals(totals)
+    print(f"  wrote {TOTALS_CSV.relative_to(DATA.parent)}")
 
     rolled = by_place(located)
     table(rolled, "zero_vehicle",

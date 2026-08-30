@@ -179,6 +179,31 @@ def create_app(db_path: str | Path = "data/refresh.db") -> FastAPI:
         """
         return query.corridor_layer(con, day)
 
+    @app.get("/api/places")
+    def api_places():
+        """Every named Allegheny place the plan changes, ranked by the client.
+
+        No `radius` and no `day`, and both absences are the point. This is the
+        published place-level equity answer, which is day-free -- losing every
+        bus on any day of the week -- and measured at census block points, not
+        inside a walk circle. It is deliberately a different unit from
+        `/api/place`, whose numbers move with both; see convention 12 and
+        `docs/worklog/the-place-number-has-no-view-of-its-own.md`.
+
+        Named places only: 151 of the county's 68,989 residents who lose every
+        bus live beyond 2 km of a labelled PRT stop, take no place name, and
+        are in neither this list nor its map. The view states that residual.
+        """
+        return query.places(con)
+
+    @app.get("/api/places/{key}")
+    def api_place_detail(key: str):
+        """One place, with the block groups the plan changed as points."""
+        detail = query.place_detail(con, key)
+        if detail is None:
+            raise HTTPException(status_code=404, detail=f"no such place: {key}")
+        return detail
+
     @app.get("/api/destinations")
     def api_destinations():
         """The named destinations the one-seat view offers, with their centres.

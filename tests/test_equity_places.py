@@ -127,3 +127,58 @@ def test_the_written_coordinates_keep_their_precision(tmp_path, monkeypatch):
     assert float(row["lon"]) == pytest.approx(-80.064431, abs=1e-5)
     # The people columns still round -- a tenth of a person is the useful grain.
     assert row["residents_gained"] == "1000.0"
+
+
+# --------------------------------------------------------------------------
+# the denominator: a place's own population, not its changed part
+# --------------------------------------------------------------------------
+
+def test_a_place_total_counts_every_block_group_not_only_the_changed_ones():
+    """`population` in equity_places.csv is the changed block groups' 2020
+    count, and it is not a denominator: Reserve township publishes 1,430 there
+    against 1,629 residents lost, because the loss is ACS-weighted and the
+    column is not. A share needs the place's whole ACS population."""
+    grid = places.label_grid([(40.44, -79.99, "Carrick")])
+    groups = [block_group("420030001001", lost_week_any_minimum=0.5),
+              block_group("420030001002")]
+    (total,) = places.place_totals(groups, grid)
+    assert total["place"] == "Carrick"
+    assert total["block_groups"] == 2
+    assert total["residents"] == pytest.approx(2000.0)
+
+    (rolled,) = places.by_place(places.locate(groups, grid))
+    assert rolled["block_groups"] == 1
+    assert rolled["residents_lost"] == pytest.approx(500.0)
+
+
+def test_a_place_total_centres_on_where_its_residents_are():
+    """The Places view zooms the map to a place it has no boundary for, so the
+    centre has to come from the people: an unweighted mean of block-group
+    points would pull a borough towards whichever half was cut into more
+    pieces."""
+    grid = places.label_grid([(40.44, -79.99, "Carrick")])
+    (total,) = places.place_totals(
+        [block_group("420030001001", lat=40.40, race_total=3000.0),
+         block_group("420030001002", lat=40.50, race_total=1000.0)], grid)
+    assert total["lat"] == pytest.approx(40.425)
+
+
+def test_block_groups_with_no_name_are_totalled_too_so_the_county_reconciles():
+    """Same reason `locate` writes unnamed rows out: a Places view that lists
+    only named places has to be able to say what the residual is."""
+    grid = places.label_grid([(40.44, -79.99, "Carrick")])
+    totals = places.place_totals(
+        [block_group("420030001001"),
+         block_group("420030001002", lat=41.90, lon=-79.10)], grid)
+    assert sum(t["residents"] for t in totals) == pytest.approx(2000.0)
+    assert [t["place"] for t in totals if not t["place"]] == [""]
+
+
+def test_a_place_total_ignores_other_counties():
+    """The equity work never asked outside Allegheny, so a Beaver County block
+    group must not inflate a denominator the loss side cannot match."""
+    grid = places.label_grid([(40.44, -79.99, "Carrick")])
+    (total,) = places.place_totals(
+        [block_group("420030001001"),
+         block_group("420070001001", county="Beaver")], grid)
+    assert total["residents"] == pytest.approx(1000.0)

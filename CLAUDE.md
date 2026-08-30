@@ -82,6 +82,12 @@ because they read the census rather than PRT:
 python3 ingest_census.py            # -> data/census_blocks.csv, census_block_groups.csv
 python3 analyze_equity_change.py    # -> data/equity_*.csv
 python3 analyze_equity_places.py    # -> data/equity_places.csv (needs PRT stop labels)
+                                    #    + data/equity_place_totals.csv, the denominator:
+                                    #    every named Allegheny place's whole ACS population,
+                                    #    changed or not. equity_places.csv cannot supply it --
+                                    #    its `population` is the changed block groups' 2020
+                                    #    count, and Reserve township publishes 1,430 there
+                                    #    against 1,629 ACS-weighted residents lost.
 python3 build_equity_brief.py       # -> docs/equity-brief.html + the app's /findings page
                                     #    prose lives in equity_brief_body.html
 ```
@@ -128,7 +134,10 @@ equity pair. `build_equity_brief.py` reads only published CSVs and re-uses
 `analyze_equity_places.by_place`, so the charts cannot drift from the files
 `docs/answers/` cites. `build_webdb.py` takes the anchor definitions, the HOOD
 labels and the outlier filter from `analyze_one_seat.py`, so the app's Downtown
-and Oakland are the districts `data/oneseat_change.csv` publishes.
+and Oakland are the districts `data/oneseat_change.csv` publishes; it also
+reads both of `analyze_equity_places.py`'s files together and refuses to build
+if a place that changed has no total, because a share whose two halves came
+from different runs would be wrong in a way nothing on screen could show.
 `analyze_equity_change.py` takes the tiers and the whole location test from
 `analyze_coverage_change.py` and the dimension definitions from
 `ingest_census.py`, so a rider's coverage is decided the same way at a house as

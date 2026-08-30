@@ -991,6 +991,81 @@ def place_county(label: str) -> str | None:
     return found.group(1) if found else None
 
 
+def _place_row(row):
+    """One place_population row as the API serves it, shares included.
+
+    The share is computed here rather than stored so that the count and the
+    denominator it divides always arrive from the same row -- and it is
+    `residents_total`, the place's whole ACS population, never the population
+    of the block groups that changed. See `analyze_equity_places.place_totals`
+    for why those are different numbers.
+    """
+    total = row["residents_total"]
+    return {
+        "key": row["key"],
+        "place": row["place"],
+        "changed_block_groups": row["block_groups"],
+        "block_groups": row["total_block_groups"],
+        "residents_lost": row["residents_lost"],
+        "residents_gained": row["residents_gained"],
+        "residents_total": total,
+        "share_lost": row["residents_lost"] / total if total else None,
+        "share_gained": row["residents_gained"] / total if total else None,
+        "lat": row["lat"], "lon": row["lon"],
+    }
+
+
+def places(con):
+    """Every named Allegheny place the plan changes, with its own population.
+
+    The list behind the Places view, and the reason that view exists: the
+    panel's population line is a *place* figure printed under a walk circle
+    that measures one point, and at Squirrel Hill South the two say opposite
+    things -- the circle triples its service while 259 people on Beechwood
+    Boulevard lose every bus. This answers the place-level question in a
+    place-level view instead.
+
+    Ranking is left to the caller, because the two orders disagree and both
+    are true. By count, twelve places carry 71.5% of everyone who loses every
+    bus. By share, the list is led by small boroughs and townships that a
+    count-ranked list buries -- Reserve township is ninth by count and loses
+    85% of its residents.
+
+    Scope, per convention 12: named places only. The six block groups beyond
+    `analyze_equity_places.LABEL_RADIUS_M` of a labelled stop take no name and
+    are not here; they hold 151 of the county's 68,989 residents who lose
+    every bus, and a view listing this must say so rather than implying it
+    totals the county.
+    """
+    return [_place_row(r) for r in con.execute(
+        "SELECT * FROM place_population ORDER BY residents_lost DESC")]
+
+
+def place_detail(con, key: str):
+    """One place, plus the changed block groups as points, or None.
+
+    The points are the geometry this repo has. It carries no place boundaries
+    at all -- a block group takes the name of the nearest surviving labelled
+    PRT stop, median 373 m away and up to 1,989 m -- so filling a real
+    municipal polygon with these numbers would assert that PRT's labelling and
+    the municipal partition agree, which nothing here has checked. A point per
+    block group claims only what was measured.
+    """
+    row = con.execute("SELECT * FROM place_population WHERE key = ?",
+                      (key,)).fetchone()
+    if row is None:
+        return None
+    detail = _place_row(row)
+    detail["changed"] = [
+        {"geoid": b["geoid"], "lat": b["lat"], "lon": b["lon"],
+         "residents_lost": b["residents_lost"],
+         "residents_gained": b["residents_gained"]}
+        for b in con.execute(
+            "SELECT * FROM place_block_group WHERE key = ? "
+            "ORDER BY residents_lost DESC", (key,))]
+    return detail
+
+
 def place_residents(con, label):
     """How many people this named place loses and gains every bus for.
 

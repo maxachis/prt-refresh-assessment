@@ -322,3 +322,27 @@ def test_meta_carries_the_travel_time_caveat_and_the_window(client):
     assert "travel-time" in {c["id"] for c in m["caveats"]}
     assert m["journey"]["window"] == {"start_min": 420, "end_min": 540}
     assert m["journey"]["transfer_radii"]["strict"] == 150.0
+
+
+# --------------------------------------------------------------------------
+# the Places view
+# --------------------------------------------------------------------------
+
+def test_places_lists_every_changed_place_with_its_denominator(client):
+    rows = client.get("/api/places").json()
+    assert len(rows) > 40
+    assert rows == sorted(rows, key=lambda r: -r["residents_lost"])
+    for row in rows:
+        assert row["residents_total"] >= row["residents_lost"]
+        assert 0.0 <= row["share_lost"] <= 1.0
+
+
+def test_a_place_carries_its_changed_block_groups(client):
+    key = client.get("/api/places").json()[0]["key"]
+    detail = client.get(f"/api/places/{key}").json()
+    assert detail["key"] == key
+    assert len(detail["changed"]) == detail["changed_block_groups"]
+
+
+def test_an_unknown_place_is_a_404(client):
+    assert client.get("/api/places/nowhere-at-all").status_code == 404

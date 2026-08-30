@@ -10,11 +10,15 @@ exists to make that drift loud.
 individual aggregation rules so that when it fails, the failure names which
 rule broke rather than only that something did.
 """
+import csv
 import random
+from pathlib import Path
 
 import pytest
 
 from refresh import query
+
+ROOT = Path(__file__).resolve().parent.parent
 
 # Sampled rather than exhaustive: 5,751 locations x 3 day types x 2 sides is
 # ~35k place queries and about six minutes. The sample is seeded, so it is the
@@ -490,3 +494,71 @@ def test_outside_allegheny_the_question_was_never_asked(con):
     assert query.place_residents(
         con, {"muni": "Ambridge borough (Beaver, PA)", "hood": ""}) is None
     assert query.place_residents(con, None) is None
+
+
+# --------------------------------------------------------------------------
+# the Places view
+# --------------------------------------------------------------------------
+
+def test_places_rank_every_named_place_the_plan_changed(con):
+    """The view's list. One row per place with any loss or gain, carrying both
+    the count and the denominator, because either alone misleads: Baldwin's
+    9,613 is the biggest raw loss in the county and Reserve township, ninth by
+    count, loses 85% of everyone who lives there."""
+    rows = query.places(con)
+    assert rows, "no places served"
+    by_key = {r["key"]: r for r in rows}
+
+    published = con.execute(
+        "SELECT key, place, residents_lost, residents_total FROM "
+        "place_population ORDER BY residents_lost DESC LIMIT 1").fetchone()
+    got = by_key[published["key"]]
+    assert got["place"] == published["place"]
+    assert got["residents_lost"] == pytest.approx(published["residents_lost"])
+    assert got["residents_total"] == pytest.approx(published["residents_total"])
+    assert got["share_lost"] == pytest.approx(
+        published["residents_lost"] / published["residents_total"])
+
+
+def test_no_place_loses_more_residents_than_it_has(con):
+    """The share is only meaningful if both halves count the same people. They
+    did not before: `equity_places.csv` carries the changed block groups' 2020
+    population, and dividing by that puts Reserve township above 100%."""
+    for row in query.places(con):
+        assert row["residents_total"] > 0, row["place"]
+        assert row["share_lost"] <= 1.0, row["place"]
+
+
+def test_a_place_carries_the_block_group_points_the_map_lights(con):
+    """A place has no boundary in this repo, so the view draws the geometry
+    there is: the changed block groups as points."""
+    key = con.execute(
+        "SELECT key FROM place_population ORDER BY residents_lost DESC "
+        "LIMIT 1").fetchone()["key"]
+    detail = query.place_detail(con, key)
+    assert detail["key"] == key
+    assert len(detail["changed"]) == detail["changed_block_groups"]
+    assert sum(b["residents_lost"] for b in detail["changed"]) == \
+        pytest.approx(detail["residents_lost"])
+    for bg in detail["changed"]:
+        assert 40.0 < bg["lat"] < 41.0 and -81.0 < bg["lon"] < -79.0
+
+
+def test_an_unknown_place_is_not_an_error(con):
+    assert query.place_detail(con, "no such place") is None
+
+
+def test_the_served_places_reconcile_with_the_published_county_total(con):
+    """The Places view lists only *named* places, and convention 12's scope
+    rule applies: it has to be able to say what it leaves out. 68,838 of the
+    68,989 residents who lose every bus are on named ground; the other 151 sit
+    beyond 2 km of a labelled stop and are in neither this list nor the map."""
+    served = sum(r["residents_lost"] for r in query.places(con))
+    with open(ROOT / "data" / "equity_places.csv", encoding="utf-8") as f:
+        published = sum(float(r["residents_lost"] or 0)
+                        for r in csv.DictReader(f))
+    unnamed = sum(float(r["residents_lost"] or 0)
+                  for r in csv.DictReader(
+                      open(ROOT / "data" / "equity_places.csv",
+                           encoding="utf-8")) if not (r["place"] or "").strip())
+    assert served == pytest.approx(published - unnamed)

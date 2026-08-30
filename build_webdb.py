@@ -99,6 +99,7 @@ DATA = Path("data")
 DB = DATA / "refresh.db"
 COVERAGE = DATA / "coverage_change.csv"
 EQUITY_PLACES = DATA / "equity_places.csv"
+PLACE_TOTALS = DATA / "equity_place_totals.csv"
 CENSUS_BLOCKS = DATA / "census_blocks.csv"
 CENSUS_BLOCK_GROUPS = DATA / "census_block_groups.csv"
 
@@ -194,9 +195,36 @@ CREATE TABLE crosswalk (
 CREATE TABLE place_population (
     key             TEXT PRIMARY KEY,
     place           TEXT NOT NULL,
-    block_groups    INTEGER NOT NULL,
+    block_groups    INTEGER NOT NULL,   -- block groups the plan CHANGED
     residents_lost  REAL NOT NULL,
-    residents_gained REAL NOT NULL
+    residents_gained REAL NOT NULL,
+    -- The denominator, and it is a different count from the four above: the
+    -- place's whole ACS population over every block group labelled to it,
+    -- changed or not (`equity_place_totals.csv`). `residents_lost` divided by
+    -- the changed block groups' own population would be a share of a share.
+    residents_total REAL NOT NULL,
+    total_block_groups INTEGER NOT NULL,
+    -- Population-weighted centre. The repo has no place boundaries anywhere,
+    -- so this is the only thing a view can aim the map at.
+    lat             REAL NOT NULL,
+    lon             REAL NOT NULL
+);
+
+-- The changed block groups themselves, as points. A place has no polygon here
+-- (see docs/worklog/the-place-number-has-no-view-of-its-own.md, objection 2),
+-- so the Places view lights the geometry the repo actually has: one point per
+-- block group the plan changed, at the population-weighted centre
+-- `analyze_equity_change.py` already computes. Painting these inside a real
+-- municipal boundary would assert that PRT's nearest-stop labelling and the
+-- municipal partition agree, which is exactly what nobody has checked.
+CREATE TABLE place_block_group (
+    key              TEXT NOT NULL,
+    geoid            TEXT NOT NULL,
+    lat              REAL NOT NULL,
+    lon              REAL NOT NULL,
+    residents_lost   REAL NOT NULL,
+    residents_gained REAL NOT NULL,
+    PRIMARY KEY (key, geoid)
 );
 
 -- Place labels and boardings, carried over from coverage_change.csv so the app
@@ -572,9 +600,13 @@ def build(out_path):
         "VALUES (?,?,?,?,?,?,?)",
         [(sid, *row) for sid, row in places.items()])
 
-    equity = load_place_population()
-    con.executemany("INSERT INTO place_population VALUES (?,?,?,?,?)", equity)
-    print(f"  place population: {len(equity)} places that changed")
+    equity, bg_points = load_place_population()
+    con.executemany("INSERT INTO place_population VALUES (?,?,?,?,?,?,?,?,?)",
+                    equity)
+    con.executemany("INSERT INTO place_block_group VALUES (?,?,?,?,?,?)",
+                    bg_points)
+    print(f"  place population: {len(equity)} places that changed, "
+          f"over {len(bg_points)} block groups")
 
     cw = load_crosswalk()
     con.executemany("INSERT INTO crosswalk VALUES (?,?,?,?,?)", cw)
@@ -862,18 +894,60 @@ def load_place_population():
     # They are one borough, the rows are Allegheny either way, and keying on
     # the label would split the borough in half and then collide on insert.
     rolled: dict[str, list] = {}
+    points = []
     with open(EQUITY_PLACES, encoding="utf-8") as f:
         for row in csv.DictReader(f):
             place = (row["place"] or "").strip()
             if not place:
                 continue
-            entry = rolled.setdefault(query.place_key(place),
-                                      [query.place_display(place), 0, 0.0, 0.0])
+            key = query.place_key(place)
+            entry = rolled.setdefault(key, [query.place_display(place), 0, 0.0, 0.0])
             entry[1] += 1
             entry[2] += float(row["residents_lost"] or 0)
             entry[3] += float(row["residents_gained"] or 0)
-    return [(key, place, groups, lost, gained)
-            for key, (place, groups, lost, gained) in rolled.items()]
+            points.append((key, row["geoid"], float(row["lat"]),
+                           float(row["lon"]),
+                           float(row["residents_lost"] or 0),
+                           float(row["residents_gained"] or 0)))
+
+    totals = load_place_totals()
+    missing = sorted(set(rolled) - set(totals))
+    if missing:
+        sys.exit(f"error: {len(missing)} places changed but have no total in "
+                 f"{PLACE_TOTALS} ({', '.join(missing[:3])}) -- the two files "
+                 "must come from one run of analyze_equity_places.py")
+
+    rows = []
+    for key, (place, groups, lost, gained) in rolled.items():
+        total, total_groups, lat, lon = totals[key]
+        rows.append((key, place, groups, lost, gained, total, total_groups,
+                     lat, lon))
+    return rows, points
+
+
+def load_place_totals():
+    """{key: (residents, block_groups, lat, lon)} -- every named Allegheny place.
+
+    The denominator behind the Places view's share column, and the reason it
+    is a separate file rather than a column of `equity_places.csv`: that file
+    holds only block groups the plan changed, so the population it carries is
+    a place's *changed part* -- and the 2020 count of it, where the losses are
+    ACS-weighted. Reserve township publishes 1,430 there against 1,629
+    residents lost. See `analyze_equity_places.place_totals`.
+    """
+    if not PLACE_TOTALS.exists():
+        sys.exit(f"error: {PLACE_TOTALS} missing -- run "
+                 "`python3 analyze_equity_places.py` first")
+    totals = {}
+    with open(PLACE_TOTALS, encoding="utf-8") as f:
+        for row in csv.DictReader(f):
+            place = (row["place"] or "").strip()
+            if not place:
+                continue
+            totals[query.place_key(place)] = (
+                float(row["residents"]), int(row["block_groups"]),
+                float(row["lat"]), float(row["lon"]))
+    return totals
 
 
 def load_residents():
