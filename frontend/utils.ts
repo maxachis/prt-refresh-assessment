@@ -36,6 +36,19 @@ export function clock(min: number | null): string {
   return `${h12}:${String(m).padStart(2, '0')}${ampm}`;
 }
 
+/**
+ * A number of minutes as a length of time.
+ *
+ * For the gap between the first bus and the last, which is a duration rather
+ * than a point on the clock the way `clock` renders -- 1398 minutes is not
+ * 11:18pm, it is 23 hours and 18 minutes of the day with a bus in it.
+ */
+export function duration(min: number | null): string {
+  if (min == null) return '—';
+  const h = Math.floor(min / 60), m = Math.round(min % 60);
+  return h ? `${h}h ${String(m).padStart(2, '0')}m` : `${m}m`;
+}
+
 /** A signed count, with the sign always shown so gains read as loudly as losses. */
 export function signed(n: number): string {
   return n > 0 ? `+${n}` : String(n);

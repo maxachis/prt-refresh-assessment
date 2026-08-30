@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { clock, signed, pct, esc } from './utils';
+import { clock, duration, signed, pct, esc } from './utils';
 
 describe('clock', () => {
   it('renders ordinary times', () => {
@@ -49,5 +49,20 @@ describe('esc', () => {
   it('renders null and undefined as empty, not as the word', () => {
     expect(esc(null)).toBe('');
     expect(esc(undefined)).toBe('');
+  });
+});
+
+
+describe('duration', () => {
+  it('reads a long span as hours and minutes', () => {
+    expect(duration(1398)).toBe('23h 18m');
+  });
+
+  it('drops the hours from a span shorter than one', () => {
+    expect(duration(45)).toBe('45m');
+  });
+
+  it('has nothing to say where no bus runs', () => {
+    expect(duration(null)).toBe('—');
   });
 });

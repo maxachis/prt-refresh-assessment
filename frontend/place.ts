@@ -21,7 +21,7 @@
  *    now, well away from these numbers, which is what the state line above the
  *    panel is for: see `statebar.ts`.
  */
-import { esc, clock, signed, pct } from './utils';
+import { esc, clock, duration, signed, pct } from './utils';
 import {
   PKEYS, PERIOD_LABEL, Day, PlaceResult, DayService, OneSeatVerdict, OneSeatDay,
   Boardings, PlacePopulation,
@@ -130,7 +130,7 @@ export function routeList(routes: string[]): string {
 
 function spanLine(s: DayService): string {
   if (s.first == null) return '<span class="muted">no service</span>';
-  return `${clock(s.first)} – ${clock(s.last)}`;
+  return `${clock(s.first)}–${clock(s.last)}`;
 }
 
 /** Best (smallest) median headway across directions, for the summary line. */
@@ -175,15 +175,9 @@ function oneSeatBlock(verdicts: OneSeatVerdict[],
                       day: OneSeatDay = 'any'): string {
   if (!verdicts.length) return '';
   const rows = verdicts.map((v) => {
-    const now = routeList(v.current);
-    const prop = routeList(v.proposed);
-    // One row per side, never both on one line: at Downtown each side lists
-    // fourteen routes, and a single wrapped run makes the two indistinguishable
-    // -- which is exactly the comparison this block exists to show.
     const detail = v.status === 'here'
       ? '<div class="muted">no one-seat ride needed</div>'
-      : `<div class="rrow"><span class="rlab">today</span>${now}</div>
-         <div class="rrow"><span class="rlab">proposed</span>${prop}</div>`;
+      : routePair(v.current, v.proposed);
     return `
       <div class="os-row">
         <div class="os-head">
@@ -222,9 +216,112 @@ function methodLink(id: string): string {
   return ` <button class="howto" data-caveat="${id}">method</button>`;
 }
 
-/** What to call the clicked point in a heading. */
+/**
+ * One before-and-after row of the facts list.
+ *
+ * Three fixed columns rather than a run of text, so that a reader comparing
+ * four rows reads down two columns instead of hunting for the arrow in each
+ * of them. Rows with no proposed half -- boardings -- are deliberately not
+ * built this way: an empty right column would read as a fall to zero.
+ */
+function compare(before: string, after: string,
+                 verdict: Verdict = null): string {
+  const same = before === after ? ' same' : '';
+  const graded = verdict ? ` ${verdict}` : '';
+  return `<dd class="cmp${same}"><span class="cmp-a">${before}</span>`
+    + `<span class="cmp-arrow muted">→</span>`
+    + `<span class="cmp-b${graded}">${after}</span></dd>`;
+}
+
+/**
+ * Better or worse, for the one row that can be graded.
+ *
+ * Not "up" and "down": the wait is the only figure on the panel whose
+ * arithmetic runs against its meaning, a bigger number being a worse service,
+ * so grading it by the sign of the change would paint a doubled headway in
+ * the green that means gained service everywhere else here. The stop count is
+ * deliberately never graded -- convention 3, a vanished stop id is stop
+ * consolidation far more often than it is a lost bus -- and neither is the
+ * first-and-last pair, whose two ends move in opposite directions.
+ */
+type Verdict = 'better' | 'worse' | null;
+
+function grade(before: number | null, after: number | null,
+               better: 'less' | 'more'): Verdict {
+  if (before == null || after == null || before === after) return null;
+  const rose = after > before;
+  return rose === (better === 'more') ? 'better' : 'worse';
+}
+
+/** Minutes from the first bus of the day to the last, or nothing. */
+function span(s: DayService): number | null {
+  return s.first == null || s.last == null ? null : s.last - s.first;
+}
+
+/**
+ * Both networks' route lists, today on the left and the plan on the right.
+ *
+ * Two columns rather than two stacked rows, matching the facts list above:
+ * the lists are compared, and a comparison read across a fixed gap beats one
+ * read down a page. This used to be one row per side, on the grounds that at
+ * Downtown each side runs to fourteen routes and a single wrapped run makes
+ * the two indistinguishable -- still true, and what a column each answers:
+ * neither list can bleed into the other's space.
+ */
+export function routePair(current: string[], proposed: string[]): string {
+  const both = new Set(current.filter((r) => proposed.includes(r)));
+  return `<div class="rpair">
+      <div class="rside"><span class="rlab">today</span>
+        ${markedRoutes(current, both, 'now')}</div>
+      <div class="rside"><span class="rlab">proposed</span>
+        ${markedRoutes(proposed, both, 'prop')}</div>
+    </div>`;
+}
+
+/**
+ * One side's routes, each marked by which networks run it.
+ *
+ * In the panel's own colours -- blue for today, orange for the plan -- and
+ * never in the red and green that mean service lost and gained in the
+ * headline above. This is a difference between two lists of route names, and
+ * convention 1 is emphatic that such a difference is not a change in service:
+ * the 61A-D become the 60X/61X/62X, and a red pill would call that a loss.
+ */
+function markedRoutes(routes: string[], both: Set<string>,
+                      side: 'now' | 'prop'): string {
+  if (!routes.length) return `<span class="muted">none</span>`;
+  return routes.map((r) => {
+    const mark = both.has(r) ? 'both' : `only-${side}`;
+    return `<span class="route ${mark}">${esc(r)}</span>`;
+  }).join(' ');
+}
+
+/** PRT writes a municipality as "Ross township (Allegheny, PA)". */
+const COUNTY_SUFFIX = /\s*\(([^,()]+),\s*[A-Za-z]{2}\)\s*$/;
+
+/** The county the reader has already assumed, and so does not need told. */
+const ASSUMED_COUNTY = 'Allegheny';
+
+/**
+ * What to call the clicked point in a heading.
+ *
+ * The county is dropped where it is the one the whole map is in -- 5,726 of
+ * the 5,751 labelled stops -- and kept where it is not. Those 25 stops are
+ * exactly the ones where the "who lives here" block goes silent, the equity
+ * work being Allegheny-only, so the parenthesis does double duty there: it is
+ * the only thing on the panel that says why a figure is missing. The state
+ * abbreviation goes either way; nothing here is outside Pennsylvania.
+ *
+ * Display only. The API keeps PRT's label verbatim, because `place_residents`
+ * keys the census rollup off it.
+ */
 export function placeLabel(p: PlaceResult): string {
-  return p.place?.hood || p.place?.muni || 'this location';
+  const muni = p.place?.muni?.trim() ?? '';
+  const county = COUNTY_SUFFIX.exec(muni)?.[1];
+  const short = county === ASSUMED_COUNTY ? muni.replace(COUNTY_SUFFIX, '')
+    : county ? `${muni.replace(COUNTY_SUFFIX, '')} (${county})`
+    : muni;
+  return p.place?.hood || short || 'this location';
 }
 
 /** How many buses, both directions, on the day type on screen. */
@@ -263,7 +360,7 @@ function boardingsFact(b: Boardings | null, d: Day): string {
     ? '<span class="muted">not counted here</span>'
     : `${Math.round(b.total).toLocaleString()}
        <span class="muted">on an average ${dayWord(d)}, today only</span>`;
-  return `<dt>Boardings at those stops</dt><dd>${value}${gap}</dd>`;
+  return `<dt>Boardings</dt><dd>${value}${gap}</dd>`;
 }
 
 /** What that figure does and does not say. Ships with it or not at all. */
@@ -315,6 +412,12 @@ export function serviceBodyHTML(p: PlaceResult, d: Day, middle = ''): string {
   const delta = after.trips - before.trips;
   const dcls = delta > 0 ? 'up' : delta < 0 ? 'down' : 'flat';
   const bm = bestMedian(before), am = bestMedian(after);
+  // The one thing about the first and last bus that can be graded: a longer
+  // day is more service, where a later first bus and a later last bus pull in
+  // opposite directions and so cannot be. It is the distance between the two
+  // ends, not the hours a bus is useful -- the period table above is where a
+  // midday hole shows up.
+  const bs = span(before), as = span(after);
 
   return `
     <div class="headline">
@@ -351,12 +454,15 @@ export function serviceBodyHTML(p: PlaceResult, d: Day, middle = ''): string {
       renumbering, not a change in service.</div>
 
     <dl class="facts">
-      <dt>First and last bus</dt>
-      <dd>${spanLine(before)} <span class="muted">→</span> ${spanLine(after)}</dd>
-      <dt>Typical wait, better direction, 6am–6pm</dt>
-      <dd>${bm == null ? '—' : `${bm} min`} <span class="muted">→</span> ${am == null ? '—' : `${am} min`}</dd>
+      <dt>First and last</dt>
+      ${compare(spanLine(before), spanLine(after))}
+      <dt>Hours between</dt>
+      ${compare(duration(bs), duration(as), grade(bs, as, 'more'))}
+      <dt>Typical wait</dt>
+      ${compare(bm == null ? '—' : `${bm} min`, am == null ? '—' : `${am} min`,
+                grade(bm, am, 'less'))}
       <dt>Stops within ${p.radius} m</dt>
-      <dd>${p.current.stops.length} <span class="muted">→</span> ${p.proposed.stops.length}</dd>
+      ${compare(String(p.current.stops.length), String(p.proposed.stops.length))}
       ${boardingsFact(before.boardings, d)}
     </dl>
     ${boardingsNote(before.boardings)}
@@ -367,9 +473,11 @@ export function serviceBodyHTML(p: PlaceResult, d: Day, middle = ''): string {
 
     <div class="routes">
       <h3>Routes serving this spot</h3>
-      <div class="rrow"><span class="rlab">today</span>${routeList(before.routes)}</div>
-      <div class="rrow"><span class="rlab">proposed</span>${routeList(after.routes)}</div>
-      <p class="note">Renumbering is not replacement: the 61A–D become the
+      ${routePair(before.routes, after.routes)}
+      <p class="note"><span class="k-now">Blue</span> runs here only today,
+         <span class="k-prop">orange</span> only under the plan,
+         <span class="k-shared">grey</span> both. Renumbering is not
+         replacement: the 61A–D become the
          60X/61X/62X.${methodLink('location-not-route')}</p>
     </div>`;
 }

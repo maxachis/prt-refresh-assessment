@@ -36,7 +36,8 @@
 import { esc } from './utils';
 import { Day, OneSeatDay, OneSeatStatus, OneSeatVerdict, PlaceResult } from './types';
 import { Destination } from './oneseat';
-import { placeLabel, routeList, serviceBodyHTML, serviceSummaryText } from './place';
+import { placeLabel, routeList, routePair, serviceBodyHTML,
+         serviceSummaryText } from './place';
 
 /**
  * The headline sentence per verdict.
@@ -121,8 +122,7 @@ function sidesHTML(v: OneSeatVerdict): string {
   return `
     <div class="routes">
       <h3>Routes reaching it from here</h3>
-      <div class="rrow"><span class="rlab">today</span>${routeList(v.current)}</div>
-      <div class="rrow"><span class="rlab">proposed</span>${routeList(v.proposed)}</div>
+      ${routePair(v.current, v.proposed)}
     </div>`;
 }
 

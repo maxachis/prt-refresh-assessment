@@ -11,6 +11,10 @@
     :root {
       --bg:#0f1115; --panel:#171a21; --line:#262a33; --ink:#e8eaed; --muted:#98a0ac;
       --now:#4aa3ff; --prop:#ffa23a; --up:#4ec98a; --down:#ff6b6b;
+      /* A route both networks run. Achromatic on purpose -- it is the absence
+         of a change, and any hue here would be read as one -- but lighter than
+         the prose it sits among, which --muted is not. */
+      --shared:#c2cad6;
       /* The two marks the map draws that carry no data of their own:
          the walk radius the answer was measured in, and the point the
          reader asked from. Kept in step with mapview.ts and main.ts. */
@@ -264,10 +268,32 @@
     .key-note { font-size:11px; color:var(--muted); margin-top:6px;
       line-height:1.45; }
 
-    dl.facts { margin:18px 0 0; font-size:13px; }
+    /* Four shared columns -- label, today, arrow, plan -- so a row is one line
+       and the arrow still lands at the same place on every one of them. The
+       label column takes whatever the numbers leave. The arrow column is
+       pinned: the boardings row spans the three number columns, and letting
+       it size them gave the arrow twice the width of the glyph in it. */
+    dl.facts { margin:18px 0 0; font-size:13px; display:grid;
+      grid-template-columns:minmax(104px,1fr) auto 16px auto;
+      align-items:baseline; gap:9px 8px; }
     dl.facts dt { color:var(--muted); font-size:11px; text-transform:uppercase;
-      letter-spacing:.05em; margin-top:11px; }
-    dl.facts dd { margin:2px 0 0; font-variant-numeric:tabular-nums; }
+      letter-spacing:.05em; grid-column:1; }
+    dl.facts dd { margin:0; font-variant-numeric:tabular-nums; }
+    /* The three cells join the parent's columns rather than making their own. */
+    dl.facts dd.cmp { display:contents; }
+    /* A figure that did not move steps back, so the eye lands on the ones that
+       did. Cheaper than a verdict, and it asserts nothing about direction. */
+    dd.cmp.same .cmp-a, dd.cmp.same .cmp-b { color:var(--muted); }
+    /* Graded by better and worse, never by bigger and smaller: the only row
+       here that earns it is the wait, where the number runs the other way. */
+    .cmp-b.better { color:var(--up); }
+    .cmp-b.worse { color:var(--down); }
+    /* A figure with no proposed half takes the whole width the numbers use. */
+    /* A figure with no proposed half takes the whole width the numbers use --
+       but contributes nothing to how wide they are. Without the zero width its
+       sentence, spanning three columns, sized them, and squeezed the labels
+       into wrapping. */
+    dl.facts dd:not(.cmp) { grid-column:2 / -1; width:0; min-width:100%; }
 
     .routes { margin-top:20px; border-top:1px solid var(--line); padding-top:14px; }
     .routes h3 { font-size:12px; text-transform:uppercase; letter-spacing:.06em;
@@ -275,8 +301,28 @@
     .rrow { display:flex; gap:6px; flex-wrap:wrap; align-items:baseline;
       margin-bottom:8px; }
     .rlab { font-size:11px; color:var(--muted); width:58px; flex:none; }
+    /* Today and the plan as a column each, matching the facts rows above. A
+       column apiece is what keeps two fourteen-route lists distinguishable. */
+    .rpair { display:grid; grid-template-columns:1fr 1fr; gap:12px;
+      margin:6px 0 2px; }
+    .rside { display:flex; gap:6px; flex-wrap:wrap; align-items:baseline;
+      align-content:flex-start; }
+    /* The label rides on the first line of its own column rather than taking
+       a line to itself: "today" over an empty half-row was the same waste the
+       facts list had. */
+    .rside .rlab { width:auto; }
     .route { display:inline-block; font-size:11px; padding:1px 6px; border-radius:4px;
       background:#0c0e12; border:1px solid var(--line); font-variant-numeric:tabular-nums; }
+    /* Which networks run this route, in the blue and orange the legend above
+       already teaches -- never the red and green that mean service lost and
+       gained, because a list difference is not a change in service. */
+    .route.only-now { border-color:var(--now); color:var(--now); }
+    .route.only-prop { border-color:var(--prop); color:var(--prop); }
+    .route.both { color:var(--shared); }
+    /* The key names three colours; each word wears the one it names. */
+    .k-now { color:var(--now); }
+    .k-prop { color:var(--prop); }
+    .k-shared { color:var(--shared); }
     .note { font-size:11px; color:var(--muted); margin:10px 0 0; line-height:1.45; }
     /* The way from a figure to its method. Reads as part of the caveat line,
        not as a button competing with the controls above it. */

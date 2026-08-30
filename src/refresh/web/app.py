@@ -410,6 +410,19 @@ CAVEATS = [
                 "reported.",
     },
     {
+        "id": "typical-wait",
+        "text": "The typical wait is the median gap between buses from 6am to "
+                "6pm, in whichever direction is better served -- a location on "
+                "a one-way street is not judged by the direction that never "
+                "comes. It is the gap between buses of any route at the "
+                "location rather than of one route, so a corner with two "
+                "hourly routes can read as a 30-minute wait. It is the gap "
+                "itself, not the wait a rider arriving at random would "
+                "expect, which is about half of it. Descriptive only: no "
+                "published figure uses it, and a location with fewer than two "
+                "trips in the window shows nothing at all.",
+    },
+    {
         "id": "boardings",
         "text": "Boardings are May 2025 daily averages, unlinked and "
                 "unweighted — one rider's round trip with a transfer is up "
