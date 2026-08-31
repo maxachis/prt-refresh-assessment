@@ -386,10 +386,10 @@ function residentsBlock(pop: PlacePopulation | null): string {
   const place = esc(pop.place);
   const body = pop.lost || pop.gained
     ? `<p class="people-n"><b>${Math.round(pop.lost).toLocaleString()}</b>
-         residents lose every bus
+         residents lose all buses
          <span class="muted">·</span>
          <b>${Math.round(pop.gained).toLocaleString()}</b> gain one</p>`
-    : `<p class="people-n">Nobody in ${place} loses or gains every bus under
+    : `<p class="people-n">Nobody in ${place} loses or gains all buses under
          the plan.</p>`;
   // The actual fix for the Squirrel Hill South problem: this figure is
   // measured for the whole named place, not the walk circle four lines

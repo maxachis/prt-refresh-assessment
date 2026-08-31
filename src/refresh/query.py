@@ -34,6 +34,7 @@ membership of a radius is decided identically on both sides of the pipeline.
 from __future__ import annotations
 
 import json
+from collections import defaultdict
 
 from . import geometry
 import math
@@ -1061,6 +1062,28 @@ def places(con):
         "SELECT * FROM place_population ORDER BY residents_lost DESC")]
 
 
+#: Day types the service fill can be drawn for, matching `gtfs.DAYS`. A place
+#: with no row for a day had no bus on either network that day, which is a
+#: real answer (a weekday-only route's Sunday) and not missing data.
+SERVICE_DAYS = ("weekday", "saturday", "sunday")
+
+
+def _service_props(by_day):
+    """Flatten one place's bus service into `service_<day>_<field>` scalars."""
+    out = {}
+    for day in SERVICE_DAYS:
+        row = by_day.get(day)
+        out[f"service_{day}_now"] = row["trips_now"] if row else 0
+        out[f"service_{day}_proposed"] = row["trips_proposed"] if row else 0
+        # Null, not zero: no bus today and buses proposed is an undefined
+        # change. The fill leaves those unshaded and the copy names them.
+        out[f"service_{day}_pct"] = row["pct_change"] if row else None
+        out[f"service_{day}_rail_now"] = bool(row and row["rail_now"])
+        out[f"service_{day}_rail_proposed"] = bool(
+            row and row["rail_proposed"])
+    return out
+
+
 def boundaries(con):
     """Every place's boundary as a GeoJSON FeatureCollection.
 
@@ -1075,20 +1098,39 @@ def boundaries(con):
     for most of Allegheny is the finding.
     """
     changed = {r["key"]: r for r in con.execute("SELECT * FROM place_population")}
+
+    # Every day type rides along on every feature rather than being fetched
+    # per day: the service fill follows the toolbar's day switch, and this
+    # payload is 3.5 MB of geometry that must not be refetched to recolour.
+    # Flat scalar keys, not a nested dict, because the fill is a MapLibre
+    # `step` expression over one property name and expressions cannot reach
+    # into an object.
+    service = defaultdict(dict)
+    for r in con.execute("SELECT * FROM place_service"):
+        service[r["key"]][r["day"]] = r
+
     features = []
     # `residents_total > 0` drops the places wholly covered by a finer one --
     # Pittsburgh city, every acre of which is in one of the 90 neighbourhoods.
     # Drawing it would lay one null-share polygon over the ninety that hold its
     # people. See the `place_boundary` schema comment.
     for row in con.execute(
-            "SELECT key, place, kind, polygons FROM place_boundary "
-            "WHERE residents_total > 0"):
+            "SELECT key, place, kind, residents_total, polygons "
+            "FROM place_boundary WHERE residents_total > 0"):
         hit = changed.get(row["key"])
         props = {"key": row["key"], "place": row["place"], "kind": row["kind"]}
+        # An untouched place still knows how many people it has, and the
+        # hover tooltip says so -- "nobody here loses a bus" is a much
+        # stronger sentence with 8,549 residents behind it than with a blank.
+        # Its shares stay null rather than 0.0: the floor withholds a share
+        # below SHARE_MIN_RESIDENTS whether the place changed or not, so a
+        # 0.0 here would put a share on a denominator too small to carry one.
         props.update(_place_row(hit) if hit else {
             "changed_block_groups": 0, "block_groups": 0,
             "residents_lost": 0.0, "residents_gained": 0.0,
-            "residents_total": None, "share_lost": None, "share_gained": None})
+            "residents_total": row["residents_total"],
+            "share_lost": None, "share_gained": None})
+        props.update(_service_props(service.get(row["key"], {})))
         features.append({
             "type": "Feature",
             "geometry": {"type": "MultiPolygon",

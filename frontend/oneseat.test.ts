@@ -200,10 +200,17 @@ describe('whether the day buttons are shown at all', () => {
     }
   });
 
-  it('hides them on Places, which has no opt-in to bring them back', () => {
+  it('hides them on Places while mapping the day-free residents readings', () => {
     // The published place figures are day-free, and unlike one-seat there is
-    // no restriction toggle here that could ever make the day matter.
+    // no restriction toggle here that could ever make the day matter -- for
+    // these two readings.
     expect(dayControlsShown('places', false)).toBe(false);
     expect(dayControlsShown('places', true)).toBe(false);
+    expect(dayControlsShown('places', false, 'lost')).toBe(false);
+    expect(dayControlsShown('places', false, 'gained')).toBe(false);
+  });
+
+  it('brings them back on Places in service mode, the one reading with a day of its own', () => {
+    expect(dayControlsShown('places', false, 'service')).toBe(true);
   });
 });

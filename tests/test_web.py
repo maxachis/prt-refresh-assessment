@@ -363,6 +363,55 @@ def test_boundaries_cover_every_place_including_the_unchanged(client):
         assert f["geometry"]["coordinates"], f["properties"]["place"]
 
 
+def test_a_boundary_carries_bus_service_for_every_day_type(client):
+    """The service fill follows the toolbar's day switch, and a 3.5 MB
+    payload must not be refetched to change days -- so all three day types
+    ride along on every feature."""
+    fc = client.get("/api/boundaries").json()
+    props = {f["properties"]["place"]: f["properties"] for f in fc["features"]}
+    bethel = props["Bethel Park municipality"]
+    assert bethel["service_weekday_now"] == 46
+    assert bethel["service_weekday_proposed"] == 0
+    assert bethel["service_weekday_pct"] == -100.0
+    for day in ("weekday", "saturday", "sunday"):
+        assert f"service_{day}_pct" in bethel
+
+
+def test_a_place_losing_every_bus_says_whether_a_train_still_calls(client):
+    """Convention 13's Beechview trap at the service unit. Bethel Park loses
+    routes 36 and Y45 and keeps the Blue, Red and Silver lines; Reserve
+    township loses its buses and has no rail at all. A map that could not
+    tell them apart would report both as losing their transit."""
+    fc = client.get("/api/boundaries").json()
+    props = {f["properties"]["place"]: f["properties"] for f in fc["features"]}
+    assert props["Bethel Park municipality"]["service_weekday_rail_proposed"]
+    assert not props["Reserve township"]["service_weekday_rail_proposed"]
+
+
+def test_a_place_with_no_bus_today_has_no_percent_change(client):
+    """Pine township gets its first weekday bus. That is an undefined change,
+    not an infinite one, so the fill cannot shade it and the copy must name
+    it instead."""
+    fc = client.get("/api/boundaries").json()
+    props = {f["properties"]["place"]: f["properties"] for f in fc["features"]}
+    pine = props["Pine township"]
+    assert pine["service_weekday_now"] == 0
+    assert pine["service_weekday_proposed"] > 0
+    assert pine["service_weekday_pct"] is None
+
+
+def test_an_untouched_place_still_carries_its_own_population(client):
+    """The hover tooltip says "nobody here loses a bus", and that sentence is
+    worth much more with the place's residents behind it. Its shares stay
+    null: a 0.0 would claim a share on places under the denominator floor."""
+    fc = client.get("/api/boundaries").json()
+    untouched = [f["properties"] for f in fc["features"]
+                 if f["properties"]["changed_block_groups"] == 0]
+    assert untouched
+    assert all(p["residents_total"] > 0 for p in untouched)
+    assert all(p["share_lost"] is None for p in untouched)
+
+
 def test_a_place_wholly_covered_by_finer_places_is_not_drawn(client):
     """Pittsburgh city is the case. Every acre of it is inside one of the 90
     neighbourhoods, which win by kind precedence, so no resident resolves to

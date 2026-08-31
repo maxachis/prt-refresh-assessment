@@ -102,6 +102,7 @@ COVERAGE = DATA / "coverage_change.csv"
 EQUITY_PLACES = DATA / "equity_places.csv"
 PLACE_TOTALS = DATA / "equity_place_totals.csv"
 BOUNDARIES = DATA / "place_boundaries.json"
+PLACE_SERVICE = DATA / "place_service_change.csv"
 CENSUS_BLOCKS = DATA / "census_blocks.csv"
 CENSUS_BLOCK_GROUPS = DATA / "census_block_groups.csv"
 
@@ -237,6 +238,32 @@ CREATE TABLE place_boundary (
     -- its people and paint the whole city with a share of nobody.
     residents_total REAL NOT NULL,
     polygons TEXT NOT NULL          -- JSON: [ [ring, hole...], ... ]
+);
+
+-- How much bus service touches a place, per day type, on each network.
+-- `trips` are whole trips counted once per place they call at, NOT stop
+-- events: a bus making a dozen stops inside Carrick is one trip, or the map
+-- would draw stop spacing. The column deliberately does not sum to the
+-- network's trips -- a cross-county trip is counted in every place it
+-- touches. See analyze_place_service.py.
+--
+-- `rail_*` is a flag and never a count, because one T trip is not one bus
+-- trip. It exists so a place drawn at -100% can say whether a train still
+-- calls: Bethel Park loses every bus it has and keeps the Blue, Red and
+-- Silver lines, and a map that could not say so would report it as losing
+-- its transit (convention 13).
+CREATE TABLE place_service (
+    key            TEXT NOT NULL,
+    day            TEXT NOT NULL,
+    trips_now      INTEGER NOT NULL,
+    trips_proposed INTEGER NOT NULL,
+    -- NULL where there is no denominator: no bus today, buses proposed. An
+    -- undefined change, not an infinite one, and the map names those places
+    -- in words rather than shading them.
+    pct_change     REAL,
+    rail_now       INTEGER NOT NULL,
+    rail_proposed  INTEGER NOT NULL,
+    PRIMARY KEY (key, day)
 );
 
 -- The changed block groups themselves, as points. A place has no polygon here
@@ -635,6 +662,10 @@ def build(out_path):
     print(f"  place boundaries: {len(boundaries)} places, {drawable} with "
           f"residents of their own")
 
+    service = load_place_service({b[0] for b in boundaries})
+    con.executemany("INSERT INTO place_service VALUES (?,?,?,?,?,?,?)", service)
+    print(f"  place service: {len(service)} place-days of bus trips")
+
     equity, bg_points = load_place_population()
     con.executemany("INSERT INTO place_population VALUES (?,?,?,?,?,?,?,?,?)",
                     equity)
@@ -958,6 +989,36 @@ def load_place_population():
         rows.append((key, place, groups, lost, gained, total, total_groups,
                      lat, lon))
     return rows, points
+
+
+def load_place_service(known_keys):
+    """[(key, day, trips_now, trips_proposed, pct, rail_now, rail_prop)].
+
+    Keyed the same way as the boundaries, and a place the boundary table does
+    not know is dropped rather than inserted: a service row the map can never
+    draw is worse than absent, because it would count towards totals nothing
+    on screen explains. In practice this drops nobody -- both sides name a
+    place by the same containment test -- and it is here so that a future
+    boundary change fails loudly at build time instead of silently.
+    """
+    if not PLACE_SERVICE.exists():
+        sys.exit(f"error: {PLACE_SERVICE} missing -- run "
+                 "`python3 analyze_place_service.py` first")
+    rows, dropped = [], set()
+    with open(PLACE_SERVICE, encoding="utf-8") as f:
+        for r in csv.DictReader(f):
+            key = query.place_key(r["place"])
+            if key not in known_keys:
+                dropped.add(r["place"])
+                continue
+            rows.append((key, r["day"], int(r["trips_now"]),
+                         int(r["trips_proposed"]),
+                         float(r["pct_change"]) if r["pct_change"] else None,
+                         int(r["rail_now"]), int(r["rail_proposed"])))
+    if dropped:
+        print(f"    note: {len(dropped)} place(s) in {PLACE_SERVICE.name} have "
+              f"no boundary and were dropped: {sorted(dropped)[:5]}")
+    return rows
 
 
 def load_boundaries():

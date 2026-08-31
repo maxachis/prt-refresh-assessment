@@ -12,6 +12,7 @@ const FULL: UrlState = {
   at: { lat: 40.4406, lon: -79.9959 },
   camera: { lat: 40.44, lon: -80.0, zoom: 13.5 },
   place: 'baldwin borough',
+  placeFill: 'gained',
 };
 
 describe('toSearch', () => {
@@ -24,6 +25,13 @@ describe('toSearch', () => {
     expect(p.get('dest')).toBe('oakland');
     expect(p.get('weight')).toBe('riders');
     expect(p.get('surfaceunit')).toBe('people');
+    expect(p.get('placefill')).toBe('gained');
+  });
+
+  it('leaves the place fill out of a link that is mapping the default, losses', () => {
+    // Same reasoning as `weight`: losses is the default reading, so it stays implicit.
+    const p = new URLSearchParams(toSearch({ ...FULL, placeFill: 'lost' }));
+    expect(p.has('placefill')).toBe(false);
   });
 
   it('leaves the ridership weighting out of a link that is not using it', () => {
@@ -62,6 +70,11 @@ describe('toSearch', () => {
   it('round-trips through parse', () => {
     expect(parseUrlState(toSearch(FULL))).toEqual(FULL);
   });
+
+  it('round-trips the service fill mode too, the third of the three values', () => {
+    const withService = { ...FULL, placeFill: 'service' as const };
+    expect(parseUrlState(toSearch(withService))).toEqual(withService);
+  });
 });
 
 describe('parseUrlState', () => {
@@ -96,6 +109,7 @@ describe('parseUrlState', () => {
     ['?at=here,there', 'at'],
     ['?map=40.44,-79.99', 'camera'],
     ['?dest=', 'dest'],
+    ['?placefill=net', 'placeFill'],
   ])('ignores %s', (search, key) => {
     expect(parseUrlState(search)).not.toHaveProperty(key);
   });

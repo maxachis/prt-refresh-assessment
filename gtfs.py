@@ -93,6 +93,11 @@ RAW = DATA / "raw"
 CURRENT_GTFS = RAW / "current_gtfs.zip"
 PROPOSED_GTFS = RAW / "proposed_gtfs"
 
+# GTFS route_type 3 is a bus. Every service figure in this repo is bus-only;
+# the one-seat and journey questions widen to rail deliberately (conventions
+# 13 and 14) and say so where they do it.
+BUS_ROUTE_TYPE = "3"
+
 DAYS = ["weekday", "saturday", "sunday"]
 DOWS = ["monday", "tuesday", "wednesday", "thursday", "friday",
         "saturday", "sunday"]

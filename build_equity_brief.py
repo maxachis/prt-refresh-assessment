@@ -660,10 +660,10 @@ def page_body(rows):
         "colour-legend": colour_legend,
         "table-car-free": lambda: place_table(
             rolled, "zero_vehicle", side="lost", unit="car-free households",
-            columns=["Lose every bus", "Gain a bus"]),
+            columns=["Lose all buses", "Gain a bus"]),
         "table-gained": lambda: place_table(
             rolled, "residents", side="gained", unit="residents",
-            columns=["Lose every bus", "Gain a bus"]),
+            columns=["Lose all buses", "Gain a bus"]),
     })
 
 

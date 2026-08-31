@@ -29,6 +29,7 @@
 import { Day, DAYS } from './types';
 import { Weight, SurfaceUnit } from './types';
 import { Destination } from './oneseat';
+import { PlaceFill, DEFAULT_PLACE_FILL } from './places';
 import { VIEWS } from './statebar';
 
 /**
@@ -49,6 +50,7 @@ export const PARAM = {
   at: 'at',
   camera: 'map',
   place: 'place',
+  placeFill: 'placefill',
 } as const;
 
 /** How the one-seat day control's two positions are spelled in a URL. */
@@ -84,6 +86,8 @@ export interface UrlState {
   camera: Camera | null;
   /** The Places view's selected place, by its /api/places key, or null. */
   place: string | null;
+  /** Which of the Places choropleth's two readings is on the map. */
+  placeFill: PlaceFill;
 }
 
 /** Is this page inside someone else's? */
@@ -121,6 +125,10 @@ export function toSearch(s: UrlState): string {
   // Same reasoning as `at`: absence, not a default, so it is written only
   // once a place has actually been selected.
   if (s.place) p.set(PARAM.place, s.place);
+  // Same reasoning as `weight` and `surfaceUnit` above: losses is the
+  // default reading, so writing it into every link would make the toggle
+  // look like a choice the reader had made rather than the map's own start.
+  if (s.placeFill !== DEFAULT_PLACE_FILL) p.set(PARAM.placeFill, s.placeFill);
   return `?${p}`;
 }
 
@@ -163,6 +171,11 @@ export function parseUrlState(search: string): Partial<UrlState> {
 
   const place = p.get(PARAM.place);
   if (place) s.place = place;
+
+  const placeFill = p.get(PARAM.placeFill);
+  if (placeFill === 'lost' || placeFill === 'gained' || placeFill === 'service') {
+    s.placeFill = placeFill;
+  }
 
   return s;
 }

@@ -429,6 +429,17 @@ export interface PlaceDetail extends PlaceSummary {
  * carries `residents_total: null` there, which `PlaceSummary` (built for the
  * ranked list, where every row is a place the plan changed) does not allow.
  */
+/**
+ * A place's bus trips on one day type, today and under the plan -- the
+ * fields `serviceField` (`places.ts`) names by day and stat rather than
+ * having every call site spell out `service_${day}_${stat}` itself.
+ *
+ * `pct` is `null`, not `Infinity`, where the place has no bus today and some
+ * proposed: an undefined change, because there is nothing to divide by. Both
+ * `rail_*` flags exist so a place that loses its last bus while the T (or an
+ * incline) still calls there is never described as losing "all transit" --
+ * conventions 13 and 16 both cover that trap.
+ */
 export interface PlaceBoundaryProperties {
   key: string;
   place: string;
@@ -440,6 +451,21 @@ export interface PlaceBoundaryProperties {
   residents_total: number | null;
   share_lost: number | null;
   share_gained: number | null;
+  service_weekday_now: number;
+  service_weekday_proposed: number;
+  service_weekday_pct: number | null;
+  service_weekday_rail_now: boolean;
+  service_weekday_rail_proposed: boolean;
+  service_saturday_now: number;
+  service_saturday_proposed: number;
+  service_saturday_pct: number | null;
+  service_saturday_rail_now: boolean;
+  service_saturday_rail_proposed: boolean;
+  service_sunday_now: number;
+  service_sunday_proposed: number;
+  service_sunday_pct: number | null;
+  service_sunday_rail_now: boolean;
+  service_sunday_rail_proposed: boolean;
 }
 
 export interface PlaceBoundaryFeature {

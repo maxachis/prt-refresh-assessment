@@ -51,6 +51,10 @@ python3 analyze_travel_time.py      # -> data/trip_time_change.csv (the pooled
                                     #    searched from all of its block groups.
                                     #    Needs analyze_one_seat.py and
                                     #    ingest_census.py to have run.
+python3 analyze_place_service.py    # -> data/place_service_change.csv (needs
+                                    #    place_boundaries.json). How many bus
+                                    #    trips touch each named place, per day
+                                    #    type, on both networks.
 python3 build_webdb.py              # -> data/refresh.db, for the web app only.
                                     #    Now needs ingest_census.py to have run
                                     #    as well: the map's People reading is
@@ -473,6 +477,42 @@ changes published findings.
     less ground, the street view 22% less pavement, and this says 99.3% of
     boardings untouched. All four are true and each one alone is a talking
     point.
+
+16. **Service touching a place is a sixth unit, and it is not access.**
+    `analyze_place_service.py` counts how many bus trips call at each named
+    place, per day type, on both networks, so the Places map can be coloured
+    by the percent change in a place's own bus service beside the share of
+    its residents who lose theirs. Four rules govern it.
+
+    **The unit is a trip, counted once per place it touches** — never a stop
+    event. A bus making a dozen stops inside Carrick is one trip; summing
+    departures over stops would draw where PRT put its poles and call it
+    service. This is convention 2 at a new unit.
+
+    **The column does not sum to the network's trips.** A cross-county trip
+    is counted in every place along the way, because the question is "how
+    much service does this place have", not "how are the system's trips
+    divided between places" — which no place-level map can answer. Adding
+    the column up double-counts.
+
+    **It is an upper bound on service, and says nothing about reaching it.**
+    A bus grazing one corner of a township counts the same as one running
+    its length. Coverage stays `analyze_coverage_change.py`'s question per
+    convention 10, and quoting this alone would call a place well served
+    because a single route clips its edge.
+
+    **Buses only — with a rail flag, which is not optional.** The counts drop
+    the T and the inclines like every other service figure. That makes a true
+    sentence read as a lie: Bethel Park goes from 46 weekday bus trips to
+    none while the Blue, Red and Silver lines keep calling all day. So every
+    place-day also carries whether any non-bus route serves it, on each
+    network — a flag, never a count, since one T trip is not one bus trip and
+    a shared column would let rail refill a hole the buses left. Seven places
+    lose their last weekday bus; three of them keep a train (Bethel Park, Bon
+    Air, South Park township) and four do not (Chartiers City, Reserve
+    township, Trafford borough, Upper St. Clair). Anything drawing them must
+    be able to say which. This is convention 13's Beechview trap one unit
+    further down.
 
 State data vintage and PRT's own accuracy disclaimer (stop figures are
 "unadjusted, unofficial totals" that may understate ridership by up to 30%)

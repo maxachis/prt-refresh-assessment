@@ -1,0 +1,556 @@
+place,kind,day,trips_now,trips_proposed,pct_change,rail_now,rail_proposed
+Allegheny Center,neighbourhood,weekday,822,771,-6.2,0,0
+Allegheny West,neighbourhood,weekday,132,117,-11.4,0,0
+Allentown,neighbourhood,weekday,175,206,17.7,0,0
+Arlington,neighbourhood,weekday,38,43,13.2,0,0
+Arlington Heights,neighbourhood,weekday,38,43,13.2,0,0
+Aspinwall borough,borough,weekday,244,330,35.2,0,0
+Avalon borough,borough,weekday,171,218,27.5,0,0
+Baldwin borough,borough,weekday,264,170,-35.6,0,0
+Banksville,neighbourhood,weekday,40,52,30.0,0,0
+Bedford Dwellings,neighbourhood,weekday,56,99,76.8,0,0
+Beechview,neighbourhood,weekday,64,61,-4.7,1,1
+Bellevue borough,borough,weekday,249,288,15.7,0,0
+Beltzhoover,neighbourhood,weekday,190,206,8.4,1,1
+Ben Avon borough,borough,weekday,61,52,-14.8,0,0
+Bethel Park municipality,municipality,weekday,46,0,-100.0,1,1
+Blawnox borough,borough,weekday,63,84,33.3,0,0
+Bloomfield,neighbourhood,weekday,702,717,2.1,0,0
+Bluff,neighbourhood,weekday,961,680,-29.2,0,0
+Bon Air,neighbourhood,weekday,31,0,-100.0,1,1
+Brackenridge borough,borough,weekday,10,116,1060.0,0,0
+Braddock Hills borough,borough,weekday,293,390,33.1,0,0
+Braddock borough,borough,weekday,294,170,-42.2,0,0
+Brentwood borough,borough,weekday,336,346,3.0,0,0
+Bridgeville borough,borough,weekday,110,54,-50.9,0,0
+Brighton Heights,neighbourhood,weekday,315,250,-20.6,0,0
+Brookline,neighbourhood,weekday,230,183,-20.4,1,1
+California-Kirkbride,neighbourhood,weekday,221,137,-38.0,0,0
+Carnegie borough,borough,weekday,248,314,26.6,0,0
+Carrick,neighbourhood,weekday,266,258,-3.0,1,1
+Castle Shannon borough,borough,weekday,0,0,,1,1
+Central Business District,neighbourhood,weekday,4022,4051,0.7,1,1
+Central Lawrenceville,neighbourhood,weekday,293,293,0.0,0,0
+Central Northside,neighbourhood,weekday,387,373,-3.6,0,0
+Central Oakland,neighbourhood,weekday,840,955,13.7,0,0
+Chartiers City,neighbourhood,weekday,60,0,-100.0,0,0
+Chateau,neighbourhood,weekday,180,98,-45.6,0,0
+Cheswick borough,borough,weekday,73,84,15.1,0,0
+Churchill borough,borough,weekday,84,94,11.9,0,0
+Clairton city,city,weekday,85,70,-17.6,0,0
+Collier township,township,weekday,96,104,8.3,0,0
+Coraopolis borough,borough,weekday,59,54,-8.5,0,0
+Crafton Heights,neighbourhood,weekday,162,205,26.5,0,0
+Crafton borough,borough,weekday,357,400,12.0,0,0
+Crawford-Roberts,neighbourhood,weekday,495,620,25.3,0,0
+Dormont borough,borough,weekday,64,99,54.7,1,1
+Dravosburg borough,borough,weekday,106,120,13.2,0,0
+Duquesne Heights,neighbourhood,weekday,55,54,-1.8,0,1
+Duquesne city,city,weekday,212,212,0.0,0,0
+East Allegheny,neighbourhood,weekday,517,558,7.9,0,0
+East Carnegie,neighbourhood,weekday,28,27,-3.6,0,0
+East Deer township,township,weekday,73,84,15.1,0,0
+East Hills,neighbourhood,weekday,207,181,-12.6,0,0
+East Liberty,neighbourhood,weekday,917,1084,18.2,0,0
+East McKeesport borough,borough,weekday,15,10,-33.3,0,0
+East Pittsburgh borough,borough,weekday,165,142,-13.9,0,0
+Edgewood borough,borough,weekday,291,371,27.5,0,0
+Edgeworth borough,borough,weekday,48,38,-20.8,0,0
+Elizabeth borough,borough,weekday,50,14,-72.0,0,0
+Elliott,neighbourhood,weekday,394,329,-16.5,0,0
+Emsworth borough,borough,weekday,61,52,-14.8,0,0
+Esplen,neighbourhood,weekday,183,201,9.8,0,0
+Etna borough,borough,weekday,163,117,-28.2,0,0
+Fairywood,neighbourhood,weekday,60,54,-10.0,0,0
+Findlay township,township,weekday,76,76,0.0,0,0
+Fineview,neighbourhood,weekday,25,27,8.0,0,0
+Forest Hills borough,borough,weekday,144,77,-46.5,0,0
+Fox Chapel borough,borough,weekday,33,49,48.5,0,0
+Friendship,neighbourhood,weekday,415,328,-21.0,0,0
+Garfield,neighbourhood,weekday,169,169,0.0,0,0
+Glassport borough,borough,weekday,35,56,60.0,0,0
+Glen Hazel,neighbourhood,weekday,106,122,15.1,0,0
+Glen Osborne borough,borough,weekday,48,38,-20.8,0,0
+Glenfield borough,borough,weekday,48,38,-20.8,0,0
+Green Tree borough,borough,weekday,88,77,-12.5,0,0
+Greenfield,neighbourhood,weekday,482,422,-12.4,0,0
+Hampton township,township,weekday,48,10,-79.2,0,0
+Harmar township,township,weekday,123,152,23.6,0,0
+Harrison township,township,weekday,10,32,220.0,0,0
+Hays,neighbourhood,weekday,54,54,0.0,0,0
+Haysville borough,borough,weekday,24,19,-20.8,0,0
+Hazelwood,neighbourhood,weekday,398,410,3.0,0,0
+Heidelberg borough,borough,weekday,66,54,-18.2,0,0
+Highland Park,neighbourhood,weekday,327,386,18.0,0,0
+Homestead borough,borough,weekday,465,474,1.9,0,0
+Homewood North,neighbourhood,weekday,182,147,-19.2,0,0
+Homewood South,neighbourhood,weekday,508,467,-8.1,0,0
+Homewood West,neighbourhood,weekday,317,231,-27.1,0,0
+Ingram borough,borough,weekday,335,338,0.9,0,0
+Jefferson Hills borough,borough,weekday,91,70,-23.1,0,0
+Kennedy township,township,weekday,150,120,-20.0,0,0
+Knoxville,neighbourhood,weekday,263,195,-25.9,0,0
+Larimer,neighbourhood,weekday,682,914,34.0,0,0
+Leetsdale borough,borough,weekday,48,38,-20.8,0,0
+Lincoln Place,neighbourhood,weekday,92,88,-4.3,0,0
+Lincoln-Lemington-Belmar,neighbourhood,weekday,248,282,13.7,0,0
+Lower Lawrenceville,neighbourhood,weekday,574,601,4.7,0,0
+Manchester,neighbourhood,weekday,152,89,-41.4,0,0
+Marshall-Shadeland,neighbourhood,weekday,278,236,-15.1,0,0
+McCandless township,township,weekday,116,145,25.0,0,0
+McKees Rocks borough,borough,weekday,209,228,9.1,0,0
+McKeesport city,city,weekday,317,414,30.6,0,0
+Middle Hill,neighbourhood,weekday,204,273,33.8,0,0
+Millvale borough,borough,weekday,99,180,81.8,0,0
+Monroeville municipality,municipality,weekday,226,206,-8.8,0,0
+Moon township,township,weekday,73,68,-6.8,0,0
+Morningside,neighbourhood,weekday,124,133,7.3,0,0
+Mount Lebanon township,township,weekday,144,112,-22.2,1,1
+Mount Oliver borough,borough,weekday,413,367,-11.1,0,0
+Mount Washington,neighbourhood,weekday,519,378,-27.2,1,1
+Mt. Oliver,neighbourhood,weekday,42,66,57.1,0,0
+Munhall borough,borough,weekday,227,270,18.9,0,0
+Neville township,township,weekday,59,54,-8.5,0,0
+New Homestead,neighbourhood,weekday,27,27,0.0,0,0
+North Braddock borough,borough,weekday,370,430,16.2,0,0
+North Fayette township,township,weekday,43,136,216.3,0,0
+North Oakland,neighbourhood,weekday,1770,1899,7.3,0,0
+North Shore,neighbourhood,weekday,731,722,-1.2,1,1
+North Versailles township,township,weekday,102,102,0.0,0,0
+Northview Heights,neighbourhood,weekday,112,125,11.6,0,0
+O Hara township,township,weekday,244,264,8.2,0,0
+Oakmont borough,borough,weekday,50,68,36.0,0,0
+Oakwood,neighbourhood,weekday,220,249,13.2,0,0
+Overbrook,neighbourhood,weekday,170,102,-40.0,1,1
+Penn Hills municipality,municipality,weekday,177,246,39.0,0,0
+Perry North,neighbourhood,weekday,235,203,-13.6,0,0
+Perry South,neighbourhood,weekday,280,235,-16.1,0,0
+Pine township,township,weekday,0,19,,0,0
+Pitcairn borough,borough,weekday,56,40,-28.6,0,0
+Pittsburgh city,city,weekday,347,423,21.9,0,0
+Pleasant Hills borough,borough,weekday,215,226,5.1,0,0
+Plum borough,borough,weekday,88,14,-84.1,0,0
+Point Breeze,neighbourhood,weekday,479,459,-4.2,0,0
+Point Breeze North,neighbourhood,weekday,554,708,27.8,0,0
+Polish Hill,neighbourhood,weekday,730,797,9.2,0,0
+Rankin borough,borough,weekday,223,350,57.0,0,0
+Regent Square,neighbourhood,weekday,195,298,52.8,0,0
+Reserve township,township,weekday,56,0,-100.0,0,0
+Ridgemont,neighbourhood,weekday,15,25,66.7,0,0
+Robinson township,township,weekday,217,196,-9.7,0,0
+Ross township,township,weekday,430,393,-8.6,0,0
+Scott township,township,weekday,170,180,5.9,0,0
+Sewickley borough,borough,weekday,77,38,-50.6,0,0
+Shadyside,neighbourhood,weekday,1232,1490,20.9,0,0
+Shaler township,township,weekday,42,110,161.9,0,0
+Sharpsburg borough,borough,weekday,211,239,13.3,0,0
+Sheraden,neighbourhood,weekday,314,276,-12.1,0,0
+South Oakland,neighbourhood,weekday,997,1098,10.1,0,0
+South Park township,township,weekday,6,0,-100.0,1,1
+South Shore,neighbourhood,weekday,1334,1312,-1.6,1,1
+South Side Flats,neighbourhood,weekday,603,740,22.7,0,0
+South Side Slopes,neighbourhood,weekday,413,371,-10.2,0,0
+Spring Garden,neighbourhood,weekday,43,67,55.8,0,0
+Spring Hill-City View,neighbourhood,weekday,112,125,11.6,0,0
+Springdale borough,borough,weekday,73,84,15.1,0,0
+Springdale township,township,weekday,73,84,15.1,0,0
+Squirrel Hill North,neighbourhood,weekday,1065,1082,1.6,0,0
+Squirrel Hill South,neighbourhood,weekday,659,693,5.2,0,0
+St. Clair,neighbourhood,weekday,22,66,200.0,0,0
+Stanton Heights,neighbourhood,weekday,131,146,11.5,0,0
+Stowe township,township,weekday,173,174,0.6,0,0
+Strip District,neighbourhood,weekday,442,522,18.1,0,0
+Summer Hill,neighbourhood,weekday,244,99,-59.4,0,0
+Swisshelm Park,neighbourhood,weekday,22,66,200.0,0,0
+Swissvale borough,borough,weekday,634,770,21.5,0,0
+Tarentum borough,borough,weekday,73,116,58.9,0,0
+Terrace Village,neighbourhood,weekday,174,246,41.4,0,0
+Trafford borough,borough,weekday,56,0,-100.0,0,0
+Troy Hill,neighbourhood,weekday,198,175,-11.6,0,0
+Turtle Creek borough,borough,weekday,150,94,-37.3,0,0
+Upper Hill,neighbourhood,weekday,114,159,39.5,0,0
+Upper Lawrenceville,neighbourhood,weekday,253,171,-32.4,0,0
+Upper St. Clair municipality,municipality,weekday,42,0,-100.0,0,0
+Verona borough,borough,weekday,44,68,54.5,0,0
+Versailles borough,borough,weekday,31,54,74.2,0,0
+West End,neighbourhood,weekday,251,282,12.4,0,0
+West Homestead borough,borough,weekday,260,136,-47.7,0,0
+West Mifflin borough,borough,weekday,499,512,2.6,0,0
+West Oakland,neighbourhood,weekday,1183,1049,-11.3,0,0
+West View borough,borough,weekday,184,206,12.0,0,0
+Westwood,neighbourhood,weekday,71,79,11.3,0,0
+Whitaker borough,borough,weekday,212,250,17.9,0,0
+White Oak borough,borough,weekday,69,59,-14.5,0,0
+Whitehall borough,borough,weekday,222,208,-6.3,0,0
+Wilkins township,township,weekday,62,98,58.1,0,0
+Wilkinsburg borough,borough,weekday,1159,1247,7.6,0,0
+Wilmerding borough,borough,weekday,56,40,-28.6,0,0
+Windgap,neighbourhood,weekday,122,81,-33.6,0,0
+Allegheny Center,neighbourhood,saturday,603,550,-8.8,0,0
+Allegheny West,neighbourhood,saturday,71,90,26.8,0,0
+Allentown,neighbourhood,saturday,151,140,-7.3,0,0
+Arlington,neighbourhood,saturday,37,36,-2.7,0,0
+Arlington Heights,neighbourhood,saturday,37,36,-2.7,0,0
+Aspinwall borough,borough,saturday,167,256,53.3,0,0
+Avalon borough,borough,saturday,114,138,21.1,0,0
+Baldwin borough,borough,saturday,188,112,-40.4,0,0
+Banksville,neighbourhood,saturday,18,30,66.7,0,0
+Bedford Dwellings,neighbourhood,saturday,44,82,86.4,0,0
+Beechview,neighbourhood,saturday,45,30,-33.3,1,1
+Bellevue borough,borough,saturday,188,206,9.6,0,0
+Beltzhoover,neighbourhood,saturday,172,140,-18.6,1,1
+Ben Avon borough,borough,saturday,34,36,5.9,0,0
+Bethel Park municipality,municipality,saturday,18,0,-100.0,1,1
+Blawnox borough,borough,saturday,38,68,78.9,0,0
+Bloomfield,neighbourhood,saturday,486,587,20.8,0,0
+Bluff,neighbourhood,saturday,694,509,-26.7,0,0
+Bon Air,neighbourhood,saturday,20,0,-100.0,1,1
+Brackenridge borough,borough,saturday,0,98,,0,0
+Braddock Hills borough,borough,saturday,224,304,35.7,0,0
+Braddock borough,borough,saturday,232,150,-35.3,0,0
+Brentwood borough,borough,saturday,196,248,26.5,0,0
+Bridgeville borough,borough,saturday,64,34,-46.9,0,0
+Brighton Heights,neighbourhood,saturday,224,176,-21.4,0,0
+Brookline,neighbourhood,saturday,144,109,-24.3,1,1
+California-Kirkbride,neighbourhood,saturday,181,106,-41.4,0,0
+Carnegie borough,borough,saturday,176,238,35.2,0,0
+Carrick,neighbourhood,saturday,134,188,40.3,1,1
+Castle Shannon borough,borough,saturday,0,0,,1,1
+Central Business District,neighbourhood,saturday,2609,2850,9.2,1,1
+Central Lawrenceville,neighbourhood,saturday,198,251,26.8,0,0
+Central Northside,neighbourhood,saturday,256,282,10.2,0,0
+Central Oakland,neighbourhood,saturday,582,763,31.1,0,0
+Chartiers City,neighbourhood,saturday,34,0,-100.0,0,0
+Chateau,neighbourhood,saturday,105,72,-31.4,0,0
+Cheswick borough,borough,saturday,38,68,78.9,0,0
+Churchill borough,borough,saturday,30,48,60.0,0,0
+Clairton city,city,saturday,62,34,-45.2,0,0
+Collier township,township,saturday,42,64,52.4,0,0
+Coraopolis borough,borough,saturday,38,34,-10.5,0,0
+Crafton Heights,neighbourhood,saturday,96,153,59.4,0,0
+Crafton borough,borough,saturday,248,310,25.0,0,0
+Crawford-Roberts,neighbourhood,saturday,368,506,37.5,0,0
+Dormont borough,borough,saturday,45,60,33.3,1,1
+Dravosburg borough,borough,saturday,70,84,20.0,0,0
+Duquesne Heights,neighbourhood,saturday,28,34,21.4,0,1
+Duquesne city,city,saturday,134,170,26.9,0,0
+East Allegheny,neighbourhood,saturday,368,391,6.2,0,0
+East Carnegie,neighbourhood,saturday,14,17,21.4,0,0
+East Deer township,township,saturday,38,68,78.9,0,0
+East Hills,neighbourhood,saturday,170,134,-21.2,0,0
+East Liberty,neighbourhood,saturday,714,919,28.7,0,0
+East Pittsburgh borough,borough,saturday,87,94,8.0,0,0
+Edgewood borough,borough,saturday,196,288,46.9,0,0
+Edgeworth borough,borough,saturday,34,36,5.9,0,0
+Elizabeth borough,borough,saturday,32,0,-100.0,0,0
+Elliott,neighbourhood,saturday,256,235,-8.2,0,0
+Emsworth borough,borough,saturday,34,36,5.9,0,0
+Esplen,neighbourhood,saturday,117,133,13.7,0,0
+Etna borough,borough,saturday,89,82,-7.9,0,0
+Fairywood,neighbourhood,saturday,34,34,0.0,0,0
+Findlay township,township,saturday,80,76,-5.0,0,0
+Fineview,neighbourhood,saturday,16,17,6.2,0,0
+Forest Hills borough,borough,saturday,70,47,-32.9,0,0
+Fox Chapel borough,borough,saturday,30,36,20.0,0,0
+Friendship,neighbourhood,saturday,317,281,-11.4,0,0
+Garfield,neighbourhood,saturday,134,152,13.4,0,0
+Glassport borough,borough,saturday,30,34,13.3,0,0
+Glen Hazel,neighbourhood,saturday,72,86,19.4,0,0
+Glen Osborne borough,borough,saturday,34,36,5.9,0,0
+Glenfield borough,borough,saturday,34,36,5.9,0,0
+Green Tree borough,borough,saturday,42,47,11.9,0,0
+Greenfield,neighbourhood,saturday,318,318,0.0,0,0
+Hampton township,township,saturday,16,0,-100.0,0,0
+Harmar township,township,saturday,38,116,205.3,0,0
+Harrison township,township,saturday,0,30,,0,0
+Hays,neighbourhood,saturday,34,34,0.0,0,0
+Haysville borough,borough,saturday,17,18,5.9,0,0
+Hazelwood,neighbourhood,saturday,265,286,7.9,0,0
+Heidelberg borough,borough,saturday,28,34,21.4,0,0
+Highland Park,neighbourhood,saturday,248,323,30.2,0,0
+Homestead borough,borough,saturday,382,398,4.2,0,0
+Homewood North,neighbourhood,saturday,131,103,-21.4,0,0
+Homewood South,neighbourhood,saturday,306,273,-10.8,0,0
+Homewood West,neighbourhood,saturday,244,169,-30.7,0,0
+Ingram borough,borough,saturday,233,259,11.2,0,0
+Jefferson Hills borough,borough,saturday,62,34,-45.2,0,0
+Kennedy township,township,saturday,98,82,-16.3,0,0
+Knoxville,neighbourhood,saturday,183,128,-30.1,0,0
+Larimer,neighbourhood,saturday,524,777,48.3,0,0
+Leetsdale borough,borough,saturday,34,36,5.9,0,0
+Lincoln Place,neighbourhood,saturday,62,64,3.2,0,0
+Lincoln-Lemington-Belmar,neighbourhood,saturday,170,206,21.2,0,0
+Lower Lawrenceville,neighbourhood,saturday,414,524,26.6,0,0
+Manchester,neighbourhood,saturday,90,86,-4.4,0,0
+Marshall-Shadeland,neighbourhood,saturday,207,176,-15.0,0,0
+McCandless township,township,saturday,69,128,85.5,0,0
+McKees Rocks borough,borough,saturday,136,150,10.3,0,0
+McKeesport city,city,saturday,209,317,51.7,0,0
+Middle Hill,neighbourhood,saturday,150,216,44.0,0,0
+Millvale borough,borough,saturday,54,146,170.4,0,0
+Monroeville municipality,municipality,saturday,81,142,75.3,0,0
+Moon township,township,saturday,38,34,-10.5,0,0
+Morningside,neighbourhood,saturday,82,105,28.0,0,0
+Mount Lebanon township,township,saturday,82,60,-26.8,1,1
+Mount Oliver borough,borough,saturday,287,258,-10.1,0,0
+Mount Washington,neighbourhood,saturday,380,234,-38.4,1,1
+Mt. Oliver,neighbourhood,saturday,45,34,-24.4,0,0
+Munhall borough,borough,saturday,162,230,42.0,0,0
+Neville township,township,saturday,38,34,-10.5,0,0
+New Homestead,neighbourhood,saturday,17,17,0.0,0,0
+North Braddock borough,borough,saturday,264,334,26.5,0,0
+North Fayette township,township,saturday,30,116,286.7,0,0
+North Oakland,neighbourhood,saturday,1231,1506,22.3,0,0
+North Shore,neighbourhood,saturday,534,514,-3.7,1,1
+North Versailles township,township,saturday,66,64,-3.0,0,0
+Northview Heights,neighbourhood,saturday,126,116,-7.9,0,0
+O Hara township,township,saturday,167,208,24.6,0,0
+Oakmont borough,borough,saturday,0,48,,0,0
+Oakwood,neighbourhood,saturday,162,191,17.9,0,0
+Overbrook,neighbourhood,saturday,112,60,-46.4,1,1
+Penn Hills municipality,municipality,saturday,84,174,107.1,0,0
+Perry North,neighbourhood,saturday,172,154,-10.5,0,0
+Perry South,neighbourhood,saturday,198,160,-19.2,0,0
+Pitcairn borough,borough,saturday,20,30,50.0,0,0
+Pittsburgh city,city,saturday,233,333,42.9,0,0
+Pleasant Hills borough,borough,saturday,188,146,-22.3,0,0
+Point Breeze,neighbourhood,saturday,341,363,6.5,0,0
+Point Breeze North,neighbourhood,saturday,320,500,56.2,0,0
+Polish Hill,neighbourhood,saturday,371,497,34.0,0,0
+Rankin borough,borough,saturday,134,270,101.5,0,0
+Regent Square,neighbourhood,saturday,147,228,55.1,0,0
+Reserve township,township,saturday,22,0,-100.0,0,0
+Ridgemont,neighbourhood,saturday,7,15,114.3,0,0
+Robinson township,township,saturday,170,164,-3.5,0,0
+Ross township,township,saturday,263,316,20.2,0,0
+Scott township,township,saturday,92,124,34.8,0,0
+Sewickley borough,borough,saturday,54,36,-33.3,0,0
+Shadyside,neighbourhood,saturday,740,1068,44.3,0,0
+Shaler township,township,saturday,16,78,387.5,0,0
+Sharpsburg borough,borough,saturday,137,186,35.8,0,0
+Sheraden,neighbourhood,saturday,218,208,-4.6,0,0
+South Oakland,neighbourhood,saturday,688,842,22.4,0,0
+South Park township,township,saturday,0,0,,1,1
+South Shore,neighbourhood,saturday,905,896,-1.0,1,1
+South Side Flats,neighbourhood,saturday,431,576,33.6,0,0
+South Side Slopes,neighbourhood,saturday,297,277,-6.7,0,0
+Spring Garden,neighbourhood,saturday,36,24,-33.3,0,0
+Spring Hill-City View,neighbourhood,saturday,126,116,-7.9,0,0
+Springdale borough,borough,saturday,38,68,78.9,0,0
+Springdale township,township,saturday,38,68,78.9,0,0
+Squirrel Hill North,neighbourhood,saturday,834,892,7.0,0,0
+Squirrel Hill South,neighbourhood,saturday,478,524,9.6,0,0
+St. Clair,neighbourhood,saturday,45,34,-24.4,0,0
+Stanton Heights,neighbourhood,saturday,95,134,41.1,0,0
+Stowe township,township,saturday,110,116,5.5,0,0
+Strip District,neighbourhood,saturday,316,458,44.9,0,0
+Summer Hill,neighbourhood,saturday,210,92,-56.2,0,0
+Swisshelm Park,neighbourhood,saturday,0,48,,0,0
+Swissvale borough,borough,saturday,364,548,50.5,0,0
+Tarentum borough,borough,saturday,38,98,157.9,0,0
+Terrace Village,neighbourhood,saturday,132,195,47.7,0,0
+Trafford borough,borough,saturday,10,0,-100.0,0,0
+Troy Hill,neighbourhood,saturday,111,116,4.5,0,0
+Turtle Creek borough,borough,saturday,87,64,-26.4,0,0
+Upper Hill,neighbourhood,saturday,84,127,51.2,0,0
+Upper Lawrenceville,neighbourhood,saturday,137,135,-1.5,0,0
+Upper St. Clair municipality,municipality,saturday,27,0,-100.0,0,0
+Verona borough,borough,saturday,0,48,,0,0
+Versailles borough,borough,saturday,11,49,345.5,0,0
+West End,neighbourhood,saturday,142,200,40.8,0,0
+West Homestead borough,borough,saturday,222,116,-47.7,0,0
+West Mifflin borough,borough,saturday,382,380,-0.5,0,0
+West Oakland,neighbourhood,saturday,825,844,2.3,0,0
+West View borough,borough,saturday,136,170,25.0,0,0
+Westwood,neighbourhood,saturday,35,49,40.0,0,0
+Whitaker borough,borough,saturday,134,200,49.3,0,0
+White Oak borough,borough,saturday,34,47,38.2,0,0
+Whitehall borough,borough,saturday,188,142,-24.5,0,0
+Wilkins township,township,saturday,30,78,160.0,0,0
+Wilkinsburg borough,borough,saturday,682,882,29.3,0,0
+Wilmerding borough,borough,saturday,20,30,50.0,0,0
+Windgap,neighbourhood,saturday,70,51,-27.1,0,0
+Allegheny Center,neighbourhood,sunday,448,436,-2.7,0,0
+Allegheny West,neighbourhood,sunday,49,76,55.1,0,0
+Allentown,neighbourhood,sunday,102,120,17.6,0,0
+Arlington,neighbourhood,sunday,22,30,36.4,0,0
+Arlington Heights,neighbourhood,sunday,22,30,36.4,0,0
+Aspinwall borough,borough,sunday,147,186,26.5,0,0
+Avalon borough,borough,sunday,102,136,33.3,0,0
+Baldwin borough,borough,sunday,120,104,-13.3,0,0
+Banksville,neighbourhood,sunday,14,28,100.0,0,0
+Bedford Dwellings,neighbourhood,sunday,44,55,25.0,0,0
+Beechview,neighbourhood,sunday,31,28,-9.7,1,1
+Bellevue borough,borough,sunday,144,182,26.4,0,0
+Beltzhoover,neighbourhood,sunday,111,120,8.1,1,1
+Ben Avon borough,borough,sunday,30,32,6.7,0,0
+Bethel Park municipality,municipality,sunday,14,0,-100.0,1,1
+Blawnox borough,borough,sunday,38,48,26.3,0,0
+Bloomfield,neighbourhood,sunday,359,455,26.7,0,0
+Bluff,neighbourhood,sunday,536,374,-30.2,0,0
+Bon Air,neighbourhood,sunday,14,0,-100.0,1,1
+Brackenridge borough,borough,sunday,0,74,,0,0
+Braddock Hills borough,borough,sunday,179,220,22.9,0,0
+Braddock borough,borough,sunday,152,110,-27.6,0,0
+Brentwood borough,borough,sunday,140,178,27.1,0,0
+Bridgeville borough,borough,sunday,52,28,-46.2,0,0
+Brighton Heights,neighbourhood,sunday,188,154,-18.1,0,0
+Brookline,neighbourhood,sunday,81,98,21.0,1,1
+California-Kirkbride,neighbourhood,sunday,134,93,-30.6,0,0
+Carnegie borough,borough,sunday,172,212,23.3,0,0
+Carrick,neighbourhood,sunday,86,122,41.9,1,1
+Castle Shannon borough,borough,sunday,0,0,,1,1
+Central Business District,neighbourhood,sunday,1982,2138,7.9,1,1
+Central Lawrenceville,neighbourhood,sunday,152,180,18.4,0,0
+Central Northside,neighbourhood,sunday,198,230,16.2,0,0
+Central Oakland,neighbourhood,sunday,413,575,39.2,0,0
+Chartiers City,neighbourhood,sunday,32,0,-100.0,0,0
+Chateau,neighbourhood,sunday,79,60,-24.1,0,0
+Cheswick borough,borough,sunday,38,48,26.3,0,0
+Churchill borough,borough,sunday,28,32,14.3,0,0
+Clairton city,city,sunday,58,30,-48.3,0,0
+Collier township,township,sunday,40,56,40.0,0,0
+Coraopolis borough,borough,sunday,38,28,-26.3,0,0
+Crafton Heights,neighbourhood,sunday,76,116,52.6,0,0
+Crafton borough,borough,sunday,220,258,17.3,0,0
+Crawford-Roberts,neighbourhood,sunday,292,362,24.0,0,0
+Dormont borough,borough,sunday,31,56,80.6,1,1
+Dravosburg borough,borough,sunday,60,60,0.0,0,0
+Duquesne Heights,neighbourhood,sunday,26,28,7.7,0,1
+Duquesne city,city,sunday,90,114,26.7,0,0
+East Allegheny,neighbourhood,sunday,270,301,11.5,0,0
+East Carnegie,neighbourhood,sunday,14,14,0.0,0,0
+East Deer township,township,sunday,38,48,26.3,0,0
+East Hills,neighbourhood,sunday,122,94,-23.0,0,0
+East Liberty,neighbourhood,sunday,530,661,24.7,0,0
+East Pittsburgh borough,borough,sunday,79,84,6.3,0,0
+Edgewood borough,borough,sunday,124,196,58.1,0,0
+Edgeworth borough,borough,sunday,30,32,6.7,0,0
+Elizabeth borough,borough,sunday,28,0,-100.0,0,0
+Elliott,neighbourhood,sunday,214,176,-17.8,0,0
+Emsworth borough,borough,sunday,30,32,6.7,0,0
+Esplen,neighbourhood,sunday,96,102,6.2,0,0
+Etna borough,borough,sunday,81,55,-32.1,0,0
+Fairywood,neighbourhood,sunday,32,28,-12.5,0,0
+Findlay township,township,sunday,80,76,-5.0,0,0
+Fineview,neighbourhood,sunday,9,14,55.6,0,0
+Forest Hills borough,borough,sunday,63,42,-33.3,0,0
+Fox Chapel borough,borough,sunday,25,30,20.0,0,0
+Friendship,neighbourhood,sunday,236,201,-14.8,0,0
+Garfield,neighbourhood,sunday,96,107,11.5,0,0
+Glassport borough,borough,sunday,30,30,0.0,0,0
+Glen Hazel,neighbourhood,sunday,64,64,0.0,0,0
+Glen Osborne borough,borough,sunday,30,32,6.7,0,0
+Glenfield borough,borough,sunday,30,32,6.7,0,0
+Green Tree borough,borough,sunday,38,42,10.5,0,0
+Greenfield,neighbourhood,sunday,212,220,3.8,0,0
+Hampton township,township,sunday,14,0,-100.0,0,0
+Harmar township,township,sunday,38,80,110.5,0,0
+Harrison township,township,sunday,0,26,,0,0
+Hays,neighbourhood,sunday,32,28,-12.5,0,0
+Haysville borough,borough,sunday,15,16,6.7,0,0
+Hazelwood,neighbourhood,sunday,202,204,1.0,0,0
+Heidelberg borough,borough,sunday,28,28,0.0,0,0
+Highland Park,neighbourhood,sunday,158,235,48.7,0,0
+Homestead borough,borough,sunday,266,284,6.8,0,0
+Homewood North,neighbourhood,sunday,106,81,-23.6,0,0
+Homewood South,neighbourhood,sunday,218,215,-1.4,0,0
+Homewood West,neighbourhood,sunday,194,129,-33.5,0,0
+Ingram borough,borough,sunday,212,221,4.2,0,0
+Jefferson Hills borough,borough,sunday,58,30,-48.3,0,0
+Kennedy township,township,sunday,66,60,-9.1,0,0
+Knoxville,neighbourhood,sunday,118,93,-21.2,0,0
+Larimer,neighbourhood,sunday,443,579,30.7,0,0
+Leetsdale borough,borough,sunday,30,32,6.7,0,0
+Lincoln Place,neighbourhood,sunday,48,56,16.7,0,0
+Lincoln-Lemington-Belmar,neighbourhood,sunday,129,158,22.5,0,0
+Lower Lawrenceville,neighbourhood,sunday,312,373,19.6,0,0
+Manchester,neighbourhood,sunday,80,62,-22.5,0,0
+Marshall-Shadeland,neighbourhood,sunday,173,154,-11.0,0,0
+McCandless township,township,sunday,47,102,117.0,0,0
+McKees Rocks borough,borough,sunday,104,116,11.5,0,0
+McKeesport city,city,sunday,163,243,49.1,0,0
+Middle Hill,neighbourhood,sunday,146,164,12.3,0,0
+Millvale borough,borough,sunday,52,106,103.8,0,0
+Monroeville municipality,municipality,sunday,79,114,44.3,0,0
+Moon township,township,sunday,38,28,-26.3,0,0
+Morningside,neighbourhood,sunday,59,83,40.7,0,0
+Mount Lebanon township,township,sunday,62,56,-9.7,1,1
+Mount Oliver borough,borough,sunday,183,184,0.5,0,0
+Mount Washington,neighbourhood,sunday,246,204,-17.1,1,1
+Mt. Oliver,neighbourhood,sunday,26,32,23.1,0,0
+Munhall borough,borough,sunday,106,170,60.4,0,0
+Neville township,township,sunday,38,28,-26.3,0,0
+New Homestead,neighbourhood,sunday,16,14,-12.5,0,0
+North Braddock borough,borough,sunday,199,248,24.6,0,0
+North Fayette township,township,sunday,16,78,387.5,0,0
+North Oakland,neighbourhood,sunday,895,1158,29.4,0,0
+North Shore,neighbourhood,sunday,400,406,1.5,1,1
+North Versailles township,township,sunday,58,56,-3.4,0,0
+Northview Heights,neighbourhood,sunday,83,78,-6.0,0,0
+O Hara township,township,sunday,147,154,4.8,0,0
+Oakmont borough,borough,sunday,0,32,,0,0
+Oakwood,neighbourhood,sunday,158,170,7.6,0,0
+Overbrook,neighbourhood,sunday,61,56,-8.2,1,1
+Penn Hills municipality,municipality,sunday,61,122,100.0,0,0
+Perry North,neighbourhood,sunday,114,111,-2.6,0,0
+Perry South,neighbourhood,sunday,150,138,-8.0,0,0
+Pitcairn borough,borough,sunday,20,28,40.0,0,0
+Pittsburgh city,city,sunday,194,241,24.2,0,0
+Pleasant Hills borough,borough,sunday,124,134,8.1,0,0
+Point Breeze,neighbourhood,sunday,238,264,10.9,0,0
+Point Breeze North,neighbourhood,sunday,239,372,55.6,0,0
+Polish Hill,neighbourhood,sunday,287,360,25.4,0,0
+Rankin borough,borough,sunday,90,192,113.3,0,0
+Regent Square,neighbourhood,sunday,93,155,66.7,0,0
+Reserve township,township,sunday,14,0,-100.0,0,0
+Ridgemont,neighbourhood,sunday,6,14,133.3,0,0
+Robinson township,township,sunday,146,110,-24.7,0,0
+Ross township,township,sunday,193,236,22.3,0,0
+Scott township,township,sunday,76,112,47.4,0,0
+Sewickley borough,borough,sunday,50,32,-36.0,0,0
+Shadyside,neighbourhood,sunday,556,815,46.6,0,0
+Shaler township,township,sunday,14,60,328.6,0,0
+Sharpsburg borough,borough,sunday,122,132,8.2,0,0
+Sheraden,neighbourhood,sunday,204,184,-9.8,0,0
+South Oakland,neighbourhood,sunday,509,635,24.8,0,0
+South Park township,township,sunday,0,0,,1,1
+South Shore,neighbourhood,sunday,671,718,7.0,1,1
+South Side Flats,neighbourhood,sunday,317,416,31.2,0,0
+South Side Slopes,neighbourhood,sunday,195,196,0.5,0,0
+Spring Garden,neighbourhood,sunday,25,16,-36.0,0,0
+Spring Hill-City View,neighbourhood,sunday,83,78,-6.0,0,0
+Springdale borough,borough,sunday,38,48,26.3,0,0
+Springdale township,township,sunday,38,48,26.3,0,0
+Squirrel Hill North,neighbourhood,sunday,570,663,16.3,0,0
+Squirrel Hill South,neighbourhood,sunday,322,366,13.7,0,0
+St. Clair,neighbourhood,sunday,26,32,23.1,0,0
+Stanton Heights,neighbourhood,sunday,62,92,48.4,0,0
+Stowe township,township,sunday,86,88,2.3,0,0
+Strip District,neighbourhood,sunday,242,322,33.1,0,0
+Summer Hill,neighbourhood,sunday,134,62,-53.7,0,0
+Swisshelm Park,neighbourhood,sunday,0,32,,0,0
+Swissvale borough,borough,sunday,242,414,71.1,0,0
+Tarentum borough,borough,sunday,38,74,94.7,0,0
+Terrace Village,neighbourhood,sunday,128,143,11.7,0,0
+Trafford borough,borough,sunday,10,0,-100.0,0,0
+Troy Hill,neighbourhood,sunday,90,90,0.0,0,0
+Turtle Creek borough,borough,sunday,79,56,-29.1,0,0
+Upper Hill,neighbourhood,sunday,84,92,9.5,0,0
+Upper Lawrenceville,neighbourhood,sunday,95,97,2.1,0,0
+Upper St. Clair municipality,municipality,sunday,19,0,-100.0,0,0
+Verona borough,borough,sunday,0,32,,0,0
+Versailles borough,borough,sunday,11,43,290.9,0,0
+West End,neighbourhood,sunday,116,158,36.2,0,0
+West Homestead borough,borough,sunday,150,78,-48.0,0,0
+West Mifflin borough,borough,sunday,260,304,16.9,0,0
+West Oakland,neighbourhood,sunday,582,640,10.0,0,0
+West View borough,borough,sunday,88,130,47.7,0,0
+Westwood,neighbourhood,sunday,34,42,23.5,0,0
+Whitaker borough,borough,sunday,90,142,57.8,0,0
+White Oak borough,borough,sunday,32,40,25.0,0,0
+Whitehall borough,borough,sunday,120,132,10.0,0,0
+Wilkins township,township,sunday,28,58,107.1,0,0
+Wilkinsburg borough,borough,sunday,475,663,39.6,0,0
+Wilmerding borough,borough,sunday,20,28,40.0,0,0
+Windgap,neighbourhood,sunday,60,42,-30.0,0,0

@@ -33,7 +33,8 @@ import {
 } from './journey';
 import {
   initPlacesLayer, loadPlaces, loadBoundaries, selectPlace, setPlacesVisible,
-  placesListHTML, placesKeyHTML, PlaceSort, BOUNDARY_LAYER,
+  placesListHTML, placesKeyHTML, placeTooltipHTML, setPlacesFill,
+  PlaceSort, PlaceFill, DEFAULT_PLACE_FILL, BOUNDARY_LAYER,
   layerData as placeDetail, listData as placesList, isVisible as placesOn,
   boundariesData,
 } from './places';
@@ -157,6 +158,12 @@ let placeSort: PlaceSort = 'count';
 // is kept here rather than only in `oneseat.ts`.
 let selectedPlace: string | null = null;
 
+// Which of the choropleth's two readings is on the map -- residents who lose
+// all buses, or residents who gain one. Lives here for the same reason
+// `placeSort` does: it changes how the fill and its own panel control read,
+// and it has no toolbar button, only the segment drawn inside the panel.
+let placeFill: PlaceFill = DEFAULT_PLACE_FILL;
+
 // Which view is on screen. Two of them — one-seat and travel time — take a
 // destination, and one of those two answers on a click rather than on a load,
 // so the click handler and the day control both have to know which is active.
@@ -265,6 +272,19 @@ map.on('load', () => {
       .setHTML(oneSeatDotLabel(f.properties, d)).addTo(map);
   });
 
+  // The choropleth's own hover tooltip, sharing the one popup every other
+  // layer uses. `placeFill` decides which reading leads (`placeTooltipHTML`'s
+  // own doc), so this reads the module state directly rather than caching a
+  // stale copy captured when the handler was wired. `activeDay()` is read
+  // the same way, for the one reading ('service') that has a day of its own.
+  map.on('mouseleave', BOUNDARY_LAYER, () => popup.remove());
+  map.on('mousemove', BOUNDARY_LAYER, (e: any) => {
+    const f = e.features?.[0];
+    if (!f) return;
+    popup.setLngLat(e.lngLat)
+      .setHTML(placeTooltipHTML(f.properties, placeFill, activeDay())).addTo(map);
+  });
+
   map.on('moveend', () => {
     // Recorded on every move, including the ones the app makes itself when it
     // fits a click's walk circle: what the link reproduces is what is on
@@ -317,6 +337,13 @@ map.on('load', () => {
       void reloadOneSeat();
       if (last) void load(last.lat, last.lon);
     }
+    // The service reading is the one Places fill that has a day of its own
+    // (`PlaceFill`'s docstring) -- the residents readings ignore this
+    // control entirely, so only the paint needs redrawing here; the panel's
+    // list and the SERVICE_DAY_NOTE it prints in that mode were already
+    // handled by `renderPanel()` above, and the legend's own null-hole
+    // sentence is redrawn by `refreshLegend()` below.
+    if (placesOn() && placeFill === 'service') setPlacesFill(map, placeFill, day);
     refreshLegend();
   });
 
@@ -441,6 +468,21 @@ map.on('load', () => {
       renderPanel();
     }
 
+    // The choropleth's own losses/gains toggle -- see `PlaceFill`'s docstring
+    // for why this switches the whole reading rather than blending the two.
+    const fillBtn = (e.target as HTMLElement).closest<HTMLElement>('[data-place-fill]');
+    if (fillBtn) {
+      placeFill = fillBtn.dataset.placeFill as PlaceFill;
+      setPlacesFill(map, placeFill, activeDay());
+      renderPanel();
+      refreshLegend();
+      // 'service' is the one Places reading the day buttons mean anything
+      // for (`dayControlsShown`'s own doc), so switching to or away from it
+      // has to show or hide that row, not just repaint the map.
+      refreshDayControls();
+      syncUrl();
+    }
+
     // The panel's population line, wherever it is on screen (`place.ts`'s
     // `data-goto-place`) -- the fix the whole view exists for. Switches view
     // by pressing the toolbar button rather than assigning `view` directly,
@@ -555,6 +597,10 @@ function applyOpening(s: Partial<UrlState>): boolean {
   // sees the final `surfaceUnit` by the time `view` is pressed below, so
   // opening straight onto People fetches the population lattice exactly once.
   if (s.surfaceUnit) surfaceUnit = s.surfaceUnit;
+  // Same reasoning again: no button, and `showPlaces` below already sees the
+  // final `placeFill` by the time `view` is pressed, so opening straight onto
+  // a gains map paints the fill correctly on the first frame.
+  if (s.placeFill) placeFill = s.placeFill;
   if (s.dest) {
     // A dropped pin has no button to press; a named district does, and
     // pressing it lights the toolbar as well as moving the destination.
@@ -590,6 +636,7 @@ function syncUrl() {
     at: last,
     camera,
     place: selectedPlace,
+    placeFill,
   };
   const search = toSearch(state);
   // The mode is not part of the question, so it is not in what `toSearch`
@@ -713,7 +760,7 @@ function renderLegendBody() {
     return;
   }
   if (placesOn()) {
-    $('legend').innerHTML = placesKeyHTML(placeDetail());
+    $('legend').innerHTML = placesKeyHTML(placeDetail(), placeFill, activeDay(), boundariesData());
     return;
   }
   if (corridorOn()) {
@@ -820,6 +867,11 @@ async function showPlaces(on: boolean) {
     }
   }
   setPlacesVisible(map, on);
+  // The fill mode can arrive from a URL before this view has ever been shown
+  // (`applyOpening` sets `placeFill` before pressing `view`), so the paint is
+  // brought into line with it here rather than assumed to still be the
+  // layer's own default.
+  if (on) setPlacesFill(map, placeFill, activeDay());
   // Leaving the view does not clear a selection -- the map layer just stops
   // being drawn -- so coming back re-renders the same list with the same row
   // marked, rather than losing the reader's place.
@@ -898,7 +950,7 @@ function renderPanel({ scrollToTop = false } = {}) {
   // handled before the "nothing clicked yet" branch below, which exists for
   // every other view's empty state.
   if (view === 'places') {
-    $('panel').innerHTML = placesListHTML(placesList() ?? [], placeSort, selectedPlace);
+    $('panel').innerHTML = placesListHTML(placesList() ?? [], placeSort, selectedPlace, placeFill);
     return;
   }
   if (!lastPlace) {
@@ -992,7 +1044,7 @@ async function loadJourney(lat: number, lon: number) {
  */
 function refreshDayControls() {
   $('day-controls').classList.toggle(
-    'hidden', !dayControlsShown(view, oneSeatRestricted));
+    'hidden', !dayControlsShown(view, oneSeatRestricted, placeFill));
 }
 
 /** Which day the one-seat question is being asked for right now. */

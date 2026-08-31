@@ -663,6 +663,74 @@ measuring them live would put ~270 spatial queries in front of every click.
 At 150 m: Downtown 1,188 lose and 205 gain; Oakland 528 lose and 326 gain.
 Counts are locations, not people — the same caveat the change layer carries.
 
+## The Places view
+
+The one view whose unit is a **named place** rather than a point, a cell, a
+street or a trip. It answers "which places does this plan treat worst", which
+is the question a public comment is actually written about, and it is the only
+view a reader can quote without first choosing a location.
+
+It is a ranked list beside a choropleth, and they are the same data. The list
+orders every place the plan changes by residents who lose all buses, or by
+that count as a share of the place's own population — both orders are a click
+apart because they disagree about who is worst treated, and only the count
+order existed anywhere before. Reserve township is tenth by count and second
+by share.
+
+**A place is a boundary, never a label.** Allegheny's 130 municipalities and
+Pittsburgh's 90 neighbourhoods come from `ingest_boundaries.py`, and a block
+group belongs to the polygon its residents sit inside. This replaced naming a
+place by the nearest labelled PRT stop, which moved a third of the county's
+residents when it was fixed and is the subject of convention 6. Pittsburgh
+city has no polygon on this map: every acre of it is inside one of its own
+neighbourhoods, so drawing it would lay one share-of-nobody over the ninety
+that hold its people.
+
+**The fill has three readings and they are not interchangeable.**
+
+| Reading | Colours by | Moves with the day switch |
+|---|---|---|
+| Map losses | share of the place's own residents who lose all buses | no |
+| Map gains | share who gain a bus | no |
+| Map service | percent change in the place's own bus trips | **yes** |
+
+The first two are day-free and county-wide, from `equity_places.csv`; the
+third is per day type, from `analyze_place_service.py`. That split is stated
+on the panel whenever the service reading is active, because a reader
+switching days and watching two of three readings ignore it would rightly
+read that as a bug. The day toolbar is hidden on this view except in the
+service reading, for the same reason.
+
+Losses and gains are shown **one at a time and never subtracted**. Ross
+township loses 6,119 residents' service and gains 1,952; a net map would draw
+it as mildly negative and hide that thousands of people on both sides had
+their service replaced rather than kept. This is convention 10 arriving inside
+a single view.
+
+**Two holes in the service ramp, both deliberate.** A place with no bus today
+and buses proposed has an undefined percent change, not an infinite one, so it
+is left unshaded and named in words instead — one place on a weekday, five at
+the weekend. And the ramp is signed on magnitude, so a place at −100% and one
+at +1,060% are both in the top band: the colour says direction and roughly how
+much, and the tooltip says exactly.
+
+**The tooltip carries the rail flag, and that is not decoration.** Seven places
+lose their last weekday bus, and three of them keep a train. Bethel Park goes
+from 46 weekday bus trips to none while the Blue, Red and Silver lines call
+there all day, so its tooltip reads "Loses all buses on a weekday (46 → 0
+trips); the T still calls here." Reserve township's does not, because nothing
+calls there. Every service figure on this site is bus-only (convention 16); a
+map that could not say which of those seven still has rail would publish a
+false sentence about three of them.
+
+Clicking a place selects it in both directions — row to map, polygon to row —
+and lights its changed census block groups as points on top of the fill. The
+fill says how much of a whole place changed; the points say where inside it.
+
+A share is withheld below 100 residents and drawn as a dash that says why.
+Trafford borough's Allegheny part is 16 people, and a third significant figure
+on that denominator would discredit the twelve real ones above it.
+
 ## The travel-time view
 
 The fifth view, and the only one on the site with a clock. A reader picks a
@@ -785,6 +853,9 @@ Reasoning and evidence:
 | `GET /api/corridors?day=` | Every street run kept, lost or added for one day type, with citywide kilometres by class. No radius — a corridor is pavement, not a catchment. ~290 KB weekday. |
 | `GET /api/oneseat?radius=&dest=` *or* `&dest_lat=&dest_lon=` | Every location's one-seat verdict for one destination, named or dropped. Not precomputed — only its expensive half is, which is what lets the destination be arbitrary. `day=` defaults to `any`, the published day-free answer; a day type restricts both ends and is a different measurement. |
 | `GET /api/journey?lat=&lon=&dest_lat=&dest_lon=&day=` | How long the trip takes door to door, both networks, over every ready-minute of the weekday 07:00–09:00 peak. Answered at both transfer radii, with `sign_flips` where they disagree about which network is faster. Nothing precomputed and no radius control — seconds, not milliseconds. |
+| `GET /api/places` | Every named place the plan changes, ranked by residents who lose all buses, with each place's own population as the denominator and its share — withheld below 100 residents. Day-free and Allegheny-only. |
+| `GET /api/places/{key}` | One place, plus its changed block groups as points. 404 on an unknown key. |
+| `GET /api/boundaries` | Every named place's polygon, with the change figures the choropleth colours itself from — residents lost and gained with shares, and bus trips before and after for all three day types with a rail flag beside them. Places wholly covered by finer ones are absent: Pittsburgh city is inside its own 90 neighbourhoods. ~3.5 MB. |
 | `GET /api/destinations` | The named destinations, with seed counts and centres. |
 | `GET /api/stops?side=&lat=&lon=&radius=` | Stops one network puts inside the radius. |
 | `GET /api/routes?side=` | Bus routes with trips, revenue hours and span per day type. |

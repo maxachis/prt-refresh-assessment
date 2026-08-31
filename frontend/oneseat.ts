@@ -39,6 +39,7 @@ import { Day, OneSeatDay, OneSeatLayer, OneSeatPoint, OneSeatStatus } from './ty
 import { fetchJSON } from './utils';
 import { GONE_COLOR, NEW_COLOR } from './surface';
 import { KEPT_COLOR } from './corridor';
+import { PlaceFill } from './places';
 
 /** Neutral, off the red/blue axis: the destination is not an outcome. */
 export const HERE_COLOR = '#2b3038';
@@ -207,15 +208,17 @@ export function oneSeatDayFor(restricted: boolean, day: Day): OneSeatDay {
  * disappears with a toggle a click away, and a row of ghosts that flickers
  * back to life is more confusing than a row that simply isn't there yet.
  *
- * Places gets the disabled-button treatment instead, alongside oneseat:
- * unlike the one-seat view it has no opt-in restriction that could bring the
- * day buttons back, so there is no toggle for a hidden row to reappear from.
- * The published place figures are day-free and count every day of the week
- * at once (convention 12), so a day control there is permanently a lever
- * attached to nothing.
+ * Places gets the disabled-button treatment for two of its own three
+ * readings, alongside oneseat: the residents figures ('lost'/'gained') are
+ * day-free and count every day of the week at once (convention 12), and
+ * unlike the one-seat view there is no opt-in restriction on THEM that could
+ * bring the day buttons back. The third reading breaks that pattern on
+ * purpose -- 'service' is a place's own bus trip count on one day type, so
+ * the day buttons are exactly as live there as everywhere else, and
+ * `placeFill` is what tells this function which of the three is up.
  */
-export function dayControlsShown(view: string, restricted: boolean): boolean {
-  if (view === 'places') return false;
+export function dayControlsShown(view: string, restricted: boolean, placeFill?: PlaceFill): boolean {
+  if (view === 'places') return placeFill === 'service';
   return view !== 'oneseat' || restricted;
 }
 

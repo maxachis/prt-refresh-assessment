@@ -34,3 +34,5 @@ pass — a reader who stops halfway down must not be misinformed.
 | [The deploy box runs out of memory building the database](the-deploy-box-runs-out-of-memory-building-the-database.md) | open, decision owed — unblocked by a hand-added swapfile the repo does not know about |
 | [The stop marks outlive the click that drew them](stop-marks-outlive-the-click-that-drew-them.md) | open, not fixed |
 | [The place number has no view of its own](the-place-number-has-no-view-of-its-own.md) | open, decision owed — raised by Max |
+| [Two scripts now name a place differently](two-scripts-now-name-a-place-differently.md) | open, deliberate and scoped — travel time still names by nearest stop |
+| [The service map has findings nothing publishes](the-service-map-has-findings-nothing-publishes.md) | open, decision owed — whether per-place bus service becomes a published answer |

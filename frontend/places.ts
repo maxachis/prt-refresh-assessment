@@ -38,6 +38,7 @@
  */
 import {
   PlaceSummary, PlaceChangedBlockGroup, PlaceDetail, BoundariesGeoJSON,
+  PlaceBoundaryProperties, Day,
 } from './types';
 import { fetchJSON, esc } from './utils';
 import { GONE_COLOR, NEW_COLOR } from './surface';
@@ -48,6 +49,65 @@ const BOUNDARY_SRC = 'places-boundaries';
 export const BOUNDARY_LAYER = 'places-fill';
 
 export type PlaceSort = 'count' | 'share';
+
+/**
+ * Which reading the choropleth is painting: residents who lose all buses,
+ * residents who gain one, or the place's own bus trips, signed.
+ *
+ * DESIGN CONSTRAINT ON THE FIRST TWO: 'lost' and 'gained' are separate
+ * readings shown one at a time, NEVER a diverging net map. A place can lose
+ * and gain heavily at once -- Ross township loses 6,119 residents' service
+ * and gains 1,952 -- and subtracting them would draw Ross as mildly negative
+ * while hiding that thousands of people on both sides had service replaced
+ * rather than kept. Convention 10's "never quote one alone" applies inside a
+ * single view: a reader switches between the two full readings, and never
+ * sees a net that exists in neither one.
+ *
+ * 'service' is a genuinely different measurement, not a third instance of
+ * that trap: it is a place's own bus trip COUNT, today against proposed, and
+ * a percent change of a single count is a real signed quantity with nothing
+ * being netted against anything else -- so it is the one reading here drawn
+ * as a diverging red/blue ramp (`SERVICE_BANDS`) rather than a single-colour
+ * share ramp. It is also the one reading that moves with the toolbar's day
+ * switch: convention 16's population figures are day-free and county-wide,
+ * but a place's trip count is a property of one day type, so switching days
+ * has to redraw it (`setPlacesFill`'s `day` parameter, threaded from
+ * `main.ts`'s day control).
+ */
+export type PlaceFill = 'lost' | 'gained' | 'service';
+
+/** The view opens on losses -- the ranked list's own default order (`placeSort`). */
+export const DEFAULT_PLACE_FILL: PlaceFill = 'lost';
+
+/** Mirrors `query.SHARE_MIN_RESIDENTS` -- the floor below which a place's share is withheld. */
+export const SHARE_MIN_RESIDENTS = 100;
+
+/** Which GeoJSON property `fillOpacityExpr` reads, per residents reading -- `'service'` reads a per-day field instead, via `serviceField`. */
+const SHARE_FIELD: Record<'lost' | 'gained', 'share_lost' | 'share_gained'> = {
+  lost: 'share_lost',
+  gained: 'share_gained',
+};
+
+/** The five stats `/api/boundaries` publishes per place per day -- see `PlaceBoundaryProperties`. */
+type ServiceStat = 'now' | 'proposed' | 'pct' | 'rail_now' | 'rail_proposed';
+
+/**
+ * Builds one of the property names `/api/boundaries` emits for one day's
+ * service reading, e.g. `serviceField('weekday', 'pct')` ->
+ * `'service_weekday_pct'`. Named once here, per the no-magic-strings rule, so
+ * no call site hand-interpolates the string -- a typo in a literal would
+ * silently read `undefined` off the feature instead of failing loud.
+ */
+export function serviceField(day: Day, stat: ServiceStat): keyof PlaceBoundaryProperties {
+  return `service_${day}_${stat}` as keyof PlaceBoundaryProperties;
+}
+
+/** Plain day words for the service tooltip and legend -- "a weekday", not "weekday". */
+const SERVICE_DAY_WORD: Record<Day, string> = {
+  weekday: 'a weekday',
+  saturday: 'a Saturday',
+  sunday: 'a Sunday',
+};
 
 /**
  * The view's scope, stated inline rather than fetched: it is a structural
@@ -61,7 +121,7 @@ export type PlaceSort = 'count' | 'share';
 export const SCOPE_NOTE = "Every one of Allegheny County's 1,238,177 "
   + 'residents is in a named place: places are assigned by boundary, not by '
   + 'distance to a labelled stop, so nobody here goes unnamed. Every figure '
-  + 'is Allegheny-only and day-free — losing every bus on any day of the '
+  + 'is Allegheny-only and day-free — losing all buses on any day of the '
   + "week — so it does not move with the toolbar's day switch. A place with "
   + 'under 100 residents is shown without a share: a denominator that small '
   + 'cannot carry one.';
@@ -202,6 +262,46 @@ export function shareOpacity(share: number | null): number {
 }
 
 /**
+ * The service reading's colour bands, by |percent change| in a place's own
+ * bus trips on the active day. SIGNED, unlike `SHARE_BANDS`: which colour is
+ * used (`fillColorExpr`) comes from the sign of the change, and this ramp
+ * supplies only the intensity, by magnitude -- so the same three breakpoints
+ * (10/30/60%) describe a loss and an equal-sized gain identically.
+ *
+ * The bottom band, under 10%, carries opacity 0 for two reasons that happen
+ * to want the same treatment. A change that small reads as noise next to a
+ * ±1060% extreme, so drawing it would just paint the whole county a faint
+ * colour with nothing to say. And `service_<day>_pct` is `null` -- not
+ * `Infinity` -- where a place has no bus today and some proposed, an
+ * undefined change rather than a huge one; `fillOpacityExpr` coalesces that
+ * null to 0 before this ramp ever sees it, so it lands in this same silent
+ * band by construction rather than needing a second special case. Those
+ * places are never left unexplained, though: the legend states them in
+ * words instead (`firstBusPlaces`, `placesKeyHTML`), because "not shaded"
+ * must not mean "not on the map at all".
+ *
+ * Checked against the published extremes: Brackenridge borough (+1060%),
+ * North Fayette township (+216%) and Millvale borough (+82%) all clear the
+ * top band on the gaining side; Plum borough (-84%) and the seven places at
+ * exactly -100% clear it on the losing side.
+ */
+export const SERVICE_BANDS: ReadonlyArray<{ max: number; opacity: number }> = [
+  { max: 10, opacity: 0 },
+  { max: 30, opacity: 0.3 },
+  { max: 60, opacity: 0.55 },
+  { max: Infinity, opacity: 0.8 },
+];
+
+/** A place's fill opacity from its |percent change|, per `SERVICE_BANDS`. Null and 0 share the bottom band, the same reasoning as `shareOpacity`. */
+export function serviceOpacity(pct: number | null): number {
+  const magnitude = Math.abs(pct ?? 0);
+  for (const band of SERVICE_BANDS) {
+    if (magnitude <= band.max) return band.opacity;
+  }
+  return SERVICE_BANDS[SERVICE_BANDS.length - 1].opacity;
+}
+
+/**
  * `SHARE_BANDS` as a MapLibre `fill-opacity` expression, built the same way
  * `shareOpacity` reads it so the map and the legend cannot disagree.
  *
@@ -209,14 +309,91 @@ export function shareOpacity(share: number | null): number {
  * would put `share_lost === 0` in the first non-zero band instead of the
  * transparent one -- the ramp's first real breakpoint sits an epsilon above
  * zero instead, matching `shareOpacity`'s own `s <= 0` check.
+ *
+ * `SHARE_BANDS` itself is shared between both readings: the bands are
+ * unit-free shares, so the same five breakpoints describe "share who lose"
+ * and "share who gain" equally well. Only which property is read changes.
+ *
+ * The service reading takes a different branch entirely: it reads
+ * `|pct|` off the active day's field (`serviceField`, `day` required for
+ * this branch) against `SERVICE_BANDS`, matching `serviceOpacity`'s own
+ * reading the same way the branch above matches `shareOpacity`'s.
  */
-export function fillOpacityExpr(): any {
-  return ['step', ['coalesce', ['get', 'share_lost'], 0],
+export function fillOpacityExpr(fill: PlaceFill, day?: Day): any {
+  if (fill === 'service') {
+    const pctField = serviceField(day as Day, 'pct');
+    return ['step', ['abs', ['coalesce', ['get', pctField], 0]],
+      SERVICE_BANDS[0].opacity,
+      SERVICE_BANDS[0].max, SERVICE_BANDS[1].opacity,
+      SERVICE_BANDS[1].max, SERVICE_BANDS[2].opacity,
+      SERVICE_BANDS[2].max, SERVICE_BANDS[3].opacity];
+  }
+  return ['step', ['coalesce', ['get', SHARE_FIELD[fill]], 0],
     SHARE_BANDS[0].opacity,
     Number.EPSILON, SHARE_BANDS[1].opacity,
     SHARE_BANDS[1].max, SHARE_BANDS[2].opacity,
     SHARE_BANDS[2].max, SHARE_BANDS[3].opacity,
     SHARE_BANDS[3].max, SHARE_BANDS[4].opacity];
+}
+
+/**
+ * `fill-color` for the choropleth. A flat swatch for the two residents
+ * readings, unchanged from before -- but service's colour varies PER
+ * FEATURE (red for fewer trips, blue for more), so that reading needs a real
+ * expression instead of a constant. The `>= 0` branch also catches a
+ * coalesced null (the undefined-change hole): its colour is moot there,
+ * since `fillOpacityExpr` has already painted it fully transparent.
+ */
+export function fillColorExpr(fill: PlaceFill, day?: Day): any {
+  if (fill === 'service') {
+    const pctField = serviceField(day as Day, 'pct');
+    return ['case',
+      ['>=', ['coalesce', ['get', pctField], 0], 0], NEW_COLOR,
+      GONE_COLOR];
+  }
+  return KLASS_COLOR[fill];
+}
+
+/**
+ * Places whose service on `day` falls in the ramp's silent null hole for the
+ * reason that actually needs an explanation: no bus today, some proposed, so
+ * `service_<day>_pct` is `null` because there is nothing to divide by. A
+ * place with no bus on EITHER side is not included -- that is "no change",
+ * the same nothing-to-see reading a small nonzero change gets, and does not
+ * need a sentence of its own. Computed from the loaded boundaries rather
+ * than hardcoded, since the count moves with the day type: 1 on a weekday
+ * (Pine township), 5 on Saturday and Sunday.
+ */
+export function firstBusPlaces(boundaries: BoundariesGeoJSON, day: Day): string[] {
+  const nowField = serviceField(day, 'now');
+  const proposedField = serviceField(day, 'proposed');
+  return boundaries.features
+    .filter((f) => (f.properties[nowField] as number) === 0
+      && (f.properties[proposedField] as number) > 0)
+    .map((f) => f.properties.place);
+}
+
+/** How many null-hole places `firstBusSentence` names before it switches to "and N more". */
+const FIRST_BUS_NAMED_LIMIT = 3;
+
+/**
+ * The null-hole places, in one sentence -- e.g. "5 places get their first
+ * bus and cannot be shown as a percentage: Harrison township, Brackenridge
+ * borough and Verona borough (and 2 more)." Empty string when there are none
+ * on this day, so the legend prints nothing rather than an empty caveat.
+ */
+function firstBusSentence(names: string[]): string {
+  if (names.length === 0) return '';
+  const shown = names.slice(0, FIRST_BUS_NAMED_LIMIT);
+  const rest = names.length - shown.length;
+  const shownList = shown.length <= 1
+    ? shown.join('')
+    : `${shown.slice(0, -1).join(', ')} and ${shown[shown.length - 1]}`;
+  const namedPart = rest > 0 ? `${shownList} (and ${rest} more)` : shownList;
+  return names.length === 1
+    ? `1 place gets its first bus and cannot be shown as a percentage: ${namedPart}.`
+    : `${names.length} places get their first bus and cannot be shown as a `
+      + `percentage: ${namedPart}.`;
 }
 
 export function initPlacesLayer(map: maplibregl.Map, beforeId: string) {
@@ -234,11 +411,13 @@ export function initPlacesLayer(map: maplibregl.Map, beforeId: string) {
     id: BOUNDARY_LAYER, type: 'fill', source: BOUNDARY_SRC,
     layout: { visibility: 'none' },
     paint: {
-      // A flat colour, GONE_COLOR, with SHARE_BANDS carried entirely in
-      // opacity -- see the module docstring: this is a loss map, so it draws
-      // in the loss colour only, never the gain one.
-      'fill-color': KLASS_COLOR.lost,
-      'fill-opacity': fillOpacityExpr(),
+      // A flat colour per SHARE_BANDS band, with the band carried entirely in
+      // opacity -- see the module docstring and `setPlacesFill`: only one
+      // reading is ever painted at a time, never a blend. The view always
+      // opens on 'lost', which needs no `day`, so neither call below passes
+      // one.
+      'fill-color': fillColorExpr(DEFAULT_PLACE_FILL),
+      'fill-opacity': fillOpacityExpr(DEFAULT_PLACE_FILL),
       'fill-outline-color': 'rgba(255,255,255,.25)',
     },
   }, beforeId);
@@ -258,6 +437,23 @@ export function initPlacesLayer(map: maplibregl.Map, beforeId: string) {
       'circle-stroke-width': ['interpolate', ['linear'], ['zoom'], 9, 0.4, 12, 0.9, 16, 1.5],
     },
   }, beforeId);
+}
+
+/**
+ * Switch the choropleth to a different reading -- see `PlaceFill`'s own
+ * docstring for why this is a switch between whole pictures and never a
+ * blend of them.
+ *
+ * `day` matters only for `'service'`, which is the one reading that moves
+ * with the toolbar's day switch; the two residents readings ignore it. It is
+ * still accepted for every fill, unused or not, so `main.ts`'s day handler
+ * and click handler can call this the same way regardless of which fill is
+ * active, rather than branching on the fill before deciding whether to pass
+ * a day at all.
+ */
+export function setPlacesFill(map: maplibregl.Map, fill: PlaceFill, day?: Day) {
+  map.setPaintProperty(BOUNDARY_LAYER, 'fill-color', fillColorExpr(fill, day));
+  map.setPaintProperty(BOUNDARY_LAYER, 'fill-opacity', fillOpacityExpr(fill, day));
 }
 
 /** Fetches the ranked list once and caches it, like the corridor and surface layers do for their own data. */
@@ -344,8 +540,21 @@ function placeRow(p: PlaceSummary, selected: boolean): string {
  * list IS the answer, and selecting a row only changes which row is marked
  * and what the map is drawing.
  */
+/**
+ * Printed only in service mode, directly under `SCOPE_NOTE`: that note
+ * already tells the reader the two residents readings are day-free and do
+ * not move with the toolbar's day switch, so a reader who switches days in
+ * service mode and sees the fill and the key redraw -- while `lost`/`gained`
+ * never would have -- needs to be told that is the one reading behaving
+ * differently, not a bug.
+ */
+const SERVICE_DAY_NOTE = 'Unlike the two residents readings above, this one '
+  + "moves with the toolbar's day switch: it is asking about the plan's "
+  + "actual weekday, Saturday or Sunday service, not residents' day-free "
+  + 'losses and gains.';
+
 export function placesListHTML(places: PlaceSummary[], sortBy: PlaceSort,
-                                selectedKey: string | null): string {
+                                selectedKey: string | null, fill: PlaceFill): string {
   const rows = sortPlaces(places, sortBy)
     .map((p) => placeRow(p, p.key === selectedKey)).join('');
   return `
@@ -354,9 +563,15 @@ export function placesListHTML(places: PlaceSummary[], sortBy: PlaceSort,
       <div class="muted">${places.length.toLocaleString()} named places the plan changes</div>
     </div>
     <p class="note">${SCOPE_NOTE}</p>
+    ${fill === 'service' ? `<p class="note">${SERVICE_DAY_NOTE}</p>` : ''}
     <div class="seg place-sort">
       <button type="button" data-sort-places="count"${sortBy === 'count' ? ' class="active"' : ''}>By count</button>
       <button type="button" data-sort-places="share"${sortBy === 'share' ? ' class="active"' : ''}>By share</button>
+    </div>
+    <div class="seg place-fill">
+      <button type="button" data-place-fill="lost"${fill === 'lost' ? ' class="active"' : ''}>Map losses</button>
+      <button type="button" data-place-fill="gained"${fill === 'gained' ? ' class="active"' : ''}>Map gains</button>
+      <button type="button" data-place-fill="service"${fill === 'service' ? ' class="active"' : ''}>Map service</button>
     </div>
     <div class="place-list">${rows}</div>`;
 }
@@ -369,29 +584,171 @@ export function placesListHTML(places: PlaceSummary[], sortBy: PlaceSort,
  * layer actually paints. The bottom band -- null or zero share -- gets no
  * row at all: it is "nothing to see", not a fifth colour to learn.
  */
-export function placesKeyHTML(selected: PlaceDetail | null): string {
-  const selectedLine = selected
+/**
+ * Which "click a place" heading leads the legend, shared by every fill mode
+ * -- pulled out because `serviceKeyHTML` needs the identical line.
+ */
+function selectedPlaceLine(selected: PlaceDetail | null): string {
+  return selected
     ? `<div class="lg-head"><b>${esc(selected.place)}</b>
         <span class="muted">· ${selected.changed_block_groups} block group${
           selected.changed_block_groups === 1 ? '' : 's'} changed</span></div>`
     : `<div class="lg-head">Click a place to see its changed block groups</div>`;
+}
+
+/**
+ * One SERVICE_BANDS breakpoint's magnitude range, as a label -- "10–30%",
+ * or "Over 60%" for the open-ended top band, matching `SHARE_BANDS`'
+ * label style even though `SERVICE_BANDS` carries no label of its own (it is
+ * one ramp printed twice, in the two directions `serviceKeyHTML` draws).
+ */
+function serviceBandLabel(band: { max: number }, prevMax: number): string {
+  return band.max === Infinity ? `Over ${prevMax}%` : `${prevMax}–${band.max}%`;
+}
+
+/**
+ * The legend body for `'service'`: the diverging ramp in both directions,
+ * plus the null-hole places `SERVICE_BANDS` cannot shade at all.
+ */
+function serviceKeyHTML(selected: PlaceDetail | null, day: Day,
+                         boundaries: BoundariesGeoJSON | null): string {
+  const bandRows = SERVICE_BANDS
+    .map((band, i) => ({ band, prevMax: i === 0 ? 0 : SERVICE_BANDS[i - 1].max }))
+    .filter(({ band }) => band.opacity > 0)
+    .flatMap(({ band, prevMax }) => {
+      const label = serviceBandLabel(band, prevMax);
+      return [
+        `<div class="lg-row lg-static">
+          <i style="background:${GONE_COLOR};opacity:${band.opacity};border-radius:2px"></i>
+          <span class="lg-lab">${esc(label)} fewer trips</span></div>`,
+        `<div class="lg-row lg-static">
+          <i style="background:${NEW_COLOR};opacity:${band.opacity};border-radius:2px"></i>
+          <span class="lg-lab">${esc(label)} more trips</span></div>`,
+      ];
+    }).join('');
+  // The null hole: `SERVICE_BANDS`' own bottom band already draws these
+  // places as nothing, per that ramp's own docstring, so the only place left
+  // to say what actually happened to them is here, in words.
+  const names = boundaries ? firstBusPlaces(boundaries, day) : [];
+  const sentence = firstBusSentence(names);
+  const nullHoleRow = sentence ? `<div class="lg-foot">${esc(sentence)}</div>` : '';
+  return `
+    ${selectedPlaceLine(selected)}
+    <div class="lg-lab">Fill — percent change in the place's own bus trips
+      on ${esc(SERVICE_DAY_WORD[day])}</div>
+    ${bandRows}
+    ${nullHoleRow}
+    <div class="lg-foot">Fill is signed: red where a place's own trips fall,
+      blue where they rise, by how much. Unlike the two residents readings,
+      this one moves with the toolbar's day switch. Click a place to select
+      it.</div>`;
+}
+
+export function placesKeyHTML(selected: PlaceDetail | null, fill: PlaceFill,
+                                day?: Day, boundaries?: BoundariesGeoJSON | null): string {
+  if (fill === 'service') return serviceKeyHTML(selected, day as Day, boundaries ?? null);
+  // Which reading is on the map right now -- the header, the band labels and
+  // the swatch colour all follow it, so a reader never learns one sentence
+  // for a fill painted a different colour.
+  const verb = fill === 'lost' ? 'lose all buses' : 'gain a bus';
   const bandRows = SHARE_BANDS
     .filter((b) => b.opacity > 0)
     .map((b) => `
     <div class="lg-row lg-static">
-      <i style="background:${KLASS_COLOR.lost};opacity:${b.opacity};border-radius:2px"></i>
-      <span class="lg-lab">${esc(b.label)} of the place's own residents</span>
+      <i style="background:${KLASS_COLOR[fill]};opacity:${b.opacity};border-radius:2px"></i>
+      <span class="lg-lab">${esc(b.label)} of the place's own residents ${esc(verb)}</span>
     </div>`).join('');
   return `
-    ${selectedLine}
-    <div class="lg-lab">Fill — share of a place's own residents who lose every bus</div>
+    ${selectedPlaceLine(selected)}
+    <div class="lg-lab">Fill — share of a place's own residents who ${esc(verb)}</div>
     ${bandRows}
     <div class="lg-row lg-static"><i style="background:${KLASS_COLOR.lost}"></i>
       <span class="lg-lab">point: block group loses more than it gains</span></div>
     <div class="lg-row lg-static"><i style="background:${KLASS_COLOR.gained}"></i>
       <span class="lg-lab">point: block group gains more than it loses</span></div>
     <div class="lg-foot">Fill is coloured by SHARE, not by count of residents
-      lost — a raw count would just draw where people live. Click a place to
-      select it. Points are the changed census block groups inside it; size is
-      the larger of a block group's losses or gains.</div>`;
+      lost or gained — a raw count would just draw where people live. Click a
+      place to select it. Points are the changed census block groups inside
+      it; size is the larger of a block group's losses or gains.</div>`;
+}
+
+/**
+ * The choropleth's hover tooltip -- a pure function of one feature's own
+ * properties (`query.boundaries`), so it is testable without a map and can
+ * never show a figure the fill itself did not already have on hand.
+ *
+ * Leads with whichever reading `fill` is currently painting, per the toggle
+ * above: the number under the cursor should be the number the colour on
+ * screen is showing. Both readings still print -- only their order changes --
+ * because convention 10's "never quote one alone" applies here too.
+ */
+/**
+ * The service tooltip's body -- see `placeTooltipHTML`, which leads with
+ * this in service mode.
+ *
+ * Two cases get their own sentence rather than falling into the generic
+ * "N → M trips" line, because both are places where that line would be
+ * literally true and still misleading. `proposed === 0 && now > 0`: the
+ * place loses its last bus, and if a train (or an incline) still calls
+ * there, saying so is not optional -- conventions 13 and 16 both name this
+ * exact trap, and Bethel Park (rail) beside Reserve township (no rail) are
+ * the two real cases that have to come out right. `now === 0 && proposed >
+ * 0`: the undefined-change hole (`SERVICE_BANDS`'s own docstring) -- there
+ * is no percent to print, so none is.
+ */
+function serviceTooltipBody(props: PlaceBoundaryProperties, day: Day): string {
+  const now = props[serviceField(day, 'now')] as number;
+  const proposed = props[serviceField(day, 'proposed')] as number;
+  const pct = props[serviceField(day, 'pct')] as number | null;
+  const railProposed = props[serviceField(day, 'rail_proposed')] as boolean;
+  const dayWord = SERVICE_DAY_WORD[day];
+
+  if (proposed === 0 && now > 0) {
+    const railNote = railProposed ? '; the T still calls here' : '';
+    return `Loses all buses on ${dayWord} (${now} → 0 trips)${railNote}.`;
+  }
+  if (now === 0 && proposed > 0) {
+    return `Gets its first bus on ${dayWord} (0 → ${proposed} trips).`;
+  }
+  const pctText = pct == null ? '—' : `${pct > 0 ? '+' : ''}${pct.toFixed(1)}%`;
+  return `${now} → ${proposed} trips on ${dayWord} (${pctText}).`;
+}
+
+export function placeTooltipHTML(props: PlaceBoundaryProperties, fill: PlaceFill, day?: Day): string {
+  if (fill === 'service') {
+    return `<b>${esc(props.place)}</b> <span class="muted">· ${esc(props.kind)}</span><br>
+      ${serviceTooltipBody(props, day as Day)}`;
+  }
+  const total = Math.round(props.residents_total ?? 0).toLocaleString();
+  if (props.changed_block_groups === 0) {
+    // Nothing here changed -- printing "0 lose (—)" and "0 gain (—)" would
+    // read as two measurements where there is only one true sentence: this
+    // place is untouched, and it has this many residents to be untouched for.
+    return `<b>${esc(props.place)}</b> <span class="muted">· ${esc(props.kind)}</span><br>
+      None of its ${total} residents lose or gain a bus.`;
+  }
+  const lostLine = shareLine('lose all buses', props.residents_lost, props.share_lost);
+  const gainedLine = props.residents_gained > 0
+    ? shareLine('gain a bus', props.residents_gained, props.share_gained)
+    : null;
+  const lines = (fill === 'lost' ? [lostLine, gainedLine] : [gainedLine, lostLine])
+    .filter((l): l is string => l !== null);
+  return `<b>${esc(props.place)}</b> <span class="muted">· ${esc(props.kind)}</span><br>
+    ${lines.join('<br>')}<br>
+    <span class="muted">${total} residents total · ${props.changed_block_groups
+      } block group${props.changed_block_groups === 1 ? '' : 's'} changed</span>`;
+}
+
+/**
+ * One "N residents VERB (share)" line for the tooltip. A withheld share
+ * (`SHARE_MIN_RESIDENTS`, mirroring `query.SHARE_MIN_RESIDENTS`) says why
+ * rather than silently printing nothing, the same reasoning `placeRow`'s dash
+ * follows for the ranked list.
+ */
+function shareLine(verb: string, count: number, share: number | null): string {
+  const n = Math.round(count).toLocaleString();
+  const shareText = share == null
+    ? `share withheld — under ${SHARE_MIN_RESIDENTS} residents`
+    : `${(share * 100).toFixed(1)}%`;
+  return `${n} ${verb} (${shareText})`;
 }
