@@ -436,9 +436,9 @@
       <button type="button" data-sort-places="share"${t==="share"?' class="active"':""}>By share</button>
     </div>
     <div class="seg place-fill">
-      <button type="button" data-place-fill="lost"${a==="lost"?' class="active"':""}>Map losses</button>
-      <button type="button" data-place-fill="gained"${a==="gained"?' class="active"':""}>Map gains</button>
-      <button type="button" data-place-fill="service"${a==="service"?' class="active"':""}>Map service</button>
+      <button type="button" data-place-fill="lost"${a==="lost"?' class="active"':""}>Losses</button>
+      <button type="button" data-place-fill="gained"${a==="gained"?' class="active"':""}>Gains</button>
+      <button type="button" data-place-fill="service"${a==="service"?' class="active"':""}>Service</button>
     </div>
     <div class="place-list">${o}</div>`}function Ba(e){return e?`<div class="lg-head"><b>${d(e.place)}</b>
         <span class="muted">\xB7 ${e.changed_block_groups} block group${e.changed_block_groups===1?"":"s"} changed</span></div>`:'<div class="lg-head">Click a place to see its changed block groups</div>'}function _s(e,t){return e.max===1/0?`Over ${t}%`:`${t}\u2013${e.max}%`}function xs(e,t,n){let a=N.map((r,u)=>({band:r,prevMax:u===0?0:N[u-1].max})).filter(({band:r})=>r.opacity>0).flatMap(({band:r,prevMax:u})=>{let p=_s(r,u);return[`<div class="lg-row lg-static">

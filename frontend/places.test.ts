@@ -233,8 +233,8 @@ describe('placesListHTML', () => {
     expect(fillAt).toBeGreaterThan(sortAt);
     expect(html).toContain('data-place-fill="lost"');
     expect(html).toContain('data-place-fill="gained"');
-    expect(html).toContain('Map losses');
-    expect(html).toContain('Map gains');
+    expect(html).toContain('Losses');
+    expect(html).toContain('Gains');
     const lostBtnAt = html.indexOf('data-place-fill="lost"');
     const gainedBtnAt = html.indexOf('data-place-fill="gained"');
     // "active" sits between the two buttons' own markers only when it is the
@@ -400,7 +400,7 @@ describe('placeTooltipHTML', () => {
   });
 });
 
-// --- "Map service" fill mode: signed percent change in a place's own bus
+// --- "Service" fill mode: signed percent change in a place's own bus
 // trips, on the toolbar's active day. Everything below this line is new.
 
 function serviceProps(overrides: Partial<PlaceBoundaryProperties> = {}): PlaceBoundaryProperties {
@@ -551,10 +551,10 @@ describe('placesListHTML in service mode', () => {
     summary({ key: 'baldwin', place: 'Baldwin borough', residents_lost: 9613, share_lost: 0.399 }),
   ];
 
-  it('draws a third button labelled "Map service"', () => {
+  it('draws a third button labelled "Service"', () => {
     const html = placesListHTML(list, 'count', null, 'service');
     expect(html).toContain('data-place-fill="service"');
-    expect(html).toContain('Map service');
+    expect(html).toContain('Service');
   });
 
   it('marks service active, and only that one, when the fill mode is service', () => {

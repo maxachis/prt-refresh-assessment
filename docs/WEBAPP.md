@@ -690,9 +690,9 @@ that hold its people.
 
 | Reading | Colours by | Moves with the day switch |
 |---|---|---|
-| Map losses | share of the place's own residents who lose all buses | no |
-| Map gains | share who gain a bus | no |
-| Map service | percent change in the place's own bus trips | **yes** |
+| Losses | share of the place's own residents who lose all buses | no |
+| Gains | share who gain a bus | no |
+| Service | percent change in the place's own bus trips | **yes** |
 
 The first two are day-free and county-wide, from `equity_places.csv`; the
 third is per day type, from `analyze_place_service.py`. That split is stated

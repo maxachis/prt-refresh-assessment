@@ -569,9 +569,9 @@ export function placesListHTML(places: PlaceSummary[], sortBy: PlaceSort,
       <button type="button" data-sort-places="share"${sortBy === 'share' ? ' class="active"' : ''}>By share</button>
     </div>
     <div class="seg place-fill">
-      <button type="button" data-place-fill="lost"${fill === 'lost' ? ' class="active"' : ''}>Map losses</button>
-      <button type="button" data-place-fill="gained"${fill === 'gained' ? ' class="active"' : ''}>Map gains</button>
-      <button type="button" data-place-fill="service"${fill === 'service' ? ' class="active"' : ''}>Map service</button>
+      <button type="button" data-place-fill="lost"${fill === 'lost' ? ' class="active"' : ''}>Losses</button>
+      <button type="button" data-place-fill="gained"${fill === 'gained' ? ' class="active"' : ''}>Gains</button>
+      <button type="button" data-place-fill="service"${fill === 'service' ? ' class="active"' : ''}>Service</button>
     </div>
     <div class="place-list">${rows}</div>`;
 }
