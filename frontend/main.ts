@@ -32,9 +32,10 @@ import {
   isVisible as journeyOn, journeyData, Point,
 } from './journey';
 import {
-  initPlacesLayer, loadPlaces, selectPlace, setPlacesVisible,
-  placesListHTML, placesKeyHTML, PlaceSort,
+  initPlacesLayer, loadPlaces, loadBoundaries, selectPlace, setPlacesVisible,
+  placesListHTML, placesKeyHTML, PlaceSort, BOUNDARY_LAYER,
   layerData as placeDetail, listData as placesList, isVisible as placesOn,
+  boundariesData,
 } from './places';
 import { questionLineHTML, viewLabel } from './statebar';
 import {
@@ -208,6 +209,15 @@ map.on('load', () => {
       setDestination({ lat: e.lngLat.lat, lon: e.lngLat.lng });
       return;
     }
+    // Places has no walk-radius click to answer (see `askAt`'s own early
+    // return for this view) -- a click here selects a place instead, the
+    // same effect as clicking its row in the list, so the choropleth is
+    // clickable rather than a picture the reader can only look at.
+    if (view === 'places') {
+      const hit = map.queryRenderedFeatures(e.point, { layers: [BOUNDARY_LAYER] })[0];
+      if (hit) void goToPlace(hit.properties!.key as string);
+      return;
+    }
     // Snap to a change dot when one is under the cursor, so the panel that
     // opens is measured at the same point the dot was coloured from. Clicking
     // a dot and getting a different answer to the one it is painted with is
@@ -222,6 +232,11 @@ map.on('load', () => {
     // so a dragged pin and a click cannot diverge.
     askAt(c[1], c[0]);
   });
+
+  // Hovering the choropleth indicates it is clickable, the same cue the dot
+  // layers give -- see the mouseenter/mouseleave pairs below.
+  map.on('mouseenter', BOUNDARY_LAYER, () => { map.getCanvas().style.cursor = 'pointer'; });
+  map.on('mouseleave', BOUNDARY_LAYER, () => { map.getCanvas().style.cursor = ''; });
 
   const popup = new maplibregl.Popup({ closeButton: false, offset: 8 });
   map.on('mouseenter', 'change-dots', () => { map.getCanvas().style.cursor = 'pointer'; });
@@ -787,12 +802,19 @@ async function showCorridors(on: boolean) {
   refreshLegend();
 }
 
-/** Turn the Places view on or off, fetching the ranked list once, the first time it is asked for. */
+/**
+ * Turn the Places view on or off, fetching the ranked list and the
+ * choropleth's ~3.5 MB of boundaries once, the first time either is asked
+ * for. Both requests fire together rather than one waiting on the other --
+ * the list and the fill are two views of the same underlying figures, and
+ * a reader opening the tab wants both on screen at once, not the fill
+ * trailing in after the list has already rendered.
+ */
 async function showPlaces(on: boolean) {
-  if (on && !placesList()) {
+  if (on && (!placesList() || !boundariesData())) {
     $('legend').classList.add('loading');
     try {
-      await loadPlaces();
+      await Promise.all([loadPlaces(), loadBoundaries(map)]);
     } finally {
       $('legend').classList.remove('loading');
     }

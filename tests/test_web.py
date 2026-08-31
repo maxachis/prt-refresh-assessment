@@ -347,3 +347,39 @@ def test_a_place_carries_its_changed_block_groups(client):
 
 def test_an_unknown_place_is_a_404(client):
     assert client.get("/api/places/nowhere-at-all").status_code == 404
+
+
+def test_boundaries_cover_every_place_including_the_unchanged(client):
+    """A place the plan does not touch is drawn with zeros, not omitted: a hole
+    in the county reads as "not measured", when the truth for most of Allegheny
+    is "measured, and nothing changed"."""
+    fc = client.get("/api/boundaries").json()
+    assert fc["type"] == "FeatureCollection"
+    assert len(fc["features"]) > 200
+    changed = [f for f in fc["features"]
+               if f["properties"]["residents_lost"] > 0]
+    assert 40 < len(changed) < len(fc["features"])
+    for f in fc["features"]:
+        assert f["geometry"]["coordinates"], f["properties"]["place"]
+
+
+def test_a_place_wholly_covered_by_finer_places_is_not_drawn(client):
+    """Pittsburgh city is the case. Every acre of it is inside one of the 90
+    neighbourhoods, which win by kind precedence, so no resident resolves to
+    the city itself. Drawing its one polygon would lay a share-of-nobody over
+    the ninety polygons that actually hold its people."""
+    fc = client.get("/api/boundaries").json()
+    drawn = {f["properties"]["place"] for f in fc["features"]}
+    assert "Pittsburgh city" not in drawn
+    assert "Squirrel Hill South" in drawn
+    assert "Beechview" in drawn
+
+
+def test_the_panel_names_the_place_the_point_is_actually_in(client):
+    """Penn Hills is the case this protects. PRT labels its stops "Penn Hills
+    township"; the county's own GIS calls it "Penn Hills municipality", so a
+    lookup by the stop's label found no row and reported a measured zero for a
+    place losing 3,273 residents' service."""
+    p = client.get("/api/place?lat=40.47&lon=-79.83&radius=400").json()
+    assert p["population"]["place"] == "Penn Hills municipality"
+    assert p["population"]["lost"] > 3_000

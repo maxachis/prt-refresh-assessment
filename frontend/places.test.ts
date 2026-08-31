@@ -1,7 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import {
   sortPlaces, toGeoJSON, blockGroupKlass, blockGroupMagnitude,
-  placesListHTML, KLASS_COLOR, SCOPE_NOTE,
+  placesListHTML, placesKeyHTML, KLASS_COLOR, SCOPE_NOTE,
+  SHARE_BANDS, shareOpacity, fillOpacityExpr,
 } from './places';
 import { GONE_COLOR, NEW_COLOR } from './surface';
 import { PlaceSummary, PlaceDetail } from './types';
@@ -92,6 +93,50 @@ describe('toGeoJSON', () => {
   });
 });
 
+describe('shareOpacity / SHARE_BANDS', () => {
+  it('gives null and zero the same fully-transparent band -- "no data" and "no loss" must both read as nothing to see', () => {
+    expect(shareOpacity(null)).toBe(0);
+    expect(shareOpacity(0)).toBe(0);
+    expect(shareOpacity(null)).toBe(shareOpacity(0));
+  });
+
+  it('shades the published examples into the bands their share falls in', () => {
+    // Penn Hills municipality, 7.9% -- the second-lowest band.
+    expect(shareOpacity(0.079)).toBe(SHARE_BANDS[2].opacity);
+    // Baldwin borough 39.7%, Reserve township 85.1% and Bon Air 93.1% all
+    // clear the top band's 30% floor.
+    expect(shareOpacity(0.397)).toBe(SHARE_BANDS[4].opacity);
+    expect(shareOpacity(0.851)).toBe(SHARE_BANDS[4].opacity);
+    expect(shareOpacity(0.931)).toBe(SHARE_BANDS[4].opacity);
+  });
+
+  it('shades a small nonzero share into the lowest visible band, not the transparent one', () => {
+    expect(shareOpacity(0.01)).toBe(SHARE_BANDS[1].opacity);
+    expect(shareOpacity(0.01)).toBeGreaterThan(0);
+  });
+
+  it('opacity climbs monotonically from band to band, so the ramp never doubles back', () => {
+    const opacities = SHARE_BANDS.map((b) => b.opacity);
+    for (let i = 1; i < opacities.length; i++) {
+      expect(opacities[i]).toBeGreaterThan(opacities[i - 1]);
+    }
+  });
+});
+
+describe('fillOpacityExpr', () => {
+  it('reads share_lost off the feature, treating a missing value as zero', () => {
+    const expr = fillOpacityExpr();
+    expect(expr[0]).toBe('step');
+    expect(expr[1]).toEqual(['coalesce', ['get', 'share_lost'], 0]);
+  });
+
+  it('carries every band opacity from SHARE_BANDS, base first, in ascending order', () => {
+    const expr = fillOpacityExpr();
+    const opacitiesInExpr = [expr[2], expr[4], expr[6], expr[8], expr[10]];
+    expect(opacitiesInExpr).toEqual(SHARE_BANDS.map((b) => b.opacity));
+  });
+});
+
 describe('KLASS_COLOR', () => {
   it('reuses the surface palette, so a reader who learned red-means-gone here does not relearn it', () => {
     expect(KLASS_COLOR.lost).toBe(GONE_COLOR);
@@ -142,5 +187,48 @@ describe('placesListHTML', () => {
     // 151 of 68,989 residents live beyond 2 km of a labelled stop and take no
     // place name, so they cannot appear in this list.
     expect(placesListHTML(list, 'count', null)).toContain(SCOPE_NOTE);
+  });
+});
+
+describe('SCOPE_NOTE', () => {
+  // Places are now assigned by boundary containment, not by nearest labelled
+  // stop -- the old "151 residents beyond 2 km" residual no longer exists,
+  // and the note has to say the new true thing instead of the old one.
+  it('says every resident is in a named place, not that some are excluded', () => {
+    expect(SCOPE_NOTE).not.toContain('beyond 2 km');
+    expect(SCOPE_NOTE).not.toContain('151');
+    expect(SCOPE_NOTE.toLowerCase()).toContain('every');
+    expect(SCOPE_NOTE.toLowerCase()).toContain('allegheny');
+  });
+
+  it('still says the figures are day-free and do not move with the day switch', () => {
+    expect(SCOPE_NOTE.toLowerCase()).toContain('day-free');
+  });
+
+  it('still says an under-100-resident place is shown without a share', () => {
+    expect(SCOPE_NOTE).toContain('100');
+    expect(SCOPE_NOTE.toLowerCase()).toContain('share');
+  });
+});
+
+describe('placesKeyHTML', () => {
+  it('draws a legend row for every visible share band, stating its bound', () => {
+    const html = placesKeyHTML(null);
+    for (const band of SHARE_BANDS) {
+      if (band.opacity === 0) continue; // the "nothing to see" band has no swatch
+      expect(html).toContain(band.label);
+    }
+  });
+
+  it('does not give the transparent band its own swatch row', () => {
+    const html = placesKeyHTML(null);
+    const zeroBand = SHARE_BANDS.find((b) => b.opacity === 0)!;
+    expect(html).not.toContain(zeroBand.label);
+  });
+
+  it('still carries the points key, so the fill never replaces it', () => {
+    const html = placesKeyHTML(null);
+    expect(html).toContain('loses more than it gains');
+    expect(html).toContain('gains more than it loses');
   });
 });

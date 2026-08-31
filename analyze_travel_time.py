@@ -197,7 +197,8 @@ from pathlib import Path
 
 import gtfs
 from analyze_one_seat import ANCHORS
-from analyze_equity_places import label_for, label_grid, load_place_labels
+from analyze_one_seat import build_grid, drop_outliers, load_labels, near
+
 from ingest_osm_walk import EXTRACT as WALK_EXTRACT
 
 # The router lives in the installed package rather than at the repo root,
@@ -207,6 +208,56 @@ from ingest_osm_walk import EXTRACT as WALK_EXTRACT
 # dependency: `journey.py` is standard library like everything else here.
 sys.path.insert(0, str(Path(__file__).parent / "src"))
 from refresh import journey, walking  # noqa: E402
+
+
+# --------------------------------------------------------------------------
+# Naming a block group, by the nearest labelled PRT stop
+# --------------------------------------------------------------------------
+# These used to live in `analyze_equity_places.py` and were shared with it.
+# That script now names a block group by the boundary that CONTAINS it
+# (`ingest_boundaries.py`, `geometry.py`), which is the better answer to
+# "which municipality is this in" and leaves nothing unnamed.
+#
+# This script deliberately did NOT follow, and the reason is a name collision
+# rather than inertia. Its place universe is `oneseat_change.csv`'s `place`
+# column -- PRT's own labels, which is what makes a travel-time row joinable
+# to a one-seat row -- and the county's boundary names disagree with PRT's on
+# real places: PRT writes "Penn Hills township", the county's own GIS writes
+# "Penn Hills municipality". Matching boundary names against one-seat's would
+# silently place NO block groups in such a place and publish a travel time for
+# it derived from the stop-mean fallback, which is the exact failure the
+# module docstring's note about `tidy()` already warns about, one level up.
+#
+# Converting this script therefore needs a name reconciliation and a re-run of
+# a multi-hour analysis, and is filed rather than done:
+# `docs/worklog/two-scripts-now-name-a-place-differently.md`.
+
+LABEL_RADIUS_M = 2_000
+
+
+def load_place_labels():
+    """PRT's HOOD/MUNI labels, outlier-filtered, on current stop coordinates."""
+    _, coords = gtfs.stop_routes(gtfs.current(), bus_only=False)
+    label, _ = load_labels()
+    label, dropped = drop_outliers(label, coords)
+    print(f"  {len(label)} labelled stops "
+          f"({len(dropped)} dropped as mislabelled)")
+    return [(*coords[sid], place) for sid, place in label.items()
+            if sid in coords]
+
+
+def label_grid(points):
+    """Index (lat, lon, place) triples for nearest-label lookup."""
+    return build_grid(points, LABEL_RADIUS_M)
+
+
+def label_for(lat, lon, grid):
+    """The nearest labelled stop's place and its distance, or (None, None)."""
+    hits = near(lat, lon, grid, LABEL_RADIUS_M, LABEL_RADIUS_M)
+    if not hits:
+        return None, None
+    distance, place = min(hits, key=lambda h: h[0])
+    return place, distance
 
 DATA = Path("data")
 ONESEAT_CSV = DATA / "oneseat_change.csv"

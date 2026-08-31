@@ -46,25 +46,26 @@ of +5.8 points: churn, not harm (method caveat 6).
 Still, **2,376 car-free households lose all bus service near home** and 2,654
 lose weekday hourly service. Those are the households with no fallback, and
 `analyze_equity_places.py` now puts them on named ground rather than leaving
-them as a total: **twenty-five places hold 88% of them**, and they are suburban
+them as a total: **twenty-five places hold 89% of them**, and they are suburban
 almost without exception.
 
 | Place | Car-free households losing every bus | Gaining one |
 |---|---:|---:|
-| Kennedy township | 198 | 0 |
-| Scott township | 178 | 7 |
+| Kennedy township | 192 | 0 |
+| Scott township | 181 | 7 |
+| McCandless township | 150 | 5 |
 | Bridgeville borough | 149 | 0 |
-| Bethel Park municipality | 148 | 0 |
-| Baldwin borough | 135 | 0 |
-| McCandless township | 121 | 4 |
+| Bethel Park municipality | 147 | 0 |
+| Baldwin borough | 119 | 0 |
 | Carrick | 111 | 0 |
-| Ross township | 108 | 111 |
+| Ross township | 105 | 32 |
 
-Read both columns. Ross township is on this list and comes out level; Kennedy,
-Bridgeville and Bethel Park do not. Full list, block group by block group, in
-`data/equity_places.csv`, with the distance from each block group's centre to
-the stop that named it — PRT's HOOD/MUNI labels are only as good as convention
-6 allows, so a name from over a kilometre away should be discounted.
+Read both columns. Ross township is on this list and comes out a third level;
+Kennedy, Bridgeville and Bethel Park do not. Full list, block group by block
+group, in `data/equity_places.csv`. A block group takes the name of the
+municipal or neighbourhood boundary its residents sit inside
+(`ingest_boundaries.py`), so unlike earlier drafts of this table no name here
+was inferred from a stop up to two kilometres away.
 
 ## Service volume
 

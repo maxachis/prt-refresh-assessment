@@ -13,56 +13,58 @@
  * Three decisions worth keeping.
  *
  *  - THE RANK HAS TWO ORDERS, AND BOTH ARE TRUE. By count, twelve places carry
- *    71.5% of everyone who loses every bus, led by Baldwin borough at 9,613.
+ *    70.2% of everyone who loses every bus, led by Baldwin borough at 7,985.
  *    By share, small boroughs and townships a count-ranked list buries lead
- *    instead — Reserve township is ninth by count and loses 85% of its
+ *    instead — Reserve township is tenth by count and loses 85% of its
  *    residents. Neither order is the "right" one, so both are a click away
  *    rather than the app picking one and hiding the other (`sortPlaces`).
- *  - THE MAP DRAWS POINTS, NEVER A FILLED BOUNDARY. This repo carries no place
- *    geometry at all — a block group takes the name of the nearest surviving
- *    labelled PRT stop, median 373 m away and up to 1,989 m
- *    (`query.place_detail`) — so filling a real municipal polygon with these
- *    numbers would assert that PRT's labelling and the municipal partition
- *    agree, which nothing here has checked. A point per changed block group
- *    claims only what was measured. DO NOT "improve" this into a choropleth;
- *    that was considered and rejected in the worklog entry above.
- *  - THE RESIDUAL IS STATED, NOT IMPLIED AWAY. 151 of the county's 68,989
- *    residents who lose every bus live beyond `analyze_equity_places`'s label
- *    radius of a labelled stop, take no place name, and are not in this list
- *    or its map. `SCOPE_NOTE` says so wherever the list is drawn, per
- *    convention 12's "never quote one alone".
- *
- * Like the corridor and one-seat layers, a block group's colour reuses the
- * surface's red/blue palette (`GONE_COLOR`/`NEW_COLOR`) rather than inventing
- * one, so a reader who has already learned red-means-gone does not relearn it
- * here. Unlike them, a block group can hold both losses and gains at once —
- * some of its blocks lose every bus, others gain one — so `blockGroupKlass`
- * draws whichever side is larger, and a tie is drawn as a loss: a wash should
- * never read as the gain-coloured half of this view.
+ *  - THE MAP DRAWS A FILLED BOUNDARY AND POINTS, AT DIFFERENT UNITS. This repo
+ *    now carries real place geometry (`ingest_boundaries.py`, `/api/boundaries`),
+ *    so every named place fills with a colour under `initPlacesLayer`'s
+ *    `places-fill` layer. It is coloured by SHARE_LOST, not by count of
+ *    residents lost — a raw residents-lost choropleth would just draw
+ *    population density, which is exactly the failure the denominator work in
+ *    `analyze_equity_places.place_totals` exists to avoid (`shareOpacity`).
+ *    The changed block groups still draw as points on top of the fill, per
+ *    convention 10's "never quote one alone": the fill says "this whole place
+ *    lost 40% of its residents' bus service", the points say "and here is
+ *    where inside it", and neither view replaces the other.
+ *  - THE RESIDUAL IS GONE, BECAUSE THE BOUNDARY REPLACES THE LABEL RADIUS. An
+ *    earlier version of this view named a block group after whichever
+ *    labelled PRT stop was nearest, which left 151 residents beyond 2 km of
+ *    any stop unnamed. Places are now assigned by boundary containment, so
+ *    every one of the county's 1,238,177 residents is inside some named
+ *    place, changed by the plan or not — see `SCOPE_NOTE`.
  */
-import { PlaceSummary, PlaceChangedBlockGroup, PlaceDetail } from './types';
+import {
+  PlaceSummary, PlaceChangedBlockGroup, PlaceDetail, BoundariesGeoJSON,
+} from './types';
 import { fetchJSON, esc } from './utils';
 import { GONE_COLOR, NEW_COLOR } from './surface';
 
 const SRC = 'places';
 const LAYER = 'places-points';
+const BOUNDARY_SRC = 'places-boundaries';
+export const BOUNDARY_LAYER = 'places-fill';
 
 export type PlaceSort = 'count' | 'share';
 
 /**
- * The county's residual, outside every place this list can name. Stated
- * inline rather than fetched: it is a structural fact about the analysis
- * (`analyze_equity_places.LABEL_RADIUS_M`), not a figure that moves with the
- * view, and pinning it in the panel means a reader cannot read this list as
- * totalling the county — see the module docstring's third bullet.
+ * The view's scope, stated inline rather than fetched: it is a structural
+ * fact about how a place is assigned, not a figure that moves with the view.
+ *
+ * Every Allegheny resident is in a named place now that places are assigned
+ * by boundary containment (`ingest_boundaries.py`) rather than by nearest
+ * labelled stop, so unlike an earlier version of this note there is no
+ * residual to state — see the module docstring's third bullet.
  */
-export const SCOPE_NOTE = 'Named places only, Allegheny County. 151 of the '
-  + "county's 68,989 residents who lose every bus live beyond 2 km of a "
-  + 'labelled PRT stop, take no place name, and are not in this list. Every '
-  + 'figure here is day-free — losing every bus on any day of the week — so '
-  + "it does not move with the toolbar's day switch. A place with under 100 "
-  + 'residents is listed but given no share: a denominator that small cannot '
-  + 'carry one.';
+export const SCOPE_NOTE = "Every one of Allegheny County's 1,238,177 "
+  + 'residents is in a named place: places are assigned by boundary, not by '
+  + 'distance to a labelled stop, so nobody here goes unnamed. Every figure '
+  + 'is Allegheny-only and day-free — losing every bus on any day of the '
+  + "week — so it does not move with the toolbar's day switch. A place with "
+  + 'under 100 residents is shown without a share: a denominator that small '
+  + 'cannot carry one.';
 
 /** Colour per class, sharing the surface's palette so every view agrees. */
 export const KLASS_COLOR: Record<'lost' | 'gained', string> = {
@@ -72,6 +74,7 @@ export const KLASS_COLOR: Record<'lost' | 'gained', string> = {
 
 let list: PlaceSummary[] | null = null;
 let detail: PlaceDetail | null = null;
+let boundaries: BoundariesGeoJSON | null = null;
 let visible = false;
 
 export function listData(): PlaceSummary[] | null {
@@ -80,6 +83,10 @@ export function listData(): PlaceSummary[] | null {
 
 export function layerData(): PlaceDetail | null {
   return detail;
+}
+
+export function boundariesData(): BoundariesGeoJSON | null {
+  return boundaries;
 }
 
 export function isVisible(): boolean {
@@ -165,7 +172,77 @@ function radiusExpr(): any {
     16, ['*', ['get', 'radius'], 1.6]];
 }
 
+/**
+ * The choropleth's colour bands, by SHARE of a place's OWN residents who lose
+ * every bus -- never by count, which is the whole reason the denominator work
+ * in `analyze_equity_places.place_totals` exists (module docstring's second
+ * bullet). A place under `query.SHARE_MIN_RESIDENTS` residents, or one the
+ * plan does not touch, carries `share_lost: null` or `0` and gets the bottom
+ * band -- fully transparent, the same treatment for both, because "no data"
+ * and "no change" must both read as nothing to see, never as a small loss
+ * painted red. Checked against the published figures: Reserve township
+ * (85.1%) and Bon Air (93.1%) fall in the top band, Baldwin borough (39.7%)
+ * just inside it, and Penn Hills municipality (7.9%) in the second-lowest.
+ */
+export const SHARE_BANDS: ReadonlyArray<{ max: number | null; label: string; opacity: number }> = [
+  { max: 0, label: 'No loss, or too few residents to share', opacity: 0 },
+  { max: 0.05, label: 'Up to 5%', opacity: 0.15 },
+  { max: 0.15, label: '5–15%', opacity: 0.35 },
+  { max: 0.30, label: '15–30%', opacity: 0.55 },
+  { max: null, label: 'Over 30%', opacity: 0.8 },
+];
+
+/** A place's fill opacity from its share, per `SHARE_BANDS`. Null and 0 share the bottom band. */
+export function shareOpacity(share: number | null): number {
+  const s = share ?? 0;
+  for (const band of SHARE_BANDS) {
+    if (band.max === null || s <= band.max) return band.opacity;
+  }
+  return SHARE_BANDS[SHARE_BANDS.length - 1].opacity;
+}
+
+/**
+ * `SHARE_BANDS` as a MapLibre `fill-opacity` expression, built the same way
+ * `shareOpacity` reads it so the map and the legend cannot disagree.
+ *
+ * `step` is left-closed at each breakpoint, so a break placed at exactly 0
+ * would put `share_lost === 0` in the first non-zero band instead of the
+ * transparent one -- the ramp's first real breakpoint sits an epsilon above
+ * zero instead, matching `shareOpacity`'s own `s <= 0` check.
+ */
+export function fillOpacityExpr(): any {
+  return ['step', ['coalesce', ['get', 'share_lost'], 0],
+    SHARE_BANDS[0].opacity,
+    Number.EPSILON, SHARE_BANDS[1].opacity,
+    SHARE_BANDS[1].max, SHARE_BANDS[2].opacity,
+    SHARE_BANDS[2].max, SHARE_BANDS[3].opacity,
+    SHARE_BANDS[3].max, SHARE_BANDS[4].opacity];
+}
+
 export function initPlacesLayer(map: maplibregl.Map, beforeId: string) {
+  // The fill goes in first, at the same slot the points layer below also
+  // asks for: each addLayer call inserts immediately before `beforeId`, so
+  // adding the fill here and the points layer after leaves the fill beneath
+  // the points once both are in the stack -- the fill says "this whole place
+  // lost 40% of its residents' bus service", the points say "and here is
+  // where inside it", per the module docstring.
+  map.addSource(BOUNDARY_SRC, {
+    type: 'geojson',
+    data: { type: 'FeatureCollection', features: [] } as any,
+  });
+  map.addLayer({
+    id: BOUNDARY_LAYER, type: 'fill', source: BOUNDARY_SRC,
+    layout: { visibility: 'none' },
+    paint: {
+      // A flat colour, GONE_COLOR, with SHARE_BANDS carried entirely in
+      // opacity -- see the module docstring: this is a loss map, so it draws
+      // in the loss colour only, never the gain one.
+      'fill-color': KLASS_COLOR.lost,
+      'fill-opacity': fillOpacityExpr(),
+      'fill-outline-color': 'rgba(255,255,255,.25)',
+    },
+  }, beforeId);
+
   map.addSource(SRC, {
     type: 'geojson',
     data: { type: 'FeatureCollection', features: [] } as any,
@@ -187,6 +264,19 @@ export function initPlacesLayer(map: maplibregl.Map, beforeId: string) {
 export async function loadPlaces(): Promise<PlaceSummary[]> {
   if (!list) list = await fetchJSON<PlaceSummary[]>('/api/places');
   return list;
+}
+
+/**
+ * Fetches the choropleth's ~3.5 MB of polygons once and caches them, like
+ * `loadPlaces` caches the ranked list -- the boundaries never change within a
+ * build, so re-fetching on every view switch would only cost bandwidth.
+ */
+export async function loadBoundaries(map: maplibregl.Map): Promise<BoundariesGeoJSON> {
+  if (!boundaries) {
+    boundaries = await fetchJSON<BoundariesGeoJSON>('/api/boundaries');
+    (map.getSource(BOUNDARY_SRC) as maplibregl.GeoJSONSource).setData(boundaries as any);
+  }
+  return boundaries;
 }
 
 /**
@@ -220,6 +310,7 @@ export function clearSelection(map: maplibregl.Map) {
 export function setPlacesVisible(map: maplibregl.Map, on: boolean) {
   visible = on;
   map.setLayoutProperty(LAYER, 'visibility', on ? 'visible' : 'none');
+  map.setLayoutProperty(BOUNDARY_LAYER, 'visibility', on ? 'visible' : 'none');
 }
 
 /** One ranked row: the place, its loss (the rank), and its gain beside it. */
@@ -270,20 +361,37 @@ export function placesListHTML(places: PlaceSummary[], sortBy: PlaceSort,
     <div class="place-list">${rows}</div>`;
 }
 
-/** The map key: what the dots' colour and size mean. */
+/**
+ * The map key: what the fill and the points mean, at their own units.
+ *
+ * The fill's bands come straight from `SHARE_BANDS`, one row per band with a
+ * swatch at that band's opacity, so the legend cannot drift from what the
+ * layer actually paints. The bottom band -- null or zero share -- gets no
+ * row at all: it is "nothing to see", not a fifth colour to learn.
+ */
 export function placesKeyHTML(selected: PlaceDetail | null): string {
   const selectedLine = selected
     ? `<div class="lg-head"><b>${esc(selected.place)}</b>
         <span class="muted">· ${selected.changed_block_groups} block group${
           selected.changed_block_groups === 1 ? '' : 's'} changed</span></div>`
     : `<div class="lg-head">Click a place to see its changed block groups</div>`;
+  const bandRows = SHARE_BANDS
+    .filter((b) => b.opacity > 0)
+    .map((b) => `
+    <div class="lg-row lg-static">
+      <i style="background:${KLASS_COLOR.lost};opacity:${b.opacity};border-radius:2px"></i>
+      <span class="lg-lab">${esc(b.label)} of the place's own residents</span>
+    </div>`).join('');
   return `
     ${selectedLine}
+    <div class="lg-lab">Fill — share of a place's own residents who lose every bus</div>
+    ${bandRows}
     <div class="lg-row lg-static"><i style="background:${KLASS_COLOR.lost}"></i>
-      <span class="lg-lab">loses more than it gains</span></div>
+      <span class="lg-lab">point: block group loses more than it gains</span></div>
     <div class="lg-row lg-static"><i style="background:${KLASS_COLOR.gained}"></i>
-      <span class="lg-lab">gains more than it loses</span></div>
-    <div class="lg-foot">Points, not a filled area: this repo has no place
-      boundaries, only the nearest surviving PRT stop each block group is
-      named for. Size is the larger of a block group's losses or gains.</div>`;
+      <span class="lg-lab">point: block group gains more than it loses</span></div>
+    <div class="lg-foot">Fill is coloured by SHARE, not by count of residents
+      lost — a raw count would just draw where people live. Click a place to
+      select it. Points are the changed census block groups inside it; size is
+      the larger of a block group's losses or gains.</div>`;
 }

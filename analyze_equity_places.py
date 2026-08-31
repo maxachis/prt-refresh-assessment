@@ -42,29 +42,29 @@ Output is `data/equity_places.csv`, one row per Allegheny block group that
 changed, and a printed ranking by place.
 """
 import csv
+import json
 import sys
 from collections import defaultdict
 from pathlib import Path
 
-import gtfs
-from analyze_one_seat import build_grid, drop_outliers, load_labels, near
+
+# `geometry.py` lives in the installed package rather than at the repo root,
+# because the web app also decides which place a clicked point is in and an
+# installed app cannot import a loose file from the working directory. Same
+# reasoning, and same mechanism, as `journey.py` -- see convention 14.
+sys.path.insert(0, str(Path(__file__).resolve().parent / "src"))
+from refresh import geometry  # noqa: E402
 
 DATA = Path(__file__).resolve().parent / "data"
 SOURCE_CSV = DATA / "equity_block_groups.csv"
 OUT_CSV = DATA / "equity_places.csv"
+BOUNDARIES = DATA / "place_boundaries.json"
 TOTALS_CSV = DATA / "equity_place_totals.csv"
 
 COUNTY = "Allegheny"
 
 # The tier this ranks on: any bus at all, any day. See the docstring.
 TIER = "week_any_minimum"
-
-# How far a block group's population-weighted centre may sit from the nearest
-# labelled stop and still take its name. Generous, because the centre of an
-# outer-suburb block group is routinely set back from the road the bus runs on
-# -- and paired with a written-out distance, so a stretched name is visible
-# rather than silent.
-LABEL_RADIUS_M = 2_000
 
 # The suffix PRT's MUNI field appends. The type word ("township", "borough")
 # stays: Ross township and Ross are not interchangeable on a comment form.
@@ -94,18 +94,32 @@ def tidy(place):
     return (place or "").removesuffix(MUNI_SUFFIX).strip()
 
 
-def label_grid(points):
-    """Index (lat, lon, place) triples for nearest-label lookup."""
-    return build_grid(points, LABEL_RADIUS_M)
+def place_index():
+    """Every named place in the county, searchable by containment.
+
+    Replaces a nearest-labelled-stop guess. That rule answered "which stop is
+    closest", which is not "which municipality is this in": it moved 302 of
+    Allegheny's 1,062 block groups -- 34% of the county's residents -- and it
+    left 133 of them nameless because no labelled stop was within 2 km, which
+    is precisely the ground the plan is taking buses off. See `geometry.py`.
+    """
+    if not BOUNDARIES.exists():
+        sys.exit(f"missing {BOUNDARIES} -- run ingest_boundaries.py first")
+    return geometry.PlaceIndex([
+        geometry.Place(name=p["place"], kind=p["kind"], polygons=p["polygons"])
+        for p in json.loads(BOUNDARIES.read_text(encoding="utf-8"))])
 
 
-def label_for(lat, lon, grid):
-    """The nearest labelled stop's place and its distance, or (None, None)."""
-    hits = near(lat, lon, grid, LABEL_RADIUS_M, LABEL_RADIUS_M)
-    if not hits:
-        return None, None
-    distance, place = min(hits, key=lambda h: h[0])
-    return place, distance
+def place_at(lat, lon, index):
+    """The name of the place containing this point, or "" if none does.
+
+    "" is now genuinely rare -- municipal boundaries partition the county, so
+    only a point outside Allegheny entirely, or in open water at the county
+    edge, has no answer. It is still written out rather than dropped, for the
+    same reconciliation reason it always was.
+    """
+    hit = index.place_at(lat, lon)
+    return hit.name if hit else ""
 
 
 def locate(block_groups, grid):
@@ -118,9 +132,7 @@ def locate(block_groups, grid):
         if not any(shares.values()):
             continue
         lat, lon = float(bg["lat"]), float(bg["lon"])
-        place, distance = label_for(lat, lon, grid)
-        row = {"geoid": bg["geoid"], "place": tidy(place),
-               "place_distance_m": round(distance) if distance else "",
+        row = {"geoid": bg["geoid"], "place": place_at(lat, lon, grid),
                "lat": lat, "lon": lon,
                "population": float(bg["population"])}
         for prefix, column in STAKES:
@@ -183,8 +195,8 @@ def place_totals(block_groups, grid):
         if bg["county"] != COUNTY:
             continue
         lat, lon = float(bg["lat"]), float(bg["lon"])
-        place, _ = label_for(lat, lon, grid)
-        grouped[tidy(place)].append((lat, lon, float(bg["race_total"])))
+        grouped[place_at(lat, lon, grid)].append(
+            (lat, lon, float(bg["race_total"])))
 
     totals = []
     for place, rows in grouped.items():
@@ -209,17 +221,6 @@ def load_block_groups():
         sys.exit(f"missing {SOURCE_CSV} -- run analyze_equity_change.py first")
     with open(SOURCE_CSV, encoding="utf-8") as f:
         return list(csv.DictReader(f))
-
-
-def load_place_labels():
-    """PRT's HOOD/MUNI labels, outlier-filtered, on current stop coordinates."""
-    _, coords = gtfs.stop_routes(gtfs.current(), bus_only=False)
-    label, _ = load_labels()
-    label, dropped = drop_outliers(label, coords)
-    print(f"  {len(label)} labelled stops "
-          f"({len(dropped)} dropped as mislabelled)")
-    return [(*coords[sid], place) for sid, place in label.items()
-            if sid in coords]
 
 
 def read_located(path=OUT_CSV):
@@ -249,7 +250,7 @@ def write_totals(totals):
 
 
 def write(located):
-    fields = (["geoid", "place", "place_distance_m", "lat", "lon", "population"]
+    fields = (["geoid", "place", "lat", "lon", "population"]
               + [f"{prefix}_{side}" for prefix, _ in STAKES for side in SIDES])
     with open(OUT_CSV, "w", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(f, fieldnames=fields)
@@ -289,17 +290,15 @@ def table(rolled, key, title, unit):
 
 
 def main():
-    print("Loading place labels from PRT's stop usage extract...")
-    grid = label_grid(load_place_labels())
+    print("Loading place boundaries...")
+    grid = place_index()
+    print(f"  {len(grid.places)} named places")
 
     print("Locating coverage change...")
     located = locate(load_block_groups(), grid)
     unnamed = [r for r in located if not r["place"]]
-    stretched = [r for r in located
-                 if r["place_distance_m"] and r["place_distance_m"] > 1_000]
     print(f"  {len(located)} Allegheny block groups changed on {TIER}")
-    print(f"  {len(unnamed)} took no name (>{LABEL_RADIUS_M} m from a "
-          f"labelled stop); {len(stretched)} named from over 1 km away")
+    print(f"  {len(unnamed)} fell inside no boundary")
 
     write(located)
     print(f"  wrote {OUT_CSV.relative_to(DATA.parent)}")
@@ -310,7 +309,7 @@ def main():
     residual = sum(t["residents"] for t in totals if not t["place"])
     print(f"  {len(named)} named places hold "
           f"{sum(t['residents'] for t in named):,.0f} residents; "
-          f"{residual:,.0f} live beyond {LABEL_RADIUS_M} m of a labelled stop")
+          f"{residual:,.0f} fell inside no boundary")
     write_totals(totals)
     print(f"  wrote {TOTALS_CSV.relative_to(DATA.parent)}")
 

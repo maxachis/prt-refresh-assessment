@@ -138,11 +138,11 @@ def test_the_served_page_carries_a_way_back_to_the_map():
 
 
 def test_a_nameless_place_says_why_it_has_no_name():
-    """Four of the six unnamed block groups are the plan reaching Wexford,
-    where PRT has no stop within 3 km today. "unnamed ground" reads as a data
-    artifact; the reason it has no name is the finding."""
-    label = brief.place_label(None)
-    assert "2 km" in label
+    """Now vanishingly rare rather than routine: block groups are named by the
+    boundary containing them, and municipal boundaries partition the county, so
+    the only way to take no name is to fall outside every one. Saying which
+    still beats "unnamed ground", which reads as a data artifact."""
+    assert "boundary" in brief.place_label(None)
     assert brief.place_label("Ross township") == "Ross township"
 
 

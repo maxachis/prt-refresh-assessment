@@ -34,6 +34,8 @@ membership of a radius is decided identically on both sides of the pipeline.
 from __future__ import annotations
 
 import json
+
+from . import geometry
 import math
 import re
 import sqlite3
@@ -403,7 +405,12 @@ def place(con, lat: float, lon: float, radius: float = PRIMARY_RADIUS,
         for day in DAYS
     }
     out["place"] = nearest_place_label(con, lat, lon)
-    out["population"] = place_residents(con, out["place"])
+    # By containment, NOT by `out["place"]`'s nearest-stop label: the two name
+    # a place differently on 14 of PRT's 187 labels ("Penn Hills township" vs
+    # the county's "Penn Hills municipality"), and a lookup by the label would
+    # report a measured zero for places that lose thousands of residents'
+    # service. See the `place_boundary` schema comment in `build_webdb.py`.
+    out["population"] = place_residents(con, lat, lon)
     # The one-seat verdicts ride along with the panel rather than sitting
     # behind their own request: they answer a question about this same point,
     # and two round trips would let the panel show a corner's trip counts
@@ -1054,6 +1061,43 @@ def places(con):
         "SELECT * FROM place_population ORDER BY residents_lost DESC")]
 
 
+def boundaries(con):
+    """Every place's boundary as a GeoJSON FeatureCollection.
+
+    Each feature carries the place's own change figures, so the choropleth
+    colours itself from the properties it already has rather than joining to
+    `/api/places` in the browser -- one source for the number under the cursor
+    and the number in the list.
+
+    A place the plan does not touch is included with zeros rather than
+    omitted. Leaving it out would draw a hole in the county and read as "not
+    measured", when what is true is "measured, and nothing changed" -- which
+    for most of Allegheny is the finding.
+    """
+    changed = {r["key"]: r for r in con.execute("SELECT * FROM place_population")}
+    features = []
+    # `residents_total > 0` drops the places wholly covered by a finer one --
+    # Pittsburgh city, every acre of which is in one of the 90 neighbourhoods.
+    # Drawing it would lay one null-share polygon over the ninety that hold its
+    # people. See the `place_boundary` schema comment.
+    for row in con.execute(
+            "SELECT key, place, kind, polygons FROM place_boundary "
+            "WHERE residents_total > 0"):
+        hit = changed.get(row["key"])
+        props = {"key": row["key"], "place": row["place"], "kind": row["kind"]}
+        props.update(_place_row(hit) if hit else {
+            "changed_block_groups": 0, "block_groups": 0,
+            "residents_lost": 0.0, "residents_gained": 0.0,
+            "residents_total": None, "share_lost": None, "share_gained": None})
+        features.append({
+            "type": "Feature",
+            "geometry": {"type": "MultiPolygon",
+                         "coordinates": json.loads(row["polygons"])},
+            "properties": props,
+        })
+    return {"type": "FeatureCollection", "features": features}
+
+
 def place_detail(con, key: str):
     """One place, plus the changed block groups as points, or None.
 
@@ -1079,7 +1123,33 @@ def place_detail(con, key: str):
     return detail
 
 
-def place_residents(con, label):
+_PLACE_INDEX = {}
+
+
+def place_index(con):
+    """The county's boundaries, loaded once per connection.
+
+    Cached on the connection because the panel asks this on every click and
+    parsing 3.5 MB of polygon JSON per request would dominate the response.
+    """
+    cached = _PLACE_INDEX.get(id(con))
+    if cached is None:
+        cached = geometry.PlaceIndex([
+            geometry.Place(name=r["place"], kind=r["kind"],
+                           polygons=json.loads(r["polygons"]))
+            for r in con.execute(
+                "SELECT place, kind, polygons FROM place_boundary")])
+        _PLACE_INDEX[id(con)] = cached
+    return cached
+
+
+def place_containing(con, lat: float, lon: float):
+    """The named place this point is inside, or None."""
+    hit = place_index(con).place_at(lat, lon)
+    return hit.name if hit else None
+
+
+def place_residents(con, lat: float, lon: float):
     """How many people this named place loses and gains every bus for.
 
     The panel's population line, and it is a *place* figure, not a figure for
@@ -1103,16 +1173,10 @@ def place_residents(con, label):
     here loses or gains every bus. That is worth printing, and it is why this
     returns a measured zero rather than `None`.
     """
-    if not label:
-        return None
-    hood, muni = (label.get("hood") or "").strip(), (label.get("muni") or "").strip()
-    if place_county(muni) != EQUITY_COUNTY:
+    named = place_containing(con, lat, lon)
+    if not named:
         return None
 
-    # Only ever the most specific label that exists: falling back from a
-    # neighbourhood to "Pittsburgh city" would report a whole city's losses
-    # under a neighbourhood's heading.
-    named = hood or muni
     row = con.execute(
         "SELECT key, place, block_groups, residents_lost, residents_gained "
         "FROM place_population WHERE key = ?", (place_key(named),)).fetchone()

@@ -196,6 +196,18 @@ def create_app(db_path: str | Path = "data/refresh.db") -> FastAPI:
         """
         return query.places(con)
 
+    @app.get("/api/boundaries")
+    def api_boundaries():
+        """Every named place's boundary, as GeoJSON, for the Places choropleth.
+
+        The only geometry in this repo that is not derived from a transit feed
+        or a census file. It is served whole and cached hard by the client: it
+        is ~3.5 MB, it never changes between builds, and the alternative --
+        slicing it per viewport -- would make the choropleth's colours depend
+        on where the map happened to be.
+        """
+        return query.boundaries(con)
+
     @app.get("/api/places/{key}")
     def api_place_detail(key: str):
         """One place, with the block groups the plan changed as points."""

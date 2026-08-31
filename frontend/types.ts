@@ -421,3 +421,35 @@ export interface PlaceChangedBlockGroup {
 export interface PlaceDetail extends PlaceSummary {
   changed: PlaceChangedBlockGroup[];
 }
+
+/**
+ * One named place's boundary and change figures, from /api/boundaries --
+ * see `query.boundaries`. Deliberately not `PlaceSummary`: a place under
+ * `query.SHARE_MIN_RESIDENTS` residents, or one the plan does not touch,
+ * carries `residents_total: null` there, which `PlaceSummary` (built for the
+ * ranked list, where every row is a place the plan changed) does not allow.
+ */
+export interface PlaceBoundaryProperties {
+  key: string;
+  place: string;
+  kind: string;
+  changed_block_groups: number;
+  block_groups: number;
+  residents_lost: number;
+  residents_gained: number;
+  residents_total: number | null;
+  share_lost: number | null;
+  share_gained: number | null;
+}
+
+export interface PlaceBoundaryFeature {
+  type: 'Feature';
+  geometry: { type: 'MultiPolygon'; coordinates: number[][][][] };
+  properties: PlaceBoundaryProperties;
+}
+
+/** The choropleth's whole GeoJSON, from /api/boundaries -- ~220 features, ~3.5 MB. */
+export interface BoundariesGeoJSON {
+  type: 'FeatureCollection';
+  features: PlaceBoundaryFeature[];
+}

@@ -97,12 +97,14 @@ The headline, on the Allegheny County denominator at 400 m:
   they lose coverage at 1.14× the county rate and regain it at 0.89×, the only
   group both losing more and gaining less.
 
-**Where it happened**, from `analyze_equity_places.py`: 182 of Allegheny's
-1,062 block groups lose coverage, a hundred of them hold 90% of the loss, and
-the places holding it are overwhelmingly suburban — Baldwin, Ross, McCandless,
-Mount Lebanon, Kennedy, Scott, Bethel Park. That is the same geography as the
-age finding, not a separate result. Twenty-five places hold 88% of the 2,376
-car-free households losing every bus. Per block group in
+**Where it happened**, from `analyze_equity_places.py`: 191 of Allegheny's
+1,062 block groups lose coverage, 98 of them hold 90% of the loss, and the
+places holding it are overwhelmingly suburban — Baldwin, McCandless, Ross,
+Mount Lebanon, Scott, Kennedy, Penn Hills. That is the same geography as the
+age finding, not a separate result. Twenty-five places hold 89% of the 2,376
+car-free households losing every bus. A place is the boundary a block group
+sits inside, not the nearest labelled PRT stop; the county totals are the same
+either way, but a per-place figure predating 2026-08-31 will not match. Per block group in
 `data/equity_places.csv`; charted, with the ratio scatter that separates churn
 from harm, in [../equity-brief.html](../equity-brief.html).
 

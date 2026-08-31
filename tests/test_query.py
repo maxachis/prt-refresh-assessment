@@ -475,15 +475,18 @@ def test_a_place_the_plan_does_not_change_says_so_rather_than_nothing(con):
     place with no row has nobody losing or gaining every bus -- which is worth
     printing, and is not the same as not having asked.
     """
-    unchanged = con.execute(
-        "SELECT muni FROM stop_place WHERE muni LIKE '% (Allegheny, PA)' "
-        "  AND (hood IS NULL OR hood = '') "
-        "  AND lower(replace(muni, ' (Allegheny, PA)', '')) NOT IN "
-        "      (SELECT key FROM place_population) LIMIT 1").fetchone()["muni"]
-    assert query.place_residents(con, {"muni": unchanged, "hood": ""}) == {
-        "key": query.place_key(unchanged),
-        "place": query.place_display(unchanged), "lost": 0.0, "gained": 0.0,
-        "block_groups": 0, "measured": True}
+    changed = {r["key"] for r in con.execute("SELECT key FROM place_population")}
+    for stop in con.execute(
+            "SELECT lat, lon FROM stops WHERE side = 'current'"):
+        named = query.place_containing(con, stop["lat"], stop["lon"])
+        if named and query.place_key(named) not in changed:
+            break
+    else:
+        pytest.skip("every place with a stop in it changed")
+
+    assert query.place_residents(con, stop["lat"], stop["lon"]) == {
+        "key": query.place_key(named), "place": named,
+        "lost": 0.0, "gained": 0.0, "block_groups": 0, "measured": True}
 
 
 def test_outside_allegheny_the_question_was_never_asked(con):
@@ -492,9 +495,10 @@ def test_outside_allegheny_the_question_was_never_asked(con):
     Reporting 0 there would say the plan changes nothing for anyone in Beaver
     County, which the repo has not measured either way.
     """
-    assert query.place_residents(
-        con, {"muni": "Ambridge borough (Beaver, PA)", "hood": ""}) is None
-    assert query.place_residents(con, None) is None
+    # Ambridge, Beaver County -- inside no Allegheny boundary, so the
+    # containment test returns nothing to look up rather than a zero.
+    assert query.place_containing(con, 40.5889, -80.2256) is None
+    assert query.place_residents(con, 40.5889, -80.2256) is None
 
 
 # --------------------------------------------------------------------------
@@ -532,8 +536,9 @@ def test_no_place_loses_more_residents_than_it_has(con):
 
 
 def test_a_place_carries_the_block_group_points_the_map_lights(con):
-    """A place has no boundary in this repo, so the view draws the geometry
-    there is: the changed block groups as points."""
+    """The place's own polygon says how much of it lost service; these points
+    say where inside it, which is a different unit and drawn on top of the
+    fill rather than instead of it (convention 10)."""
     key = con.execute(
         "SELECT key FROM place_population ORDER BY residents_lost DESC "
         "LIMIT 1").fetchone()["key"]

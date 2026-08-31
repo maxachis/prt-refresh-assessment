@@ -75,13 +75,16 @@ about ten seconds, so it stays in memory for the pipeline and is packed into
 fastest-moving upstream in the repo and a re-fetch would quietly restate
 published travel times.
 
-**The equity questions** are a second, independent ingest-then-analyse pair,
-because they read the census rather than PRT:
+**The equity questions** are a second, independent ingest-then-analyse group,
+because they read the census and the county's boundary files rather than PRT:
 
 ```bash
+python3 ingest_boundaries.py        # -> data/place_boundaries.json (130 munis +
+                                    #    90 Pittsburgh neighbourhoods). Must run
+                                    #    before analyze_equity_places.py.
 python3 ingest_census.py            # -> data/census_blocks.csv, census_block_groups.csv
 python3 analyze_equity_change.py    # -> data/equity_*.csv
-python3 analyze_equity_places.py    # -> data/equity_places.csv (needs PRT stop labels)
+python3 analyze_equity_places.py    # -> data/equity_places.csv (needs place_boundaries.json)
                                     #    + data/equity_place_totals.csv, the denominator:
                                     #    every named Allegheny place's whole ACS population,
                                     #    changed or not. equity_places.csv cannot supply it --
@@ -126,11 +129,14 @@ that printed report is the draft material for `FINDINGS.md` and `docs/answers/`.
 
 `analyze_one_seat.py` reads only raw sources, so it runs independently of the
 other analyses. The cross-script imports are few and deliberate:
-`analyze_equity_places.py` takes the HOOD/MUNI labels and the outlier filter
-from `analyze_one_seat.py`, so a block group is named by the same cleaned
-labels the place-level one-seat answer uses (convention 6); it therefore has to
-run after `ingest_blr.py` and `analyze_service_loss.py`, unlike the rest of the
-equity pair. `build_equity_brief.py` reads only published CSVs and re-uses
+`analyze_equity_places.py` names a block group by the county boundary that
+contains it (`ingest_boundaries.py`, `refresh/geometry.py`), so it needs that
+ingest but no longer needs PRT's stop labels. `analyze_travel_time.py` still
+uses the older nearest-labelled-stop rule, because its place universe is
+`oneseat_change.csv`'s PRT labels and the two naming systems disagree on real
+places -- "Penn Hills township" against the county's "Penn Hills municipality".
+That divergence is deliberate, bounded and filed:
+[`docs/worklog/two-scripts-now-name-a-place-differently.md`](docs/worklog/two-scripts-now-name-a-place-differently.md). `build_equity_brief.py` reads only published CSVs and re-uses
 `analyze_equity_places.by_place`, so the charts cannot drift from the files
 `docs/answers/` cites. `build_webdb.py` takes the anchor definitions, the HOOD
 labels and the outlier filter from `analyze_one_seat.py`, so the app's Downtown
@@ -230,9 +236,28 @@ changes published findings.
 5. **Tier by confidence.** The Remix map's base feed is 2023, so a stop served
    today and absent from Remix may postdate the base feed rather than be cut.
    Those go in an "unverifiable" bucket and never into a headline.
-6. **Filter PRT's `HOOD`/`MUNI` labels.** They contain gross errors — stops
-   mislabelled by up to 40 km. Any place-level work needs the outlier filter in
-   `analyze_one_seat.py`.
+6. **Filter PRT's `HOOD`/`MUNI` labels, and know what they may name.** They
+   contain gross errors — stops mislabelled by up to 40 km — so any place-level
+   work built on them needs the outlier filter in `analyze_one_seat.py`.
+
+   Since 2026-08-31 a **block group** is not built on them at all: it takes the
+   county boundary that *contains* it (`ingest_boundaries.py`,
+   `refresh/geometry.py`). That answers the containment question directly
+   rather than inferring it from whichever labelled stop happened to be
+   nearest, which moved 302 of Allegheny's 1,062 block groups — 34% of its
+   residents — and left 133 of them nameless, those being the ground with no
+   bus to lose. PRT's labels stay right for a **stop**, because it is PRT's
+   stop; so both systems live on, at different units, and neither is the
+   fallback for the other.
+
+   Two consequences. The app's answer panel decides a clicked point's place by
+   containment, never by the nearest stop's label: the two disagree on 14 of
+   PRT's 187 labels ("Penn Hills township" against the county's "Penn Hills
+   municipality") and a lookup by the label reports a measured **zero** for a
+   place losing 3,273 residents' service. And `analyze_travel_time.py` still
+   uses the stop labels, deliberately, because it joins to
+   `oneseat_change.csv` — see
+   [`docs/worklog/two-scripts-now-name-a-place-differently.md`](docs/worklog/two-scripts-now-name-a-place-differently.md).
 7. **Take boardings from the `All Routes` row.** The usage extract is one row
    per stop *per route* plus a total; summing rows double-counts.
 8. **Parse the crosswalk's multi-route cells.** One cell may read `"86, 77"`;

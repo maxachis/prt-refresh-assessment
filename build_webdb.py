@@ -92,6 +92,7 @@ from analyze_frequency_change import PERIODS, period_of, to_axis
 sys.path.insert(0, str(Path(__file__).parent / "src"))
 from refresh import query  # noqa: E402
 from refresh import walking  # noqa: E402
+from refresh import geometry  # noqa: E402
 
 import ingest_osm_walk  # noqa: E402  (root script, like analyze_one_seat above)
 
@@ -100,6 +101,7 @@ DB = DATA / "refresh.db"
 COVERAGE = DATA / "coverage_change.csv"
 EQUITY_PLACES = DATA / "equity_places.csv"
 PLACE_TOTALS = DATA / "equity_place_totals.csv"
+BOUNDARIES = DATA / "place_boundaries.json"
 CENSUS_BLOCKS = DATA / "census_blocks.csv"
 CENSUS_BLOCK_GROUPS = DATA / "census_block_groups.csv"
 
@@ -208,6 +210,33 @@ CREATE TABLE place_population (
     -- so this is the only thing a view can aim the map at.
     lat             REAL NOT NULL,
     lon             REAL NOT NULL
+);
+
+-- The place boundaries, as GeoJSON polygon coordinate lists.
+--
+-- Two jobs, and the second is the one that makes them mandatory rather than
+-- decorative. They are what the Places choropleth draws; and they are how the
+-- answer panel decides which place an arbitrary clicked point is in.
+--
+-- That second job replaced a lookup by the nearest stop's PRT label, which
+-- had become wrong the moment block groups started being named by boundary:
+-- PRT writes "Penn Hills township" where the county's own GIS writes "Penn
+-- Hills municipality", so the panel would have looked up a key that is not in
+-- `place_population` and reported a measured ZERO for a place losing 3,273
+-- residents' service. 14 of PRT's 187 labels miss that way. Containment
+-- cannot miss: it asks the same question the table was built from.
+CREATE TABLE place_boundary (
+    key      TEXT PRIMARY KEY,
+    place    TEXT NOT NULL,
+    kind     TEXT NOT NULL,
+    -- How many residents actually resolved to this place. Zero means every
+    -- block group inside it resolved to a finer place that covers it --
+    -- Pittsburgh city is the case: all of it is inside one of the 90
+    -- neighbourhoods, which win by `geometry.KIND_PRECEDENCE`. Such a place
+    -- must not be drawn, or its one polygon would cover the ninety that hold
+    -- its people and paint the whole city with a share of nobody.
+    residents_total REAL NOT NULL,
+    polygons TEXT NOT NULL          -- JSON: [ [ring, hole...], ... ]
 );
 
 -- The changed block groups themselves, as points. A place has no polygon here
@@ -600,6 +629,12 @@ def build(out_path):
         "VALUES (?,?,?,?,?,?,?)",
         [(sid, *row) for sid, row in places.items()])
 
+    boundaries = load_boundaries()
+    con.executemany("INSERT INTO place_boundary VALUES (?,?,?,?,?)", boundaries)
+    drawable = sum(1 for b in boundaries if b[3] > 0)
+    print(f"  place boundaries: {len(boundaries)} places, {drawable} with "
+          f"residents of their own")
+
     equity, bg_points = load_place_population()
     con.executemany("INSERT INTO place_population VALUES (?,?,?,?,?,?,?,?,?)",
                     equity)
@@ -923,6 +958,26 @@ def load_place_population():
         rows.append((key, place, groups, lost, gained, total, total_groups,
                      lat, lon))
     return rows, points
+
+
+def load_boundaries():
+    """[(key, place, kind, polygons_json)] -- every named place's geometry.
+
+    Missing is fatal, like the census and walk-network files: a database built
+    without these would serve a Places view with no shapes AND an answer panel
+    that silently cannot tell which place a point is in.
+    """
+    if not BOUNDARIES.exists():
+        sys.exit(f"error: {BOUNDARIES} missing -- run "
+                 "`python3 ingest_boundaries.py` first")
+    totals = load_place_totals()
+    rows = []
+    for place in json.loads(BOUNDARIES.read_text(encoding="utf-8")):
+        key = query.place_key(place["place"])
+        residents = totals[key][0] if key in totals else 0.0
+        rows.append((key, place["place"], place["kind"], residents,
+                     json.dumps(place["polygons"])))
+    return rows
 
 
 def load_place_totals():

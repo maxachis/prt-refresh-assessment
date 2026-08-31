@@ -603,14 +603,15 @@ PLACE_ROWS = 12
 def place_label(place):
     """What to print for a block group that took no name.
 
-    A block group more than `LABEL_RADIUS_M` from a labelled stop stays
-    unnamed rather than borrowing a neighbourhood it has no claim to. Saying
-    so is better than calling it "unnamed ground", because the absence is the
-    finding: four of the six sit on Perry Highway around Wexford, where PRT
-    has no stop within 3 km today and the plan puts ten. They have no name to
-    borrow for the same reason they are gaining a bus.
+    Now vanishingly rare: since block groups are named by the boundary that
+    contains them (`ingest_boundaries.py`), and municipal boundaries partition
+    the county, the only way to take no name is to fall outside every one of
+    them. Under the previous nearest-stop rule this was routine -- six changed
+    block groups and 133 in all -- and the blank was itself a finding, because
+    a block group with no labelled stop within 2 km was one the plan was about
+    to give its first bus.
     """
-    return place or f"no stop within {ap.LABEL_RADIUS_M // 1_000} km today"
+    return place or "outside every county boundary"
 
 
 def place_table(rolled, key, *, side, unit, columns):

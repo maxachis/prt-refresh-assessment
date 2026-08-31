@@ -454,28 +454,35 @@ lives, not its members.
 ### Where it happened: the coverage being trimmed is suburban
 
 The county totals do not say where any of this is. `analyze_equity_places.py`
-puts them on named ground: 182 of Allegheny's 1,062 block groups lose coverage
-and 75 gain it, **a hundred of them hold 90% of the loss**, and the places
-holding it are almost all outer and inner-ring suburbs.
+puts them on named ground: 191 of Allegheny's 1,062 block groups lose coverage
+and 81 gain it, **98 of them hold 90% of the loss**, and the places holding it
+are almost all outer and inner-ring suburbs.
 
 | Losing every bus | Residents | | Gaining a bus | Residents |
 |---|---:|---|---|---:|
-| Baldwin borough | 9,613 | | McKeesport city | 3,222 |
-| Ross township | 6,508 | | Ross township | 2,581 |
-| McCandless township | 6,291 | | Penn Hills township | 2,397 |
-| Mount Lebanon township | 4,514 | | West View borough | 1,598 |
-| Kennedy township | 3,904 | | Brackenridge borough | 978 |
+| Baldwin borough | 7,985 | | McKeesport city | 3,222 |
+| McCandless township | 7,213 | | Penn Hills municipality | 2,397 |
+| Ross township | 6,119 | | Ross township | 1,952 |
+| Mount Lebanon township | 3,742 | | Pine township | 1,368 |
+| Scott township | 3,665 | | Shaler township | 1,092 |
 
-Of the twenty-five places holding the largest losses, only Carrick, Brookline,
-Bon Air, Chartiers City and Summer Hill are city neighbourhoods. **This is the
+A place here is the municipal or neighbourhood **boundary** a block group's
+residents sit inside (`ingest_boundaries.py`), not the nearest labelled PRT
+stop, which is what these figures were built on before 2026-08-31. The county
+totals are identical either way — only the attribution between places moved,
+and it moved for a third of the county's residents, so a per-place figure
+quoted from an earlier draft will not match.
+
+Of the twenty-five places holding the largest losses, only Brookline, Squirrel
+Hill South and Bon Air are city neighbourhoods. **This is the
 same geography as the age finding and the white-residents finding above** —
 Allegheny County's over-65 population is more suburban than its population as a
 whole — and the three should be presented as one result seen through three
 variables, not as three independent findings.
 
-The car-free losses are more concentrated still: **twenty-five places hold 88%
-of the 2,376 car-free households that lose every bus**, led by Kennedy (198),
-Scott (178), Bridgeville (149) and Bethel Park (148). Those are the households
+The car-free losses are more concentrated still: **twenty-five places hold 89%
+of the 2,376 car-free households that lose every bus**, led by Kennedy (192),
+Scott (181), McCandless (150) and Bridgeville (149). Those are the households
 with no fallback, and they are now locatable rather than a county total —
 `data/equity_places.csv` has all 261 changed block groups.
 
