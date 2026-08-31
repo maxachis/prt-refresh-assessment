@@ -339,6 +339,36 @@
     .people-n { margin:0; font-size:13px; line-height:1.5;
       font-variant-numeric:tabular-nums; }
     .people-n b { font-size:15px; }
+    /* The door into the Places view from the panel's own population line --
+       the fix docs/worklog/the-place-number-has-no-view-of-its-own.md asks
+       for. Styled to read as part of the heading it sits in, not as a
+       smaller aside, so a reader's eye does not have to hunt for the one word
+       in the sentence that is clickable. */
+    button.place-link { background:none; border:0; padding:0; font:inherit;
+      font-size:12px; text-transform:uppercase; letter-spacing:.06em;
+      color:var(--now); cursor:pointer; text-decoration:underline;
+      text-underline-offset:2px; }
+    button.place-link:hover { color:var(--ink); }
+
+    /* The Places view: a ranked list rather than a click-driven report, so it
+       is styled after the one-seat panel's own list of other destinations
+       (.os-others / button.os-other) rather than the point-answer panels. */
+    .place-sort { margin:12px 0 10px; }
+    .place-list { display:flex; flex-direction:column; gap:6px; }
+    button.place-row { display:flex; flex-direction:column; gap:2px;
+      width:100%; padding:8px 10px; background:#0c0e12;
+      border:1px solid var(--line); border-radius:5px; color:var(--ink);
+      font:inherit; cursor:pointer; text-align:left; }
+    button.place-row:hover { border-color:#3a4150; }
+    /* The selected row shares the toolbar's own selection colour rather than
+       inventing a second one -- it is the same idea, "this is the one that is
+       on", just inside the panel instead of the toolbar. */
+    button.place-row.selected { border-color:var(--sel); background:#171b23; }
+    .place-name { font-size:13px; }
+    .place-figs { display:flex; gap:8px; align-items:baseline;
+      font-size:12px; font-variant-numeric:tabular-nums; flex-wrap:wrap; }
+    .place-lost { color:var(--down); }
+    .place-gained { color:#6fb6ef; }
 
     /* The one-seat block: a verdict per named destination, with the route
        numbers that make it checkable. Statuses take the map's own colours so
@@ -703,7 +733,20 @@
              either -- the walking in a journey is the router's own -- and it is
              the only view that answers on the click rather than from a layer
              loaded in advance, because both of its ends belong to the reader
-             and there is nothing to precompute. -->
+             and there is nothing to precompute. Places is the sixth and asks a
+             question with yet another unit: how many of a NAMED PLACE's own
+             residents lose every bus, county-wide, ranked -- the same figure
+             the panel's population line already prints under a walk circle
+             that measures something else, given a screen of its own so the two
+             can stop appearing to disagree
+             (docs/worklog/the-place-number-has-no-view-of-its-own.md). It has
+             neither a walk radius nor a day type: the published figures are
+             day-free and measured at a place, not inside a circle or on a
+             calendar. It is also the only view driven entirely by its own
+             panel rather than by clicking the map -- selecting a place from
+             the ranked list is what flies the map and draws its changed census
+             block groups, always as points and never as a filled boundary,
+             because this repo has no place geometry to fill one with. -->
         <div class="controls">
           <span class="lbl">view</span>
           <div class="seg">
@@ -713,6 +756,7 @@
             <button data-view="corridors">Streets</button>
             <button data-view="oneseat">One-seat</button>
             <button data-view="journey">Travel time</button>
+            <button data-view="places">Places</button>
           </div>
         </div>
         <!-- The one-seat view asks a different KIND of question from the other

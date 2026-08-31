@@ -391,9 +391,20 @@ function residentsBlock(pop: PlacePopulation | null): string {
          <b>${Math.round(pop.gained).toLocaleString()}</b> gain one</p>`
     : `<p class="people-n">Nobody in ${place} loses or gains every bus under
          the plan.</p>`;
+  // The actual fix for the Squirrel Hill South problem: this figure is
+  // measured for the whole named place, not the walk circle four lines
+  // above it, and the Places view is where that figure gets a screen of its
+  // own -- ranked against every other place, with its own map of the block
+  // groups behind it. The key comes from the server, which looked the place
+  // up by it; deriving it here instead would put `query.place_key`'s rules
+  // in two languages, where a change to one sends this link to the wrong
+  // place with nothing failing loudly enough to notice.
+  const key = esc(pop.key);
   return `
     <div class="people">
-      <h3>Who lives in ${place}</h3>
+      <h3>Who lives in
+        <button type="button" class="place-link" data-goto-place="${key}">${place}</button>
+      </h3>
       ${body}
       <p class="note">The whole of ${place}, any day of the week — it does not
         move with the day above.${methodLink('place-population')}</p>

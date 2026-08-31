@@ -991,6 +991,18 @@ def place_county(label: str) -> str | None:
     return found.group(1) if found else None
 
 
+# Below this many residents a place is not given a share of itself. Trafford
+# borough is why: it straddles the county line, its Allegheny part is 16
+# people, all 16 lose every bus, and ranked by share that 97.5% led the whole
+# list -- above Reserve township's 85% of 3,180 -- on a denominator that
+# cannot support the third significant figure it appears to carry. The floor
+# removes exactly that one place today and costs 16 of 68,838 residents lost;
+# the next smallest denominator is Bon Air's 776, whose 93.1% is a real
+# finding and stays. A withheld share is drawn as a dash, and the place keeps
+# its position in the count-ranked list, where 16 is simply 16.
+SHARE_MIN_RESIDENTS = 100
+
+
 def _place_row(row):
     """One place_population row as the API serves it, shares included.
 
@@ -1001,6 +1013,7 @@ def _place_row(row):
     for why those are different numbers.
     """
     total = row["residents_total"]
+    ranked = total >= SHARE_MIN_RESIDENTS
     return {
         "key": row["key"],
         "place": row["place"],
@@ -1009,8 +1022,8 @@ def _place_row(row):
         "residents_lost": row["residents_lost"],
         "residents_gained": row["residents_gained"],
         "residents_total": total,
-        "share_lost": row["residents_lost"] / total if total else None,
-        "share_gained": row["residents_gained"] / total if total else None,
+        "share_lost": row["residents_lost"] / total if ranked else None,
+        "share_gained": row["residents_gained"] / total if ranked else None,
         "lat": row["lat"], "lon": row["lon"],
     }
 
@@ -1101,12 +1114,19 @@ def place_residents(con, label):
     # under a neighbourhood's heading.
     named = hood or muni
     row = con.execute(
-        "SELECT place, block_groups, residents_lost, residents_gained "
+        "SELECT key, place, block_groups, residents_lost, residents_gained "
         "FROM place_population WHERE key = ?", (place_key(named),)).fetchone()
+    # `key` is served so the panel can link into the Places view without
+    # re-deriving it. It was briefly ported into TypeScript instead, which
+    # meant `place_key`'s rules lived in two languages and a change to one
+    # would have sent the link to the wrong place, or to none, with nothing
+    # failing loudly enough to notice.
     if row is None:
-        return {"place": place_display(named), "lost": 0.0, "gained": 0.0,
-                "block_groups": 0, "measured": True}
-    return {"place": row["place"], "lost": row["residents_lost"],
+        return {"key": place_key(named), "place": place_display(named),
+                "lost": 0.0, "gained": 0.0, "block_groups": 0,
+                "measured": True}
+    return {"key": row["key"], "place": row["place"],
+            "lost": row["residents_lost"],
             "gained": row["residents_gained"],
             "block_groups": row["block_groups"], "measured": True}
 

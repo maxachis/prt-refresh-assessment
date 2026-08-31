@@ -40,6 +40,7 @@ const VIEW_LABEL: Record<string, string> = {
   corridors: 'Streets',
   oneseat: 'One-seat ride',
   journey: 'Travel time',
+  places: 'Places',
 };
 
 /**
@@ -86,6 +87,13 @@ function usesRadius(view: string): boolean {
 
 export function questionLine(s: QuestionState): string {
   const parts = [VIEW_LABEL[s.view] ?? s.view];
+  // Places has neither a day type nor a walk radius (`docs/worklog/
+  // the-place-number-has-no-view-of-its-own.md`): the published figures are
+  // day-free and measured at a place, not inside a circle. Appending either
+  // suffix here would attach the map to a measurement it is not making, the
+  // same trap the one-seat and travel-time comments above are guarding
+  // against for their own controls.
+  if (s.view === 'places') return parts[0];
   if (TAKES_DESTINATION.includes(s.view)) parts[0] += ` to ${s.destination}`;
   parts.push(s.view === 'oneseat' && !s.oneSeatRestricted
     ? 'any day' : DAY_WORD[s.day]);

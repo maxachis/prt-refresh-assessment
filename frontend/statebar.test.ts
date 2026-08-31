@@ -56,6 +56,12 @@ describe('questionLine', () => {
                           destination: '40.4406, -79.9959' }))
       .toBe('Travel time to 40.4406, -79.9959 · a weekday');
   });
+
+  // Places has no day type and no walk radius -- the published figures are
+  // county-wide and day-free -- so neither suffix belongs on the line.
+  it('drops both the day and the radius from Places, which uses neither', () => {
+    expect(questionLine({ ...BASE, view: 'places' })).toBe('Places');
+  });
 });
 
 describe('questionLineHTML', () => {

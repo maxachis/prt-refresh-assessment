@@ -441,7 +441,7 @@ def test_place_boardings_sum_the_stops_inside_the_walk(con, coverage_rows):
 def _a_place_that_lost_residents(con):
     """A published place with a loss, and a stop the panel would label with it."""
     row = con.execute(
-        "SELECT place, residents_lost FROM place_population "
+        "SELECT key, place, residents_lost FROM place_population "
         "WHERE residents_lost > 0 ORDER BY residents_lost DESC LIMIT 1"
     ).fetchone()
     stop = con.execute(
@@ -481,6 +481,7 @@ def test_a_place_the_plan_does_not_change_says_so_rather_than_nothing(con):
         "  AND lower(replace(muni, ' (Allegheny, PA)', '')) NOT IN "
         "      (SELECT key FROM place_population) LIMIT 1").fetchone()["muni"]
     assert query.place_residents(con, {"muni": unchanged, "hood": ""}) == {
+        "key": query.place_key(unchanged),
         "place": query.place_display(unchanged), "lost": 0.0, "gained": 0.0,
         "block_groups": 0, "measured": True}
 
@@ -526,7 +527,8 @@ def test_no_place_loses_more_residents_than_it_has(con):
     population, and dividing by that puts Reserve township above 100%."""
     for row in query.places(con):
         assert row["residents_total"] > 0, row["place"]
-        assert row["share_lost"] <= 1.0, row["place"]
+        if row["share_lost"] is not None:
+            assert row["share_lost"] <= 1.0, row["place"]
 
 
 def test_a_place_carries_the_block_group_points_the_map_lights(con):
@@ -562,3 +564,31 @@ def test_the_served_places_reconcile_with_the_published_county_total(con):
                       open(ROOT / "data" / "equity_places.csv",
                            encoding="utf-8")) if not (r["place"] or "").strip())
     assert served == pytest.approx(published - unnamed)
+
+
+def test_the_panel_serves_the_key_the_places_view_is_addressed_by(con):
+    """So the link out of the panel does not have to re-derive it. Porting
+    `place_key` into TypeScript put its rules in two languages, where a change
+    to one sends the link to the wrong place with nothing failing loudly."""
+    row, stop = _a_place_that_lost_residents(con)
+    got = query.place(con, stop["lat"], stop["lon"])["population"]
+    assert got["key"] == row["key"]
+    assert query.place_detail(con, got["key"])["place"] == got["place"]
+
+
+def test_a_place_too_small_to_have_a_share_is_not_given_one(con):
+    """Trafford borough straddles the county line and its Allegheny part is 16
+    people, all of whom lose every bus. Ranked by share that is 97.5% and it
+    led the list, above Reserve township's 85% of 3,180 -- a number with no
+    denominator behind it heading a list about 69,000 people. Below the floor
+    the share is withheld rather than shown, because there is no honest
+    version of it; the place keeps its place in the count-ranked list, where
+    16 is simply 16."""
+    small = [r for r in query.places(con)
+             if r["residents_total"] < query.SHARE_MIN_RESIDENTS]
+    assert small, "no place below the floor -- has the data changed?"
+    for row in small:
+        assert row["share_lost"] is None and row["share_gained"] is None
+
+    ranked = [r for r in query.places(con) if r["share_lost"] is not None]
+    assert max(ranked, key=lambda r: r["share_lost"])["place"] != "Trafford borough"

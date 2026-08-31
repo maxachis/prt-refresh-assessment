@@ -199,4 +199,11 @@ describe('whether the day buttons are shown at all', () => {
       expect(dayControlsShown(view, false)).toBe(true);
     }
   });
+
+  it('hides them on Places, which has no opt-in to bring them back', () => {
+    // The published place figures are day-free, and unlike one-seat there is
+    // no restriction toggle here that could ever make the day matter.
+    expect(dayControlsShown('places', false)).toBe(false);
+    expect(dayControlsShown('places', true)).toBe(false);
+  });
 });

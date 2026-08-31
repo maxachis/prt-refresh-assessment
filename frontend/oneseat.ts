@@ -206,8 +206,16 @@ export function oneSeatDayFor(restricted: boolean, day: Day): OneSeatDay {
  * disabled-looking button is a durable statement. This one appears and
  * disappears with a toggle a click away, and a row of ghosts that flickers
  * back to life is more confusing than a row that simply isn't there yet.
+ *
+ * Places gets the disabled-button treatment instead, alongside oneseat:
+ * unlike the one-seat view it has no opt-in restriction that could bring the
+ * day buttons back, so there is no toggle for a hidden row to reappear from.
+ * The published place figures are day-free and count every day of the week
+ * at once (convention 12), so a day control there is permanently a lever
+ * attached to nothing.
  */
 export function dayControlsShown(view: string, restricted: boolean): boolean {
+  if (view === 'places') return false;
   return view !== 'oneseat' || restricted;
 }
 

@@ -180,6 +180,21 @@ Reserve township loses bus service for six residents in seven and is ninth on
 the list PPT would otherwise testify from. The view offers both orders and
 defaults to count, because count is what the published answers carry.
 
+**The share needed a floor, which the build found by looking at it.** Ranked by
+share, the list was led not by Reserve township but by Trafford borough at
+97.5% — a borough that straddles the county line and whose Allegheny part is
+**16 people**, all of whom lose every bus. A third significant figure on a
+denominator of 16, heading a list about 69,000 people, is the kind of number
+that discredits the twelve real ones under it. `query.SHARE_MIN_RESIDENTS`
+withholds a share below 100 residents; the place stays in the count-ranked
+list, where 16 is simply 16, and the withheld share is drawn as a dash that
+says why. It removes exactly Trafford today, costing 16 of 68,838 residents
+lost — the next smallest denominator is Bon Air's 776, whose 93.1% is a real
+finding and leads the share ranking now.
+
+The general shape, again: the danger was not a wrong number but a *correct*
+one whose denominator could not support the precision it appeared to carry.
+
 ## Scope the view has to keep stating
 
 Named places only, and the residual is now two numbers rather than one. Of the

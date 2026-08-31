@@ -48,6 +48,7 @@ export const PARAM = {
   surfaceUnit: 'surfaceunit',
   at: 'at',
   camera: 'map',
+  place: 'place',
 } as const;
 
 /** How the one-seat day control's two positions are spelled in a URL. */
@@ -81,6 +82,8 @@ export interface UrlState {
   at: Point | null;
   /** Where the map is looking, or null until someone has moved it. */
   camera: Camera | null;
+  /** The Places view's selected place, by its /api/places key, or null. */
+  place: string | null;
 }
 
 /** Is this page inside someone else's? */
@@ -115,6 +118,9 @@ export function toSearch(s: UrlState): string {
   // about, and the map has not been moved off wherever it opened.
   if (s.at) p.set(PARAM.at, coords(s.at));
   if (s.camera) p.set(PARAM.camera, `${coords(s.camera)},${s.camera.zoom.toFixed(2)}`);
+  // Same reasoning as `at`: absence, not a default, so it is written only
+  // once a place has actually been selected.
+  if (s.place) p.set(PARAM.place, s.place);
   return `?${p}`;
 }
 
@@ -154,6 +160,9 @@ export function parseUrlState(search: string): Partial<UrlState> {
 
   const camera = parseCamera(p.get(PARAM.camera));
   if (camera) s.camera = camera;
+
+  const place = p.get(PARAM.place);
+  if (place) s.place = place;
 
   return s;
 }

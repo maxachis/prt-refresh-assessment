@@ -334,7 +334,8 @@ def test_places_lists_every_changed_place_with_its_denominator(client):
     assert rows == sorted(rows, key=lambda r: -r["residents_lost"])
     for row in rows:
         assert row["residents_total"] >= row["residents_lost"]
-        assert 0.0 <= row["share_lost"] <= 1.0
+        if row["share_lost"] is not None:
+            assert 0.0 <= row["share_lost"] <= 1.0
 
 
 def test_a_place_carries_its_changed_block_groups(client):

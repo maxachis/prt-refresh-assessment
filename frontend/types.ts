@@ -176,6 +176,9 @@ export interface OneSeatVerdict {
 }
 
 export interface PlacePopulation {
+  /** The key `/api/places` is addressed by, served so the panel's link into
+   *  the Places view does not have to re-derive `query.place_key` in TS. */
+  key: string;
   place: string;
   lost: number;
   gained: number;
@@ -380,4 +383,41 @@ export interface NamedDestination {
   seeds: number;
   lat: number;
   lon: number;
+}
+
+/**
+ * One named place's published equity figures, from /api/places.
+ *
+ * `residents_total` is the place's whole ACS population, not the population of
+ * only the block groups that changed -- see `query._place_row`. The shares are
+ * `null` where a place's total is 0 (nobody lives there, or PRT's label maps
+ * to a place the census does not recognise), which is not the same as a share
+ * of zero.
+ */
+export interface PlaceSummary {
+  key: string;
+  place: string;
+  changed_block_groups: number;
+  block_groups: number;
+  residents_lost: number;
+  residents_gained: number;
+  residents_total: number;
+  share_lost: number | null;
+  share_gained: number | null;
+  lat: number;
+  lon: number;
+}
+
+/** One census block group the plan changed, as a point -- see `query.place_detail`. */
+export interface PlaceChangedBlockGroup {
+  geoid: string;
+  lat: number;
+  lon: number;
+  residents_lost: number;
+  residents_gained: number;
+}
+
+/** One place's summary, plus the block groups behind it, from /api/places/{key}. */
+export interface PlaceDetail extends PlaceSummary {
+  changed: PlaceChangedBlockGroup[];
 }

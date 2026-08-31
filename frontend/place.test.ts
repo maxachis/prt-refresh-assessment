@@ -44,8 +44,8 @@ const PLACE: PlaceResult = {
   },
   place: { muni: 'Pittsburgh', hood: 'Beechview' },
   population: {
-    place: 'Beechview', lost: 1923.3, gained: 0, block_groups: 3,
-    measured: true,
+    key: 'beechview', place: 'Beechview', lost: 1923.3, gained: 0,
+    block_groups: 3, measured: true,
   },
   oneseat: [],
 };
@@ -141,8 +141,8 @@ describe('the place\'s residents in the panel', () => {
 
   it('says plainly when a place the plan leaves alone loses nobody', () => {
     const p = { ...PLACE, population: {
-      place: 'Whitehall borough', lost: 0, gained: 0, block_groups: 0,
-      measured: true } };
+      key: 'whitehall borough', place: 'Whitehall borough', lost: 0,
+      gained: 0, block_groups: 0, measured: true } };
     const html = serviceBodyHTML(p, 'weekday');
     expect(html).toMatch(/nobody/i);
     expect(html).toContain('Whitehall borough');
@@ -152,6 +152,15 @@ describe('the place\'s residents in the panel', () => {
     const html = serviceBodyHTML({ ...PLACE, population: null }, 'weekday');
     expect(html).not.toMatch(/residents/i);
     expect(html).not.toMatch(/lose every bus/i);
+  });
+
+  // The actual fix docs/worklog/the-place-number-has-no-view-of-its-own.md
+  // asks for: the figure and the walk circle disagree at Squirrel Hill South
+  // because they measure different things, so the figure's heading has to
+  // lead somewhere that answers the place-level question properly.
+  it('links the place name to the Places view, by the key /api/places publishes', () => {
+    const html = serviceBodyHTML(PLACE, 'weekday');
+    expect(html).toContain('data-goto-place="beechview"');
   });
 });
 

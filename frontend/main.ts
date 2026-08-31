@@ -31,6 +31,11 @@ import {
   journeyPanelHTML, journeyPromptHTML, journeyKeyHTML,
   isVisible as journeyOn, journeyData, Point,
 } from './journey';
+import {
+  initPlacesLayer, loadPlaces, selectPlace, setPlacesVisible,
+  placesListHTML, placesKeyHTML, PlaceSort,
+  layerData as placeDetail, listData as placesList, isVisible as placesOn,
+} from './places';
 import { questionLineHTML, viewLabel } from './statebar';
 import {
   Camera, UrlState, isFramed, parseUrlState, toSearch,
@@ -136,6 +141,21 @@ let weight: Weight = 'locations';
 // toolbar button of its own, only the switch drawn inside the key itself.
 let surfaceUnit: SurfaceUnit = 'area';
 
+// Which order the Places list is ranked in. Lives here for the same reason
+// `weight` and `surfaceUnit` do: it changes how the list reads, not which
+// question the view is answering, and it has no toolbar button -- only the
+// two buttons drawn inside the panel itself. Both orders are true and they
+// disagree violently (Baldwin borough is 1st by count, Reserve township 1st
+// by share), so this defaults to the more familiar of the two rather than
+// the app picking a "right" one.
+let placeSort: PlaceSort = 'count';
+
+// The Places view's selected place, by its /api/places key, or null before
+// anything has been picked. Kept here rather than only in `places.ts` so
+// `syncUrl` can write it and a reload can restore it, the same way `dest`
+// is kept here rather than only in `oneseat.ts`.
+let selectedPlace: string | null = null;
+
 // Which view is on screen. Two of them — one-seat and travel time — take a
 // destination, and one of those two answers on a click rather than on a load,
 // so the click handler and the day control both have to know which is active.
@@ -180,6 +200,7 @@ map.on('load', () => {
   initCorridorLayer(map, 'change-dots');  // same slot; corridors and dots/surface are mutually exclusive
   initOneSeatLayer(map, 'walk-fill');     // the dots' own slot; the two never show together
   initJourneyLayer(map);                  // on top: two drawn trips, over everything
+  initPlacesLayer(map, 'change-dots');    // same slot as corridors; mutually exclusive with dots/surface too
   renderPanel();
 
   map.on('click', (e: any) => {
@@ -310,6 +331,7 @@ map.on('load', () => {
     void showCorridors(view === 'corridors');
     void showOneSeat(view === 'oneseat');
     showJourney(view === 'journey', previous === 'journey');
+    void showPlaces(view === 'places');
     // One-seat and the shared location report answer different questions from
     // the same fetched answer, so switching between them redraws rather than
     // refetches. Leaving the journey view is handled by `showJourney`, which
@@ -318,11 +340,12 @@ map.on('load', () => {
         && (view === 'oneseat' || previous === 'oneseat')) {
       renderPanel({ scrollToTop: true });
     }
-    // Neither the street view nor the travel-time view has a walk radius: a
-    // corridor is a piece of street, and a journey's walk is the router's own
-    // (`journey.CONSTANTS`), not a control. Disabled rather than left
-    // clickable and silently ignored.
-    setRadiusEnabled(view !== 'corridors' && view !== 'journey');
+    // Neither the street view, the travel-time view nor Places has a walk
+    // radius: a corridor is a piece of street, a journey's walk is the
+    // router's own (`journey.CONSTANTS`), and a place is measured at every
+    // one of its own census blocks, not inside a circle. Disabled rather
+    // than left clickable and silently ignored.
+    setRadiusEnabled(view !== 'corridors' && view !== 'journey' && view !== 'places');
     // The destination picker means something in two views, and a mode left
     // armed behind a hidden control is a click the reader cannot account for.
     const picksDestination = view === 'oneseat' || view === 'journey';
@@ -391,6 +414,29 @@ map.on('load', () => {
     // for, so the entry is scrolled to and marked.
     const m = (e.target as HTMLElement).closest<HTMLElement>('[data-caveat]');
     if (m) showCaveat(m.dataset.caveat!);
+
+    // A row in the Places list.
+    const row = (e.target as HTMLElement).closest<HTMLElement>('[data-select-place]');
+    if (row) void goToPlace(row.dataset.selectPlace!);
+
+    // The Places list's own count/share toggle.
+    const sort = (e.target as HTMLElement).closest<HTMLElement>('[data-sort-places]');
+    if (sort) {
+      placeSort = sort.dataset.sortPlaces as PlaceSort;
+      renderPanel();
+    }
+
+    // The panel's population line, wherever it is on screen (`place.ts`'s
+    // `data-goto-place`) -- the fix the whole view exists for. Switches view
+    // by pressing the toolbar button rather than assigning `view` directly,
+    // for the same reason `press` exists everywhere else: every side effect
+    // the view control has lives in its own handler, and there is no second
+    // path that could pick up fewer of them.
+    const link = (e.target as HTMLElement).closest<HTMLElement>('[data-goto-place]');
+    if (link) {
+      if (view !== 'places') press(CONTROL.view, 'places');
+      void goToPlace(link.dataset.gotoPlace!);
+    }
   });
 
   $('side-toggle').addEventListener('click', toggleSide);
@@ -504,6 +550,9 @@ function applyOpening(s: Partial<UrlState>): boolean {
   // Last, because it answers the question the controls above have just
   // finished describing.
   if (s.at) askAt(s.at.lat, s.at.lon);
+  // Same reasoning as `s.at`: it answers a question the view above has to be
+  // Places for it to mean anything, so it is pressed last too.
+  if (s.place) void goToPlace(s.place);
   return loadedChangeLayer;
 }
 
@@ -525,6 +574,7 @@ function syncUrl() {
     dest,
     at: last,
     camera,
+    place: selectedPlace,
   };
   const search = toSearch(state);
   // The mode is not part of the question, so it is not in what `toSearch`
@@ -642,9 +692,13 @@ function renderLegendBody() {
   // legend nor the one-seat legend has one, so the button is hidden rather
   // than left clickable and silently inert.
   $('legend-reset').classList.toggle('hidden',
-    corridorOn() || oneSeatOn() || journeyOn());
+    corridorOn() || oneSeatOn() || journeyOn() || placesOn());
   if (journeyOn()) {
     $('legend').innerHTML = journeyKeyHTML(journeyData());
+    return;
+  }
+  if (placesOn()) {
+    $('legend').innerHTML = placesKeyHTML(placeDetail());
     return;
   }
   if (corridorOn()) {
@@ -733,6 +787,51 @@ async function showCorridors(on: boolean) {
   refreshLegend();
 }
 
+/** Turn the Places view on or off, fetching the ranked list once, the first time it is asked for. */
+async function showPlaces(on: boolean) {
+  if (on && !placesList()) {
+    $('legend').classList.add('loading');
+    try {
+      await loadPlaces();
+    } finally {
+      $('legend').classList.remove('loading');
+    }
+  }
+  setPlacesVisible(map, on);
+  // Leaving the view does not clear a selection -- the map layer just stops
+  // being drawn -- so coming back re-renders the same list with the same row
+  // marked, rather than losing the reader's place.
+  if (on) renderPanel();
+  refreshLegend();
+}
+
+/**
+ * Select one place: draw its changed block groups, fly the map there, and
+ * mark it in the ranked list.
+ *
+ * The single door into the Places view's selection, whether it was reached
+ * by clicking a row, by the panel's own `data-goto-place` link (the fix
+ * `docs/worklog/the-place-number-has-no-view-of-its-own.md` asks for), or by
+ * opening a shared URL -- so all three end up with the same map, the same
+ * panel and the same address bar.
+ */
+async function goToPlace(key: string) {
+  selectedPlace = key;
+  await withLoadingLegend(() => selectPlace(map, key));
+  if (view === 'places') {
+    renderPanel();
+    // The list is 72 places long and ranked, so the one just selected is
+    // usually off-screen -- especially arriving from the panel's population
+    // line, which is the path this view exists to serve and which can land on
+    // any place at all. Without this the reader is told a place was selected
+    // by a map they are looking at and a highlight they are not.
+    document.querySelector(`[data-select-place="${CSS.escape(key)}"]`)
+      ?.scrollIntoView({ block: 'nearest' });
+  }
+  refreshLegend();
+  syncUrl();
+}
+
 /**
  * The walk radius has no meaning for the corridor view — a corridor is a
  * piece of street, not a catchment — so the control is disabled rather than
@@ -772,6 +871,14 @@ function renderPanel({ scrollToTop = false } = {}) {
   // changes -- the URL is written when the click is made, which is before the
   // answer it names has arrived.
   refreshEmbedLink();
+  // Places has no click-driven answer at all -- the ranked list IS the
+  // answer, and selecting a row only changes which one is marked -- so it is
+  // handled before the "nothing clicked yet" branch below, which exists for
+  // every other view's empty state.
+  if (view === 'places') {
+    $('panel').innerHTML = placesListHTML(placesList() ?? [], placeSort, selectedPlace);
+    return;
+  }
   if (!lastPlace) {
     if (view === 'oneseat') $('panel').innerHTML = oneSeatPromptHTML(destinationName());
     else renderEmpty($('panel'));
@@ -1087,6 +1194,10 @@ function askAt(lat: number, lon: number) {
     void loadJourney(lat, lon);
     return;
   }
+  // Places answers at a place, not a point -- there is no walk radius for a
+  // click to measure -- so a map click here asks nothing. Selecting a place
+  // happens in the panel's own list instead.
+  if (view === 'places') return;
   void load(lat, lon);
 }
 

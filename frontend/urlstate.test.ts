@@ -11,6 +11,7 @@ const FULL: UrlState = {
   dest: { key: 'oakland' },
   at: { lat: 40.4406, lon: -79.9959 },
   camera: { lat: 40.44, lon: -80.0, zoom: 13.5 },
+  place: 'baldwin borough',
 };
 
 describe('toSearch', () => {
@@ -51,6 +52,11 @@ describe('toSearch', () => {
   it('leaves out the camera until the map has been moved', () => {
     const p = new URLSearchParams(toSearch({ ...FULL, camera: null }));
     expect(p.has('map')).toBe(false);
+  });
+
+  it('leaves out the selected place until one has been picked', () => {
+    const p = new URLSearchParams(toSearch({ ...FULL, place: null }));
+    expect(p.has('place')).toBe(false);
   });
 
   it('round-trips through parse', () => {
