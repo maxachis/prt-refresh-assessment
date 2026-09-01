@@ -36,7 +36,7 @@ import {
   placesListHTML, placesKeyHTML, placeTooltipHTML, setPlacesFill,
   PlaceSort, PlaceFill, DEFAULT_PLACE_FILL, BOUNDARY_LAYER,
   layerData as placeDetail, listData as placesList, isVisible as placesOn,
-  boundariesData,
+  boundariesData, unchangedPlace,
 } from './places';
 import { questionLineHTML, viewLabel } from './statebar';
 import {
@@ -781,7 +781,10 @@ function renderLegendBody() {
     return;
   }
   if (placesOn()) {
-    $('legend').innerHTML = placesKeyHTML(placeDetail(), placeFill, activeDay(), boundariesData());
+    $('legend').innerHTML = placesKeyHTML({
+      selected: placeDetail(), fill: placeFill, day: activeDay(),
+      boundaries: boundariesData(), unchanged: unchangedPlace(),
+    });
     return;
   }
   if (corridorOn()) {
@@ -909,19 +912,29 @@ async function showPlaces(on: boolean) {
  * `docs/worklog/the-place-number-has-no-view-of-its-own.md` asks for), or by
  * opening a shared URL -- so all three end up with the same map, the same
  * panel and the same address bar.
+ *
+ * `selectedPlace` is set from `selectPlace`'s own return value, not from
+ * `key` up front -- a click that lands on a place with no detail (either the
+ * 149 the plan does not touch, or a stale key from an older build) must not
+ * leave `selectedPlace` pointing at a key nothing is displayed for: the panel
+ * marks rows by `selectedPlace`, and `syncUrl` would otherwise write a
+ * `place=` into the address bar that restores nothing on reload.
  */
 async function goToPlace(key: string) {
-  selectedPlace = key;
-  await withLoadingLegend(() => selectPlace(map, key));
+  const detail = await withLoadingLegend(() => selectPlace(map, key));
+  selectedPlace = detail ? key : null;
   if (view === 'places') {
     renderPanel();
     // The list is 72 places long and ranked, so the one just selected is
     // usually off-screen -- especially arriving from the panel's population
     // line, which is the path this view exists to serve and which can land on
     // any place at all. Without this the reader is told a place was selected
-    // by a map they are looking at and a highlight they are not.
-    document.querySelector(`[data-select-place="${CSS.escape(key)}"]`)
-      ?.scrollIntoView({ block: 'nearest' });
+    // by a map they are looking at and a highlight they are not. Skipped when
+    // there is nothing to select: an untouched place has no row to scroll to.
+    if (selectedPlace) {
+      document.querySelector(`[data-select-place="${CSS.escape(key)}"]`)
+        ?.scrollIntoView({ block: 'nearest' });
+    }
   }
   refreshLegend();
   syncUrl();

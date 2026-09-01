@@ -136,6 +136,16 @@ let list: PlaceSummary[] | null = null;
 let detail: PlaceDetail | null = null;
 let boundaries: BoundariesGeoJSON | null = null;
 let visible = false;
+/**
+ * The display name of a place whose fill a reader just clicked and that the
+ * plan does not touch -- a real state, held beside `detail` rather than
+ * folded into it, because "selected and empty" and "clicked and nothing to
+ * show" need different sentences in the key (`selectedPlaceLine`). Cleared
+ * wherever `detail` is: by `clearSelection` and by any successful
+ * `selectPlace`, so leaving the view or picking a real place can never leave
+ * this sentence stranded on screen for a different place.
+ */
+let unchanged: string | null = null;
 
 export function listData(): PlaceSummary[] | null {
   return list;
@@ -143,6 +153,11 @@ export function listData(): PlaceSummary[] | null {
 
 export function layerData(): PlaceDetail | null {
   return detail;
+}
+
+/** The place a click landed on that the plan changes nothing in, if any -- see `unchanged` above. */
+export function unchangedPlace(): string | null {
+  return unchanged;
 }
 
 export function boundariesData(): BoundariesGeoJSON | null {
@@ -476,19 +491,61 @@ export async function loadBoundaries(map: maplibregl.Map): Promise<BoundariesGeo
 }
 
 /**
+ * The cached boundaries' own answer for whether `key` is a place the plan
+ * changes nothing in -- `changed_block_groups` is 0 for exactly the 149 of
+ * 220 places with no `/api/places/{key}` record, so this is checkable before
+ * ever making that request. A pure lookup, kept separate from `selectPlace`,
+ * so the "does this key need a fetch at all" question is testable without a
+ * map.
+ *
+ * Returns `null` both when the boundaries have not loaded yet and when the
+ * key is not a boundary at all (an older build's stale `place=` link) --
+ * either way there is no name to short-circuit with, and `selectPlace` falls
+ * through to the fetch, which is what actually decides whether the key is
+ * real.
+ */
+export function unchangedPlaceName(bs: BoundariesGeoJSON | null, key: string): string | null {
+  const feature = bs?.features.find((f) => f.properties.key === key);
+  return feature && feature.properties.changed_block_groups === 0
+    ? feature.properties.place
+    : null;
+}
+
+/**
  * Select one place: fetch its block groups, draw them, and fly the map there.
  *
- * A 404 clears the selection instead of throwing -- a stale key surviving a
- * page reload (a link built against an older run) should land on the list,
- * not on an error the reader did nothing to cause.
+ * Three outcomes, not two. A key the plan does not touch is answered from the
+ * boundaries already in memory (`unchangedPlaceName`) -- no request, since
+ * `/api/places/{key}` has no record for it and would only ever 404. A key
+ * `/api/places/{key}` does have a record for draws its block groups as
+ * before. And a 404 -- a stale key from an older build, or simply not in the
+ * loaded boundaries either -- clears the selection instead of throwing: a
+ * link built against an older run should land on the list, not on an error
+ * the reader did nothing to cause.
+ *
+ * Returns `null` for both the second and third outcome, so a caller cannot
+ * tell "changes nothing here" apart from "unknown key" by return value alone
+ * -- it doesn't need to. `unchangedPlace()` carries that distinction for the
+ * key/legend, and the caller's own job (`goToPlace` in `main.ts`) is only
+ * ever "did this key end up with something to show".
  */
 export async function selectPlace(map: maplibregl.Map, key: string): Promise<PlaceDetail | null> {
+  const already = unchangedPlaceName(boundaries, key);
+  if (already) {
+    detail = null;
+    unchanged = already;
+    (map.getSource(SRC) as maplibregl.GeoJSONSource)?.setData(
+      { type: 'FeatureCollection', features: [] } as any);
+    return null;
+  }
   try {
     detail = await fetchJSON<PlaceDetail>(`/api/places/${encodeURIComponent(key)}`);
   } catch {
     detail = null;
+    unchanged = null;
     return null;
   }
+  unchanged = null;
   (map.getSource(SRC) as maplibregl.GeoJSONSource).setData(toGeoJSON(detail) as any);
   // A named place is neighbourhood- to borough-sized; z13 shows a changed
   // block group's own point without also showing the whole county around it.
@@ -499,6 +556,7 @@ export async function selectPlace(map: maplibregl.Map, key: string): Promise<Pla
 /** Clear the selection, e.g. leaving the Places view for another. */
 export function clearSelection(map: maplibregl.Map) {
   detail = null;
+  unchanged = null;
   (map.getSource(SRC) as maplibregl.GeoJSONSource)?.setData(
     { type: 'FeatureCollection', features: [] } as any);
 }
@@ -590,13 +648,29 @@ export function placesListHTML(places: PlaceSummary[], sortBy: PlaceSort,
 /**
  * Which "click a place" heading leads the legend, shared by every fill mode
  * -- pulled out because `serviceKeyHTML` needs the identical line.
+ *
+ * Three states, not two -- `unchanged` is the middle one. Before this fix a
+ * click on any of the 149 boundaries with no `/api/places/{key}` record
+ * silently left the generic prompt on screen, the only cue an embed's reader
+ * has for which places are clickable at all having just been ignored. So a
+ * click that lands on a place the plan does not touch gets its own sentence,
+ * naming the place rather than leaving the prompt as if nothing happened --
+ * `selected` still wins when both are set, since a real selection is never
+ * stale in the way `unchanged` can be (see `selectPlace`'s docstring).
  */
-function selectedPlaceLine(selected: PlaceDetail | null): string {
-  return selected
-    ? `<div class="lg-head"><b>${esc(selected.place)}</b>
+function selectedPlaceLine(selected: PlaceDetail | null, unchanged: string | null): string {
+  if (selected) {
+    return `<div class="lg-head"><b>${esc(selected.place)}</b>
         <span class="muted">· ${selected.changed_block_groups} block group${
-          selected.changed_block_groups === 1 ? '' : 's'} changed</span></div>`
-    : `<div class="lg-head">Click a place to see its changed block groups</div>`;
+          selected.changed_block_groups === 1 ? '' : 's'} changed</span></div>`;
+  }
+  if (unchanged) {
+    return `<div class="lg-head"><b>${esc(unchanged)}</b>
+        <span class="muted">· the plan changes nothing here</span></div>
+      <div class="lg-foot muted">No block group in it loses or gains all
+        service. Shaded places are the ones with something to show.</div>`;
+  }
+  return `<div class="lg-head">Click a place to see its changed block groups</div>`;
 }
 
 /**
@@ -613,7 +687,7 @@ function serviceBandLabel(band: { max: number }, prevMax: number): string {
  * The legend body for `'service'`: the diverging ramp in both directions,
  * plus the null-hole places `SERVICE_BANDS` cannot shade at all.
  */
-function serviceKeyHTML(selected: PlaceDetail | null, day: Day,
+function serviceKeyHTML(selected: PlaceDetail | null, unchanged: string | null, day: Day,
                          boundaries: BoundariesGeoJSON | null): string {
   const bandRows = SERVICE_BANDS
     .map((band, i) => ({ band, prevMax: i === 0 ? 0 : SERVICE_BANDS[i - 1].max }))
@@ -636,7 +710,7 @@ function serviceKeyHTML(selected: PlaceDetail | null, day: Day,
   const sentence = firstBusSentence(names);
   const nullHoleRow = sentence ? `<div class="lg-foot">${esc(sentence)}</div>` : '';
   return `
-    ${selectedPlaceLine(selected)}
+    ${selectedPlaceLine(selected, unchanged)}
     <div class="lg-lab">Fill — percent change in the place's own bus trips
       on ${esc(SERVICE_DAY_WORD[day])}</div>
     ${bandRows}
@@ -647,9 +721,27 @@ function serviceKeyHTML(selected: PlaceDetail | null, day: Day,
       it.</div>`;
 }
 
-export function placesKeyHTML(selected: PlaceDetail | null, fill: PlaceFill,
-                                day?: Day, boundaries?: BoundariesGeoJSON | null): string {
-  if (fill === 'service') return serviceKeyHTML(selected, day as Day, boundaries ?? null);
+/** `placesKeyHTML`'s options -- bound by name, per the repo's convention for
+ * a function taking more than a couple of parameters. */
+export interface PlacesKeyOptions {
+  /** The place with real detail on screen, or null if none is selected. */
+  selected: PlaceDetail | null;
+  /** Which reading the choropleth is painting -- decides the header, bands and colour. */
+  fill: PlaceFill;
+  /** Required only for `fill: 'service'`, which is the one reading that reads a day's field. */
+  day?: Day;
+  /** The cached boundaries, for the service reading's null-hole sentence (`firstBusPlaces`). */
+  boundaries?: BoundariesGeoJSON | null;
+  /** The name of a place a click landed on that the plan changes nothing in -- see `selectedPlaceLine`. */
+  unchanged?: string | null;
+}
+
+export function placesKeyHTML(
+  { selected, fill, day, boundaries, unchanged }: PlacesKeyOptions,
+): string {
+  if (fill === 'service') {
+    return serviceKeyHTML(selected, unchanged ?? null, day as Day, boundaries ?? null);
+  }
   // Which reading is on the map right now -- the header, the band labels and
   // the swatch colour all follow it, so a reader never learns one sentence
   // for a fill painted a different colour.
@@ -662,7 +754,7 @@ export function placesKeyHTML(selected: PlaceDetail | null, fill: PlaceFill,
       <span class="lg-lab">${esc(b.label)} of the place's own residents ${esc(verb)}</span>
     </div>`).join('');
   return `
-    ${selectedPlaceLine(selected)}
+    ${selectedPlaceLine(selected, unchanged ?? null)}
     <div class="lg-lab">Fill — share of a place's own residents who ${esc(verb)}</div>
     ${bandRows}
     <div class="lg-row lg-static"><i style="background:${KLASS_COLOR.lost}"></i>

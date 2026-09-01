@@ -282,7 +282,7 @@ describe('SCOPE_NOTE', () => {
 
 describe('placesKeyHTML', () => {
   it('draws a legend row for every visible share band, stating its bound', () => {
-    const html = placesKeyHTML(null, 'lost');
+    const html = placesKeyHTML({ selected: null, fill: 'lost' });
     for (const band of SHARE_BANDS) {
       if (band.opacity === 0) continue; // the "nothing to see" band has no swatch
       expect(html).toContain(band.label);
@@ -290,19 +290,19 @@ describe('placesKeyHTML', () => {
   });
 
   it('does not give the transparent band its own swatch row', () => {
-    const html = placesKeyHTML(null, 'lost');
+    const html = placesKeyHTML({ selected: null, fill: 'lost' });
     const zeroBand = SHARE_BANDS.find((b) => b.opacity === 0)!;
     expect(html).not.toContain(zeroBand.label);
   });
 
   it('still carries the points key, so the fill never replaces it', () => {
-    const html = placesKeyHTML(null, 'lost');
+    const html = placesKeyHTML({ selected: null, fill: 'lost' });
     expect(html).toContain('loses more than it gains');
     expect(html).toContain('gains more than it loses');
   });
 
   it('describes losses, in the loss colour, when mapping losses', () => {
-    const html = placesKeyHTML(null, 'lost');
+    const html = placesKeyHTML({ selected: null, fill: 'lost' });
     expect(html.toLowerCase()).toContain('lose all buses');
     expect(html.toLowerCase()).not.toContain('gain a bus');
     // The header's own swatch text is drawn in the loss colour.
@@ -311,7 +311,7 @@ describe('placesKeyHTML', () => {
   });
 
   it('describes gains, in the gain colour, when mapping gains', () => {
-    const html = placesKeyHTML(null, 'gained');
+    const html = placesKeyHTML({ selected: null, fill: 'gained' });
     expect(html.toLowerCase()).toContain('gain a bus');
     expect(html.toLowerCase()).not.toContain('lose all buses');
     const bandRow = html.split('lg-static')[1];
@@ -320,7 +320,7 @@ describe('placesKeyHTML', () => {
 
   it('keeps saying the fill is coloured by share, not by count, in either mode', () => {
     for (const fill of ['lost', 'gained'] as const) {
-      const html = placesKeyHTML(null, fill);
+      const html = placesKeyHTML({ selected: null, fill });
       expect(html).toContain('coloured by SHARE');
       expect(html).not.toContain('coloured by count');
     }
@@ -328,8 +328,67 @@ describe('placesKeyHTML', () => {
 
   it('never spells the old "every bus" phrasing', () => {
     for (const fill of ['lost', 'gained'] as const) {
-      expect(placesKeyHTML(null, fill).toLowerCase()).not.toContain('every bus');
+      expect(placesKeyHTML({ selected: null, fill }).toLowerCase()).not.toContain('every bus');
     }
+  });
+});
+
+// The "clicked a place with nothing to show" state -- see goToPlace's fix in
+// docs -- gives the key a sentence naming the place instead of leaving the
+// generic prompt on screen with no visible reaction to the click. Covered for
+// both the residents key (`placesKeyHTML`'s default branch) and the service
+// key (`serviceKeyHTML`), since the two share `selectedPlaceLine` on purpose.
+describe('placesKeyHTML -- the clicked-place head line', () => {
+  function selectedDetail(): PlaceDetail {
+    return { ...summary(), changed: [] };
+  }
+
+  it('prints the plain prompt when nothing is selected and nothing is unchanged', () => {
+    const html = placesKeyHTML({ selected: null, fill: 'lost' });
+    expect(html).toContain('Click a place to see its changed block groups');
+  });
+
+  it('still prints the plain prompt in service mode when nothing is selected or unchanged', () => {
+    const html = placesKeyHTML({ selected: null, fill: 'service', day: 'weekday', boundaries: null });
+    expect(html).toContain('Click a place to see its changed block groups');
+  });
+
+  it('names a selected place with real detail and its changed-block-group count', () => {
+    const html = placesKeyHTML({ selected: selectedDetail(), fill: 'lost' });
+    expect(html).toContain(selectedDetail().place);
+    expect(html).toContain(`${selectedDetail().changed_block_groups} block groups changed`);
+    expect(html).not.toContain('changes nothing here');
+  });
+
+  it('names an unchanged place and says the plan changes nothing there, in residents mode', () => {
+    const html = placesKeyHTML({ selected: null, fill: 'lost', unchanged: 'Green Tree borough' });
+    expect(html).toContain('Green Tree borough');
+    expect(html).toContain('changes nothing here');
+    expect(html.toLowerCase()).toContain('no block group');
+    expect(html).not.toContain('Click a place to see its changed block groups');
+  });
+
+  it('names an unchanged place in gained mode too, sharing the same sentence', () => {
+    const html = placesKeyHTML({ selected: null, fill: 'gained', unchanged: 'Green Tree borough' });
+    expect(html).toContain('Green Tree borough');
+    expect(html).toContain('changes nothing here');
+  });
+
+  it('names an unchanged place and says the plan changes nothing there, in service mode', () => {
+    const html = placesKeyHTML({
+      selected: null, fill: 'service', day: 'weekday', boundaries: null,
+      unchanged: 'Green Tree borough',
+    });
+    expect(html).toContain('Green Tree borough');
+    expect(html).toContain('changes nothing here');
+    expect(html.toLowerCase()).toContain('no block group');
+  });
+
+  it('prefers a real selection over a stale unchanged flag', () => {
+    const html = placesKeyHTML({ selected: selectedDetail(), fill: 'lost', unchanged: 'Some Other Place' });
+    expect(html).toContain(selectedDetail().place);
+    expect(html).not.toContain('Some Other Place');
+    expect(html).not.toContain('changes nothing here');
   });
 });
 
@@ -580,7 +639,7 @@ describe('placesKeyHTML in service mode', () => {
   }
 
   it('draws a legend row per visible SERVICE_BANDS band, for both directions', () => {
-    const html = placesKeyHTML(null, 'service', 'weekday', boundaries([]));
+    const html = placesKeyHTML({ selected: null, fill: 'service', day: 'weekday', boundaries: boundaries([]) });
     expect(html).toContain('fewer trips');
     expect(html).toContain('more trips');
   });
@@ -590,7 +649,7 @@ describe('placesKeyHTML in service mode', () => {
       place: 'Pine township',
       service_weekday_now: 0, service_weekday_proposed: 19, service_weekday_pct: null,
     }));
-    const html = placesKeyHTML(null, 'service', 'weekday', boundaries([pine]));
+    const html = placesKeyHTML({ selected: null, fill: 'service', day: 'weekday', boundaries: boundaries([pine]) });
     expect(html).toContain('Pine township');
     expect(html).toContain('cannot be shown as a percentage');
     expect(html).toContain('1 place');
@@ -601,7 +660,7 @@ describe('placesKeyHTML in service mode', () => {
     const feats = names.map((place) => boundaryFeature(serviceProps({
       place, service_saturday_now: 0, service_saturday_proposed: 8, service_saturday_pct: null,
     })));
-    const html = placesKeyHTML(null, 'service', 'saturday', boundaries(feats));
+    const html = placesKeyHTML({ selected: null, fill: 'service', day: 'saturday', boundaries: boundaries(feats) });
     expect(html).toContain('5 places');
     expect(html).toContain('Harrison township');
     expect(html).toContain('Brackenridge borough');
@@ -611,7 +670,7 @@ describe('placesKeyHTML in service mode', () => {
   });
 
   it('says nothing about the null hole when there is none on that day', () => {
-    const html = placesKeyHTML(null, 'service', 'weekday', boundaries([]));
+    const html = placesKeyHTML({ selected: null, fill: 'service', day: 'weekday', boundaries: boundaries([]) });
     expect(html).not.toContain('cannot be shown as a percentage');
   });
 });
