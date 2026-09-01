@@ -226,31 +226,36 @@ describe('placesListHTML', () => {
     expect(placesListHTML(list, 'count', null, 'lost')).toContain(SCOPE_NOTE);
   });
 
-  it('draws a fill-mode control below the sort control, defaulting to losses active', () => {
+  // The fill-mode control moved into the map toolbar (`#place-fill-controls`
+  // in index.html), beside the day switch that governs the map, because it
+  // paints the choropleth. The sort control did not: it only reorders these
+  // rows, so it stays in the panel it reorders, and its markup and active
+  // state are still this function's to get right.
+  it('no longer draws the fill-mode control -- the toolbar owns it now', () => {
     const html = placesListHTML(list, 'count', null, 'lost');
-    const sortAt = html.indexOf('place-sort');
-    const fillAt = html.indexOf('place-fill');
-    expect(fillAt).toBeGreaterThan(sortAt);
-    expect(html).toContain('data-place-fill="lost"');
-    expect(html).toContain('data-place-fill="gained"');
-    expect(html).toContain('Losses');
-    expect(html).toContain('Gains');
-    const lostBtnAt = html.indexOf('data-place-fill="lost"');
-    const gainedBtnAt = html.indexOf('data-place-fill="gained"');
-    // "active" sits between the two buttons' own markers only when it is the
-    // lost button carrying it -- the substring check below pins that.
-    const between = html.slice(lostBtnAt, gainedBtnAt);
-    expect(between).toContain('active');
+    expect(html).not.toContain('data-place-fill');
+    expect(html).not.toContain('place-fill');
   });
 
-  it('marks gains active instead when the fill mode is gained', () => {
-    const html = placesListHTML(list, 'count', null, 'gained');
-    const lostBtnAt = html.indexOf('data-place-fill="lost"');
-    const gainedBtnAt = html.indexOf('data-place-fill="gained"');
-    const from = html.slice(gainedBtnAt, gainedBtnAt + 60);
-    expect(from).toContain('active');
-    const lostSpan = html.slice(lostBtnAt, lostBtnAt + 60);
-    expect(lostSpan).not.toContain('active');
+  it('draws the sort control, defaulting to count active', () => {
+    const html = placesListHTML(list, 'count', null, 'lost');
+    expect(html).toContain('data-sort-places="count"');
+    expect(html).toContain('data-sort-places="share"');
+    expect(html).toContain('By count');
+    expect(html).toContain('By share');
+    const countAt = html.indexOf('data-sort-places="count"');
+    const shareAt = html.indexOf('data-sort-places="share"');
+    // "active" sits between the two buttons' own markers only when it is the
+    // count button carrying it -- the substring check below pins that.
+    expect(html.slice(countAt, shareAt)).toContain('active');
+  });
+
+  it('marks share active instead when the list is ranked by share', () => {
+    const html = placesListHTML(list, 'share', null, 'lost');
+    const shareAt = html.indexOf('data-sort-places="share"');
+    expect(html.slice(shareAt, shareAt + 60)).toContain('active');
+    const countAt = html.indexOf('data-sort-places="count"');
+    expect(html.slice(countAt, countAt + 60)).not.toContain('active');
   });
 });
 
@@ -551,21 +556,11 @@ describe('placesListHTML in service mode', () => {
     summary({ key: 'baldwin', place: 'Baldwin borough', residents_lost: 9613, share_lost: 0.399 }),
   ];
 
-  it('draws a third button labelled "Service"', () => {
-    const html = placesListHTML(list, 'count', null, 'service');
-    expect(html).toContain('data-place-fill="service"');
-    expect(html).toContain('Service');
-  });
-
-  it('marks service active, and only that one, when the fill mode is service', () => {
-    const html = placesListHTML(list, 'count', null, 'service');
-    const serviceBtnAt = html.indexOf('data-place-fill="service"');
-    const from = html.slice(serviceBtnAt, serviceBtnAt + 60);
-    expect(from).toContain('active');
-    const lostBtnAt = html.indexOf('data-place-fill="lost"');
-    expect(html.slice(lostBtnAt, lostBtnAt + 60)).not.toContain('active');
-  });
-
+  // The third fill button ("Service") and its active state now live in the
+  // map toolbar's `#place-fill-controls` (index.html), not in this panel
+  // markup -- see the "toolbar owns it now" test above. What the panel still
+  // owns in service mode is the prose telling the reader this reading moves
+  // with the day switch, pinned below.
   it('states that this reading, unlike the two residents readings, moves with the day switch', () => {
     const serviceHtml = placesListHTML(list, 'count', null, 'service');
     expect(serviceHtml.toLowerCase()).toContain('day switch');

@@ -69,6 +69,7 @@ const CONTROL = {
   oneSeatDay: 'data-oneseat-day',
   view: 'data-view',
   dest: 'data-dest',
+  placeFill: 'data-place-fill',
 } as const;
 
 /**
@@ -145,11 +146,12 @@ let surfaceUnit: SurfaceUnit = 'area';
 
 // Which order the Places list is ranked in. Lives here for the same reason
 // `weight` and `surfaceUnit` do: it changes how the list reads, not which
-// question the view is answering, and it has no toolbar button -- only the
-// two buttons drawn inside the panel itself. Both orders are true and they
-// disagree violently (Baldwin borough is 1st by count, Reserve township 1st
-// by share), so this defaults to the more familiar of the two rather than
-// the app picking a "right" one.
+// question the view is answering, and it has no toolbar button -- unlike the
+// fill beside it, which paints the map, this only reorders the panel's own
+// rows, so its two buttons stay in the panel they reorder. Both orders are
+// true and they disagree violently (Baldwin borough is 1st by count, Reserve
+// township 1st by share), so this defaults to the more familiar of the two
+// rather than the app picking a "right" one.
 let placeSort: PlaceSort = 'count';
 
 // The Places view's selected place, by its /api/places key, or null before
@@ -158,10 +160,11 @@ let placeSort: PlaceSort = 'count';
 // is kept here rather than only in `oneseat.ts`.
 let selectedPlace: string | null = null;
 
-// Which of the choropleth's two readings is on the map -- residents who lose
-// all buses, or residents who gain one. Lives here for the same reason
-// `placeSort` does: it changes how the fill and its own panel control read,
-// and it has no toolbar button, only the segment drawn inside the panel.
+// Which of the choropleth's three readings is on the map -- residents who
+// lose all buses, residents who gain one, or the plan's own bus service.
+// Unlike `placeSort` above, this one paints the map rather than the panel, so
+// its segment lives in the toolbar (`#place-fill-controls`) with every other
+// control that changes what is on the ground.
 let placeFill: PlaceFill = DEFAULT_PLACE_FILL;
 
 // Which view is on screen. Two of them — one-seat and travel time — take a
@@ -393,6 +396,12 @@ map.on('load', () => {
     const picksDestination = view === 'oneseat' || view === 'journey';
     $('dest-controls').classList.toggle('hidden', !picksDestination);
     $('oneseat-day-controls').classList.toggle('hidden', view !== 'oneseat');
+    // The fill control means nothing outside Places -- it chooses which of a
+    // place's own figures paints the map, and there is no such figure once
+    // the view is asking a different question entirely. (The list's sort
+    // control needs no line here: it is drawn inside the panel, which the
+    // view switch replaces wholesale.)
+    $('place-fill-controls').classList.toggle('hidden', view !== 'places');
     refreshDayControls();
     if (!picksDestination) setPinMode(false);
     showDestinationMarker();
@@ -410,6 +419,26 @@ map.on('load', () => {
     }
     setPinMode(false);
     setDestination({ key });
+  });
+
+  // The choropleth's own losses/gains/service toggle -- see `PlaceFill`'s
+  // docstring for why this switches the whole reading rather than blending
+  // them. `applyOpening` can press this button (via `press(CONTROL.placeFill,
+  // ...)`) before the Places layer has ever been loaded, since a link can
+  // open straight onto a gains map; `setPlacesFill` calls
+  // `map.setPaintProperty` on a layer that does not exist until `showPlaces`
+  // creates it, so the repaint only happens once the layer is actually on
+  // screen. Nothing is lost by skipping it here -- `showPlaces` already
+  // applies whatever `placeFill` holds by the time it turns the layer on.
+  segment(CONTROL.placeFill, (b) => {
+    placeFill = b.dataset.placeFill as PlaceFill;
+    if (placesOn()) setPlacesFill(map, placeFill, activeDay());
+    renderPanel();
+    refreshLegend();
+    // 'service' is the one Places reading the day buttons mean anything
+    // for (`dayControlsShown`'s own doc), so switching to or away from it
+    // has to show or hide that row, not just repaint the map.
+    refreshDayControls();
   });
 
   $('legend').addEventListener('click', (e) => {
@@ -461,26 +490,16 @@ map.on('load', () => {
     const row = (e.target as HTMLElement).closest<HTMLElement>('[data-select-place]');
     if (row) void goToPlace(row.dataset.selectPlace!);
 
-    // The Places list's own count/share toggle.
+    // The Places list's own count/share toggle. Delegated rather than bound
+    // like the toolbar's segments, because this button is redrawn with every
+    // `renderPanel` and a listener attached at load would die with the first
+    // repaint. It reorders the rows and nothing else -- no repaint, and
+    // nothing in the URL, since the ranking is how the answer is read rather
+    // than which answer it is.
     const sort = (e.target as HTMLElement).closest<HTMLElement>('[data-sort-places]');
     if (sort) {
       placeSort = sort.dataset.sortPlaces as PlaceSort;
       renderPanel();
-    }
-
-    // The choropleth's own losses/gains toggle -- see `PlaceFill`'s docstring
-    // for why this switches the whole reading rather than blending the two.
-    const fillBtn = (e.target as HTMLElement).closest<HTMLElement>('[data-place-fill]');
-    if (fillBtn) {
-      placeFill = fillBtn.dataset.placeFill as PlaceFill;
-      setPlacesFill(map, placeFill, activeDay());
-      renderPanel();
-      refreshLegend();
-      // 'service' is the one Places reading the day buttons mean anything
-      // for (`dayControlsShown`'s own doc), so switching to or away from it
-      // has to show or hide that row, not just repaint the map.
-      refreshDayControls();
-      syncUrl();
     }
 
     // The panel's population line, wherever it is on screen (`place.ts`'s
@@ -597,10 +616,12 @@ function applyOpening(s: Partial<UrlState>): boolean {
   // sees the final `surfaceUnit` by the time `view` is pressed below, so
   // opening straight onto People fetches the population lattice exactly once.
   if (s.surfaceUnit) surfaceUnit = s.surfaceUnit;
-  // Same reasoning again: no button, and `showPlaces` below already sees the
-  // final `placeFill` by the time `view` is pressed, so opening straight onto
-  // a gains map paints the fill correctly on the first frame.
-  if (s.placeFill) placeFill = s.placeFill;
+  // Unlike `weight` and `surfaceUnit` above, this one now has a button
+  // (`#place-fill-controls`), pressed before `view` below for the same
+  // reason the radius and day are: `showPlaces` reads `placeFill` when it
+  // turns the layer on, so pressing it first paints the fill correctly on
+  // the first frame instead of the default and then a second repaint.
+  if (s.placeFill) press(CONTROL.placeFill, s.placeFill);
   if (s.dest) {
     // A dropped pin has no button to press; a named district does, and
     // pressing it lights the toolbar as well as moving the destination.

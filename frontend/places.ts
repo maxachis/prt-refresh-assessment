@@ -534,11 +534,19 @@ function placeRow(p: PlaceSummary, selected: boolean): string {
 }
 
 /**
- * The whole panel for this view: the scope note, the sort control, and the
+ * The whole panel for this view: the scope note, the sort control and the
  * ranked list. Kept as one function, like `journeyPromptHTML`, because there
  * is no click-driven answer here to layer a second render on top of -- the
  * list IS the answer, and selecting a row only changes which row is marked
  * and what the map is drawing.
+ *
+ * The sort control stays here because it is the list's own control: it
+ * reorders these rows and draws nothing on the map. The fill control that
+ * used to sit beside it does not -- it decides what the MAP paints, so it
+ * lives with the other controls that do, in the toolbar
+ * (`#place-fill-controls`). `fill` still arrives as a parameter because this
+ * panel has to know which reading is on screen to decide whether
+ * `SERVICE_DAY_NOTE` prints.
  */
 /**
  * Printed only in service mode, directly under `SCOPE_NOTE`: that note
@@ -567,11 +575,6 @@ export function placesListHTML(places: PlaceSummary[], sortBy: PlaceSort,
     <div class="seg place-sort">
       <button type="button" data-sort-places="count"${sortBy === 'count' ? ' class="active"' : ''}>By count</button>
       <button type="button" data-sort-places="share"${sortBy === 'share' ? ' class="active"' : ''}>By share</button>
-    </div>
-    <div class="seg place-fill">
-      <button type="button" data-place-fill="lost"${fill === 'lost' ? ' class="active"' : ''}>Losses</button>
-      <button type="button" data-place-fill="gained"${fill === 'gained' ? ' class="active"' : ''}>Gains</button>
-      <button type="button" data-place-fill="service"${fill === 'service' ? ' class="active"' : ''}>Service</button>
     </div>
     <div class="place-list">${rows}</div>`;
 }

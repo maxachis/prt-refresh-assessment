@@ -800,6 +800,23 @@
             <button data-dest="pin">Pick a point</button>
           </div>
         </div>
+        <!-- The choropleth's own reading -- which of a place's own figures is
+             painted on the map, not just printed in the panel below it. Losses
+             and Gains are the two day-free residents readings; Service is the
+             one that moves with the day switch beside it, because it asks
+             about the plan's actual weekday, Saturday or Sunday service rather
+             than a resident's day-free loss or gain. Lives in the toolbar,
+             not the panel, for the same reason the day switch does: it
+             decides what the MAP is showing, and a reader should not have to
+             find the panel to change what is on the ground. -->
+        <div class="controls hidden" id="place-fill-controls">
+          <span class="lbl">fill</span>
+          <div class="seg">
+            <button type="button" data-place-fill="lost" class="active">Losses</button>
+            <button type="button" data-place-fill="gained">Gains</button>
+            <button type="button" data-place-fill="service">Service</button>
+          </div>
+        </div>
         <!-- Day type governs the map layer as well as the panel: a place that
              keeps every weekday bus and loses the weekend reads as untouched on
              a weekday-only screen, and 152 are in that position.
