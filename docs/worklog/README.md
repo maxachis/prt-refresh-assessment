@@ -37,3 +37,4 @@ pass — a reader who stops halfway down must not be misinformed.
 | [The place number has no view of its own](the-place-number-has-no-view-of-its-own.md) | open, decision owed — raised by Max |
 | [Two scripts now name a place differently](two-scripts-now-name-a-place-differently.md) | open, deliberate and scoped — travel time still names by nearest stop |
 | [The service map has findings nothing publishes](the-service-map-has-findings-nothing-publishes.md) | open, decision owed — whether per-place bus service becomes a published answer |
+| [WordPress sandboxes an embed it does not trust, and MapLibre goes blank in it](wordpress-sandboxes-the-embed-and-maplibre-goes-blank.md) | **closed 2026-09-02 by Max** — oEmbed provider built, measured against WordPress, and removed; kept for the measurement |
