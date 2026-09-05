@@ -72,13 +72,14 @@ supermarket stop.
 
 ## Cross-validation
 
-Two independent pipelines answer "loses all service" and they agree.
-`analyze_service_loss.py` compares stop ids against the Remix map with a 150 m
-walk test and finds **870 stops** (854 confirmed, 16 unverifiable against the
-Remix map's 2023 base feed); this analysis counts real trips in both GTFS feeds
-at 150 m and finds **900 locations**, with **867 in common**. Different
-proposed-network sources, different logic, a 3.4% difference in the total. Either
-is defensible; quoting both is better.
+Two pipelines answer "loses all service" and they agree.
+`analyze_service_loss.py` asks which stop ids served today have no proposed stop
+within 150 m and finds **880 stops**; this analysis counts real trips in both
+GTFS feeds at 150 m and finds **900 locations**, with **876 in common** — a 2.2%
+difference in the total. The agreement is no longer between two *sources*: both
+now read PRT's proposed feed, and the earlier version of this paragraph, in
+which the stop-level side came from the Remix map and carried 16 stops that map
+could not settle, describes a method the script retired when the feed arrived.
 
 ## Caveats
 
@@ -86,6 +87,19 @@ is defensible; quoting both is better.
 and nudged across intersections. Both networks are therefore measured by
 proximity, and both radii are reported: the gap between the 400 m and 150 m
 columns is stop consolidation, not service loss.
+
+**`stop_service_change.csv`'s `status` column is a 150 m verdict, and its name
+does not say so.** It is the file to reach for when a reader wants to check one
+pole rather than one location, and it is cited that way in
+[GAIN-ONE-SEAT-OAKLAND.md](GAIN-ONE-SEAT-OAKLAND.md) and
+[locations/ROUTE-51.md](locations/ROUTE-51.md). Of the 880 rows it flags
+`loses_all_service`, **217 — carrying 661 of the 1,200 weekday boardings, 55% —
+have a stop the proposal serves within a 400 m walk**, which is the radius every
+headline on this site uses. Read that column as "no bus within the strict
+same-corner radius", never as the headline answer, and take the 400 m figure
+from the table above. Whether the column should carry the walked distance and a
+400 m verdict of its own is open —
+[worklog](../worklog/consolidation-is-not-counted-apart-from-loss.md).
 
 **119 of the 5,751 rows carry a stop id the two PRT sources disagree about.**
 Trips and geometry come from the GTFS; boardings and the `HOOD`/`MUNI` labels come
