@@ -178,7 +178,7 @@ let view = 'dots';
 let sheet: Sheet;
 
 // The named destinations' centres, fetched once. The one-seat view measures to
-// a district — 44 stops for Downtown, 93 for Oakland — but a journey has to
+// a district — 44 stops for Downtown, 52 for Oakland — but a journey has to
 // have somewhere to arrive, so the travel-time view uses the centre of that
 // same seed cloud. That is the identical point `analyze_travel_time.py`
 // searches to, so "to Downtown" here is the published question rather than a

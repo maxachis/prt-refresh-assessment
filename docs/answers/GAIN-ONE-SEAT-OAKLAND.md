@@ -81,8 +81,11 @@ one-seat ride running every 60 minutes is a materially different offer from one
 running every 15, and nothing here distinguishes them — pair with
 `service_levels.csv`, which has proposed headways by period.
 
-"Oakland" here is the whole of the four Oakland neighbourhoods, which is broader
-than the Fifth/Forbes hospital and university core most riders mean.
+"Oakland" here is West, Central and South Oakland — the Fifth/Forbes hospital
+and university core — and not North Oakland, whose northern edge is a mile away
+from it. None of the twelve gains in this table depends on that choice; the
+losing side does, and [LOSE-ONE-SEAT-OAKLAND](LOSE-ONE-SEAT-OAKLAND.md) says
+where.
 
 Full method and the four data controls that changed this answer:
 [METHOD-one-seat.md](METHOD-one-seat.md).

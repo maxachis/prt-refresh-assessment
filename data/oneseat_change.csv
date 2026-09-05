@@ -32,9 +32,9 @@ Beltzhoover,Oakland,loses,133.43,37,30,1,0,54,,,54,
 "Blawnox borough (Allegheny, PA)",Downtown,keeps,44.99,13,13,1,1,1,1L,,1,1L
 "Blawnox borough (Allegheny, PA)",Oakland,none either way,44.99,13,13,0,0,,,,,
 Bloomfield,Downtown,keeps,1560.61,85,75,5,6,77;82;86;87;88,28X;80X;82;86;87;88,82;86;87;88,77,28X;80X
-Bloomfield,Oakland,keeps,1560.61,85,75,7,8,54;71A;71C;77;82;93;P3,28X;54;80X;81;82;85;9;P3,54;82;P3,71A;71C;77;93,28X;80X;81;85;9
+Bloomfield,Oakland,keeps,1560.61,85,75,5,7,54;71A;71C;93;P3,28X;54;80X;81;85;9;P3,54;P3,71A;71C;93,28X;80X;81;85;9
 Bluff,Downtown,keeps,733.79,21,17,16,10,28X;52L;53L;56;57;58;61A;61B;61C;65;67;69;71B;81;82;83,53;56;60X;61X;62X;70;71X;80X;82;83,56;82;83,28X;52L;53L;57;58;61A;61B;61C;65;67;69;71B;81,53;60X;61X;62X;70;71X;80X
-Bluff,Oakland,keeps,733.79,21,17,18,11,28X;56;57;58;61A;61B;61C;61D;65;67;69;71A;71B;71C;71D;81;82;83,53;56;60X;61X;62X;70;71X;80X;81;82;83,56;81;82;83,28X;57;58;61A;61B;61C;61D;65;67;69;71A;71B;71C;71D,53;60X;61X;62X;70;71X;80X
+Bluff,Oakland,keeps,733.79,21,17,17,10,28X;56;57;58;61A;61B;61C;61D;65;67;69;71A;71B;71C;71D;81;83,53;56;60X;61X;62X;70;71X;80X;81;83,56;81;83,28X;57;58;61A;61B;61C;61D;65;67;69;71A;71B;71C;71D,53;60X;61X;62X;70;71X;80X
 Bon Air,Downtown,keeps,9.19,13,2,2,2,BLUE;SLVR,BLUE;SILVER,BLUE,SLVR,SILVER
 Bon Air,Oakland,loses,9.19,13,2,1,0,54,,,54,
 "Brackenridge borough (Allegheny, PA)",Downtown,loses,4.1,17,13,1,0,P10,,,P10,
@@ -59,7 +59,7 @@ Carrick,Downtown,keeps,932.27,42,29,3,2,44;51;51L,51;51S,51,44;51L,51S
 Carrick,Oakland,gains,932.27,42,29,0,1,,45,,,45
 "Castle Shannon borough (Allegheny, PA)",Downtown,keeps,157.0,6,6,1,1,RED,RED,RED,,
 "Castle Shannon borough (Allegheny, PA)",Oakland,none either way,157.0,6,6,0,0,,,,,
-Central Business District,Oakland,keeps,11088.21,68,61,15,15,28X;56;57;58;61A;61B;61C;65;67;69;71B;77;81;82;83,28X;35;35S;53;56;58;60X;61X;62X;70;71X;80X;82;83;84,28X;56;58;82;83,57;61A;61B;61C;65;67;69;71B;77;81,35;35S;53;60X;61X;62X;70;71X;80X;84
+Central Business District,Oakland,keeps,11088.21,68,61,13,14,28X;56;57;58;61A;61B;61C;65;67;69;71B;81;83,28X;35;35S;53;56;58;60X;61X;62X;70;71X;80X;83;84,28X;56;58;83,57;61A;61B;61C;65;67;69;71B;81,35;35S;53;60X;61X;62X;70;71X;80X;84
 Central Lawrenceville,Downtown,keeps,388.92,30,26,3,3,87;88;91,88;91;92,88;91,87,92
 Central Lawrenceville,Oakland,keeps,388.92,30,26,2,2,54;93,81;9,,54;93,81;9
 Central Northside,Downtown,keeps,472.51,15,17,6,5,11;13;15;16;17;8,11;13;14;16;8,11;13;16;8,15;17,14
@@ -84,7 +84,7 @@ Crafton Heights,Oakland,none either way,135.45,28,30,0,0,,,,,
 "Crafton borough (Allegheny, PA)",Downtown,keeps,359.74,31,29,7,8,26;27;28X;29;G2;G3;G31,23L;25;26;27;28X;29;29S;G1,26;27;28X;29,G2;G3;G31,23L;25;29S;G1
 "Crafton borough (Allegheny, PA)",Oakland,keeps,359.74,31,29,1,1,28X,28X,28X,,
 Crawford-Roberts,Downtown,keeps,645.17,41,30,7,7,61A;61B;61C;71B;81;82;83,60X;61X;62X;71X;80X;82;83,82;83,61A;61B;61C;71B;81,60X;61X;62X;71X;80X
-Crawford-Roberts,Oakland,keeps,645.17,41,30,7,8,61A;61B;61C;71B;81;82;83,60X;61X;62X;71X;80X;81;82;83,81;82;83,61A;61B;61C;71B,60X;61X;62X;71X;80X
+Crawford-Roberts,Oakland,keeps,645.17,41,30,6,7,61A;61B;61C;71B;81;83,60X;61X;62X;71X;80X;81;83,81;83,61A;61B;61C;71B,60X;61X;62X;71X;80X
 "Dormont borough (Allegheny, PA)",Downtown,keeps,99.62,19,21,3,4,36;41;RED,35;35S;36L;RED,RED,36;41,35;35S;36L
 "Dormont borough (Allegheny, PA)",Oakland,gains,99.62,19,21,0,2,,35;35S,,,35;35S
 "Dravosburg borough (Allegheny, PA)",Downtown,keeps,31.48,6,10,1,1,56,56,56,,
@@ -100,9 +100,9 @@ East Carnegie,Oakland,none either way,5.34,4,5,0,0,,,,,
 "East Deer township (Allegheny, PA)",Downtown,keeps,19.25,18,18,2,1,1;P10,1L,,1;P10,1L
 "East Deer township (Allegheny, PA)",Oakland,none either way,19.25,18,18,0,0,,,,,
 East Hills,Downtown,keeps,126.07,39,36,3,1,77;86;P17,86,86,77;P17,
-East Hills,Oakland,keeps,126.07,39,36,2,1,71D;77,72,,71D;77,72
+East Hills,Oakland,keeps,126.07,39,36,1,1,71D,72,,71D,72
 East Liberty,Downtown,keeps,1928.13,69,71,6,7,71B;77;82;86;87;88,71X;80X;82;86;87;88;92,82;86;87;88,71B;77,71X;80X;92
-East Liberty,Oakland,keeps,1928.13,69,71,6,6,71A;71B;71C;75;77;82,45;71X;75;80X;82;85,75;82,71A;71B;71C;77,45;71X;80X;85
+East Liberty,Oakland,keeps,1928.13,69,71,4,5,71A;71B;71C;75,45;71X;75;80X;85,75,71A;71B;71C,45;71X;80X;85
 "East McKeesport borough (Allegheny, PA)",Downtown,keeps,14.2,4,5,1,1,P76,76L,,P76,76L
 "East McKeesport borough (Allegheny, PA)",Oakland,none either way,14.2,4,5,0,0,,,,,
 "East Pittsburgh borough (Allegheny, PA)",Downtown,keeps,153.29,24,16,4,2,69;P68;P69;P76,69;76L,69,P68;P69;P76,76L
@@ -132,7 +132,7 @@ Fineview,Oakland,none either way,28.39,10,14,0,0,,,,,
 "Fox Chapel borough (Allegheny, PA)",Downtown,none either way,0.0,1,1,0,0,,,,,
 "Fox Chapel borough (Allegheny, PA)",Oakland,keeps,0.0,1,1,1,1,75,75,75,,
 Friendship,Downtown,keeps,519.99,15,13,4,4,77;82;86;87,80X;82;86;87,82;86;87,77,80X
-Friendship,Oakland,keeps,519.99,15,13,4,3,71A;71C;77;82,80X;82;85,82,71A;71C;77,80X;85
+Friendship,Oakland,keeps,519.99,15,13,2,2,71A;71C,80X;85,,71A;71C,80X;85
 Garfield,Downtown,keeps,190.67,37,42,2,2,87;88,87;88,87;88,,
 Garfield,Oakland,keeps,190.67,37,42,1,1,71A,85,,71A,85
 "Glassport borough (Allegheny, PA)",Downtown,none either way,114.37,28,28,0,0,,,,,
@@ -166,11 +166,11 @@ Highland Park,Oakland,keeps,227.85,23,26,3,3,71A;71B;75,71X;75;85,75,71A;71B,71X
 "Homestead borough (Allegheny, PA)",Downtown,keeps,1115.3,35,34,4,3,52L;53L;57;61C,53;57;61X,57,52L;53L;61C,53;61X
 "Homestead borough (Allegheny, PA)",Oakland,keeps,1115.3,35,34,3,3,57;61C;61D,50;53;61X,,57;61C;61D,50;53;61X
 Homewood North,Downtown,keeps,268.01,30,34,4,2,77;82;86;P17,82;86,82;86,77;P17,
-Homewood North,Oakland,keeps,268.01,30,34,2,1,77;82,82,82,77,
+Homewood North,Oakland,none either way,268.01,30,34,0,0,,,,,
 Homewood South,Downtown,keeps,696.27,44,41,12,9,77;86;P1;P12;P16;P67;P68;P69;P7;P71;P76;P78,52L;67;69;73L;76L;77L;78;86;P1,86;P1,77;P12;P16;P67;P68;P69;P7;P71;P76;P78,52L;67;69;73L;76L;77L;78
-Homewood South,Oakland,keeps,696.27,44,41,3,2,71D;77;P3,72;P3,P3,71D;77,72
+Homewood South,Oakland,keeps,696.27,44,41,2,2,71D;P3,72;P3,P3,71D,72
 Homewood West,Downtown,keeps,88.96,21,19,5,3,77;82;86;P10;P17,1L;82;86,82;86,77;P10;P17,1L
-Homewood West,Oakland,keeps,88.96,21,19,3,2,71D;77;82,72;82,82,71D;77,72
+Homewood West,Oakland,keeps,88.96,21,19,1,1,71D,72,,71D,72
 "Ingram borough (Allegheny, PA)",Downtown,keeps,231.04,29,26,7,8,26;27;28X;29;G2;G3;G31,23L;25;26;27;28X;29;29S;G1,26;27;28X;29,G2;G3;G31,23L;25;29S;G1
 "Ingram borough (Allegheny, PA)",Oakland,keeps,231.04,29,26,1,1,28X,28X,28X,,
 "Jefferson Hills borough (Allegheny, PA)",Downtown,keeps,67.09,44,44,2,1,Y1;Y46,46L,,Y1;Y46,46L
@@ -180,13 +180,13 @@ Homewood West,Oakland,keeps,88.96,21,19,3,2,71D;77;82,72;82,82,71D;77,72
 Knoxville,Downtown,keeps,324.71,29,14,3,3,44;51;51L,44;51;51S,44;51,51L,51S
 Knoxville,Oakland,keeps,324.71,29,14,1,1,54,45,,54,45
 Larimer,Downtown,keeps,311.67,47,40,7,8,28X;77;82;86;88;P10;P17,1L;28X;80X;82;86;87;88;92,28X;82;86;88,77;P10;P17,1L;80X;87;92
-Larimer,Oakland,keeps,311.67,47,40,5,5,28X;71C;75;77;82,28X;45;75;80X;82,28X;75;82,71C;77,45;80X
+Larimer,Oakland,keeps,311.67,47,40,3,4,28X;71C;75,28X;45;75;80X,28X;75,71C,45;80X
 "Leetsdale borough (Allegheny, PA)",Downtown,gains,59.76,20,20,0,1,,14,,,14
 "Leetsdale borough (Allegheny, PA)",Oakland,none either way,59.76,20,20,0,0,,,,,
 Lincoln Place,Downtown,keeps,146.81,26,26,2,2,53L;56,53;56,56,53L,53
 Lincoln Place,Oakland,keeps,146.81,26,26,1,2,56,53;56,56,,53
 Lincoln-Lemington-Belmar,Downtown,keeps,387.68,69,64,3,2,82;P10;P17,1L;82,82,P10;P17,1L
-Lincoln-Lemington-Belmar,Oakland,keeps,387.68,69,64,1,1,82,82,82,,
+Lincoln-Lemington-Belmar,Oakland,none either way,387.68,69,64,0,0,,,,,
 Lower Lawrenceville,Downtown,keeps,258.24,32,34,4,6,86;87;88;91,84;86;87;88;91;92,86;87;88;91,,84;92
 Lower Lawrenceville,Oakland,keeps,258.24,32,34,2,4,54;93,54;81;84;9,54,93,81;84;9
 Manchester,Downtown,keeps,186.58,25,19,2,2,13;17,13;14,13,17,14
@@ -200,11 +200,11 @@ Marshall-Shadeland,Oakland,none either way,419.04,40,41,0,0,,,,,
 "McKeesport city (Allegheny, PA)",Downtown,keeps,885.06,117,114,5,3,52L;56;61C;P7;P76,52L;56;61X,52L;56,61C;P7;P76,61X
 "McKeesport city (Allegheny, PA)",Oakland,keeps,885.06,117,114,2,2,56;61C,56;61X,56,61C,61X
 Middle Hill,Downtown,keeps,415.15,26,32,3,3,81;82;83,82;83;84,82;83,81,84
-Middle Hill,Oakland,keeps,415.15,26,32,3,4,81;82;83,81;82;83;84,81;82;83,,84
+Middle Hill,Oakland,keeps,415.15,26,32,2,3,81;83,81;83;84,81;83,,84
 "Millvale borough (Allegheny, PA)",Downtown,keeps,83.76,10,15,2,2,1;2,2L;5,,1;2,2L;5
 "Millvale borough (Allegheny, PA)",Oakland,gains,83.76,10,15,0,1,,9,,,9
 "Monroeville municipality (Allegheny, PA)",Downtown,keeps,289.6,116,109,7,3,67;69;77;P12;P67;P68;P69,67;69;73L,67;69,77;P12;P67;P68;P69,73L
-"Monroeville municipality (Allegheny, PA)",Oakland,loses,289.6,116,109,3,0,67;69;77,,,67;69;77,
+"Monroeville municipality (Allegheny, PA)",Oakland,loses,289.6,116,109,2,0,67;69,,,67;69,
 "Moon township (Allegheny, PA)",Downtown,keeps,107.68,18,22,24,32,20;21;29;39;40;41;43;44;48;51;61A;61B;61C;71B;88;G2;G3;P1;P12;P16;P67;Y46;Y47;Y49,21;22;23L;28X;29;29S;39;40;44;46L;48;49;51;51S;52L;53;56;57;58;60X;61X;62X;71X;77L;80X;86;87;88;91;92;G1;P1,21;29;39;40;44;48;51;88;P1,20;41;43;61A;61B;61C;71B;G2;G3;P12;P16;P67;Y46;Y47;Y49,22;23L;28X;29S;46L;49;51S;52L;53;56;57;58;60X;61X;62X;71X;77L;80X;86;87;91;92;G1
 "Moon township (Allegheny, PA)",Oakland,keeps,107.68,18,22,5,9,54;61A;61B;61C;71B,28X;53;56;58;60X;61X;62X;71X;80X,,54;61A;61B;61C;71B,28X;53;56;58;60X;61X;62X;71X;80X
 Morningside,Downtown,keeps,184.47,40,35,1,1,87,92,,87,92
@@ -230,6 +230,7 @@ New Homestead,Oakland,keeps,6.1,3,3,1,1,56,56,56,,
 "North Fayette township (Allegheny, PA)",Downtown,keeps,110.26,17,18,1,3,29,24;29;29S,29,,24;29S
 "North Fayette township (Allegheny, PA)",Oakland,none either way,110.26,17,18,0,0,,,,,
 North Oakland,Downtown,keeps,2782.7,41,33,12,11,28X;58;61A;61B;61C;67;69;71B;77;81;82;83,28X;35;35S;60X;61X;62X;70;71X;80X;82;83,28X;82;83,58;61A;61B;61C;67;69;71B;77;81,35;35S;60X;61X;62X;70;71X;80X
+North Oakland,Oakland,keeps,2782.7,41,33,18,20,28X;54;58;61A;61B;61C;61D;67;69;71A;71B;71C;71D;75;81;83;93;P3,28X;35;35S;45;50;54;60X;61X;62X;70;71X;72;75;80X;81;83;85;9;93;P3,28X;54;75;81;83;93;P3,58;61A;61B;61C;61D;67;69;71A;71B;71C;71D,35;35S;45;50;60X;61X;62X;70;71X;72;80X;85;9
 North Shore,Downtown,keeps,264.86,8,6,16,15,1;11;12;13;15;16;17;2;4;6;7;8;BLUE;P13;RED;SLVR,11;12;13;14;16;18;2L;4;5;6;7;8;BLUE;RED;SILVER,11;12;13;16;4;6;7;8;BLUE;RED,1;15;17;2;P13;SLVR,14;18;2L;5;SILVER
 North Shore,Oakland,keeps,264.86,8,6,1,1,54,54,54,,
 "North Versailles township (Allegheny, PA)",Downtown,keeps,228.62,63,39,1,1,P76,76L,,P76,76L
@@ -245,7 +246,7 @@ Oakwood,Oakland,keeps,68.39,9,9,1,1,28X,28X,28X,,
 Overbrook,Downtown,keeps,67.1,13,14,5,2,Y1;Y45;Y46;Y47;Y49,46L;49,,Y1;Y45;Y46;Y47;Y49,46L;49
 Overbrook,Oakland,none either way,67.1,13,14,0,0,,,,,
 "Penn Hills township (Allegheny, PA)",Downtown,keeps,561.02,268,212,4,3,77;P16;P17;P78,77L;78;86,,77;P16;P17;P78,77L;78;86
-"Penn Hills township (Allegheny, PA)",Oakland,loses,561.02,268,212,1,0,77,,,77,
+"Penn Hills township (Allegheny, PA)",Oakland,none either way,561.02,268,212,0,0,,,,,
 Perry North,Downtown,keeps,319.96,34,30,4,4,12;15;4;8,12;18;6;8,12;8,15;4,18;6
 Perry North,Oakland,none either way,319.96,34,30,0,0,,,,,
 Perry South,Downtown,keeps,441.52,64,48,5,4,11;15;16;17;8,11;14;16;8,11;16;8,15;17,14
@@ -255,13 +256,13 @@ Perry South,Oakland,none either way,441.52,64,48,0,0,,,,,
 "Pleasant Hills borough (Allegheny, PA)",Downtown,keeps,149.04,29,28,4,3,51;Y1;Y46;Y47,46L;49;51,51,Y1;Y46;Y47,46L;49
 "Pleasant Hills borough (Allegheny, PA)",Oakland,none either way,149.04,29,28,0,0,,,,,
 "Plum borough (Allegheny, PA)",Downtown,keeps,22.62,36,2,3,1,77;P12;P16,73L,,77;P12;P16,73L
-"Plum borough (Allegheny, PA)",Oakland,loses,22.62,36,2,1,0,77,,,77,
+"Plum borough (Allegheny, PA)",Oakland,none either way,22.62,36,2,0,0,,,,,
 Point Breeze,Downtown,keeps,205.82,38,31,6,5,28X;61A;61B;67;69;P71,58;60X;62X;70;88,,28X;61A;61B;67;69;P71,58;60X;62X;70;88
 Point Breeze,Oakland,keeps,205.82,38,31,7,5,28X;61A;61B;67;69;71C;71D,58;60X;62X;70;72,,28X;61A;61B;67;69;71C;71D,58;60X;62X;70;72
 Point Breeze North,Downtown,keeps,170.83,16,16,4,6,28X;67;69;88,58;70;80X;87;88;92,88,28X;67;69,58;70;80X;87;92
 Point Breeze North,Oakland,keeps,170.83,16,16,5,5,28X;67;69;71C;71D,45;58;70;72;80X,,28X;67;69;71C;71D,45;58;70;72;80X
 Polish Hill,Downtown,keeps,150.47,27,23,17,15,77;86;87;88;91;P1;P10;P12;P16;P17;P67;P68;P69;P7;P71;P76;P78,1L;52L;67;69;73L;76L;77L;78;84;86;87;88;91;92;P1,86;87;88;91;P1,77;P10;P12;P16;P17;P67;P68;P69;P7;P71;P76;P78,1L;52L;67;69;73L;76L;77L;78;84;92
-Polish Hill,Oakland,keeps,150.47,27,23,2,2,54;77,54;84,54,77,84
+Polish Hill,Oakland,keeps,150.47,27,23,1,2,54,54;84,54,,84
 "Rankin borough (Allegheny, PA)",Downtown,keeps,85.32,21,16,3,3,61B;P7;P71,52L;60X;62X,,61B;P7;P71,52L;60X;62X
 "Rankin borough (Allegheny, PA)",Oakland,keeps,85.32,21,16,1,2,61B,60X;62X,,61B,60X;62X
 Regent Square,Downtown,keeps,34.43,9,9,3,3,61A;61B;P71,58;60X;62X,,61A;61B;P71,58;60X;62X
@@ -279,7 +280,7 @@ Ridgemont,Oakland,gains,1.19,5,6,0,1,,53,,,53
 "Sewickley borough (Allegheny, PA)",Downtown,keeps,60.98,23,18,1,1,21,14,,21,14
 "Sewickley borough (Allegheny, PA)",Oakland,none either way,60.98,23,18,0,0,,,,,
 Shadyside,Downtown,keeps,3468.38,78,65,18,17,28X;71B;77;82;86;88;P1;P10;P12;P16;P17;P67;P68;P69;P7;P71;P76;P78,1L;28X;52L;67;69;71X;73L;76L;77L;78;80X;82;86;87;88;92;P1,28X;82;86;88;P1,71B;77;P10;P12;P16;P17;P67;P68;P69;P7;P71;P76;P78,1L;52L;67;69;71X;73L;76L;77L;78;80X;87;92
-Shadyside,Oakland,keeps,3468.38,78,65,9,9,28X;71A;71B;71C;71D;75;77;82;P3,28X;45;71X;72;75;80X;82;85;P3,28X;75;82;P3,71A;71B;71C;71D;77,45;71X;72;80X;85
+Shadyside,Oakland,keeps,3468.38,78,65,7,8,28X;71A;71B;71C;71D;75;P3,28X;45;71X;72;75;80X;85;P3,28X;75;P3,71A;71B;71C;71D,45;71X;72;80X;85
 "Shaler township (Allegheny, PA)",Downtown,keeps,54.27,55,57,2,2,2;P13,2L;5,,2;P13,2L;5
 "Shaler township (Allegheny, PA)",Oakland,none either way,54.27,55,57,0,0,,,,,
 "Sharpsburg borough (Allegheny, PA)",Downtown,keeps,314.88,36,36,2,3,1;91,1L;5;91,91,1,1L;5
@@ -324,7 +325,7 @@ Swisshelm Park,Oakland,gains,5.53,3,2,0,1,,58,,,58
 "Tarentum borough (Allegheny, PA)",Downtown,keeps,93.62,30,24,2,1,1;P10,1L,,1;P10,1L
 "Tarentum borough (Allegheny, PA)",Oakland,none either way,93.62,30,24,0,0,,,,,
 Terrace Village,Downtown,keeps,295.4,36,35,3,3,81;82;83,82;83;84,82;83,81,84
-Terrace Village,Oakland,keeps,295.4,36,35,3,4,81;82;83,81;82;83;84,81;82;83,,84
+Terrace Village,Oakland,keeps,295.4,36,35,2,3,81;83,81;83;84,81;83,,84
 "Trafford borough (Allegheny, PA)",Downtown,loses,0.05,1,0,2,0,69;P69,,,69;P69,
 "Trafford borough (Allegheny, PA)",Oakland,loses,0.05,1,0,1,0,69,,,69,
 "Trafford borough (Westmoreland, PA)",Downtown,loses,15.19,7,0,2,0,69;P69,,,69;P69,
@@ -334,7 +335,7 @@ Troy Hill,Oakland,none either way,98.92,31,27,0,0,,,,,
 "Turtle Creek borough (Allegheny, PA)",Downtown,keeps,144.76,36,40,3,1,69;P68;P69,69,69,P68;P69,
 "Turtle Creek borough (Allegheny, PA)",Oakland,loses,144.76,36,40,1,0,69,,,69,
 Upper Hill,Downtown,keeps,168.44,22,20,2,3,82;83,82;83;84,82;83,,84
-Upper Hill,Oakland,keeps,168.44,22,20,2,3,82;83,82;83;84,82;83,,84
+Upper Hill,Oakland,keeps,168.44,22,20,1,2,83,83;84,83,,84
 Upper Lawrenceville,Downtown,keeps,249.06,24,24,2,2,87;91,91;92,91,87,92
 Upper Lawrenceville,Oakland,keeps,249.06,24,24,1,1,93,81,,93,81
 "Upper St. Clair township (Allegheny, PA)",Downtown,keeps,5.05,1,1,1,1,41,31,,41,31

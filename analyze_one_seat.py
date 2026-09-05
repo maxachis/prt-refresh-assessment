@@ -67,9 +67,18 @@ OUTLIER_FLOOR_M = 1_500
 OUTLIER_SPREAD_MULT = 3.0
 
 # Anchor districts, defined by the HOOD labels PRT ships in the usage extract.
+#
+# "Oakland" is three of the four Oakland neighbourhoods, not four. North
+# Oakland runs a mile north of the Fifth/Forbes hospital and university core
+# that riders mean by "Oakland", up to the Bloomfield and Shadyside edges, so
+# including it credited a one-seat ride to Oakland to routes that only clip
+# that far edge and never come near the core -- the 54 on Centre being the
+# clearest case. The destination is deliberately the narrower target; a place
+# whose only link is a route along North Oakland's northern edge now reads as
+# having no one-seat ride, which is the truer sentence.
 ANCHORS = {
     "Downtown": {"Central Business District"},
-    "Oakland": {"West Oakland", "Central Oakland", "North Oakland", "South Oakland"},
+    "Oakland": {"West Oakland", "Central Oakland", "South Oakland"},
 }
 
 M_PER_DEG_LAT = 111_320.0

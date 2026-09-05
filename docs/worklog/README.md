@@ -40,3 +40,4 @@ pass — a reader who stops halfway down must not be misinformed.
 | [A deleted stop is not a lost bus, and nothing counts which is which](consolidation-is-not-counted-apart-from-loss.md) | open, decision owed — measured and the views audited against it; raised by Max |
 | [WordPress sandboxes an embed it does not trust, and MapLibre goes blank in it](wordpress-sandboxes-the-embed-and-maplibre-goes-blank.md) | **closed 2026-09-02 by Max** — oEmbed provider built, measured against WordPress, and removed; kept for the measurement |
 | [122 stops sit on an island of the walk network](some-stops-sit-on-an-island-of-the-walk-network.md) | open, not fixed |
+| [The published travel times to Oakland lagged a build behind the anchor](travel-times-to-oakland-lagged-the-narrower-anchor.md) | fixed, awaiting close — rebuilt 2026-09-05; kept for what the one coupling test does *not* catch |

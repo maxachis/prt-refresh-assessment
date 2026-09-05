@@ -214,22 +214,28 @@ def test_a_ride_leg_can_be_drawn_on_the_map(con, sample):
     bus-only service table, and joining rail into it would be the leak
     convention 13 forbids. Coordinates come from the journey layer's own stop
     table, which has every mode.
+
+    It walks the whole sample rather than taking its first pair, because some
+    origins have no trip to draw at all -- Plum borough is left with two served
+    stops and reaches Oakland on neither network -- and "nothing was drawn"
+    there is the right answer, not a failure. What is being pinned is that a
+    leg which IS drawn carries coordinates.
     """
-    row, dest = sample[0]
-    served = query.journey_between(con, float(row["lat"]), float(row["lon"]),
-                                   dest[0], dest[1])
     drawn = 0
-    for at_radius in served["radii"].values():
-        for side in query.SIDES:
-            itinerary = at_radius[side]["itinerary"]
-            if itinerary is None:
-                continue
-            for leg in itinerary["legs"]:
-                for end in ("from", "to"):
-                    if leg[end] is not None:
-                        assert leg[end]["lat"] and leg[end]["lon"]
-                        drawn += 1
-    assert drawn
+    for row, dest in sample:
+        served = query.journey_between(con, float(row["lat"]),
+                                       float(row["lon"]), dest[0], dest[1])
+        for at_radius in served["radii"].values():
+            for side in query.SIDES:
+                itinerary = at_radius[side]["itinerary"]
+                if itinerary is None:
+                    continue
+                for leg in itinerary["legs"]:
+                    for end in ("from", "to"):
+                        if leg[end] is not None:
+                            assert leg[end]["lat"] and leg[end]["lon"]
+                            drawn += 1
+    assert drawn, "no sampled pair produced an itinerary to draw"
 
 
 # --------------------------------------------------------------------------

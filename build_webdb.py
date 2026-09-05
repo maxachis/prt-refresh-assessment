@@ -443,7 +443,7 @@ CREATE TABLE destination (
 CREATE INDEX ix_destination ON destination(dest_key);
 
 -- Which routes reach each named destination, per side and radius. Downtown is
--- 44 seeds and Oakland 93, so measuring them live would put ~270 spatial
+-- 44 seeds and Oakland 52, so measuring them live would put ~190 spatial
 -- queries in front of every click to re-derive something that cannot change
 -- between builds. A pin the reader drops is one point and is measured live.
 -- `day` is query.ANY_DAY for the published, day-free answer and a day type for

@@ -1312,16 +1312,21 @@ def nearest_place_label(con, lat: float, lon: float):
 #    origin end. Here the reader picks both ends and moves one radius control,
 #    so both ends use it: a rider walks at the far end too, and two different
 #    radii in one test would be indefensible on a screen that shows one number.
-#    For the two NAMED destinations this turns out to change nothing at all --
-#    Downtown reaches the same 79 current and 69 proposed routes at 200 m and
-#    at 400 m, Oakland the same 23 and 25 -- because a district's seed cloud is
-#    dense enough that widening each seed's circle finds no route the cloud did
-#    not already touch. So the app's Downtown and Oakland verdicts rest on
-#    exactly the published route sets, and `tests/test_oneseat.py` checks that
-#    against `data/oneseat_change.csv` rather than assuming it. Where the
-#    radius does bite is a DROPPED PIN, which is one seed with nothing to
-#    saturate it: there it is the whole difference between a route stopping at
-#    the door and one stopping a quarter-mile away.
+#    For DOWNTOWN this changes nothing at all -- the same 79 current and 69
+#    proposed routes at 200 m and at 400 m -- because a district's seed cloud
+#    is dense enough that widening each seed's circle finds no route the cloud
+#    did not already touch. OAKLAND is the exception, and it appeared when
+#    North Oakland was dropped from the district (`analyze_one_seat.ANCHORS`):
+#    21 current and 24 proposed routes at 200 m, 22 and 25 at 400 m, the extra
+#    one on both sides being the 82 on Centre Ave, which runs just outside a
+#    narrow circle round the core. So the app is fractionally more generous
+#    about Oakland than `data/oneseat_change.csv` is, in the one direction the
+#    wider radius can go; `tests/test_oneseat.py` pins the direction -- every
+#    route the CSV credits must still reach the anchor here, and a wider
+#    circle may only ever add. Where the radius bites hardest is a DROPPED
+#    PIN, which is one seed with nothing to saturate it: there it is the whole
+#    difference between a route stopping at the door and one stopping a
+#    quarter-mile away.
 
 # Named here rather than beside the one-seat layer that owns them because
 # `place()` above defaults to ANY_DAY too, and a default cannot reference a
@@ -1461,7 +1466,7 @@ def destination_reach(con, key: str, radius: float, side: str,
     """The stored route set for a named destination, or None if not built.
 
     Precomputed by `build_webdb.py` because Downtown is 44 seed points and
-    Oakland 93: measuring them per request would put ~270 spatial queries in
+    Oakland 52: measuring them per request would put ~190 spatial queries in
     front of every click, to re-derive an answer that cannot change between
     builds. A pin the reader drops is one point and is measured live.
     """

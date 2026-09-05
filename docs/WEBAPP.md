@@ -592,19 +592,25 @@ whole county repaints for it.
    script uses a fixed 200 m at the destination against a *place* at the origin;
    here the reader picks both ends and moves one radius control, so both ends
    use it. *Max chose this.* For the two named destinations it turns out to
-   change nothing — Downtown reaches the same 79 current and 69 proposed routes
-   at 200 m and at 400 m, Oakland the same 23 and 25, because a district's seed
-   cloud is dense enough that widening each seed's circle finds nothing new. So
-   the Downtown and Oakland verdicts rest on exactly the published route sets,
-   and `tests/test_oneseat.py` checks that against the CSV rather than assuming
-   it. Where the radius bites is a dropped pin, which is one seed with nothing
-   to saturate it.
+   change nothing for Downtown — the same 79 current and 69 proposed routes at
+   200 m and at 400 m, because a district's seed cloud is dense enough that
+   widening each seed's circle finds nothing new. Oakland is the exception
+   since North Oakland was dropped from the district: 21 current and 24
+   proposed routes at 200 m, 22 and 25 at 400 m, the extra one on each side
+   being the 82 on Centre Ave, which passes just outside a narrow circle round
+   the core. The app is therefore fractionally more generous about Oakland than
+   `data/oneseat_change.csv`, and `tests/test_oneseat.py` pins the direction
+   rather than the equality: every route the CSV credits must still reach the
+   anchor, and a wider circle may only add. Where the radius bites hardest is a
+   dropped pin, which is one seed with nothing to saturate it.
 
 ### What a destination is
 
 A **set of seed points**, which is what lets a district and a pin share one
 definition. Downtown is the 44 stops PRT labels Central Business District and
-Oakland the 93 across its four neighbourhoods, both put through
+Oakland the 52 across West, Central and South Oakland — North Oakland is
+deliberately not part of the district, because its northern edge is a mile from
+the Fifth/Forbes core riders mean — both put through
 `analyze_one_seat.py`'s outlier filter (convention 6) — PRT labels two stops in
 Braddock "Westwood", 16 km out, and an unfiltered cloud would put a piece of a
 district wherever a label went wrong. A pin is a set of one.
@@ -625,7 +631,7 @@ location per side per radius at build time (`point_reach`), and every
 destination picked afterwards is a set intersection over stored strings. The
 county repaints in well under a second, against the ~20 s `compute_change`
 takes. The named destinations' own route sets are precomputed too
-(`destination_reach`), because Downtown is 44 seeds and Oakland 93 and
+(`destination_reach`), because Downtown is 44 seeds and Oakland 52 and
 measuring them live would put ~270 spatial queries in front of every click.
 
 ### Presentation decisions

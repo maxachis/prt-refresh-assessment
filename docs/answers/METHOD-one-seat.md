@@ -88,9 +88,18 @@ All raw, so this is independent of the other analysis scripts' outputs:
    would answer that, but this test deliberately does not ask it, because a
    route serves a place or it does not. Pair with `data/coverage_change.csv`,
    or click the location in the web app, for the frequency dimension.
-4. **"Oakland" is the whole of the four Oakland neighbourhoods.** A route
-   clipping the edge of North Oakland counts. The destination most riders mean
-   is the Fifth/Forbes hospital and university core, which is a narrower target.
+4. **"Oakland" is three of the four Oakland neighbourhoods** — West, Central
+   and South Oakland. North Oakland is deliberately excluded: it runs a mile
+   north of the Fifth/Forbes hospital and university core riders mean by
+   "Oakland", to the Bloomfield and Shadyside edges, so counting it credited an
+   Oakland ride to routes that only touch that far edge and never approach the
+   core — today's 77 at Craig St and Baum, the 82 along Centre Ave. The choice
+   moves four places: Penn Hills, Plum, Homewood North and
+   Lincoln-Lemington-Belmar all read as having no one-seat ride to Oakland
+   either way, where the wider definition had the first two losing one and the
+   second two keeping one. It is still the whole of three neighbourhoods, so a
+   route clipping South Oakland's edge counts; the core itself is narrower than
+   that.
 5. **Rail counts.** The T and the inclines are one-seat rides where they apply,
    and appear in both networks.
 6. **141 current and 241 proposed stops are unplaced** (>400 m from any
