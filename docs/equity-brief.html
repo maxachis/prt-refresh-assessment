@@ -32,6 +32,9 @@
   --q-vehicle:#b494f7; --q-disability:#4fc3d9; --q-language:#d9b455;
 }
 * { box-sizing:border-box; }
+@media (prefers-reduced-motion:no-preference) {
+  html { scroll-behavior:smooth; }
+}
 /* The system stack is a choice, not a default: this file is a repo artifact
    that has to render identically offline, and a webfont would be the page's
    only network call. */
@@ -60,7 +63,36 @@ main > .scroller { width:min(100%,760px); }
 h1 { font-size:clamp(1.75rem,1.2rem + 2vw,2.15rem); line-height:1.18;
   margin:0 0 .45em; letter-spacing:-.018em; text-wrap:balance; }
 h2 { font-size:1.16rem; margin:2.7em 0 .3em; letter-spacing:-.008em;
-  text-wrap:balance; }
+  text-wrap:balance; scroll-margin-top:18px; }
+/* The heading is its own link, so it must not look like body text that
+   happens to be blue: it keeps the heading's colour and earns an underline
+   and a leading # only on hover, where a reader is already asking what it
+   does. The # is `::before` inside the link so it cannot reflow the heading. */
+.heading-link { color:inherit; text-decoration:none; }
+.heading-link:hover { text-decoration:underline; text-underline-offset:3px; }
+.heading-link:focus-visible { outline:2px solid currentColor; outline-offset:4px;
+  border-radius:3px; }
+.heading-link::before { content:"#"; position:absolute; margin-left:-1.1em;
+  color:var(--axis); opacity:0; }
+.heading-link:hover::before, .heading-link:focus-visible::before { opacity:1; }
+@media (max-width:900px) { .heading-link::before { content:none; } }
+/* Contents. A plain ordered list in the reading column rather than a floating
+   sidebar: the page is one column of argument, and a rail that overlaps the
+   breakout charts would cost more than it saves. */
+.toc { margin:2.2em 0 0; padding:.9em 1.1em .95em; border:1px solid var(--rule);
+  border-radius:4px; background:var(--stripe); }
+.toc-title { font-size:.78rem; text-transform:uppercase; letter-spacing:.06em;
+  color:var(--muted); font-weight:600; margin-bottom:.5em; }
+.toc ol { margin:0; padding:0; list-style:none; counter-reset:toc;
+  display:grid; gap:.32em; }
+.toc li { counter-increment:toc; display:flex; gap:.6em; align-items:baseline; }
+.toc li::before { content:counter(toc); color:var(--axis); font-size:.82rem;
+  font-variant-numeric:tabular-nums; }
+.toc a { color:var(--ink); text-decoration:none; font-size:.95rem;
+  border-bottom:1px solid transparent; }
+.toc a:hover { border-bottom-color:currentColor; }
+.toc a:focus-visible { outline:2px solid currentColor; outline-offset:3px;
+  border-radius:2px; }
 p { margin:0 0 1em; }
 .standfirst { font-size:1.12rem; color:var(--body); }
 /* `margin-block`, never the `margin` shorthand: these blocks are centred on the
@@ -127,7 +159,9 @@ tier. The exception is <strong>age</strong>.</p>
 
 <div class="numbers"><div><b>53.3% → 49.4%</b><span>Allegheny residents with any bus within 400 m of home</span></div><div><b>30.2% → 34.2%</b><span>…with an hourly bus on a weekend</span></div><div><b>−68,989 / +20,095</b><span>people who lose, and gain, any bus at all</span></div></div>
 
-<h2>Losing more is not the same as losing ground</h2>
+<nav class="toc" aria-label="Contents"><div class="toc-title">Contents</div><ol><li><a href="#losing-ground">Losing more is not the same as losing ground</a></li><li><a href="#the-trade">Where the trade landed</a></li><li><a href="#where">Where this happened</a></li><li><a href="#removals">The removals that take the most riders</a></li><li><a href="#caveats">What this does not say</a></li></ol></nav>
+
+<h2 id="losing-ground"><a class="heading-link" href="#losing-ground">Losing more is not the same as losing ground</a></h2>
 <p>Each dot is one group on one tier, placed by how fast it loses service
 compared with the county as a whole (across) and how fast it gains service back
 (up). Dot size is the group's population.</p>
@@ -143,7 +177,7 @@ than 5,000 are not plotted at all. The two dots furthest into the corners are
 “Other race” — 6,773 people, only just over that threshold, and the noisiest
 line in the analysis.</figcaption></figure>
 
-<h2>Where the trade landed</h2>
+<h2 id="the-trade"><a class="heading-link" href="#the-trade">Where the trade landed</a></h2>
 <p>The same result in each group's own percentage points. Every group loses
 some plain coverage and every group gains weekend frequency; what differs is
 the exchange rate. Read the two columns together — sorted by the left one, the
@@ -157,7 +191,7 @@ larger than the plain-coverage losses.</figcaption></figure>
 
 <ul class="legend"><li><span class="swatch" style="background:var(--q-race)"></span>Race <em>· people</em></li><li><span class="swatch" style="background:var(--q-age)"></span>Age <em>· people</em></li><li><span class="swatch" style="background:var(--q-income)"></span>Income <em>· households</em></li><li><span class="swatch" style="background:var(--q-vehicle)"></span>Vehicles <em>· households</em></li><li><span class="swatch" style="background:var(--q-disability)"></span>Disability <em>· people</em></li><li><span class="swatch" style="background:var(--q-language)"></span>Language <em>· households</em></li></ul>
 
-<h2>Where this happened</h2>
+<h2 id="where"><a class="heading-link" href="#where">Where this happened</a></h2>
 <p>The losses are concentrated. Of Allegheny County's 1,062 census block
 groups, 182 lose coverage and 75 gain it; a hundred of them hold 90% of the
 loss. So this is a list rather than a map — and the list says something the
@@ -181,7 +215,7 @@ They have no name to borrow for the same reason they are gaining a bus.</p>
 
 <div class="scroller"><table><thead><tr><th>Place</th><th>Lose all buses</th><th>Gain a bus</th></tr></thead><tbody><tr><td>McKeesport city</td><td class="num">37</td><td class="num">3,222</td></tr><tr><td>Penn Hills municipality</td><td class="num">3,273</td><td class="num">2,397</td></tr><tr><td>Ross township</td><td class="num">6,119</td><td class="num">1,952</td></tr><tr><td>Pine township</td><td class="num">0</td><td class="num">1,368</td></tr><tr><td>Shaler township</td><td class="num">789</td><td class="num">1,092</td></tr><tr><td>West View borough</td><td class="num">0</td><td class="num">1,063</td></tr><tr><td>Brackenridge borough</td><td class="num">122</td><td class="num">978</td></tr><tr><td>Carnegie borough</td><td class="num">364</td><td class="num">928</td></tr><tr><td>Robinson township</td><td class="num">360</td><td class="num">869</td></tr><tr><td>Millvale borough</td><td class="num">0</td><td class="num">630</td></tr><tr><td>Harrison township</td><td class="num">651</td><td class="num">537</td></tr><tr><td>Hampton township</td><td class="num">783</td><td class="num">508</td></tr></tbody></table></div><p class="table-note">These 12 places hold 15,546 of the 20,095 residents that gained it; a further 4,549 are spread across 22 more places. Full list, block group by block group, in <code>data/equity_places.csv</code>.</p>
 
-<h2>The removals that take the most riders</h2>
+<h2 id="removals"><a class="heading-link" href="#removals">The removals that take the most riders</a></h2>
 <p>The page so far counts residents. This counts boardings: of the 5,751
 locations with a bus today, <strong>593 lose every one of them</strong>, and
 between them those locations carry <strong>488 weekday boardings — 0.7% of the
@@ -207,7 +241,7 @@ one of them by 25 km.</p>
 <div class="scroller"><table><thead><tr><th>What loses its bus</th><th>Place</th><th>Stops</th><th>Weekday boardings</th></tr></thead><tbody><tr><td>Highland Dr + Job Corps Dr</td><td>Lincoln-Lemington-Belmar</td><td class="num">1</td><td class="num">30.5</td></tr><tr><td>Presidential Dr</td><td>McCandless township</td><td class="num">3</td><td class="num">19.6</td></tr><tr><td>Bank St</td><td>Sewickley borough</td><td class="num">3</td><td class="num">17.3</td></tr><tr><td>Chartiers Ave</td><td>Chartiers City</td><td class="num">4</td><td class="num">16.3</td></tr><tr><td>Homeville Rd</td><td>West Mifflin borough</td><td class="num">14</td><td class="num">15.0</td></tr><tr><td>Charles St</td><td>Perry South</td><td class="num">2</td><td class="num">11.9</td></tr><tr><td>Kathleen</td><td>Mount Washington</td><td class="num">6</td><td class="num">11.1</td></tr><tr><td>Oxford Dr</td><td>Bethel Park municipality</td><td class="num">2</td><td class="num">11.0</td></tr><tr><td>5th St</td><td>Trafford borough</td><td class="num">2</td><td class="num">10.5</td></tr><tr><td>Chartiers Ave</td><td>Windgap</td><td class="num">2</td><td class="num">10.1</td></tr><tr><td>Custer Ave</td><td>Carrick</td><td class="num">10</td><td class="num">9.9</td></tr><tr><td>Blazier + Giant Eagle</td><td>McCandless township</td><td class="num">1</td><td class="num">9.8</td></tr><tr><td>Perry Hwy opposite Washington Blvd</td><td>Ross township</td><td class="num">1</td><td class="num">9.5</td></tr><tr><td>Village Dr + Groveton Dr</td><td>Robinson township</td><td class="num">1</td><td class="num">8.8</td></tr><tr><td>Village Dr + Lewis</td><td>Robinson township</td><td class="num">1</td><td class="num">8.7</td></tr></tbody></table></div><p class="table-note">These 15 clusters hold 200 of the 488 weekday boardings at locations losing every bus; the remaining 288 are spread across 271 more clusters, many of which board nobody at all. Trafford borough lies outside Allegheny County, so no boundary file here contains it and it is named by PRT's own label instead. Full list, and the strict 150 m sensitivity, in <code>data/removed_ridership.csv</code>.</p>
 
 <div class="note">
-<h2>What this does not say</h2>
+<h2 id="caveats"><a class="heading-link" href="#caveats">What this does not say</a></h2>
 <p><strong>This describes places, not people.</strong> It measures the
 neighbourhoods a group lives in, not its members — a census block group is
 covered or not, and everyone in it is counted the same way. It cannot tell you

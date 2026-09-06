@@ -193,3 +193,52 @@ def test_every_slot_the_prose_file_asks_for_has_a_builder():
     assert brief.SLOT.findall(prose), "the prose file has no evidence slots"
     assert "{" not in prose and "}" not in prose, (
         "the prose file must be plain HTML -- braces would read as templating")
+
+
+# --------------------------------------------------------------------------
+# the contents list and its links
+# --------------------------------------------------------------------------
+
+def test_a_section_heading_without_an_id_is_an_error():
+    """Ids are hand-authored rather than slugged from the words, so that a
+    link someone shared survives a rewrite of the heading it points at. The
+    cost of that choice is that a new section can ship unlinkable; this is
+    what stops it."""
+    with pytest.raises(KeyError, match="no id"):
+        brief.headings("<h2>Where the trade landed</h2>")
+
+
+def test_two_sections_cannot_share_one_fragment():
+    """A duplicate id sends both contents entries to the first section, and
+    the page still renders, so nothing else would notice."""
+    with pytest.raises(KeyError, match="twice"):
+        brief.headings('<h2 id="a">One</h2><h2 id="a">Two</h2>')
+
+
+def test_the_contents_list_names_every_section_in_order():
+    got = brief.headings('<h2 id="b">Second</h2>\n<h1>x</h1>\n'
+                         '<h2 id="a">First <em>bit</em></h2>')
+    assert got == [("b", "Second"), ("a", "First bit")]
+    nav = brief.contents_nav(got)
+    assert nav.index('href="#b"') < nav.index('href="#a"')
+    assert ">Second<" in nav and ">First bit<" in nav
+
+
+def test_clicking_a_heading_moves_the_address_bar_to_that_section():
+    """The heading is itself the link, so a reader who wants to cite a section
+    clicks its title rather than hunting for a pilcrow."""
+    linked = brief.link_headings('<h2 id="removals">The removals</h2>')
+    assert linked == ('<h2 id="removals">'
+                      '<a class="heading-link" href="#removals">'
+                      'The removals</a></h2>')
+
+
+def test_the_real_page_carries_a_contents_list_and_linkable_sections():
+    """Guards the prose file, not a fixture: every section it publishes has a
+    fragment, and the contents list points at all of them."""
+    prose = brief.BODY_HTML.read_text(encoding="utf-8")
+    sections = brief.headings(prose)
+    assert len(sections) >= 5
+    nav = brief.contents_nav(sections)
+    for anchor, text in sections:
+        assert f'href="#{anchor}"' in nav

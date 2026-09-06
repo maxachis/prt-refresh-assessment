@@ -504,6 +504,9 @@ CSS = """
   --q-vehicle:#b494f7; --q-disability:#4fc3d9; --q-language:#d9b455;
 }
 * { box-sizing:border-box; }
+@media (prefers-reduced-motion:no-preference) {
+  html { scroll-behavior:smooth; }
+}
 /* The system stack is a choice, not a default: this file is a repo artifact
    that has to render identically offline, and a webfont would be the page's
    only network call. */
@@ -532,7 +535,36 @@ main > .scroller { width:min(100%,760px); }
 h1 { font-size:clamp(1.75rem,1.2rem + 2vw,2.15rem); line-height:1.18;
   margin:0 0 .45em; letter-spacing:-.018em; text-wrap:balance; }
 h2 { font-size:1.16rem; margin:2.7em 0 .3em; letter-spacing:-.008em;
-  text-wrap:balance; }
+  text-wrap:balance; scroll-margin-top:18px; }
+/* The heading is its own link, so it must not look like body text that
+   happens to be blue: it keeps the heading's colour and earns an underline
+   and a leading # only on hover, where a reader is already asking what it
+   does. The # is `::before` inside the link so it cannot reflow the heading. */
+.heading-link { color:inherit; text-decoration:none; }
+.heading-link:hover { text-decoration:underline; text-underline-offset:3px; }
+.heading-link:focus-visible { outline:2px solid currentColor; outline-offset:4px;
+  border-radius:3px; }
+.heading-link::before { content:"#"; position:absolute; margin-left:-1.1em;
+  color:var(--axis); opacity:0; }
+.heading-link:hover::before, .heading-link:focus-visible::before { opacity:1; }
+@media (max-width:900px) { .heading-link::before { content:none; } }
+/* Contents. A plain ordered list in the reading column rather than a floating
+   sidebar: the page is one column of argument, and a rail that overlaps the
+   breakout charts would cost more than it saves. */
+.toc { margin:2.2em 0 0; padding:.9em 1.1em .95em; border:1px solid var(--rule);
+  border-radius:4px; background:var(--stripe); }
+.toc-title { font-size:.78rem; text-transform:uppercase; letter-spacing:.06em;
+  color:var(--muted); font-weight:600; margin-bottom:.5em; }
+.toc ol { margin:0; padding:0; list-style:none; counter-reset:toc;
+  display:grid; gap:.32em; }
+.toc li { counter-increment:toc; display:flex; gap:.6em; align-items:baseline; }
+.toc li::before { content:counter(toc); color:var(--axis); font-size:.82rem;
+  font-variant-numeric:tabular-nums; }
+.toc a { color:var(--ink); text-decoration:none; font-size:.95rem;
+  border-bottom:1px solid transparent; }
+.toc a:hover { border-bottom-color:currentColor; }
+.toc a:focus-visible { outline:2px solid currentColor; outline-offset:3px;
+  border-radius:2px; }
 p { margin:0 0 1em; }
 .standfirst { font-size:1.12rem; color:var(--body); }
 /* `margin-block`, never the `margin` shorthand: these blocks are centred on the
@@ -786,7 +818,12 @@ def page_body(rows):
     """
     ratio_rows = ratios(rows)
     rolled = ap.by_place(ap.read_located())
-    return fill_slots(BODY_HTML.read_text(encoding="utf-8"), {
+    prose = BODY_HTML.read_text(encoding="utf-8")
+    # The contents list is read off the prose, before the slots are filled:
+    # every section heading lives there, so the list cannot drift from the
+    # page, and no builder has to know what the others are called.
+    return link_headings(fill_slots(prose, {
+        "contents": lambda: contents_nav(headings(prose)),
         "key-numbers": lambda: key_numbers(rows),
         "chart-churn": lambda: churn_scatter(ratio_rows),
         "chart-change": lambda: change_dots(ratio_rows, rows),
@@ -798,10 +835,62 @@ def page_body(rows):
             rolled, "residents", side="gained", unit="residents",
             columns=["Lose all buses", "Gain a bus"]),
         "table-removed": lambda: removed_table(load_removed()),
-    })
+    }))
 
 
 SLOT = re.compile(r"<!--slot:([a-z-]+)-->")
+# A section heading, with the fragment it is addressed by. Ids are written by
+# hand in the prose file rather than slugged from the words, so that a link
+# someone has already shared keeps working when the heading is reworded.
+HEADING = re.compile(r"<h2(?P<attrs>[^>]*)>(?P<text>.*?)</h2>", re.S)
+TAG = re.compile(r"<[^>]+>")
+ID_ATTR = re.compile(r'\bid="([^"]+)"')
+
+
+def headings(html):
+    """The page's sections, as `(fragment, plain-text title)` in page order.
+
+    Raises on a heading with no id and on two headings sharing one, because
+    both fail silently: the first ships a section nothing can link to, and
+    the second sends two contents entries to the same place.
+    """
+    found = []
+    for match in HEADING.finditer(html):
+        anchor = ID_ATTR.search(match.group("attrs"))
+        title = " ".join(TAG.sub("", match.group("text")).split())
+        if not anchor:
+            raise KeyError(f"section heading with no id: {title!r}")
+        if anchor.group(1) in dict(found):
+            raise KeyError(f"fragment #{anchor.group(1)} is used twice")
+        found.append((anchor.group(1), title))
+    return found
+
+
+def contents_nav(sections):
+    """The list of sections at the top of the page."""
+    items = "".join(f'<li><a href="#{a}">{escape(t)}</a></li>'
+                    for a, t in sections)
+    # The label is a plain div, not a heading: `link_headings` turns every
+    # `<h2>` on the page into a link to its own section, and a contents list
+    # that links to itself is a loop with nothing at the end of it.
+    return ('<nav class="toc" aria-label="Contents">'
+            f'<div class="toc-title">Contents</div><ol>{items}</ol></nav>')
+
+
+def link_headings(html):
+    """Make each section heading its own link.
+
+    The heading *is* the anchor rather than carrying a pilcrow beside it: a
+    reader who wants to cite a section clicks its title, and the browser
+    writes the fragment into the address bar for them with no script on the
+    page -- which matters, since the standalone file has none.
+    """
+    def wrap(match):
+        anchor = ID_ATTR.search(match.group("attrs")).group(1)
+        return (f'<h2{match.group("attrs")}>'
+                f'<a class="heading-link" href="#{anchor}">'
+                f'{match.group("text")}</a></h2>')
+    return HEADING.sub(wrap, html)
 
 
 def fill_slots(template, builders):
@@ -860,6 +949,9 @@ APP_CSS = """
   border-radius:3px; }
 .sitebar .where { color:var(--muted); font-size:13px; }
 main { padding-top:34px; }
+/* Clears the sticky bar: without this a heading jumped to by its fragment
+   parks underneath it and the reader lands mid-paragraph. */
+h2 { scroll-margin-top:64px; }
 """
 
 SITE_BAR = ('<nav class="sitebar"><a href="/">← Back to the map</a>'
