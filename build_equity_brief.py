@@ -1,4 +1,4 @@
-"""Build the equity brief -- the charts that carry the EQUITY-* findings.
+"""Build the findings page -- the equity charts, and the removals ranked by riders.
 
 `docs/answers/EQUITY-*.md` answer six questions one file at a time, and the
 finding they share is not in any one of them: read together, the plan's trade
@@ -22,6 +22,15 @@ points of each group's own population, on the two tiers that matter most: any
 bus at all, and an hourly bus on a weekend. Sorted, it is the progressive
 gradient in one picture -- car-free and low-income households at the gaining
 end, the highest income bracket and the over-65s at the losing end.
+
+**The removals ranked by riders** is the page's second half and its second
+denominator. `data/removed_ridership.csv` says which clusters of removed
+locations take the most boardings with them; this file only lays them out. It
+is on the same page as the equity charts deliberately, because the two readings
+correct each other: the boardings say 0.7% of the system's riders are touched,
+the residents say tens of thousands of people are, and either alone is a
+talking point. Convention 15's three conditions -- one-sided, not people,
+circular -- are prose on the page rather than entries in a caveat list.
 
 Scope is Allegheny County at a 400 m walk, the headline denominator and radius
 that `METHOD-equity.md` argues for; the other scopes and the 150 m sensitivity
@@ -48,6 +57,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import analyze_equity_places as ap
+from analyze_removed_ridership import leading_street
 import svgplot as sp
 from svgplot import el, escape, group
 
@@ -56,6 +66,10 @@ DOCS = Path(__file__).resolve().parent / "docs"
 CHANGE_CSV = DATA / "equity_change.csv"
 FREQUENCY_CSV = DATA / "equity_frequency.csv"
 OUT_HTML = DOCS / "equity-brief.html"
+
+# The page's own name, kept beside the paths it writes so the browser tab, the
+# standalone file and the <h1> in `equity_brief_body.html` cannot drift apart.
+PAGE_TITLE = "What the Bus Line Refresh changes, and for whom"
 # The brief's words, as an editable HTML fragment rather than a string
 # literal in this file. See `page_body`.
 BODY_HTML = Path(__file__).resolve().parent / "equity_brief_body.html"
@@ -642,6 +656,125 @@ def place_table(rolled, key, *, side, unit, columns):
             "</p>")
 
 
+# --------------------------------------------------------------------------
+# the removals, ranked by the riders they take
+# --------------------------------------------------------------------------
+#
+# The rest of this page counts residents; this counts boardings, which is a
+# different denominator on the same plan and comes with convention 15's three
+# strings attached. It is one-sided by construction -- there are no observed
+# boardings for a network that has not run -- so it ranks what is at risk and
+# can never score a gain. It is circular, because the Refresh was optimised for
+# today's ridership and this asks whether it hit its own target. And boardings
+# are not people. The prose in `equity_brief_body.html` carries all three; none
+# of them is left to a methods list.
+#
+# Rows are clusters, not stops, because `analyze_removed_ridership.py` groups
+# removals within 150 m of each other. Nothing here re-derives that: this
+# module reads what the analysis published, the way the place tables above do.
+
+REMOVED_CSV = DATA / "removed_ridership.csv"
+# The headline radius, as everywhere else on this page. The 150 m strict
+# same-corner sensitivity stays in the CSV.
+REMOVED_RADIUS = "400"
+REMOVED_ROWS = 15
+# Set by the analysis when no county boundary contains a cluster -- Trafford
+# borough is in Westmoreland -- and it falls back to PRT's own label, which
+# convention 6 distrusts. Shown to the reader rather than smoothed over.
+PRT_LABEL_SOURCE = "prt_label"
+# PRT's own labels carry the county in brackets -- "Trafford borough
+# (Westmoreland, PA)" -- where a boundary name does not. Dropped so one table
+# does not name its places two different ways.
+_LABEL_COUNTY = re.compile(r"\s*\([^)]*\)\s*$")
+
+# PRT writes stop names in capitals, with two suffixes that name the pole
+# rather than the place: FS and NS, far side and near side of the intersection.
+_POLE_SUFFIX = re.compile(r"\s+(?:FS|NS)\b\s*$")
+_ORDINAL = re.compile(r"^(\d+)(ST|ND|RD|TH)$", re.IGNORECASE)
+# Words title-casing would get wrong. "OPP" is PRT's abbreviation for
+# "opposite" and reads as a typo when capitalised.
+_WORD_AS_WRITTEN = {"OPP": "opposite", "OPPOSITE": "opposite", "AT": "at",
+                    "AND": "and", "OF": "of", "THE": "the", "+": "+", "&": "&"}
+
+
+def _pretty_word(word):
+    if word.upper() in _WORD_AS_WRITTEN:
+        return _WORD_AS_WRITTEN[word.upper()]
+    ordinal = _ORDINAL.match(word)
+    if ordinal:
+        return ordinal.group(1) + ordinal.group(2).lower()
+    return word.capitalize() if word.isalpha() else word.title()
+
+
+def pretty_stop_name(name):
+    """A PRT stop name as prose: "5TH ST + CAVIT FS" -> "5th St + Cavit"."""
+    return " ".join(_pretty_word(w)
+                    for w in _POLE_SUFFIX.sub("", name.strip()).split())
+
+
+def load_removed(path=REMOVED_CSV):
+    """The published removals at the headline radius, largest loss first."""
+    if not path.exists():
+        sys.exit(f"missing {path} -- run analyze_removed_ridership.py first")
+    with open(path, encoding="utf-8") as f:
+        rows = [r for r in csv.DictReader(f)
+                if r["radius_m"] == REMOVED_RADIUS]
+    return sorted(rows, key=lambda r: -float(r["weekday_boardings"]))
+
+
+def removed_place(row):
+    """The cluster's place, named the same way whichever source supplied it."""
+    return place_label(_LABEL_COUNTY.sub("", row["place"]))
+
+
+def removed_label(row):
+    """What lost its bus, in one phrase.
+
+    A cluster of several stops is a stretch of street, so it is named by one:
+    the street its members share where they share one, and otherwise the
+    street its busiest stop is on -- the same "follow the riders" rule the
+    analysis uses to decide which municipality contains the cluster. Printing
+    the busiest pole's full name instead would offer "Homeville Rd opposite
+    Duquesne Village Entrance #1" as the name of a 681 m corridor. A cluster
+    of one stop is that stop, named in full.
+    """
+    if int(row["n_stops"]) == 1:
+        return pretty_stop_name(row["top_stop_name"])
+    street = row["primary_street"] or leading_street(row["top_stop_name"])
+    return pretty_stop_name(street)
+
+
+def removed_table(rows):
+    """The largest removals, by the boardings observed at them today."""
+    shown = rows[:REMOVED_ROWS]
+    total = sum(float(r["weekday_boardings"]) for r in rows)
+    body = ""
+    for r in shown:
+        body += (f"<tr><td>{escape(removed_label(r))}</td>"
+                 f"<td>{escape(removed_place(r))}</td>"
+                 f"<td class=\"num\">{int(r['n_stops'])}</td>"
+                 f"<td class=\"num\">{float(r['weekday_boardings']):.1f}</td>"
+                 "</tr>")
+    borrowed = [r for r in shown if r["place_source"] == PRT_LABEL_SOURCE]
+    caveat = ""
+    if borrowed:
+        names = ", ".join(sorted({removed_place(r) for r in borrowed}))
+        caveat = (f" {names} lies outside Allegheny County, so no boundary "
+                  "file here contains it and it is named by PRT's own label "
+                  "instead.")
+    held = sum(float(r["weekday_boardings"]) for r in shown)
+    return ('<div class="scroller"><table><thead><tr>'
+            "<th>What loses its bus</th><th>Place</th><th>Stops</th>"
+            "<th>Weekday boardings</th></tr></thead>"
+            f"<tbody>{body}</tbody></table></div>"
+            f'<p class="table-note">These {len(shown)} clusters hold '
+            f"{held:,.0f} of the {total:,.0f} weekday boardings at locations "
+            f"losing every bus; the remaining {total - held:,.0f} are spread "
+            f"across {len(rows) - len(shown):,} more clusters, many of which "
+            f"board nobody at all.{caveat} Full list, and the strict 150 m "
+            "sensitivity, in <code>data/removed_ridership.csv</code>.</p>")
+
+
 def page_body(rows):
     """The brief's prose, with the generated evidence dropped into its slots.
 
@@ -664,6 +797,7 @@ def page_body(rows):
         "table-gained": lambda: place_table(
             rolled, "residents", side="gained", unit="residents",
             columns=["Lose all buses", "Gain a bus"]),
+        "table-removed": lambda: removed_table(load_removed()),
     })
 
 
@@ -692,7 +826,7 @@ def _html(body, *, theme=None, extra_css="", top=""):
     return (f'<!doctype html>\n<html lang="en"{root}>\n<head>\n'
             '<meta charset="utf-8">\n'
             '<meta name="viewport" content="width=device-width,initial-scale=1">\n'
-            "<title>Who gains and who loses under the Bus Line Refresh</title>\n"
+            f"<title>{PAGE_TITLE}</title>\n"
             f"<style>{CSS}{extra_css}</style>\n</head>\n<body>\n{top}"
             f"<main>\n{body}</main>\n</body>\n</html>\n")
 

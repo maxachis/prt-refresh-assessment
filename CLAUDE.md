@@ -55,6 +55,12 @@ python3 analyze_place_service.py    # -> data/place_service_change.csv (needs
                                     #    place_boundaries.json). How many bus
                                     #    trips touch each named place, per day
                                     #    type, on both networks.
+python3 analyze_removed_ridership.py # -> data/removed_ridership.csv (needs
+                                    #    place_boundaries.json and
+                                    #    coverage_change.csv). The locations
+                                    #    that lose every bus, clustered at
+                                    #    150 m and ranked by the boardings
+                                    #    observed at them today.
 python3 build_webdb.py              # -> data/refresh.db, for the web app only.
                                     #    Now needs ingest_census.py to have run
                                     #    as well: the map's People reading is
@@ -96,7 +102,9 @@ python3 analyze_equity_places.py    # -> data/equity_places.csv (needs place_bou
                                     #    count, and Reserve township publishes 1,430 there
                                     #    against 1,629 ACS-weighted residents lost.
 python3 build_equity_brief.py       # -> docs/equity-brief.html + the app's /findings page
-                                    #    prose lives in equity_brief_body.html
+                                    #    prose lives in equity_brief_body.html.
+                                    #    Also lays out the ranked removals, so
+                                    #    analyze_removed_ridership.py must have run.
 ```
 
 `ingest_census.py` is the only script that ever wants a credential: the Census
@@ -118,7 +126,7 @@ uv sync --extra web && npm install   # one-time
 npm run build                        # frontend/*.ts -> static/app.js
 uv run refresh serve                 # http://127.0.0.1:8000
 
-uv run pytest                        # 295 tests, incl. served == published
+uv run pytest                        # 354 tests, incl. served == published
 npx vitest run && npx tsc --noEmit   # 217 frontend tests
 ```
 
@@ -141,8 +149,9 @@ uses the older nearest-labelled-stop rule, because its place universe is
 places -- "Penn Hills township" against the county's "Penn Hills municipality".
 That divergence is deliberate, bounded and filed:
 [`docs/worklog/two-scripts-now-name-a-place-differently.md`](docs/worklog/two-scripts-now-name-a-place-differently.md). `build_equity_brief.py` reads only published CSVs and re-uses
-`analyze_equity_places.by_place`, so the charts cannot drift from the files
-`docs/answers/` cites. `build_webdb.py` takes the anchor definitions, the HOOD
+`analyze_equity_places.by_place` and `analyze_removed_ridership.leading_street`,
+so the charts cannot drift from the files `docs/answers/` cites and a removal
+is named on the page by the same street rule the analysis used. `build_webdb.py` takes the anchor definitions, the HOOD
 labels and the outlier filter from `analyze_one_seat.py`, so the app's Downtown
 and Oakland are the districts `data/oneseat_change.csv` publishes; it also
 reads both of `analyze_equity_places.py`'s files together and refuses to build
@@ -477,6 +486,26 @@ changes published findings.
     less ground, the street view 22% less pavement, and this says 99.3% of
     boardings untouched. All four are true and each one alone is a talking
     point.
+
+    **Ranked, the removals have no head — and the ranking is by cluster, not
+    by stop.** `analyze_removed_ridership.py` orders the locations that lose
+    every bus by the boardings observed at them, and `/findings` prints the
+    top fifteen. Two rules keep it honest. The unit is a **cluster** of
+    removed locations within 150 m of each other, because PRT splits one
+    corner into two stop ids and a corridor into a dozen: ranked apart, a
+    single loss is listed twice and a corridor sits below its own halves. At
+    400 m the 593 removed locations are 286 clusters, the largest 14 stops
+    over 681 m, and each cluster's span is published beside it so a reader can
+    tell a corner from a corridor. And a cluster is named by the boundary that
+    **contains** its busiest stop, per convention 6 — PRT's own labels put
+    five of the twenty-five largest removals in the wrong municipality, one of
+    them by 25 km, and a cluster outside Allegheny has no boundary to use and
+    says so in `place_source`. What the ranking then says is that there is no
+    head: the largest single removal in the county is about 30 weekday
+    boardings, the top fifteen clusters hold 200 of the 488, and 233 of the
+    593 removed locations board nobody at all. The flatness is the finding. A
+    top-few table read as a list of disasters overstates it; the same table
+    read without the residents on the same page understates who is there.
 
 16. **Service touching a place is a sixth unit, and it is not access.**
     `analyze_place_service.py` counts how many bus trips call at each named

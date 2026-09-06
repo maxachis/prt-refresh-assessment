@@ -975,8 +975,17 @@ wheel now belongs to the host page.
 
 ## The findings page
 
-`/findings` is the one part of the site that is not the map, because the
-question it answers has no location. "Who does this fall on?" is a rate for a
+`/findings` carries two readings of the plan under two denominators —
+**residents**, in the equity charts, and **boardings**, in the ranked removals
+below them. Both are there because either alone is a talking point: the
+boardings say 0.7% of the system's riders are touched, the residents say tens
+of thousands of people are, and convention 15 forbids quoting one without the
+other. The removals ranked by riders answer `STOP-LOST-SERVICE`, which is
+also the map's Riders switch's question; the ranking is by cluster of removed
+locations within 150 m, so one corner split across two stop ids is one row.
+
+It is the one part of the site that is not the map, because the
+question the charts answer has no location. "Who does this fall on?" is a rate for a
 group divided by the county's own rate for the same group's universe — a
 number about a population, not a place — and a map cannot draw a ratio. Nor
 would a choropleth of it be honest: 83% of Allegheny's block groups are
@@ -984,8 +993,8 @@ unchanged, so the picture would be a demographic base map with a scatter of
 colour on it, and every reader would infer the cause from the base map.
 
 So it is a document, and a pre-rendered one. `build_equity_brief.py` writes it
-straight from `data/equity_change.csv` and `data/equity_places.csv`, the same
-files `docs/answers/EQUITY-*.md` cite, into
+straight from `data/equity_change.csv`, `data/equity_places.csv` and
+`data/removed_ridership.csv`, the same files `docs/answers/` cite, into
 `src/refresh/web/static/findings.html` — committed like `static/app.js`, for
 the same reason: the box serves the commit it checks out. Nothing about the
 page is per-request, and no number on it goes through `query.py`. Rebuild it

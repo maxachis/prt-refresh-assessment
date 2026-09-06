@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Who gains and who loses under the Bus Line Refresh</title>
+<title>What the Bus Line Refresh changes, and for whom</title>
 <style>
 /* Light is the base palette; the two blocks below redefine only the tokens, so
    a colour never has its single definition inside a theme block. The inline
@@ -116,12 +116,14 @@ code { font-size:.9em; background:var(--code-bg); padding:.1em .35em;
 </head>
 <body>
 <main>
-<h1>Who gains and who loses under the Bus Line Refresh</h1>
-<p class="standfirst">Coverage at every populated census block in Allegheny County, weighted by who
-lives there. Read across all six equity questions at once, the plan's trade
-runs <strong>progressive</strong> — car-free, low-income and Black residents
-come out ahead of the county on nearly every tier. The exception is
-<strong>age</strong>.</p>
+<h1>What the Bus Line Refresh changes, and for whom</h1>
+<p class="standfirst">Two readings of one plan. <strong>Who gains and who loses coverage</strong>,
+measured at every populated census block in Allegheny County and weighted by
+who lives there — and <strong>which removals take the most riders</strong>,
+measured at the stops people board today. Read across all six equity questions
+at once, the plan's trade runs <strong>progressive</strong> — car-free,
+low-income and Black residents come out ahead of the county on nearly every
+tier. The exception is <strong>age</strong>.</p>
 
 <div class="numbers"><div><b>53.3% → 49.4%</b><span>Allegheny residents with any bus within 400 m of home</span></div><div><b>30.2% → 34.2%</b><span>…with an hourly bus on a weekend</span></div><div><b>−68,989 / +20,095</b><span>people who lose, and gain, any bus at all</span></div></div>
 
@@ -179,6 +181,31 @@ They have no name to borrow for the same reason they are gaining a bus.</p>
 
 <div class="scroller"><table><thead><tr><th>Place</th><th>Lose all buses</th><th>Gain a bus</th></tr></thead><tbody><tr><td>McKeesport city</td><td class="num">37</td><td class="num">3,222</td></tr><tr><td>Penn Hills municipality</td><td class="num">3,273</td><td class="num">2,397</td></tr><tr><td>Ross township</td><td class="num">6,119</td><td class="num">1,952</td></tr><tr><td>Pine township</td><td class="num">0</td><td class="num">1,368</td></tr><tr><td>Shaler township</td><td class="num">789</td><td class="num">1,092</td></tr><tr><td>West View borough</td><td class="num">0</td><td class="num">1,063</td></tr><tr><td>Brackenridge borough</td><td class="num">122</td><td class="num">978</td></tr><tr><td>Carnegie borough</td><td class="num">364</td><td class="num">928</td></tr><tr><td>Robinson township</td><td class="num">360</td><td class="num">869</td></tr><tr><td>Millvale borough</td><td class="num">0</td><td class="num">630</td></tr><tr><td>Harrison township</td><td class="num">651</td><td class="num">537</td></tr><tr><td>Hampton township</td><td class="num">783</td><td class="num">508</td></tr></tbody></table></div><p class="table-note">These 12 places hold 15,546 of the 20,095 residents that gained it; a further 4,549 are spread across 22 more places. Full list, block group by block group, in <code>data/equity_places.csv</code>.</p>
 
+<h2>The removals that take the most riders</h2>
+<p>The page so far counts residents. This counts boardings: of the 5,751
+locations with a bus today, <strong>593 lose every one of them</strong>, and
+between them those locations carry <strong>488 weekday boardings — 0.7% of the
+system's 67,619</strong>. That ratio is the plan's own argument, stated in its
+own currency. The Refresh is a redesign that concentrates service where
+ridership already is, and scored against today's riders it did the thing it was
+built to do.</p>
+
+<p>Ranked, the removals have no head. The largest single loss in the county is
+about thirty boardings a day, and <strong>233 of the 593 removed locations
+board nobody at all</strong>. This is a long list of small, scattered losses,
+not a short list of disasters — which is exactly why it needs to be read beside
+the residents above, who are numerous even where the boardings are not.</p>
+
+<p>Each row groups removed locations within 150 m of one another. PRT splits a
+single corner into two stop ids and a corridor into a dozen, so ranking stop
+ids apart would list one loss twice and bury a corridor below its own halves.
+The place is the municipality or neighbourhood whose boundary <em>contains</em>
+the cluster's busiest stop, not the label PRT files the stop under — those
+labels put five of the twenty-five largest removals in the wrong municipality,
+one of them by 25 km.</p>
+
+<div class="scroller"><table><thead><tr><th>What loses its bus</th><th>Place</th><th>Stops</th><th>Weekday boardings</th></tr></thead><tbody><tr><td>Highland Dr + Job Corps Dr</td><td>Lincoln-Lemington-Belmar</td><td class="num">1</td><td class="num">30.5</td></tr><tr><td>Presidential Dr</td><td>McCandless township</td><td class="num">3</td><td class="num">19.6</td></tr><tr><td>Bank St</td><td>Sewickley borough</td><td class="num">3</td><td class="num">17.3</td></tr><tr><td>Chartiers Ave</td><td>Chartiers City</td><td class="num">4</td><td class="num">16.3</td></tr><tr><td>Homeville Rd</td><td>West Mifflin borough</td><td class="num">14</td><td class="num">15.0</td></tr><tr><td>Charles St</td><td>Perry South</td><td class="num">2</td><td class="num">11.9</td></tr><tr><td>Kathleen</td><td>Mount Washington</td><td class="num">6</td><td class="num">11.1</td></tr><tr><td>Oxford Dr</td><td>Bethel Park municipality</td><td class="num">2</td><td class="num">11.0</td></tr><tr><td>5th St</td><td>Trafford borough</td><td class="num">2</td><td class="num">10.5</td></tr><tr><td>Chartiers Ave</td><td>Windgap</td><td class="num">2</td><td class="num">10.1</td></tr><tr><td>Custer Ave</td><td>Carrick</td><td class="num">10</td><td class="num">9.9</td></tr><tr><td>Blazier + Giant Eagle</td><td>McCandless township</td><td class="num">1</td><td class="num">9.8</td></tr><tr><td>Perry Hwy opposite Washington Blvd</td><td>Ross township</td><td class="num">1</td><td class="num">9.5</td></tr><tr><td>Village Dr + Groveton Dr</td><td>Robinson township</td><td class="num">1</td><td class="num">8.8</td></tr><tr><td>Village Dr + Lewis</td><td>Robinson township</td><td class="num">1</td><td class="num">8.7</td></tr></tbody></table></div><p class="table-note">These 15 clusters hold 200 of the 488 weekday boardings at locations losing every bus; the remaining 288 are spread across 271 more clusters, many of which board nobody at all. Trafford borough lies outside Allegheny County, so no boundary file here contains it and it is named by PRT's own label instead. Full list, and the strict 150 m sensitivity, in <code>data/removed_ridership.csv</code>.</p>
+
 <div class="note">
 <h2>What this does not say</h2>
 <p><strong>This describes places, not people.</strong> It measures the
@@ -189,6 +216,16 @@ that any particular person gained or lost a bus.</p>
 answer.</strong> By location the plan is roughly service-neutral; by area it
 covers about 12% less ground. Quote this page beside those, never instead of
 them.</p>
+<p><strong>Riders can only be counted where buses already run.</strong> The
+boardings are observed counts from May 2025, so they exist for service that
+runs today and can never exist for a network that has not. The ranking is a
+list of what is at risk and is not a balance sheet: the places the plan
+<em>adds</em> a bus to score no riders, not because nobody will use them but
+because nobody can have yet.</p>
+<p><strong>A boarding is not a rider.</strong> These are unlinked and
+unweighted, so one person's round trip with a transfer is up to four of them.
+PRT calls its own figures unadjusted, unofficial totals that may understate
+ridership by up to 30%.</p>
 <p><strong>Disability and language are tract-level estimates</strong> shared
 down to block groups by population, so they assume a uniform rate across a
 whole tract. Treat them as indicative.</p>
@@ -200,9 +237,12 @@ measured here.</p>
 <footer>
 <p>Generated by <code>build_equity_brief.py</code> from
 <code>data/equity_change.csv</code>, which
-<code>analyze_equity_change.py</code> writes. Method, and the eight caveats in
-full, in <code>docs/answers/METHOD-equity.md</code>; the six questions in
-<code>docs/answers/EQUITY-*.md</code>.</p>
+<code>analyze_equity_change.py</code> writes, and from
+<code>data/removed_ridership.csv</code>, which
+<code>analyze_removed_ridership.py</code> writes. Method, and the eight caveats
+in full, in <code>docs/answers/METHOD-equity.md</code>; the six equity
+questions in <code>docs/answers/EQUITY-*.md</code> and the removals in
+<code>docs/answers/STOP-LOST-SERVICE.md</code>.</p>
 <p>Current service from PRT's published GTFS; proposed service from the GTFS
 PRT supplied to Pittsburghers for Public Transit on request. Demographics from
 the 2020 Census and the 2020–2024 American Community Survey. Independent

@@ -53,22 +53,54 @@ Y45, Y47), which never appear in
 [LOSE-SERVICE-DAYS.md](LOSE-SERVICE-DAYS.md)'s route-level answer. Only the
 stop-level view catches them.
 
-## Busiest locations losing all service
+## The removals that take the most riders
 
-| Weekday boardings | Stop | Place | Routes today |
-|---:|---|---|---|
-| 30.5 | HIGHLAND DR + JOB CORPS DR | Lincoln–Lemington | 74 |
-| 13.3 | BANK ST + WALNUT | Sewickley | 21 |
-| 10.7 | OXFORD DR + GIANT EAGLE | Bethel Park | 36 |
-| 10.3 | CHARLES ST + IRWIN | Perry South | 15 |
-| 9.8 | BLAZIER + GIANT EAGLE | McCandless | 12, O12 |
-| 8.8 | 5TH ST + CAVIT | Trafford | 69, P69 |
+Ranked by the boardings observed at them today (`analyze_removed_ridership.py`
+→ `data/removed_ridership.csv`; the same table is on the site at `/findings`).
+The unit is a **cluster** of removed locations within 150 m of one another, not
+a stop id: PRT splits one corner into two ids and a corridor into a dozen, so a
+stop-level ranking lists a single loss twice at half its weight and drops a
+corridor below its own halves. The place is the boundary that *contains* the
+cluster's busiest stop, because PRT's own labels put five of the twenty-five
+largest removals in the wrong municipality — Presidential Dr, the second-largest
+loss here, is labelled Duquesne and is in McCandless, 25 km away.
 
-No location losing all service carries more than about 31 weekday boardings. The
-losses are broad and thin rather than concentrated — the opposite shape from the
-frequency changes, where a few busy corridors move a great deal
-([LOSE-FREQUENCY-HALF.md](LOSE-FREQUENCY-HALF.md)). Two of the six are a
-supermarket stop.
+| Weekday boardings | What loses its bus | Place | Stops | Span | Routes today |
+|---:|---|---|---:|---:|---|
+| 30.5 | HIGHLAND DR + JOB CORPS DR | Lincoln-Lemington-Belmar | 1 | — | 74 |
+| 19.6 | PRESIDENTIAL DR | McCandless township | 3 | 139 m | O5 |
+| 17.3 | BANK ST | Sewickley borough | 3 | 201 m | 21 |
+| 16.3 | CHARTIERS AVE | Chartiers City | 4 | 155 m | 27 |
+| 15.0 | HOMEVILLE RD | West Mifflin borough | 14 | 681 m | 52L |
+| 11.9 | CHARLES ST | Perry South | 2 | 15 m | 15 |
+| 11.1 | KATHLEEN | Mount Washington | 6 | 268 m | 43 |
+| 11.0 | OXFORD DR | Bethel Park municipality | 2 | 30 m | 36 |
+| 10.5 | 5TH ST | Trafford borough | 2 | 80 m | 69, P69 |
+| 10.1 | CHARTIERS AVE | Windgap | 2 | 52 m | 27 |
+| 9.9 | CUSTER AVE | Carrick | 10 | 624 m | 44 |
+| 9.8 | BLAZIER + GIANT EAGLE | McCandless township | 1 | — | 12, O12 |
+| 9.5 | PERRY HWY OPP WASHINGTON BLVD | Ross township | 1 | — | O12 |
+| 8.8 | VILLAGE DR + GROVETON DR | Robinson township | 1 | — | 20 |
+| 8.7 | VILLAGE DR + LEWIS | Robinson township | 1 | — | 20 |
+
+**The ranking has no head, and that is the finding.** The 593 removed locations
+are 286 clusters; these fifteen hold 200 of the 488 weekday boardings at stake
+and the largest single one is about thirty a day. **233 of the 593 board nobody
+at all.** The losses are broad and thin rather than concentrated — the opposite
+shape from the frequency changes, where a few busy corridors move a great deal
+([LOSE-FREQUENCY-HALF.md](LOSE-FREQUENCY-HALF.md)).
+
+Three caveats travel with every figure in this table, per convention 15.
+Boardings are **one-sided**: they are observed May 2025 counts, so they exist
+for service that runs today and never for a network that has not run — this
+ranks what is at risk and can never score what the plan adds. They are **not
+people**: unlinked and unweighted, so one round trip with a transfer is up to
+four of them, and PRT calls its own figures unadjusted, unofficial totals that
+may understate ridership by up to 30%. And the measure is **circular** — the
+Refresh concentrates service where ridership already is, so scoring it against
+today's riders asks whether it did the thing it was built to do. Trafford
+borough is in Westmoreland County, outside the boundary file, so it alone in
+this table is named by PRT's own label.
 
 ## Cross-validation
 
@@ -132,4 +164,7 @@ Shared method and caveats: [METHOD-coverage.md](METHOD-coverage.md).
 python3 analyze_coverage_change.py   # -> data/coverage_change.csv
 python3 analyze_service_loss.py      # -> data/stop_service_change.csv (the
                                      #    independent Remix-based comparison)
+python3 analyze_removed_ridership.py # -> data/removed_ridership.csv (the
+                                     #    ranking above; needs
+                                     #    ingest_boundaries.py to have run)
 ```
