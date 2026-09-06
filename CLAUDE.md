@@ -489,8 +489,11 @@ changes published findings.
 
     **Ranked, the removals have no head — and the ranking is by cluster, not
     by stop.** `analyze_removed_ridership.py` orders the locations that lose
-    every bus by the boardings observed at them, and `/findings` prints the
-    top fifteen. Two rules keep it honest. The unit is a **cluster** of
+    every bus by the boardings observed at them, and `/findings` prints all
+    286 of them, ranked, with a place index above the list and a link from
+    each row to the map at that cluster's busiest stop (`top_lat`/`top_lon`,
+    never the centroid, which on a long corridor can fall in a municipality
+    the row does not name). Three rules keep it honest. The unit is a **cluster** of
     removed locations within 150 m of each other, because PRT splits one
     corner into two stop ids and a corridor into a dozen: ranked apart, a
     single loss is listed twice and a corridor sits below its own halves. At
@@ -503,9 +506,11 @@ changes published findings.
     says so in `place_source`. What the ranking then says is that there is no
     head: the largest single removal in the county is about 30 weekday
     boardings, the top fifteen clusters hold 200 of the 488, and 233 of the
-    593 removed locations board nobody at all. The flatness is the finding. A
-    top-few table read as a list of disasters overstates it; the same table
-    read without the residents on the same page understates who is there.
+    593 removed locations board nobody at all — 59 of the 286 clusters. The
+    flatness is the finding, which is why the page publishes the whole tail
+    rather than a top few: a truncated table reads as a list of disasters and
+    overstates it, and the same table read without the residents on the same
+    page understates who is there.
 
 16. **Service touching a place is a sixth unit, and it is not access.**
     `analyze_place_service.py` counts how many bus trips call at each named

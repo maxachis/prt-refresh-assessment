@@ -53,6 +53,7 @@ import argparse
 import csv
 import re
 import sys
+from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -521,7 +522,7 @@ body { margin:0; padding:0; color:var(--ink); background:var(--page);
 main { display:grid; padding:52px 24px 80px; column-gap:0;
   grid-template-columns:minmax(0,1fr) min(68ch,100%) minmax(0,1fr); }
 main > * { grid-column:2; }
-main > figure, main > .scroller, main > .numbers {
+main > figure, main > .scroller, main > .numbers, main > .removals-block {
   grid-column:1 / -1; margin-inline:auto; }
 /* Each kind of evidence gets the width it actually needs. The charts want
    room; a three-column table stretched to 1060px is mostly the gap between a
@@ -531,6 +532,10 @@ main > figure, main > .scroller, main > .numbers {
 main > figure { width:min(100%,860px); }
 main > .numbers { width:min(100%,880px); }
 main > .scroller { width:min(100%,760px); }
+/* The removals list is 286 rows of street, place and two numbers. At
+   reading width the place column wraps on every second row and the eye
+   loses the ranking, so it breaks out like the other evidence. */
+main > .removals-block { width:min(100%,880px); }
 
 h1 { font-size:clamp(1.75rem,1.2rem + 2vw,2.15rem); line-height:1.18;
   margin:0 0 .45em; letter-spacing:-.018em; text-wrap:balance; }
@@ -616,6 +621,57 @@ td.num, th:not(:first-child) { text-align:right; font-variant-numeric:tabular-nu
 tbody tr:nth-child(even) { background:var(--stripe); }
 code { font-size:.9em; background:var(--code-bg); padding:.1em .35em;
   border-radius:3px; }
+
+/* The full removals list. 286 rows, so it is the one table on the page a
+   reader scrolls rather than reads: the header sticks, and it carries no
+   `min-width`, because the alternative is a horizontal scrollbar under a
+   table three screens tall. */
+/* `separate` against the page's usual `collapse`: with collapsed borders a
+   sticky header's background is painted by the table rather than the cell, so
+   the rows scroll *through* the header instead of under it. Spacing 0 keeps
+   it looking collapsed, and the shared `th, td` bottom border still draws the
+   rules. */
+.removals { min-width:0; font-size:.88rem;
+  border-collapse:separate; border-spacing:0; }
+.removals thead th { position:sticky; top:0; z-index:1; background:var(--page); }
+.removals td { vertical-align:top; }
+.removals .rank { color:var(--axis); font-variant-numeric:tabular-nums;
+  width:3.2em; text-align:right; padding-right:1em; }
+.removals a { color:inherit; text-decoration:none;
+  border-bottom:1px solid var(--rule); }
+.removals a:hover { border-bottom-color:currentColor; }
+.removals a:focus-visible { outline:2px solid currentColor; outline-offset:2px;
+  border-radius:2px; }
+/* The index into that list: 39 places, wrapped, so a resident can find their
+   own without reading a county-wide ranking end to end. */
+.places-index { margin:1.6em 0 .4em; padding:.9em 1.1em .3em;
+  border:1px solid var(--rule); border-radius:4px; background:var(--stripe); }
+.places-index ul { list-style:none; display:flex; flex-wrap:wrap;
+  gap:.35em 1.1em; padding:0; margin:0 0 .2em; font-size:.9rem; }
+.places-index a { color:var(--ink); text-decoration:none;
+  border-bottom:1px solid transparent; }
+.places-index a:hover { border-bottom-color:currentColor; }
+.places-index a:focus-visible { outline:2px solid currentColor;
+  outline-offset:3px; border-radius:2px; }
+.places-index .count { color:var(--axis); margin-left:.3em;
+  font-variant-numeric:tabular-nums; }
+.places-index .table-note { margin:.2em 0 .7em; }
+/* On a phone the five columns force the page itself to scroll sideways, which
+   nothing else here does. The stop count is the column a reader can lose --
+   the street, the place and the riders are the row -- and it stays in the CSV
+   and on the wider screen. Word wrapping is left alone: breaking "McCandless"
+   across two lines to save 40 px trades one kind of unreadable for another. */
+@media (max-width:560px) {
+  .removals { font-size:.84rem; }
+  .removals th, .removals td { padding:.42em .5em; }
+  .removals th:nth-child(4), .removals td:nth-child(4) { display:none; }
+  .removals .rank { width:2.2em; padding-right:.4em; }
+}
+/* A jumped-to row has to be findable once the page stops moving -- 286 near
+   identical rows and no highlight means landing nowhere. */
+.removals tr:target td { background:var(--note-bg);
+  box-shadow:inset 3px 0 0 var(--note-edge); }
+.removals tr { scroll-margin-top:44px; }
 """
 
 
@@ -709,7 +765,23 @@ REMOVED_CSV = DATA / "removed_ridership.csv"
 # The headline radius, as everywhere else on this page. The 150 m strict
 # same-corner sensitivity stays in the CSV.
 REMOVED_RADIUS = "400"
-REMOVED_ROWS = 15
+
+# Where a row's link sends a reader: the map, asked the same question the
+# table answers -- locations, a weekday, the headline walk -- at the cluster's
+# busiest stop. The map reads all of this out of its own address bar
+# (`frontend/urlstate.ts` PARAM), so a link is a URL this file writes and
+# needs nothing of the app.
+MAP_VIEW = "dots"
+MAP_DAY = "weekday"
+# Close enough to see which corner, wide enough to show the walk circle.
+MAP_ZOOM = "16.00"
+# The app writes ~1 m; finer would be publishing a stop's survey precision as
+# though the walk radius respected it.
+MAP_COORD_DP = 5
+# The deployed map. The standalone file is read from disk and sent as an
+# attachment, so its links have to leave the filesystem; the served copy uses
+# a relative base and therefore never sends a reader off the box it is on.
+MAP_SITE = "https://prt-refresh.lemaliconsulting.com"
 # Set by the analysis when no county boundary contains a cluster -- Trafford
 # borough is in Westmoreland -- and it falls back to PRT's own label, which
 # convention 6 distrusts. Shown to the reader rather than smoothed over.
@@ -776,38 +848,114 @@ def removed_label(row):
     return pretty_stop_name(street)
 
 
-def removed_table(rows):
-    """The largest removals, by the boardings observed at them today."""
-    shown = rows[:REMOVED_ROWS]
-    total = sum(float(r["weekday_boardings"]) for r in rows)
+def removed_table(rows, *, base):
+    """Every cluster that loses its bus, ranked by the riders it takes.
+
+    The whole list, down through the clusters that board nobody, because the
+    flatness *is* the finding (convention 15): a top-few table reads as a list
+    of disasters, and the tail is the evidence that it is not one. Each row
+    links back to the map at its busiest stop, so a reader who finds their own
+    street here can see what else is within a walk of it.
+    """
+    ranked = rank_removed(rows)
+    total = sum(float(r["weekday_boardings"]) for r in ranked)
     body = ""
-    for r in shown:
-        body += (f"<tr><td>{escape(removed_label(r))}</td>"
+    for rank, r in enumerate(ranked, start=1):
+        # One row per line: this file is committed, and 286 rows on a single
+        # line make every future change to the list an unreadable diff.
+        body += (f'\n<tr id="{row_anchor(rank)}">'
+                 f'<td class="rank">{rank}</td>'
+                 f'<td><a href="{escape(map_link(r, base=base))}">'
+                 f"{escape(removed_label(r))}</a></td>"
                  f"<td>{escape(removed_place(r))}</td>"
                  f"<td class=\"num\">{int(r['n_stops'])}</td>"
                  f"<td class=\"num\">{float(r['weekday_boardings']):.1f}</td>"
                  "</tr>")
-    borrowed = [r for r in shown if r["place_source"] == PRT_LABEL_SOURCE]
-    caveat = ""
-    if borrowed:
-        names = ", ".join(sorted({removed_place(r) for r in borrowed}))
-        caveat = (f" {names} lies outside Allegheny County, so no boundary "
-                  "file here contains it and it is named by PRT's own label "
-                  "instead.")
-    held = sum(float(r["weekday_boardings"]) for r in shown)
-    return ('<div class="scroller"><table><thead><tr>'
-            "<th>What loses its bus</th><th>Place</th><th>Stops</th>"
-            "<th>Weekday boardings</th></tr></thead>"
-            f"<tbody>{body}</tbody></table></div>"
-            f'<p class="table-note">These {len(shown)} clusters hold '
-            f"{held:,.0f} of the {total:,.0f} weekday boardings at locations "
-            f"losing every bus; the remaining {total - held:,.0f} are spread "
-            f"across {len(rows) - len(shown):,} more clusters, many of which "
-            f"board nobody at all.{caveat} Full list, and the strict 150 m "
-            "sensitivity, in <code>data/removed_ridership.csv</code>.</p>")
+    silent = sum(1 for r in ranked if float(r["weekday_boardings"]) == 0)
+    return ('<div class="removals-block">'
+            + place_index(ranked)
+            + '<table class="removals"><thead><tr>'
+            "<th>#</th><th>What loses its bus</th><th>Place</th>"
+            "<th>Stops</th><th>Weekday boardings</th></tr></thead>"
+            f"<tbody>{body}</tbody></table>"
+            f'<p class="table-note">All {len(ranked):,} clusters, holding '
+            f"{total:,.0f} weekday boardings between them; "
+            f"{silent:,} of them board nobody at all.{borrowed_caveat(ranked)} "
+            "Each name opens the map at that cluster's busiest stop. The "
+            "strict 150 m sensitivity is in "
+            "<code>data/removed_ridership.csv</code>.</p></div>")
 
 
-def page_body(rows):
+def rank_removed(rows):
+    """Ranked by weekday boardings, then by place, then by what lost the bus.
+
+    The tie-break is not decoration: 59 of the 286 clusters board nobody, and
+    a sort on boardings alone leaves their order to whatever the CSV happened
+    to hold, which reshuffles the tail of the page on every rebuild and buries
+    a real change in the diff.
+    """
+    return sorted(rows, key=lambda r: (-float(r["weekday_boardings"]),
+                                       removed_place(r), removed_label(r)))
+
+
+def row_anchor(rank):
+    """A row's fragment, so the place index can point into the ranking."""
+    return f"r{rank}"
+
+
+def map_link(row, *, base):
+    """The map, opened at this cluster's busiest stop.
+
+    At `top_lat`/`top_lon`, never the published centroid: the centroid of a
+    681 m corridor can fall in the next municipality from the one this row
+    names, and a link that lands there contradicts the place beside it.
+    """
+    at = (f'{float(row["top_lat"]):.{MAP_COORD_DP}f},'
+          f'{float(row["top_lon"]):.{MAP_COORD_DP}f}')
+    return (f"{base}/?view={MAP_VIEW}&day={MAP_DAY}&radius={REMOVED_RADIUS}"
+            f"&at={at}&map={at},{MAP_ZOOM}")
+
+
+def place_index(ranked):
+    """The places that lose something, alphabetically, each with its count.
+
+    The list below it is ranked county-wide, which is the right order for the
+    finding and the wrong one for a resident looking for their own
+    neighbourhood among 286 rows. A place's chip lands on its largest loss;
+    the count says how many more of its clusters sit further down.
+    """
+    first, counts = {}, Counter()
+    for rank, r in enumerate(ranked, start=1):
+        place = removed_place(r)
+        counts[place] += 1
+        first.setdefault(place, rank)
+    chips = "".join(
+        f'<li><a href="#{row_anchor(first[p])}">{escape(p)}</a>'
+        f'<span class="count">({counts[p]})</span></li>'
+        for p in sorted(first))
+    return ('<nav class="places-index" aria-label="Places losing service">'
+            f'<div class="toc-title">{len(first)} places lose a bus '
+            "somewhere</div>"
+            f"<ul>{chips}</ul>"
+            '<p class="table-note">Alphabetical. Each jumps to that place\'s '
+            "largest loss; the list itself is ranked across the county, so "
+            "its other clusters sit further down.</p></nav>")
+
+
+def borrowed_caveat(ranked):
+    """Name the rows that rest on PRT's own label rather than a boundary."""
+    borrowed = sorted({removed_place(r) for r in ranked
+                       if r["place_source"] == PRT_LABEL_SOURCE})
+    if not borrowed:
+        return ""
+    names = ", ".join(borrowed)
+    verb = "lies" if len(borrowed) == 1 else "lie"
+    return (f" {names} {verb} outside Allegheny County, so no boundary file "
+            "here contains it and it is named by PRT's own label instead.")
+
+
+
+def page_body(rows, *, map_base):
     """The brief's prose, with the generated evidence dropped into its slots.
 
     The words live in `equity_brief_body.html` rather than in this file, so
@@ -834,7 +982,8 @@ def page_body(rows):
         "table-gained": lambda: place_table(
             rolled, "residents", side="gained", unit="residents",
             columns=["Lose all buses", "Gain a bus"]),
-        "table-removed": lambda: removed_table(load_removed()),
+        "table-removed": lambda: removed_table(load_removed(),
+                                               base=map_base),
     }))
 
 
@@ -952,6 +1101,10 @@ main { padding-top:34px; }
 /* Clears the sticky bar: without this a heading jumped to by its fragment
    parks underneath it and the reader lands mid-paragraph. */
 h2 { scroll-margin-top:64px; }
+/* Same bar, two more things that would hide under it: the removals table's
+   own sticky header, and a row jumped to from the place index. */
+.removals thead th { top:44px; }
+.removals tr { scroll-margin-top:88px; }
 """
 
 SITE_BAR = ('<nav class="sitebar"><a href="/">← Back to the map</a>'
@@ -966,15 +1119,22 @@ def main():
     args = parser.parse_args()
 
     rows = load()
-    body = page_body(rows)
     if args.fragment:
         # Keep the <main> wrapper: the whole layout is `main > *` grid
         # placement, and a fragment without it loses the reading column.
+        # A fragment is pasted into someone else's site, so its links leave
+        # for the deployed map the way the standalone file's do.
+        body = page_body(rows, map_base=MAP_SITE)
         sys.stdout.write(f"<style>{CSS}</style>\n<main>{body}</main>\n")
         return
 
-    OUT_HTML.write_text(document(body), encoding="utf-8")
-    APP_HTML.write_text(app_page(body), encoding="utf-8")
+    # Built twice, because the two copies differ in one thing beyond the
+    # theme: where a removal's link goes. Cheap -- the charts are drawn from
+    # CSVs already in memory.
+    OUT_HTML.write_text(document(page_body(rows, map_base=MAP_SITE)),
+                        encoding="utf-8")
+    APP_HTML.write_text(app_page(page_body(rows, map_base="")),
+                        encoding="utf-8")
     charted = {r.group for r in ratios(rows)}
     print(f"wrote {OUT_HTML.relative_to(OUT_HTML.parent.parent)} "
           f"-- {len(charted)} groups, {len(SCATTER_TIERS)} tiers, "

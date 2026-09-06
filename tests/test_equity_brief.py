@@ -242,3 +242,75 @@ def test_the_real_page_carries_a_contents_list_and_linkable_sections():
     nav = brief.contents_nav(sections)
     for anchor, text in sections:
         assert f'href="#{anchor}"' in nav
+
+
+# --------------------------------------------------------------------------
+# the full removals list, and its links back to the map
+# --------------------------------------------------------------------------
+
+def removed_row(**kw):
+    r = {"radius_m": "400", "cluster_id": "1", "place": "Ross township",
+         "place_source": "boundary", "primary_street": "PERRY HWY",
+         "top_stop_id": "9", "top_stop_name": "PERRY HWY + SIEBERT RD",
+         "top_lat": "40.512300", "top_lon": "-80.012300", "n_stops": "2",
+         "span_m": "120", "lat": "40.5", "lon": "-80.0",
+         "weekday_boardings": "4.0", "saturday_boardings": "1.0",
+         "sunday_boardings": "0.0", "current_routes": "O5", "stop_ids": "9;10"}
+    r.update({k: str(v) for k, v in kw.items()})
+    return r
+
+
+def test_every_cluster_reaches_the_page_including_the_ones_boarding_nobody():
+    """The flatness is the finding (convention 15), so the tail is the
+    evidence and truncating it is what a top-few table gets wrong."""
+    rows = [removed_row(cluster_id=i, weekday_boardings=w)
+            for i, w in enumerate([9.0, 0.0, 3.0, 0.0])]
+    html = brief.removed_table(rows, base="")
+    assert html.count("<tr") == len(rows) + 1          # + the header row
+    assert ">0.0<" in html
+
+
+def test_the_list_is_ranked_by_riders_with_a_stable_order_through_the_zeros():
+    """Below a boarding or two the ordering carries no information, so ties
+    fall back to place and then to the street -- otherwise the tail reshuffles
+    on every rebuild and the diff is unreadable."""
+    rows = [removed_row(place="Ross township", primary_street="B",
+                        weekday_boardings=0.0),
+            removed_row(place="Baldwin borough", primary_street="C",
+                        weekday_boardings=0.0),
+            removed_row(place="Baldwin borough", primary_street="A",
+                        weekday_boardings=0.0),
+            removed_row(place="Zelienople", primary_street="D",
+                        weekday_boardings=7.0)]
+    ranked = brief.rank_removed(rows)
+    assert [(r["place"], r["primary_street"]) for r in ranked] == [
+        ("Zelienople", "D"), ("Baldwin borough", "A"),
+        ("Baldwin borough", "C"), ("Ross township", "B")]
+
+
+def test_a_row_links_to_the_map_at_its_busiest_stop_not_the_centroid():
+    """The centroid of a corridor can sit in a municipality the row does not
+    name; the busiest stop is where the place name was decided."""
+    link = brief.map_link(removed_row(), base="")
+    assert "at=40.51230,-80.01230" in link
+    assert "at=40.50000,-80.00000" not in link   # the centroid
+
+
+def test_the_standalone_file_links_out_to_the_live_site():
+    """Opened from disk or sent as an attachment, a relative link is dead."""
+    assert brief.map_link(removed_row(), base=brief.MAP_SITE).startswith(
+        "https://")
+    assert brief.map_link(removed_row(), base="").startswith("/?")
+
+
+def test_the_place_index_names_every_place_once_and_points_into_the_list():
+    """39 places over 286 rows: the index is how a resident finds their own
+    without reading a county-wide ranking end to end."""
+    rows = [removed_row(place="Ross township", weekday_boardings=1.0),
+            removed_row(place="Baldwin borough", weekday_boardings=9.0),
+            removed_row(place="Baldwin borough", weekday_boardings=5.0)]
+    index = brief.place_index(brief.rank_removed(rows))
+    assert index.index("Baldwin") < index.index("Ross")      # alphabetical
+    assert "(2)" in index and "(1)" in index
+    # Baldwin's busiest cluster ranks first, so its chip lands on row 1.
+    assert 'href="#r1"' in index and 'href="#r3"' in index

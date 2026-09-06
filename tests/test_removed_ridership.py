@@ -120,6 +120,23 @@ def test_a_stop_outside_every_boundary_falls_back_to_the_prt_label(index):
     assert summary["place_source"] == rr.PLACE_SOURCE_PRT_LABEL
 
 
+def test_the_top_stop_publishes_its_own_coordinates_beside_the_centroid(index):
+    """A link to the map has to land where the row says it is.
+
+    The centroid of a long corridor can sit in the next municipality from the
+    place the row names, because the place follows the riders to the busiest
+    stop. Publishing that stop's own coordinates lets a reader be sent to the
+    same spot the naming rule used, rather than to the middle of the cluster.
+    """
+    far = dlat_for(600)
+    rows = [row("1", 40.40, -80.00, weekday=1.0),
+            row("2", 40.40 + far, -80.00, weekday=9.0)]
+    summary = rr.summarize_cluster(rows, index=index)
+    assert summary["top_stop_id"] == "2"
+    assert (summary["top_lat"], summary["top_lon"]) == (40.40 + far, -80.00)
+    assert summary["lat"] != summary["top_lat"], "centroid is still published"
+
+
 def test_primary_street_is_the_shared_leading_street_for_a_corridor():
     rows = [
         {"stop_name": "HOMEVILLE RD OPP DUQUESNE VILLAGE ENTRANCE #2"},

@@ -111,7 +111,8 @@ REPORT_TOP_N = 15
 
 OUT_COLUMNS = [
     "radius_m", "cluster_id", "place", "place_source", "primary_street",
-    "top_stop_id", "top_stop_name", "n_stops", "span_m", "lat", "lon",
+    "top_stop_id", "top_stop_name", "top_lat", "top_lon",
+    "n_stops", "span_m", "lat", "lon",
     "weekday_boardings", "saturday_boardings", "sunday_boardings",
     "current_routes", "stop_ids",
 ]
@@ -271,6 +272,14 @@ def summarize_cluster(members, *, index):
         "primary_street": primary_street(members),
         "top_stop_id": top["stop_id"],
         "top_stop_name": top["stop_name"],
+        # The busiest stop's own coordinates, beside the cluster centroid
+        # rather than instead of it. The centroid is where the cluster is;
+        # this is where its riders are, and it is the point the place name
+        # was decided at -- so anything sending a reader to a cluster should
+        # send them here, or it will drop them in a municipality this row
+        # does not name.
+        "top_lat": float(top["lat"]),
+        "top_lon": float(top["lon"]),
         "n_stops": len(members),
         "span_m": span_m(members),
         "lat": lat,
