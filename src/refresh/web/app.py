@@ -356,8 +356,9 @@ CAVEATS = [
     },
     {
         "id": "change-layer",
-        "text": "The citywide layer is the 5,751 locations coverage_change.csv "
-                "measures — stops served today that carry a ridership record — "
+        "text": "The citywide layer is the 6,284 locations coverage_change.csv "
+                "measures — every stop a bus calls at today, whether or not "
+                "PRT's ridership extract still has a row for its id — "
                 "plus the places the proposed network serves where nothing "
                 "stops within 400 m today. It is not a population map: a dot "
                 "is a location, not the people at it.",

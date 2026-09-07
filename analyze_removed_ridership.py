@@ -29,7 +29,7 @@ same-corner test -- before they are ranked, and the boardings are summed
 across a cluster's members. Single linkage chains along a corridor by design:
 a stop 140 m from one cluster member and 140 m from another belongs to the
 same loss even if it is 280 m from the first. That is verified not to run
-away on the real data: at 400 m the 593 removed locations produce 286
+away on the real data: at 400 m the 633 removed locations produce 293
 clusters, the largest 14 members spanning 681 m -- a real corridor, not a
 run-on chain across a neighbourhood.
 

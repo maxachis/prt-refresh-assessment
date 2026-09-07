@@ -20,7 +20,7 @@ from refresh import query
 
 ROOT = Path(__file__).resolve().parent.parent
 
-# Sampled rather than exhaustive: 5,751 locations x 3 day types x 2 sides is
+# Sampled rather than exhaustive: 6,284 locations x 3 day types x 2 sides is
 # ~35k place queries and about six minutes. The sample is seeded, so it is the
 # same set every run, and it deliberately includes the busiest locations --
 # Downtown clusters have 50+ routes and are where a cluster-aggregation bug
@@ -251,11 +251,11 @@ def test_change_buckets_reproduce_the_published_counts(con, coverage_rows):
     answer documents do not say.
     """
     want = {
-        ("weekday", "gone"): 593,
-        ("weekday", "halved"): 284,
-        ("weekday", "doubled"): 217,
-        ("saturday", "doubled"): 331,
-        ("sunday", "doubled"): 373,
+        ("weekday", "gone"): 633,
+        ("weekday", "halved"): 298,
+        ("weekday", "doubled"): 237,
+        ("saturday", "doubled"): 368,
+        ("sunday", "doubled"): 438,
     }
     got = {}
     for day, key in want:
@@ -370,8 +370,8 @@ def test_change_layer_carries_each_days_own_boardings(con):
 def test_boardings_reproduce_the_published_shares(con):
     """The numbers the weighted legend will be quoted on.
 
-    A weekday location that loses all service carries 488 of the system's
-    67,619 daily boardings -- 0.7%. That figure is the strongest thing the
+    A weekday location that loses all service carries 580 of the system's
+    73,408 daily boardings -- 0.8%. That figure is the strongest thing the
     plan's defenders can say and it is drawn from PRT's own usage extract, so
     it has to be pinned the way the bucket counts are: if it moves, either the
     usage join broke or the buckets did.
@@ -389,8 +389,8 @@ def test_boardings_reproduce_the_published_shares(con):
         total += riders
         if keys[p[query.BUCKET_AT(day)]] == "gone":
             gone += riders
-    assert round(total) == 67619
-    assert round(gone) == 488
+    assert round(total) == 73408
+    assert round(gone) == 580
 
 
 # --------------------------------------------------------------------------

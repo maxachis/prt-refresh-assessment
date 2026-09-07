@@ -6,8 +6,8 @@ disability, language).
 
 THE THIRD DENOMINATOR
 
-analyze_coverage_change.py answers the five coverage tiers at 5,751 LOCATIONS
-that have a bus stop today, each counting once. analyze_coverage_area.py
+analyze_coverage_change.py answers the five coverage tiers at 6,284 LOCATIONS --
+every stop the current GTFS serves, each counting once. analyze_coverage_area.py
 answers them over SPACE, where a square kilometre of hillside counts like a
 square kilometre of Brookline. This script answers the same five tiers at
 33,131 RESIDENTIAL points -- the interior point of every populated census

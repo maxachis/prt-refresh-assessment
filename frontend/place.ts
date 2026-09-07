@@ -305,10 +305,12 @@ const ASSUMED_COUNTY = 'Allegheny';
 /**
  * What to call the clicked point in a heading.
  *
- * The county is dropped where it is the one the whole map is in -- 5,726 of
- * the 5,751 labelled stops -- and kept where it is not. Those 25 stops are
- * exactly the ones where the "who lives here" block goes silent, the equity
- * work being Allegheny-only, so the parenthesis does double duty there: it is
+ * The county is dropped where it is the one the whole map is in -- 6,050 of
+ * the 6,075 labelled stops (209 of the 6,284 published locations carry no
+ * PRT label at all, a renumbering with no unambiguous match) -- and kept
+ * where it is not. Those 25 stops are exactly the ones where the "who lives
+ * here" block goes silent, the equity work being Allegheny-only, so the
+ * parenthesis does double duty there: it is
  * the only thing on the panel that says why a figure is missing. The state
  * abbreviation goes either way; nothing here is outside Pennsylvania.
  *

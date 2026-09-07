@@ -56,8 +56,8 @@ which is why it is cross-cutting caveat 6 in [README.md](README.md).
 corridors keep service under another number: the 51L Carrick Limited disappears
 while the 51, 51S and new 45 cover Carrick; the P-flyers are largely replaced by
 L-limiteds on the same busway. What each stop actually keeps is
-[STOP-LOST-SERVICE.md](STOP-LOST-SERVICE.md) — **593 locations lose all bus
-service at 400 m** (900 at 150 m), carrying 488 weekday boardings, which is a far
+[STOP-LOST-SERVICE.md](STOP-LOST-SERVICE.md) — **633 locations lose all bus
+service at 400 m** (974 at 150 m), carrying 580 weekday boardings, which is a far
 smaller number than 6,154 and the honest one for "left with nothing".
 
 Three of the busiest losses are worth naming for the comment period: the **17

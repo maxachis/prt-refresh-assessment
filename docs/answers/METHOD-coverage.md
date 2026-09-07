@@ -38,10 +38,13 @@ column fix they did not (`DATA_SOURCES.md` trap 4).
 ## The unit of analysis is a location
 
 Never route N versus route N: the plan re-splits corridors, so route-to-route
-deltas are meaningless. Each of the 5,751 locations is a stop served today that
-carries a PRT ridership record, and **both networks are measured inside the same
-radius around it** — which makes the comparison immune to stop renumbering, stop
-consolidation and corridor re-splitting alike.
+deltas are meaningless. Each of the 6,284 locations is **every stop the current
+GTFS serves**, whether or not it still carries a PRT ridership record — 209 do
+not, and their boardings are UNKNOWN, never zero, with `boardings_source`
+recording which rule (`id`, `former_id`, or `none`) produced the figure. **Both
+networks are measured inside the same radius around it** — which makes the
+comparison immune to stop renumbering, stop consolidation and corridor
+re-splitting alike.
 
   trips at a location = for each (route, direction) stopping within R metres,
                         the departures at whichever stop in the cluster carries
@@ -139,7 +142,7 @@ corridor reading is the headline everywhere in `docs/answers/`.
 
 Trips and geometry are joined by stop id from the GTFS; boardings and the
 `HOOD`/`MUNI` labels come from the ArcGIS usage extract on the same id. For **119
-of the 5,751 locations** those are different physical stops — id `22728` is
+of the 6,284 locations** those are different physical stops — id `22728` is
 `SMITHFIELD ST AT FIFTH AVE` in the extract and `CHURCH AVE AT DALZELL AVE` in the
 feed, and almost all of them sit in the 22600–22800 id block. Between them they
 carry 1,333 weekday boardings.

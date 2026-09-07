@@ -14,7 +14,7 @@ C and D was paid for with: **the network covers 12% less ground.**
 
 > **Section C has been rebuilt on the proposed GTFS.** `analyze_frequency_change.py`
 > now counts both networks from real `stop_times` by identical code (see
-> `gtfs.py`). The summed weekday change is **+3.3%**. The estimate it replaces
+> `gtfs.py`). The summed weekday change is **+3.8%**. The estimate it replaces
 > was close in aggregate — 5,480 modelled weekday trips against 5,559 real,
 > +1.4% — but it misallocated service across the day, and **the previous
 > night-service finding does not survive the real timetable and is withdrawn**;
@@ -46,24 +46,26 @@ corridor re-splitting alike.
 
 ### Result
 
-5,747 locations, 67,619 weekday boardings. Summed across locations, trips change
-by **+3.3%**. This is close to a service-neutral redesign, and the interesting
-question is who wins and loses inside that near-zero total.
+6,279 locations, 73,415 weekday boardings — every stop the current GTFS
+serves, not only the ones that still carry a PRT ridership record; 206 have
+none, and their boardings are UNKNOWN, never zero. Summed across locations,
+trips change by **+3.8%**. This is close to a service-neutral redesign, and the
+interesting question is who wins and loses inside that near-zero total.
 
 | Change in weekday trips at the stop | Stops | Boardings | Share |
 |---|---:|---:|---:|
-| Loses all service | 593 | 488 | 0.7% |
-| Loses 50–99% | 279 | 813 | 1.2% |
-| Loses 25–50% | 567 | 3,337 | 4.9% |
-| Loses 10–25% | 730 | 7,161 | 10.6% |
-| About the same (±10%) | 1,468 | 29,222 | 43.2% |
-| Gains 10–25% | 769 | 14,050 | 20.8% |
-| Gains 25–50% | 671 | 8,808 | 13.0% |
-| Gains >50% | 670 | 3,741 | 5.5% |
+| Loses all service | 633 | 580 | 0.8% |
+| Loses 50–99% | 293 | 858 | 1.2% |
+| Loses 25–50% | 628 | 3,629 | 4.9% |
+| Loses 10–25% | 794 | 7,505 | 10.2% |
+| About the same (±10%) | 1,583 | 32,730 | 44.6% |
+| Gains 10–25% | 839 | 14,915 | 20.3% |
+| Gains 25–50% | 741 | 9,287 | 12.6% |
+| Gains >50% | 768 | 3,912 | 5.3% |
 
-**39% of boardings sit where service grows by 10% or more; 18% where it shrinks
-by 10% or more.** Weighted by boardings the average location gains **+8.6%**;
-unweighted the average location is **flat (−0.0%)**. The gains land where riders
+**38% of boardings sit where service grows by 10% or more; 17% where it shrinks
+by 10% or more.** Weighted by boardings the average location gains **+8.1%**;
+unweighted the average location gains **+1.0%**. The gains land where riders
 already are — this is a textbook ridership-over-coverage redesign, and it is
 worth saying so plainly rather than treating every reduction as a loss.
 
@@ -71,13 +73,13 @@ worth saying so plainly rather than treating every reduction as a loss.
 
 | Period | Current | Proposed | Change |
 |---|---:|---:|---:|
-| Early 4–6a | 45,243 | 34,469 | **−23.8%** |
-| AM peak 6–9a | 225,405 | 213,629 | −5.2% |
-| Midday 9a–3p | 355,919 | 388,530 | +9.2% |
-| PM peak 3–6p | 237,291 | 216,858 | −8.6% |
-| Evening 6–8p | 118,065 | 135,693 | **+14.9%** |
-| Late 8–11p | 129,111 | 131,209 | +1.6% |
-| Owl 11p–4a | 63,544 | 93,131 | **+46.6%** |
+| Early 4–6a | 51,736 | 39,152 | **−24.3%** |
+| AM peak 6–9a | 258,807 | 246,226 | −4.9% |
+| Midday 9a–3p | 405,819 | 446,276 | +10.0% |
+| PM peak 3–6p | 271,861 | 249,576 | −8.2% |
+| Evening 6–8p | 134,996 | 155,915 | **+15.5%** |
+| Late 8–11p | 147,467 | 150,572 | +2.1% |
+| Owl 11p–4a | 72,255 | 106,765 | **+47.8%** |
 
 (Summed stop-visits across locations; read as ratios, not bus counts.)
 
@@ -130,7 +132,7 @@ withdrawn.**
 
 ### Walk distance is doing real work — check the radius
 
-At 150 m instead of 400 m, 896 stops carrying **10,170 boardings (15%)** look
+At 150 m instead of 400 m, 968 stops carrying **10,535 boardings (14%)** look
 materially worse. Their service is not being cut; it is being **consolidated
 onto a stop 150–400 m away**. The change those riders face is a longer walk.
 
@@ -178,51 +180,56 @@ by section D, both of which are reproducible.
 
 ## A. Stops losing all service
 
-Boardings are **May 2025** weekday daily averages — the last month PRT published
-at stop level (see the data-currency note below).
+The universe is **every stop the current GTFS serves** (6,388, all modes), not
+only the stops that still carry a row in PRT's May 2025 usage extract — 234 of
+them do not, and their boardings are UNKNOWN, never zero. Boardings are **May
+2025** weekday daily averages — the last month PRT published at stop level (see
+the data-currency note below).
 
 The critical control: **a disappearing stop id is not a service loss.** Every
 stop whose id is absent from the proposal is tested against the nearest stop the
 proposal actually serves; if one sits within 150 m the location keeps service.
-Without that control the analysis claimed 1,163 stops and 4,172 boardings lost,
+Without that control 1,407 stops carrying 7,126 boardings would read as lost,
 including Fifth Ave at Chesterfield Rd — the same stop that resurfaces in
-section C. The proximity test reclassified 344 stops and cut the headline by
-more than three quarters.
+section C. The proximity test reclassified 437 stops and cut the headline by
+nearly a third.
 
 | | Stops | Weekday boardings |
 |---|---:|---:|
-| Kept, same stop id | 4,497 | 64,061 |
-| Kept, stop within 150 m (renumbered/shifted) | 405 | 5,623 |
-| **Lose all service** | **880** | **1,200** (1.7%) |
+| Kept, same stop id | 4,981 | 73,159 |
+| Kept, stop within 150 m (renumbered/shifted) | 437 | 5,725 |
+| **Lose all service** | **970** | **1,401** (1.7%) |
 
 **The "unverifiable" tier is gone.** It existed because the proposed network was
 read from the Remix map, whose base feed is 2023: a stop served today and absent
 from Remix might have been built after 2023 rather than dropped. PRT's own feed
 settles it, and all 16 stops formerly parked there are genuine losses.
 
-The affected stops are overwhelmingly low-ridership; the worst carries 30
-boardings a day. Distance to the nearest remaining stop matters more than the
-boardings total:
+The affected stops are mostly low-ridership, though the worst — Monroeville
+Mall at West Court Entrance, 73.6 boardings — is not. Distance to the nearest
+remaining stop matters more than the boardings total:
 
 | Distance | Stops |
 |---|---:|
-| 150–250 m | 178 |
-| 250–400 m | 134 |
-| 400–800 m | 224 |
-| **over 800 m** | **344** |
+| 150–250 m | 203 |
+| 250–400 m | 142 |
+| 400–800 m | 252 |
+| **over 800 m** | **373** |
 
-Median 636 m, 90th percentile 1,678 m, max 3,338 m. **344 stops end up more than
+Median 623 m, 90th percentile 1,660 m, max 3,341 m. **373 stops end up more than
 800 m from any remaining service.** Low ridership at a stop is partly a
-*consequence* of thin service, so 936 boardings understates the harm.
+*consequence* of thin service, so 563 boardings (the 400 m-plus rows) understates
+the harm.
 
-Highest-ridership stops losing all service: Highland Dr opp Job Corps Dr
-(Lincoln-Lemington-Belmar, 903 m, route 74); Negley Ave at Walnut St
-(Shadyside, 276 m); Washington Ave at Chartiers St (Bridgeville, 277 m);
-Fairhaven Rd at Kenmawr Plaza (Kennedy twp, 218 m); 4th Ave at 7th St
-(New Kensington, 167 m).
+Highest-ridership stops losing all service: Monroeville Mall at West Court
+Entrance (Monroeville municipality, 405 m, routes 67/P68); Fifth Ave opp Clyde
+St (Squirrel Hill North, 188 m); Highland Dr opp Job Corps Dr
+(Lincoln-Lemington-Belmar, 906 m, route 74); Fifth Ave at Magee St
+(Crawford-Roberts, 156 m); Forbes Ave at Magee St (Bluff, 159 m).
 
-Most-affected places: Penn Hills (68 boardings), Mount Washington (59),
-Kennedy twp (45), Shadyside (45), Baldwin (42), Lincoln-Lemington-Belmar (39).
+Most-affected places: Squirrel Hill North (100 boardings), Shadyside (93),
+Monroeville municipality (82), Penn Hills township (73), Mount Washington (59),
+Bluff (52).
 
 ---
 

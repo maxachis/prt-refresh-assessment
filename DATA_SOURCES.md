@@ -268,13 +268,13 @@ Outputs, all in `data/`:
 | `proposed_stop_sequences.csv` | 10,464 | route × direction × stop order + distance |
 | `current_routes.csv` | 102 | current-network baseline |
 | `exhibit_a.txt` | 1,311 lines | official change narrative |
-| `stop_service_change.csv` | 5,782 | per stop: keeps / loses all service, distance to nearest |
-| `stop_frequency_change.csv` | 5,747 | per stop: current vs proposed trips at 400 m and 150 m, by period |
+| `stop_service_change.csv` | 6,388 | per stop: keeps / loses all service, distance to nearest, `boardings_source` |
+| `stop_frequency_change.csv` | 6,279 | per stop: current vs proposed trips at 400 m and 150 m, by period, `boardings_source` |
 | `discontinued_route_ridership_202604.csv` | 20 | riders on each discontinued route, Apr 2026 |
 | `oneseat_change.csv` | 369 | place × anchor: gains / keeps / loses a one-seat ride, with the routes responsible |
 | `route_service_days.csv` | 74 | per modified route: day types now vs proposed, by number and with variants credited, days lost / gained, riders by day type |
-| `coverage_change.csv` | 5,751 | per stop: the five BASE_CAMP coverage tiers for both networks, at 400 m and 150 m, trips by day type, route lists, `id_name_mismatch` |
-| `stop_route_replace.csv` | 371 | stops where one route replaces another at comparable service |
+| `coverage_change.csv` | 6,284 | per stop: the five BASE_CAMP coverage tiers for both networks, at 400 m and 150 m, trips by day type, route lists, `id_name_mismatch`, `boardings_source` |
+| `stop_route_replace.csv` | 401 | stops where one route replaces another at comparable service |
 | `coverage_area.csv` | 10 | radius × tier: covered land area now vs proposed, km² lost / gained / retained |
 | `coverage_area_blocks.csv` | 450 | each contiguous block of lost or gained coverage over 0.1 km², with place, nearest stop and centroid |
 | `coverage_area_places.csv` | 452 | net km² gained or lost per municipality / neighbourhood, per tier |

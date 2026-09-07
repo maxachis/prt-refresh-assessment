@@ -2,10 +2,10 @@
 
 > What stops have lost service by one of the given service criteria?
 
-**593 locations lose all bus service at 400 m, 900 at 150 m**, carrying 488 and
-1,270 weekday boardings. Beyond those, **152 locations keep their weekday buses
-and lose the weekend entirely**, and **490 fall below hourly-or-better on
-weekdays** while keeping a bus.
+**633 locations lose all bus service at 400 m, 974 at 150 m**, carrying 580 and
+1,405 weekday boardings. Beyond those, **161 locations keep their weekday
+buses and lose Saturday, and 135 keep them and lose Sunday**, and **517 fall
+below hourly-or-better on weekdays** while keeping a bus.
 
 The weekend losses have one mechanism behind almost all of them: **an all-week
 flyer becomes a peak-only weekday limited.**
@@ -17,16 +17,17 @@ Per-location detail is in `data/coverage_change.csv`; the columns are `cur_*` /
 
 | Criterion | Losing it at 400 m | at 150 m | Boardings at risk |
 |---|---:|---:|---:|
-| WEEK-ANY-MINIMUM (any bus at all) | 593 | 900 | 488 weekday |
-| WEEKDAYS-ANY-MINIMUM | 593 | 900 | 488 weekday |
-| WEEKENDS-ANY-MINIMUM | 399 | 637 | 434 weekend |
-| WEEK-ANY-HOURLY | 490 | 679 | 1,195 weekday |
-| WEEKEND-ANY-HOURLY | 338 | 482 | 1,232 weekend |
+| WEEK-ANY-MINIMUM (any bus at all) | 633 | 974 | 580 weekday |
+| WEEKDAYS-ANY-MINIMUM | 633 | 974 | 580 weekday |
+| WEEKENDS-ANY-MINIMUM | 431 | 691 | 570 weekend |
+| WEEK-ANY-HOURLY | 517 | 722 | 1,316 weekday |
+| WEEKEND-ANY-HOURLY | 360 | 521 | 1,438 weekend |
 
-Of the 399 losing weekend service, **246 lose all service in any case** and
-belong to the first row rather than to a weekend story. The genuinely
-weekend-specific losses are **152 locations** (153 for Saturday, 130 for Sunday),
-carrying about 167 weekend boardings between them.
+Of the 431 losing weekend service, 270 lose it all on Saturday and 266 on
+Sunday outright, and belong to the first row rather than to a weekend story.
+The genuinely weekend-specific losses — locations that keep their weekday bus
+and lose only the weekend day — are **161 locations losing Saturday** (115
+Saturday boardings) and **135 losing Sunday** (83 Sunday boardings).
 
 ## The weekend losses are three corridors
 
@@ -67,26 +68,26 @@ loss here, is labelled Duquesne and is in McCandless, 25 km away.
 
 | Weekday boardings | What loses its bus | Place | Stops | Span | Routes today |
 |---:|---|---|---:|---:|---|
-| 30.5 | HIGHLAND DR + JOB CORPS DR | Lincoln-Lemington-Belmar | 1 | — | 74 |
+| 73.6 | MONROEVILLE MALL | Monroeville municipality | 1 | — | 67, P67, P68 |
+| 30.5 | HIGHLAND DR | Lincoln-Lemington-Belmar | 1 | — | 74 |
 | 19.6 | PRESIDENTIAL DR | McCandless township | 3 | 139 m | O5 |
-| 17.3 | BANK ST | Sewickley borough | 3 | 201 m | 21 |
+| 17.3 | BANK ST + WALNUT | Sewickley borough | 3 | 201 m | 21 |
 | 16.3 | CHARTIERS AVE | Chartiers City | 4 | 155 m | 27 |
-| 15.0 | HOMEVILLE RD | West Mifflin borough | 14 | 681 m | 52L |
+| 15.0 | HOMEVILLE RD OPP DUQUESNE VILLAGE ENTRANCE #1 | West Mifflin borough | 14 | 681 m | 52L |
 | 11.9 | CHARLES ST | Perry South | 2 | 15 m | 15 |
-| 11.1 | KATHLEEN | Mount Washington | 6 | 268 m | 43 |
+| 11.1 | KATHLEEN + HARWOOD | Mount Washington | 6 | 268 m | 43 |
 | 11.0 | OXFORD DR | Bethel Park municipality | 2 | 30 m | 36 |
-| 10.5 | 5TH ST | Trafford borough | 2 | 80 m | 69, P69 |
+| 10.5 | 5TH ST | Trafford borough (Westmoreland, PA) | 2 | 80 m | 69, P69 |
 | 10.1 | CHARTIERS AVE | Windgap | 2 | 52 m | 27 |
 | 9.9 | CUSTER AVE | Carrick | 10 | 624 m | 44 |
 | 9.8 | BLAZIER + GIANT EAGLE | McCandless township | 1 | — | 12, O12 |
-| 9.5 | PERRY HWY OPP WASHINGTON BLVD | Ross township | 1 | — | O12 |
-| 8.8 | VILLAGE DR + GROVETON DR | Robinson township | 1 | — | 20 |
-| 8.7 | VILLAGE DR + LEWIS | Robinson township | 1 | — | 20 |
+| 9.6 | MT TROY + CRONEMEYER AVE FS | Reserve township | 11 | 380 m | 4, 7 |
+| 9.5 | PERRY HWY | Ross township | 2 | 32 m | O12 |
 
-**The ranking has no head, and that is the finding.** The 593 removed locations
-are 286 clusters; these fifteen hold 200 of the 488 weekday boardings at stake
-and the largest single one is about thirty a day. **233 of the 593 board nobody
-at all.** The losses are broad and thin rather than concentrated — the opposite
+**The ranking has no head, and that is the finding.** The 633 removed locations
+are 293 clusters; these fifteen hold 266 of the 580 weekday boardings at stake
+and the largest single one is about seventy-four a day. **263 of the 633 board
+nobody at all.** The losses are broad and thin rather than concentrated — the opposite
 shape from the frequency changes, where a few busy corridors move a great deal
 ([LOSE-FREQUENCY-HALF.md](LOSE-FREQUENCY-HALF.md)).
 
@@ -106,8 +107,8 @@ this table is named by PRT's own label.
 
 Two pipelines answer "loses all service" and they agree.
 `analyze_service_loss.py` asks which stop ids served today have no proposed stop
-within 150 m and finds **880 stops**; this analysis counts real trips in both
-GTFS feeds at 150 m and finds **900 locations**, with **876 in common** — a 2.2%
+within 150 m and finds **970 stops**; this analysis counts real trips in both
+GTFS feeds at 150 m and finds **974 locations**, with **970 in common** — a 0.4%
 difference in the total. The agreement is no longer between two *sources*: both
 now read PRT's proposed feed, and the earlier version of this paragraph, in
 which the stop-level side came from the Remix map and carried 16 stops that map
@@ -124,8 +125,8 @@ columns is stop consolidation, not service loss.
 does not say so.** It is the file to reach for when a reader wants to check one
 pole rather than one location, and it is cited that way in
 [GAIN-ONE-SEAT-OAKLAND.md](GAIN-ONE-SEAT-OAKLAND.md) and
-[locations/ROUTE-51.md](locations/ROUTE-51.md). Of the 880 rows it flags
-`loses_all_service`, **217 — carrying 661 of the 1,200 weekday boardings, 55% —
+[locations/ROUTE-51.md](locations/ROUTE-51.md). Of the 970 rows it flags
+`loses_all_service`, **339 — carrying 825 of the 1,401 weekday boardings, 59% —
 have a stop the proposal serves within a 400 m walk**, which is the radius every
 headline on this site uses. Read that column as "no bus within the strict
 same-corner radius", never as the headline answer, and take the 400 m figure
@@ -133,7 +134,7 @@ from the table above. Whether the column should carry the walked distance and a
 400 m verdict of its own is open —
 [worklog](../worklog/consolidation-is-not-counted-apart-from-loss.md).
 
-**119 of the 5,751 rows carry a stop id the two PRT sources disagree about.**
+**119 of the 6,284 rows carry a stop id the two PRT sources disagree about.**
 Trips and geometry come from the GTFS; boardings and the `HOOD`/`MUNI` labels come
 from the usage extract on the same id, and for those rows they describe a
 different physical stop — id 22728 is `SMITHFIELD ST AT FIFTH AVE` in the extract
@@ -146,8 +147,10 @@ Boardings at these locations are small partly *because* service there is already
 thin. Low boardings are not evidence that nobody is affected — 30 boardings a day
 is 30 people whose trip changes.
 
-The 5,751 locations are stops served today **with a ridership record**, so stops
-without one are not in the denominator.
+The 6,284 locations are **every stop the current GTFS serves**, whether or not
+it carries a PRT ridership record: 209 of them do not, and their boardings are
+UNKNOWN rather than zero (`boardings_source` records which of `id` /
+`former_id` / `none` produced the figure that is published for a stop).
 
 **No loss counted here is softened by an on-demand zone.** A caveat published
 until 2026-08-25 said some of these losses would be offered microtransit

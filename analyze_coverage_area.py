@@ -4,11 +4,12 @@ Coverage change as an AREA, in square kilometres -- the last piece of
 BASE_CAMP's COVERAGE-CHANGE, which asks for "the total change in coverage, in
 terms of area, and by several different coverage criteria".
 
-analyze_coverage_change.py answers the criteria at 5,751 LOCATIONS -- stops
-served today that carry a PRT ridership record. That denominator can only
-measure change where a bus stops today, so it cannot see coverage the plan adds
-somewhere with no bus at all, and it weights a dense downtown block the same as
-a mile of Route 51. This script answers the same five tiers over SPACE instead,
+analyze_coverage_change.py answers the criteria at 6,284 LOCATIONS -- every
+stop the current GTFS serves, whether or not it still carries a PRT ridership
+record. That denominator can only measure change where a bus stops today, so
+it cannot see coverage the plan adds somewhere with no bus at all, and it
+weights a dense downtown block the same as a mile of Route 51. This script
+answers the same five tiers over SPACE instead,
 which fixes both, at the cost of counting hillsides and rivers as covered.
 Neither is the better number; they answer different questions and the two
 belong side by side.

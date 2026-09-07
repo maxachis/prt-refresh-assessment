@@ -48,7 +48,7 @@ this file is the route-level one, and the two disagree by design.
 ## What this does not cover
 
 Losing a *day type* is the crudest cut there is. A route can keep all three day
-types and lose half its trips — 284 locations do
+types and lose half its trips — 298 locations do
 ([LOSE-FREQUENCY-HALF.md](LOSE-FREQUENCY-HALF.md)) — and none of that shows up
 here. Nor do the 20 discontinued routes, which lose every day of service and are
 counted in [LOST-ROUTE.md](LOST-ROUTE.md).

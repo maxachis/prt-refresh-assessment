@@ -33,10 +33,10 @@ the same caveats as everything below.
 | GAIN-SERVICE-DAYS | **Answered** | [doc](GAIN-SERVICE-DAYS.md), `data/route_service_days.csv` |
 | LOSE-SERVICE-HOURS | **Answered** | [doc](LOSE-SERVICE-HOURS.md), `data/route_frequency_change.csv`: hours rise system-wide; 24 groups keep service and lose ≥10% of weekday hours, 17 of them losing trips too |
 | GAIN-SERVICE-HOURS | **Answered** | [doc](GAIN-SERVICE-HOURS.md), `data/route_frequency_change.csv`: +2.5% weekday hours, +18.0% Saturday, +15.7% Sunday; 26 groups gain ≥10% on weekdays plus 14 new groups |
-| LOSE-FREQUENCY-HALF | **Answered** | [doc](LOSE-FREQUENCY-HALF.md), `data/coverage_change.csv`: 284 locations keep service and lose ≥half their weekday trips |
-| GAIN-FREQUENCY-DOUBLE | **Answered** | [doc](GAIN-FREQUENCY-DOUBLE.md), `data/coverage_change.csv`: 217 double on weekdays, 331 on Saturday |
+| LOSE-FREQUENCY-HALF | **Answered** | [doc](LOSE-FREQUENCY-HALF.md), `data/coverage_change.csv`: 298 locations keep service and lose ≥half their weekday trips |
+| GAIN-FREQUENCY-DOUBLE | **Answered** | [doc](GAIN-FREQUENCY-DOUBLE.md), `data/coverage_change.csv`: 237 double on weekdays, 368 on Saturday |
 | STOP-LOST-SERVICE | **Answered for all 5 criteria** | [doc](STOP-LOST-SERVICE.md), `data/coverage_change.csv`, `data/stop_service_change.csv` |
-| STOP-ROUTE-REPLACE | **Answered** | [doc](STOP-ROUTE-REPLACE.md), `data/stop_route_replace.csv`: 371 locations |
+| STOP-ROUTE-REPLACE | **Answered** | [doc](STOP-ROUTE-REPLACE.md), `data/stop_route_replace.csv`: 401 locations |
 
 ## Location-level answers
 
@@ -204,7 +204,7 @@ These apply to every answer here, and each has bitten at least once:
    `route_frequency_change.csv`, now regenerated from both timetables by
    `analyze_route_hours.py` ([LOSE-SERVICE-HOURS.md](LOSE-SERVICE-HOURS.md)).
 10. **Stop ids collide between the usage extract and the GTFS.** They are not
-    one namespace: for **119 of the 5,751 rows in `data/coverage_change.csv`**
+    one namespace: for **119 of the 6,284 rows in `data/coverage_change.csv`**
     the two feeds disagree entirely about which stop an id names. The affected
     rows carry **1,333 weekday boardings** and are almost all in the 22600–22800
     id block; worst case is `22728` — `SMITHFIELD ST AT FIFTH AVE` in the usage
@@ -224,9 +224,11 @@ These apply to every answer here, and each has bitten at least once:
     P-flyers become L-limiteds. Any stop-level route comparison has to translate
     through `route_crosswalk.csv` first and fold the S-variants into their
     parents: doing so cuts the STOP-ROUTE-REPLACE candidate set from 901 stops to
-    749, and to **371** once stops carrying more than four routes today are
+    749, and to **401** once stops carrying more than four routes today are
     excluded as well, since a Downtown stop with 38 routes is never a clean
-    substitution ([STOP-ROUTE-REPLACE.md](STOP-ROUTE-REPLACE.md)).
+    substitution ([STOP-ROUTE-REPLACE.md](STOP-ROUTE-REPLACE.md)). (The 901 and
+    749 figures predate the stop-universe fix and have not been reproduced
+    against the rebuilt universe.)
 
 12. **RETRACTED: the on-demand zone figures.** This caveat carried "18.3 of the
     80.1 km² losing all fixed-route service — 23% — falls inside a proposed

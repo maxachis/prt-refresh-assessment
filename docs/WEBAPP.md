@@ -306,12 +306,12 @@ the published analysis, that test fails.** That is the whole point of it.
 
 ## The map of change
 
-The layer paints ~5,900 locations before anybody clicks, so the shape of the
+The layer paints ~6,400 locations before anybody clicks, so the shape of the
 plan is visible without knowing where to look. Two point sets, kept distinct:
 
 | | what it is |
 |---|---|
-| **published** (5,751) | the locations `data/coverage_change.csv` measures — stops served today that carry a PRT ridership record. Counts over this set are the published counts. |
+| **published** (6,284) | the locations `data/coverage_change.csv` measures — every stop the current GTFS serves, whether or not it still carries a PRT ridership record (209 do not; their boardings are UNKNOWN, never zero). Counts over this set are the published counts. |
 | **new coverage** (121) | places the proposed network serves where nothing stops within 400 m today. The published denominator cannot see them, so without these the map can only draw losses in the places the plan adds service. |
 
 Three decisions worth keeping:
@@ -342,9 +342,9 @@ payload as a fourth field per day type (`weekday_riders`, …) so switching the
 day moves the riders with the buses.
 
 It exists because the two denominators answer the same question in opposite
-tones. Citywide on a weekday at 400 m, the plan strands **593 locations** —
-and those locations carry **488 of the system's 67,619 daily boardings**,
-0.7%. The first sentence is the reason to comment on the plan; the second is
+tones. Citywide on a weekday at 400 m, the plan strands **633 locations** —
+and those locations carry **580 of the system's 73,408 daily boardings**,
+0.8%. The first sentence is the reason to comment on the plan; the second is
 the reason PRT drew it. Convention 15, and neither is quotable alone.
 
 Three things the drawing has to get right, all of them about the same
@@ -357,7 +357,10 @@ asymmetry:
   as a sentence — "7 locations in view gain a bus where none stops today" —
   because a 0 in the *new service* row would read as a finding about the
   plan's gains. A bucket whose in-view locations are all unmeasured shows an
-  em dash, not a zero.
+  em dash, not a zero. The same rule now also covers 209 of the *published*
+  6,284 locations: stops the current GTFS serves but whose id a renumbering
+  left with no unambiguous ridership match. Their `boardings_source` is
+  `none`, and they travel as `null` beside the 121, not as a 0.
 - **This weighting can measure what is at risk and never what is gained**, and
   the legend's footer says exactly that whenever it is on.
 - **The caveats travel with the number, not with the methods list.** Unlinked
@@ -978,7 +981,7 @@ wheel now belongs to the host page.
 `/findings` carries two readings of the plan under two denominators —
 **residents**, in the equity charts, and **boardings**, in the ranked removals
 below them. Both are there because either alone is a talking point: the
-boardings say 0.7% of the system's riders are touched, the residents say tens
+boardings say 0.8% of the system's riders are touched, the residents say tens
 of thousands of people are, and convention 15 forbids quoting one without the
 other. The removals ranked by riders answer `STOP-LOST-SERVICE`, which is
 also the map's Riders switch's question; the ranking is by cluster of removed

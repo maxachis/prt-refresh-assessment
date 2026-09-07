@@ -189,8 +189,8 @@ describe('the panel points at its own method', () => {
 });
 
 
-// PRT writes a municipality as "Ross township (Allegheny, PA)". 5,726 of the
-// 5,751 labelled stops are in Allegheny, so the county earns its space only
+// PRT writes a municipality as "Ross township (Allegheny, PA)". 6,050 of the
+// 6,075 labelled stops are in Allegheny, so the county earns its space only
 // where it is not the one the reader has already assumed -- and it earns it
 // there twice over, because that is also where the residents block goes
 // silent.

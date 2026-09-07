@@ -8,10 +8,11 @@
  *
  * Counts are of LOCATIONS unless the reader asks for riders, and the wording
  * always says which. A dot is a place where a bus stops, not the ridership at
- * it; 5,751 of them carry a boardings figure, and counting those instead is a
- * second denominator over the same dots rather than a correction to the first
- * (convention 15). The two answer the same question in opposite tones — 593
- * locations stranded, 0.7% of boardings — so the switch between them is
+ * it; 6,075 of the 6,284 published dots carry a boardings figure (209 are
+ * UNKNOWN, never zero), and counting those instead is a second denominator
+ * over the same dots rather than a correction to the first (convention 15).
+ * The two answer the same question in opposite tones — 633 locations
+ * stranded, 0.8% of boardings — so the switch between them is
  * visible in the key and the caveats travel with the number rather than
  * sitting in the methods list.
  */

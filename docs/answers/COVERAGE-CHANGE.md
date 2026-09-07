@@ -6,9 +6,9 @@
 **Answered, by criterion and by area.** The two halves of the question do not
 give the same answer, and the difference is the finding:
 
-- **By criterion**, at the 5,751 locations that have a bus today, the plan is
-  close to neutral on weekdays and clearly positive on weekends — 593 lose their
-  bus entirely, while **weekend hourly-or-better coverage grows at 415 more
+- **By criterion**, at the 6,284 locations a bus calls at today, the plan is
+  close to neutral on weekdays and clearly positive on weekends — 633 lose their
+  bus entirely, while **weekend hourly-or-better coverage grows at 452 more
   locations than it loses**.
 - **By area**, the network's footprint shrinks by **55 km², from 460 to 405 —
   −12.0%** — while the ground within reach of an hourly-or-better bus *grows*,
@@ -20,17 +20,21 @@ left.
 
 ## Result: the five tiers
 
-Locations are the 5,751 stops served today that carry a PRT ridership record.
-Both networks are measured inside 400 m of each one. "Boardings at risk" is
-weekday boardings for weekday tiers, Saturday plus Sunday for weekend tiers.
+Locations are every stop the current GTFS serves — 6,284 of them, not only the
+stops that carry a PRT ridership record. 209 of the 6,284 have no record a
+renumbering can unambiguously carry over; their boardings are **UNKNOWN, never
+counted as zero**, and `boardings_source` (`id` / `former_id` / `none`) records
+which rule produced each published figure. Both networks are measured inside
+400 m of each one. "Boardings at risk" is weekday boardings for weekday tiers,
+Saturday plus Sunday for weekend tiers.
 
 | Tier | Now | Proposed | Net | Lose it | Gain it | Boardings at risk |
 |---|---:|---:|---:|---:|---:|---:|
-| WEEK-ANY-MINIMUM | 5,751 | 5,158 | −593 | 593 | 0 | 488 |
-| WEEKDAYS-ANY-MINIMUM | 5,751 | 5,158 | −593 | 593 | 0 | 488 |
-| WEEKENDS-ANY-MINIMUM | 5,130 | 4,888 | −242 | 399 | 157 | 434 |
-| WEEK-ANY-HOURLY | 4,524 | 4,496 | **−28** | 490 | 462 | 1,195 |
-| WEEKEND-ANY-HOURLY | 3,366 | 3,781 | **+415** | 338 | 753 | 1,232 |
+| WEEK-ANY-MINIMUM | 6,284 | 5,651 | −633 | 633 | 0 | 580 |
+| WEEKDAYS-ANY-MINIMUM | 6,284 | 5,651 | −633 | 633 | 0 | 580 |
+| WEEKENDS-ANY-MINIMUM | 5,630 | 5,362 | −268 | 431 | 163 | 570 |
+| WEEK-ANY-HOURLY | 4,955 | 4,949 | **−6** | 517 | 511 | 1,316 |
+| WEEKEND-ANY-HOURLY | 3,747 | 4,199 | **+452** | 360 | 812 | 1,438 |
 
 `WEEK-ANY-MINIMUM` and `WEEKDAYS-ANY-MINIMUM` are identical because no location
 in either network has weekend service without weekday service, so "any bus in the
@@ -44,13 +48,13 @@ counted once per stop along it:
 
 | Day | Now | Proposed | Change |
 |---|---:|---:|---:|
-| Weekday | 1,175,537 | 1,214,537 | **+3.3%** |
-| Saturday | 782,935 | 902,422 | **+15.3%** |
-| Sunday | 584,048 | 682,253 | **+16.8%** |
+| Weekday | 1,343,942 | 1,395,566 | **+3.8%** |
+| Saturday | 897,292 | 1,037,748 | **+15.7%** |
+| Sunday | 669,277 | 782,252 | **+16.9%** |
 
 This is the clearest single statement about the plan: **a modest weekday increase
 and a large weekend increase, paid for with a footprint 12.0% smaller in area.**
-593 locations lose service outright and the places that keep it mostly get more buses,
+633 locations lose service outright and the places that keep it mostly get more buses,
 especially on weekends. Presenting the Refresh as a service cut is not supported
 by the data; presenting it as costless is not either.
 
@@ -65,11 +69,11 @@ The same tiers at 150 m instead of 400 m:
 
 | Tier | Lost at 400 m | Lost at 150 m |
 |---|---:|---:|
-| WEEK-ANY-MINIMUM | 593 | 900 |
-| WEEKDAYS-ANY-MINIMUM | 593 | 900 |
-| WEEKENDS-ANY-MINIMUM | 399 | 637 |
-| WEEK-ANY-HOURLY | 490 | 679 |
-| WEEKEND-ANY-HOURLY | 338 | 482 |
+| WEEK-ANY-MINIMUM | 633 | 974 |
+| WEEKDAYS-ANY-MINIMUM | 633 | 974 |
+| WEEKENDS-ANY-MINIMUM | 431 | 691 |
+| WEEK-ANY-HOURLY | 517 | 722 |
+| WEEKEND-ANY-HOURLY | 360 | 521 |
 
 The gap between the two columns is stop consolidation: those locations keep a bus
 within a quarter mile but not on the same corner. For a rider with a mobility
@@ -98,7 +102,7 @@ Lost and gained do not net out to area moving from one place to another: they
 are different places, and 80 km² of Allegheny County losing its bus is the
 finding, not the −55 that remains after the gains are set against it.
 
-**The footprint shrinks faster than the stop list.** 10.3% of locations lose all
+**The footprint shrinks faster than the stop list.** 10.1% of locations lose all
 service but 17.4% of covered ground does, because the ground being dropped is
 where stops are furthest apart and their discs overlap least — cul-de-sac loops
 and hill roads, not corridors. The same asymmetry runs the other way on the
@@ -180,13 +184,15 @@ zones and `data/coverage_area_ondemand.csv` is gone.
 
 ## Caveats
 
-The denominator is stops **served today with a ridership record**, so this
-measures change at today's locations. A brand-new stop in a place with no bus
-today cannot appear as a gain — the tiers understate greenfield coverage. Route
-additions are in [NEW-ROUTE.md](NEW-ROUTE.md).
+The denominator is **every stop the current GTFS serves**, so this measures
+change at today's locations, whether or not PRT's usage extract still carries a
+ridership row for the stop id (209 of the 6,284 do not; their boardings are
+unknown, never zero — see the definition above). A brand-new stop in a place
+with no bus today cannot appear as a gain — the tiers understate greenfield
+coverage. Route additions are in [NEW-ROUTE.md](NEW-ROUTE.md).
 
 Hourly is a maximum-gap test across 6am–6pm in the better direction; peak-only
-service fails it. The 1,195 and 1,232 boardings "at risk" on the hourly rows are
+service fails it. The 1,316 and 1,438 boardings "at risk" on the hourly rows are
 mostly at locations that keep frequent peak service and lose midday or evening
 continuity, which is a different harm from losing the bus.
 

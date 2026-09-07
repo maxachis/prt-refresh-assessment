@@ -2,10 +2,10 @@
 
 > What routes are doubling frequency or better?
 
-**217 locations at least double their weekday trips, 331 double on Saturday and
-373 on Sunday.** The weekend gains are the story: they outnumber weekend halvings
-by roughly three to one, and Saturday doubling reaches 1,381 boardings against
-256 at halving locations.
+**237 locations at least double their weekday trips, 368 double on Saturday and
+438 on Sunday.** The weekend gains are the story: they outnumber weekend halvings
+by roughly three to one, and Saturday doubling reaches 1,436 boardings against
+281 at halving locations.
 
 As with the losses, this is answered by location rather than by route — the plan
 re-splits corridors, so route-to-route deltas are meaningless
@@ -15,9 +15,9 @@ re-splits corridors, so route-to-route deltas are meaningless
 
 | Day | Doubled or better | Boardings | Halved or worse | Boardings |
 |---|---:|---:|---:|---:|
-| Weekday | **217** | 912 | 284 | 829 |
-| Saturday | **331** | 1,381 | 125 | 256 |
-| Sunday | **373** | 905 | 113 | 198 |
+| Weekday | **237** | 939 | 298 | 875 |
+| Saturday | **368** | 1,436 | 139 | 281 |
+| Sunday | **438** | 972 | 121 | 206 |
 
 Detail in `data/coverage_change.csv` — compare `cur_{day}_trips` against
 `prop_{day}_trips`.
@@ -30,6 +30,7 @@ Detail in `data/coverage_change.csv` — compare `cur_{day}_trips` against
 | 60.0 | E CARSON ST + 27TH ST | South Side Flats | 170 → 355 |
 | 57.4 | 26TH ST + E CARSON | South Side Flats | 170 → 355 |
 | 49.4 | E CARSON ST + 26TH | South Side Flats | 170 → 355 |
+| 48.8 | E CARSON ST + 26TH ST | South Side Flats | 170 → 355 |
 | 44.3 | E CARSON ST + S 28TH ST | South Side Flats | 170 → 352 |
 | 39.7 | SUMMIT PARK DR + ANDREW (WAL-MART) | North Fayette | 43 → 136 |
 | 39.5 | BEDFORD AVE + CHAUNCEY DR | Bedford Dwellings | 58 → 134 |
@@ -53,8 +54,8 @@ apart, and citing either alone misrepresents the place.
 
 ## Where hourly service appears
 
-Doubling is not the only gain that matters. **753 locations gain
-hourly-or-better weekend service** against 338 losing it, a net +415, and 462
+Doubling is not the only gain that matters. **812 locations gain
+hourly-or-better weekend service** against 360 losing it, a net +452, and 511
 gain it on weekdays ([COVERAGE-CHANGE.md](COVERAGE-CHANGE.md)). Busiest weekday
 arrivals into that tier:
 
@@ -80,7 +81,7 @@ frequency as a gap rather than a total.
 combined across routes** — not revenue-hours, not capacity. A corridor gaining
 trips while shortening buses would still read as a gain.
 
-A doubling from 6 trips to 12 and one from 170 to 355 are both in the 217 and are
+A doubling from 6 trips to 12 and one from 170 to 355 are both in the 237 and are
 not comparable. Filter by `cur_weekday_trips` before quoting the count.
 
 Boardings are May 2025 averages, so they describe who uses these stops **today**,

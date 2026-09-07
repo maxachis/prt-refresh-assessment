@@ -514,10 +514,11 @@ def change_points(con, radius: float = PRIMARY_RADIUS):
     Two sets, and the distinction is carried through to the client rather than
     blurred:
 
-    `published` points are the 5,751 locations `data/coverage_change.csv`
-    measures -- stops served today that carry a PRT ridership record. Counts
-    over this set are the published counts, which is the point of keeping it
-    identifiable.
+    `published` points are the 6,284 locations `data/coverage_change.csv`
+    measures -- every stop the current GTFS serves, whether or not PRT's usage
+    extract still carries a ridership row under that id (209 do not, and their
+    boardings are unknown rather than zero). Counts over this set are the
+    published counts, which is the point of keeping it identifiable.
 
     The rest are places the proposed network serves where nothing stops within
     PRIMARY_RADIUS today. That denominator cannot see them -- it can only

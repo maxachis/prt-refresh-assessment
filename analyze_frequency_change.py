@@ -52,6 +52,16 @@ Bus only: rail and the inclines are outside the Refresh, so they are dropped
 from both sides. (The proposed feed does carry rail, unlike the PDFs; it is
 filtered out rather than used, so that the comparison stays like-for-like.)
 
+THE UNIVERSE IS THE GTFS, not the usage extract: every bus stop the current
+feed serves on a weekday is a measured location, whether or not the boardings
+extract has a row for it under that id. Boardings then join by id, carried
+across an unambiguous renumbering (`analyze_service_loss.usage_by_stop`);
+everywhere else they are UNKNOWN and the CSV cell is blank, never 0 --
+`boardings_source` on every row says which applies. Building the universe from
+the usage extract instead used to drop 533 stops a bus calls at every day,
+because a renumbering leaves the retired id with ridership and no service and
+the current id with service and no ridership.
+
 Run ingest_blr.py first.  Usage: python3 analyze_frequency_change.py
 """
 
@@ -61,7 +71,8 @@ from collections import defaultdict
 from pathlib import Path
 
 import gtfs
-from analyze_service_loss import MONTH, fnum, load_usage
+from analyze_service_loss import (MONTH, fnum, load_usage, usage_by_stop,
+                                  BOARDINGS_UNKNOWN)
 
 # Quarter mile is the standard bus walk-access distance and carries the
 # headline; the tight radius is kept as a sensitivity (see module docstring).
@@ -219,11 +230,23 @@ def main():
     usage = load_usage()
     cur_counts, cur_coords, _cur_route_per = load_side("current")
     prop_counts, prop_coords, prop_route_per = load_side("proposed")
+    # Names are the one thing gtfs.py does not carry (see
+    # analyze_coverage_change.stop_names, the sibling of this).
+    cur_names = {s["stop_id"]: s["stop_name"]
+                for s in gtfs.current().rows("stops.txt")}
 
-    totals = {r["stop_code"]: r for r in usage
-              if r["route_code"] == "All Routes" and r["mode"] == "BUS"}
-    print(f"  bus stops with ridership data: {len(totals):,}   "
-          f"served today: {len(cur_counts):,}   proposed: {len(prop_counts):,}")
+    # The universe is the GTFS: every bus stop served today on a weekday, not
+    # every stop with a row in the usage extract -- see usage_by_stop's
+    # docstring in analyze_service_loss.py. Boardings then join on id, carried
+    # across an unambiguous renumbering; everywhere else they are UNKNOWN,
+    # never zero.
+    coords = {sid: cur_coords[sid] for sid in cur_counts if sid in cur_coords}
+    joined = usage_by_stop(usage, coords)
+    unknown = sum(1 for _u, source in joined.values()
+                  if source == BOARDINGS_UNKNOWN)
+    print(f"  bus stops served today: {len(coords):,}   "
+          f"proposed: {len(prop_counts):,}   "
+          f"boardings unknown for {unknown:,} of them")
 
     grids = {}
     for radius in RADII:
@@ -237,16 +260,17 @@ def main():
         grids[radius] = (gcur, gprop)
 
     rows = []
-    for code, u in totals.items():
-        if code not in cur_counts or code not in cur_coords:
-            continue
-        lat, lon = cur_coords[code]
+    for code in sorted(coords):
+        lat, lon = coords[code]
+        u, source = joined[code]
         row = {
             "stop_id": code,
-            "stop_name": u["stop_name"],
-            "muni": u["MUNI"] or "", "hood": u["HOOD"] or "",
+            "stop_name": u["stop_name"] if u else cur_names.get(code, ""),
+            "muni": (u["MUNI"] or "") if u else "",
+            "hood": (u["HOOD"] or "") if u else "",
             "lat": round(lat, 6), "lon": round(lon, 6),
-            "weekday_boardings": round(fnum(u[f"B_W_{MONTH}"]), 2),
+            "weekday_boardings": (
+                "" if u is None else round(fnum(u[f"B_W_{MONTH}"]), 2)),
         }
         for radius in RADII:
             gcur, gprop = grids[radius]
@@ -271,6 +295,7 @@ def main():
                 for k in PKEYS:
                     row[f"cur_{k}"] = round(cur_per[k], 1)
                     row[f"prop_{k}"] = round(prop_per[k], 1)
+        row["boardings_source"] = source
         rows.append(row)
 
     report(rows)
@@ -282,7 +307,7 @@ def main():
     with open(out, "w", newline="", encoding="utf-8") as f:
         w = csv.DictWriter(f, fieldnames=list(rows[0].keys()))
         w.writeheader()
-        w.writerows(sorted(rows, key=lambda x: -x["weekday_boardings"]))
+        w.writerows(sorted(rows, key=lambda x: -fnum(x["weekday_boardings"])))
     print(f"\nWrote {out} ({len(rows):,} rows)")
 
 
@@ -326,15 +351,18 @@ def bucket(p, prop):
 
 
 def report(rows):
-    tot_b = sum(r["weekday_boardings"] for r in rows)
+    tot_b = sum(fnum(r["weekday_boardings"]) for r in rows)
     tot_c = sum(r["current_trips"] for r in rows)
     tot_p = sum(r["proposed_trips"] for r in rows)
+    unknown = sum(1 for r in rows if r["boardings_source"] == BOARDINGS_UNKNOWN)
 
     print("\n" + "=" * 76)
     print(f"WEEKDAY BUS TRIPS WITHIN {PRIMARY} m OF EACH STOP: NOW vs PROPOSED"
           .center(76))
     print("=" * 76)
-    print(f"  locations analysed: {len(rows):,}    weekday boardings: {tot_b:,.0f}")
+    print(f"  locations analysed: {len(rows):,}    weekday boardings: {tot_b:,.0f}"
+          f"    boardings unknown for {unknown:,} (renumbered, no unambiguous"
+          f" match -- never counted as zero)")
     # Summed over locations, so a corridor is counted once per stop along it.
     # Useful as a ratio, not as a count of buses.
     print(f"  summed trips across all locations: {tot_c:,.0f} -> {tot_p:,.0f} "
@@ -358,23 +386,24 @@ def report(rows):
         g = by.get(k, [])
         if not g:
             continue
-        b = sum(r["weekday_boardings"] for r in g)
+        b = sum(fnum(r["weekday_boardings"]) for r in g)
         print(f"  {k:30s} {len(g):7,d} {b:11,.0f} {b / tot_b:7.1%}")
 
     worse = [r for r in rows if r["pct_change"] != "" and r["pct_change"] <= -10]
     better = [r for r in rows if r["pct_change"] != "" and r["pct_change"] >= 10]
-    wb = sum(r["weekday_boardings"] for r in worse)
-    bb = sum(r["weekday_boardings"] for r in better)
+    wb = sum(fnum(r["weekday_boardings"]) for r in worse)
+    bb = sum(fnum(r["weekday_boardings"]) for r in better)
     print(f"\n  {bb:,.0f} boardings ({bb / tot_b:.0%}) sit where service grows by 10%+;"
           f"  {wb:,.0f} ({wb / tot_b:.0%}) where it shrinks by 10%+")
 
     print("\n  Busiest stops losing a quarter or more of their trips:")
     hits = sorted((r for r in rows if r["pct_change"] != ""
                    and r["pct_change"] <= -25 and r["proposed_trips"] > 0),
-                  key=lambda x: -x["weekday_boardings"])[:15]
+                  key=lambda x: -fnum(x["weekday_boardings"]))[:15]
     for r in hits:
         place = r["hood"] or r["muni"].split("(")[0].strip()
-        print(f"    {r['weekday_boardings']:8.1f}  {r['stop_name'][:36]:36s} "
+        print(f"    {fnum(r['weekday_boardings']):8.1f}  "
+              f"{r['stop_name'][:36]:36s} "
               f"{place[:18]:18s} {r['current_trips']:6.0f} -> "
               f"{r['proposed_trips']:6.0f} {r['pct_change']:7.0f}%")
 
@@ -393,8 +422,9 @@ def report(rows):
 
     # Boardings-weighted average change: the number that answers "what does the
     # typical rider experience", rather than "what does the typical stop".
-    wsum = sum(r["weekday_boardings"] for r in rows if r["pct_change"] != "")
-    wavg = sum(r["weekday_boardings"] * r["pct_change"]
+    wsum = sum(fnum(r["weekday_boardings"])
+              for r in rows if r["pct_change"] != "")
+    wavg = sum(fnum(r["weekday_boardings"]) * r["pct_change"]
                for r in rows if r["pct_change"] != "") / wsum
     savg = (sum(r["pct_change"] for r in rows if r["pct_change"] != "")
             / sum(1 for r in rows if r["pct_change"] != ""))
@@ -408,14 +438,14 @@ def report(rows):
 def sensitivity(rows, radius):
     """Same analysis at a tighter radius: how much rides on the walk distance."""
     sfx = f"_{radius}m"
-    tot_b = sum(r["weekday_boardings"] for r in rows)
+    tot_b = sum(fnum(r["weekday_boardings"]) for r in rows)
     print("\n" + "-" * 76)
     print(f"  SENSITIVITY: the same comparison at {radius} m instead of {PRIMARY} m")
     print("-" * 76)
 
     def share(key, test):
         g = [r for r in rows if r[key] != "" and test(r[key])]
-        return len(g), sum(r["weekday_boardings"] for r in g)
+        return len(g), sum(fnum(r["weekday_boardings"]) for r in g)
 
     for label, test in (("loses 25%+ of trips", lambda p: p <= -25),
                         ("loses 10%+ of trips", lambda p: p <= -10),
@@ -428,14 +458,15 @@ def sensitivity(rows, radius):
     moved = [r for r in rows
              if r["pct_change"] != "" and r[f"pct_change{sfx}"] != ""
              and r["pct_change"] - r[f"pct_change{sfx}"] >= 25]
-    mb = sum(r["weekday_boardings"] for r in moved)
+    mb = sum(fnum(r["weekday_boardings"]) for r in moved)
     print(f"\n    {len(moved):,} stops ({mb:,.0f} boardings, {mb / tot_b:.0%}) look "
           f"materially better at {PRIMARY} m than at {radius} m:")
     print(f"    their service is being consolidated onto a stop {radius}-{PRIMARY} m "
           f"away, so the\n    change they face is a longer walk rather than fewer buses.")
-    for r in sorted(moved, key=lambda x: -x["weekday_boardings"])[:8]:
+    for r in sorted(moved, key=lambda x: -fnum(x["weekday_boardings"]))[:8]:
         place = r["hood"] or r["muni"].split("(")[0].strip()
-        print(f"      {r['weekday_boardings']:7.1f}  {r['stop_name'][:34]:34s} "
+        print(f"      {fnum(r['weekday_boardings']):7.1f}  "
+              f"{r['stop_name'][:34]:34s} "
               f"{place[:16]:16s} {r[f'pct_change{sfx}']:6.0f}% -> "
               f"{r['pct_change']:6.0f}%")
 

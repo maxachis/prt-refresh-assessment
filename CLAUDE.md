@@ -126,8 +126,8 @@ uv sync --extra web && npm install   # one-time
 npm run build                        # frontend/*.ts -> static/app.js
 uv run refresh serve                 # http://127.0.0.1:8000
 
-uv run pytest                        # 354 tests, incl. served == published
-npx vitest run && npx tsc --noEmit   # 217 frontend tests
+uv run pytest                        # 377 tests, incl. served == published
+npx vitest run && npx tsc --noEmit   # 359 frontend tests
 ```
 
 **Hosting** is `deploy/` — a Hetzner VM behind Caddy, live at
@@ -476,37 +476,37 @@ changes published findings.
     **And the measure is circular, which is exactly why it ships.** The Refresh
     is a redesign that concentrates service where ridership already is, so
     scoring it against today's boardings asks whether it did the thing it was
-    optimised to do, and the answer flatters it: on a weekday at 400 m the 593
-    locations that lose all service carry 488 of the system's 67,619 daily
-    boardings, 0.7% (1,270 of 67,619, 1.9%, at the strict 150 m radius; the
+    optimised to do, and the answer flatters it: on a weekday at 400 m the 633
+    locations that lose all service carry 580 of the system's 73,408 daily
+    boardings, 0.8% (1,405 of 73,408, 1.9%, at the strict 150 m radius; the
     weekend shares are 0.6%). Those figures are pinned by
     `tests/test_query.py::test_boardings_reproduce_the_published_shares`, the
     way the bucket counts are. Report them as plainly as the losses — but never
     alone: the location view says roughly service-neutral, the area view 12%
-    less ground, the street view 22% less pavement, and this says 99.3% of
+    less ground, the street view 22% less pavement, and this says 99.2% of
     boardings untouched. All four are true and each one alone is a talking
     point.
 
     **Ranked, the removals have no head — and the ranking is by cluster, not
     by stop.** `analyze_removed_ridership.py` orders the locations that lose
     every bus by the boardings observed at them, and `/findings` prints all
-    286 of them, ranked, with a place index above the list and a link from
+    293 of them, ranked, with a place index above the list and a link from
     each row to the map at that cluster's busiest stop (`top_lat`/`top_lon`,
     never the centroid, which on a long corridor can fall in a municipality
     the row does not name). Three rules keep it honest. The unit is a **cluster** of
     removed locations within 150 m of each other, because PRT splits one
     corner into two stop ids and a corridor into a dozen: ranked apart, a
     single loss is listed twice and a corridor sits below its own halves. At
-    400 m the 593 removed locations are 286 clusters, the largest 14 stops
+    400 m the 633 removed locations are 293 clusters, the largest 14 stops
     over 681 m, and each cluster's span is published beside it so a reader can
     tell a corner from a corridor. And a cluster is named by the boundary that
     **contains** its busiest stop, per convention 6 — PRT's own labels put
     five of the twenty-five largest removals in the wrong municipality, one of
     them by 25 km, and a cluster outside Allegheny has no boundary to use and
     says so in `place_source`. What the ranking then says is that there is no
-    head: the largest single removal in the county is about 30 weekday
-    boardings, the top fifteen clusters hold 200 of the 488, and 233 of the
-    593 removed locations board nobody at all — 59 of the 286 clusters. The
+    head: the largest single removal in the county is about 74 weekday
+    boardings, the top fifteen clusters hold 266 of the 580, and 263 of the
+    633 removed locations board nobody at all — 62 of the 293 clusters. The
     flatness is the finding, which is why the page publishes the whole tail
     rather than a top few: a truncated table reads as a list of disasters and
     overstates it, and the same table read without the residents on the same

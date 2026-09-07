@@ -27,7 +27,7 @@ end, the highest income bracket and the over-65s at the losing end.
 denominator. `data/removed_ridership.csv` says which clusters of removed
 locations take the most boardings with them; this file only lays them out. It
 is on the same page as the equity charts deliberately, because the two readings
-correct each other: the boardings say 0.7% of the system's riders are touched,
+correct each other: the boardings say 0.8% of the system's riders are touched,
 the residents say tens of thousands of people are, and either alone is a
 talking point. Convention 15's three conditions -- one-sided, not people,
 circular -- are prose on the page rather than entries in a caveat list.

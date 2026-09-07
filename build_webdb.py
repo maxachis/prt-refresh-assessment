@@ -7,7 +7,7 @@ CSV. `data/refresh.db` is a *serving* artifact: the web layer opens it
 read-only and never writes, exactly as pgh-ghost-bus's dashboard does over its
 hot store. Nothing here is a new analysis -- the numbers this file serves are
 the numbers `analyze_coverage_change.py` publishes, reachable at an arbitrary
-point and radius instead of only at the 5,751 stop locations that script emits.
+point and radius instead of only at the 6,284 stop locations that script emits.
 
 WHY DEPARTURE LISTS RATHER THAN TRIP COUNTS
 
@@ -310,7 +310,7 @@ CREATE TABLE change (
     day        TEXT NOT NULL,
     lat        REAL NOT NULL,
     lon        REAL NOT NULL,
-    published  INTEGER NOT NULL,   -- 1 = one of coverage_change.csv's 5,751
+    published  INTEGER NOT NULL,   -- 1 = one of coverage_change.csv's 6,284
     cur_trips  INTEGER NOT NULL,
     prop_trips INTEGER NOT NULL,
     cur_hourly INTEGER NOT NULL,

@@ -28,10 +28,10 @@ For where each source comes from and what it is authoritative for, see
 | `proposed_stop_sequences.csv` | 10,464 | `ingest_blr.py` | route × direction × ordered stops |
 | `current_routes.csv` | 102 | `ingest_blr.py` | current-network `routes.txt`, verbatim |
 | `exhibit_a.txt` | 1,311 lines | `ingest_blr.py` | the legally noticed change narrative, as text |
-| `stop_service_change.csv` | 5,782 | `analyze_service_loss.py` | per stop: keeps / loses all service, distance to nearest proposed stop |
-| `stop_frequency_change.csv` | 5,747 | `analyze_frequency_change.py` | per location: weekday trips now vs proposed, by period, at 400 m and 150 m |
-| `coverage_change.csv` | 5,751 | `analyze_coverage_change.py` | per location: the five coverage tiers for both networks, at 400 m and 150 m, plus trips by day type |
-| `stop_route_replace.csv` | 371 | `analyze_coverage_change.py` | locations where a different route provides comparable service |
+| `stop_service_change.csv` | 6,388 | `analyze_service_loss.py` | per stop: keeps / loses all service, distance to nearest proposed stop |
+| `stop_frequency_change.csv` | 6,279 | `analyze_frequency_change.py` | per location: weekday trips now vs proposed, by period, at 400 m and 150 m |
+| `coverage_change.csv` | 6,284 | `analyze_coverage_change.py` | per location: the five coverage tiers for both networks, at 400 m and 150 m, plus trips by day type |
+| `stop_route_replace.csv` | 401 | `analyze_coverage_change.py` | locations where a different route provides comparable service |
 | `route_service_days.csv` | 74 | `analyze_coverage_change.py` | per route: day types now vs proposed, days lost / gained |
 | `coverage_area.csv` | 10 | `analyze_coverage_area.py` | radius × tier: covered land area now vs proposed, km² lost / gained / retained |
 | `coverage_area_blocks.csv` | 450 | `analyze_coverage_area.py` | every contiguous block of lost or gained coverage over 0.1 km², with place, nearest stop, centroid |

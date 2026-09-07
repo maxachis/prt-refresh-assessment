@@ -234,8 +234,8 @@ export interface RiderTally {
  * The same points as `countIn`, weighted by who boards at them.
  *
  * The second denominator for one set of dots (convention 15). Counting
- * locations says the plan strands 593 places; counting boardings says those
- * places carry 0.7% of the system's riders. Both are true, which is why this
+ * locations says the plan strands 633 places; counting boardings says those
+ * places carry 0.8% of the system's riders. Both are true, which is why this
  * sits beside the location count rather than replacing it.
  *
  * A location with no ridership record is kept out of every total and counted

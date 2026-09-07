@@ -174,7 +174,7 @@ Extension pay for it.
    **stop_id collision** between the two feeds. Stop `22774` is a Chartiers Ave
    stop in the usage extract and `NORMAN ST + GRANT AVE` in the GTFS, and
    `analyze_coverage_change.py` joins the usage name onto the GTFS geometry.
-   **119 of 5,751 rows are affected, carrying 1,333 weekday boardings**, almost
+   **119 of 6,284 rows are affected, carrying 1,333 weekday boardings**, almost
    all in the 22600–22800 id block. The largest is `22728`, `SMITHFIELD ST AT
    FIFTH AVE` in the usage extract and `CHURCH AVE AT DALZELL AVE` in GTFS,
    carrying 627 boardings. None of the stranded stops in this file are affected —

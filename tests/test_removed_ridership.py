@@ -169,15 +169,15 @@ def test_published_counts_at_both_radii(coverage_rows):
     removed_400 = rr.removed_rows(
         coverage_rows, cur_col="cur_week_any_minimum",
         prop_col="prop_week_any_minimum")
-    assert len(removed_400) == 593
+    assert len(removed_400) == 633
 
     removed_150 = rr.removed_rows(
         coverage_rows, cur_col="cur_week_any_minimum_150m",
         prop_col="prop_week_any_minimum_150m")
-    assert len(removed_150) == 900
+    assert len(removed_150) == 974
 
     # Summed from the removed rows directly -- clustering only partitions
     # them, so this is the same total the clustered CSV rows carry, without
-    # the rounding drift of re-summing ~286 already-rounded cluster totals.
+    # the rounding drift of re-summing ~293 already-rounded cluster totals.
     total = sum(rr.safe_float(r["weekday_boardings"]) for r in removed_400)
-    assert round(total, 1) == pytest.approx(488.0)
+    assert round(total, 1) == pytest.approx(579.9)

@@ -32,6 +32,21 @@ renumbered, consolidated and nudged across intersections between feeds, so a
 vanished id is still not a lost bus, and every stop flagged as losing service
 is still checked against the nearest stop the proposal actually serves.
 
+THE UNIVERSE IS THE GTFS, not the usage extract. Every stop the current feed
+serves -- all modes, since the question here is whether the corner keeps a
+vehicle at all -- is a measured location, whether or not the usage extract has
+a row for it under that id. Boardings are then joined onto that location by
+id, and carried across a renumbering only where the match is unambiguous (see
+FORMER_ID_MAX_M and usage_by_stop below); everywhere else boardings are
+UNKNOWN, written as an empty CSV cell and never coerced to zero, because
+"nobody boards here" and "nobody can have boarded here under this id" are
+different claims. `boardings_source` on every output row says which of the
+three applies. Building the universe from the usage extract instead used to
+drop 533 stops a bus calls at every day -- the whole of Friendship Avenue and
+Penn Avenue through Garfield among them -- because a renumbering leaves the
+retired id with ridership and no service and the current id with service and
+no ridership, and neither survives a "served and has boardings" gate.
+
 Run ingest_blr.py first.  Usage: python3 analyze_service_loss.py
 """
 
@@ -59,6 +74,34 @@ USAGE_FIELDS = ("stop_id,stop_code,stop_name,stop_lat,stop_lon,mode,mode_type,"
 # as losing service is therefore checked against the nearest stop the proposal
 # actually serves, and only counted if no proposed stop is within this radius.
 WALK_RADIUS_M = 150
+
+# The same renumbering, read from the other end. PRT reissues a stop's id and
+# the boardings extract keeps the old one, so a join on the id alone drops the
+# location from both sides at once: the retired code has ridership but no
+# service, the current code has service but no ridership, and neither survives
+# a `served and has boardings` gate. That is how 533 stops a bus calls at every
+# day -- the whole of Friendship Avenue and Penn Avenue through Garfield among
+# them -- came to be measured nowhere and drawn nowhere.
+#
+# So the universe is the GTFS: every stop some bus actually calls at is a
+# measured location. Boardings are then attached by id where the id survived,
+# and carried across a renumbering only where the match can only mean one
+# thing -- exactly one retired code within this radius, wanted by exactly one
+# current stop. The extract's coordinates are published to four decimals, about
+# 11 m, so this is tight enough that only the same pole clears it and loose
+# enough to absorb that rounding; opposite kerbs of one corner usually both
+# clear it, which is precisely the ambiguity that disqualifies them.
+#
+# Everywhere else the location is still measured and its boardings are UNKNOWN,
+# never zero. Convention 15 draws that line on the proposed side, where a stop
+# that has never run can have no observed count; a renumbered stop is the same
+# gap arriving on the current side, and writing 0 would state a finding about
+# riders that no observation supports.
+FORMER_ID_MAX_M = 25
+
+BOARDINGS_BY_ID = "id"
+BOARDINGS_BY_FORMER_ID = "former_id"
+BOARDINGS_UNKNOWN = "none"
 
 
 def fnum(x):
@@ -125,20 +168,67 @@ def load_usage():
     return rows
 
 
+def usage_by_stop(usage, coords, *, bus_only=True):
+    """Every served stop -> (its boardings row or None, where the row came from).
+
+    `coords` is the universe: GTFS stop id -> (lat, lon) for the stops some
+    vehicle calls at. Every one of them comes back, so no caller can silently
+    drop a location by iterating the boardings extract instead. See
+    FORMER_ID_MAX_M for why a retired id may donate its boardings and when it
+    may not.
+    """
+    totals = {r["stop_code"]: r for r in usage
+              if r["route_code"] == "All Routes"
+              and (not bus_only or r["mode"] == "BUS")}
+
+    joined = {sid: (totals[sid], BOARDINGS_BY_ID) for sid in coords
+              if sid in totals}
+    unclaimed = {sid: coords[sid] for sid in coords if sid not in joined}
+
+    retired = [(fnum(r["stop_lat"]), fnum(r["stop_lon"]), code)
+               for code, r in totals.items() if code not in coords]
+    cell = FORMER_ID_MAX_M / 111_320 * 2
+    grid = defaultdict(list)
+    for lat, lon, code in retired:
+        grid[(int(lat / cell), int(lon / cell))].append((lat, lon, code))
+
+    # Resolve the two ambiguities in one pass: a stop wanting more than one
+    # retired code, and a retired code wanted by more than one stop.
+    wanted = {}
+    for sid, (lat, lon) in unclaimed.items():
+        near = [code for plat, plon, code in near_grid(lat, lon, grid, cell)
+                if nearest_m(lat, lon, [(plat, plon)]) <= FORMER_ID_MAX_M]
+        if len(near) == 1:
+            wanted.setdefault(near[0], []).append(sid)
+
+    inherited = {sids[0]: code for code, sids in wanted.items() if len(sids) == 1}
+    for sid in unclaimed:
+        code = inherited.get(sid)
+        joined[sid] = ((totals[code], BOARDINGS_BY_FORMER_ID) if code
+                       else (None, BOARDINGS_UNKNOWN))
+    return joined
+
+
 def served_today():
-    """Stop ids that actually have trips in the current feed, and their routes.
+    """Stop ids that actually have trips in the current feed, their routes,
+    their coordinates, and their GTFS names.
 
     All modes, not bus only: the question is whether the corner keeps a
-    vehicle, and a stop that keeps only the T has not lost all service.
+    vehicle, and a stop that keeps only the T has not lost all service. Coords
+    and names come from here too, rather than from the usage extract, because
+    the extract is no longer the universe -- see usage_by_stop above.
     """
-    routes, _coords = gtfs.stop_routes(gtfs.current(), bus_only=False)
-    return set(routes), routes
+    feed = gtfs.current()
+    routes, all_coords = gtfs.stop_routes(feed, bus_only=False)
+    coords = {sid: all_coords[sid] for sid in routes if sid in all_coords}
+    names = {s["stop_id"]: s["stop_name"] for s in feed.rows("stops.txt")}
+    return set(routes), routes, coords, names
 
 
 def main():
     print("Loading sources...")
     usage = load_usage()
-    stops_now, stop_routes_now = served_today()
+    stops_now, stop_routes_now, stops_coords, stop_names_now = served_today()
 
     # The proposed side, from PRT's own feed. All modes, to match served_today().
     prop_routes, prop_coords = gtfs.stop_routes(gtfs.proposed(), bus_only=False)
@@ -148,15 +238,21 @@ def main():
     discontinued = {r["current_route"].split()[0] for r in cross
                     if r["category"] == "Discontinued" and r["current_route"] != "-"}
 
-    # Boardings per stop (the "All Routes" row) and per stop x route.
-    totals = {r["stop_code"]: r for r in usage if r["route_code"] == "All Routes"}
+    # The universe is every stop the current GTFS serves, not every stop with
+    # a row in the usage extract -- see usage_by_stop's docstring. All modes,
+    # matching served_today(), since a retired code can belong to a T stop
+    # exactly as it can a bus stop.
+    joined = usage_by_stop(usage, stops_coords, bus_only=False)
+    unknown = sum(1 for _u, source in joined.values()
+                  if source == BOARDINGS_UNKNOWN)
+
     by_route = defaultdict(dict)
     for r in usage:
         if r["route_code"] != "All Routes":
             by_route[r["stop_code"]][r["route_code"]] = r
 
-    print(f"  usage stops={len(totals)}  served today={len(stops_now)}  "
-          f"proposed-served={len(prop_served)}\n")
+    print(f"  served today={len(stops_now)}  proposed-served={len(prop_served)}  "
+          f"boardings unknown for {unknown} of them\n")
 
     # ---- A. stops losing all service ------------------------------------
     # Coordinates of every stop the proposal actually serves, for the
@@ -165,17 +261,14 @@ def main():
     cell = WALK_RADIUS_M / 111_320 * 2
     grid = build_grid(served_pts, cell)
 
+    # Coordinates now come from the GTFS for every row (see served_today()),
+    # so unlike the old usage-extract universe there is no longer a stop with
+    # no coordinates to test the walk radius against.
     rows = []
-    for code, u in totals.items():
-        if code not in stops_now:
-            continue  # not served today; nothing to lose
-        lat, lon = fnum(u["stop_lat"]), fnum(u["stop_lon"])
+    for code in sorted(stops_now):
+        lat, lon = stops_coords[code]
         if code in prop_served:
             status, dist = "kept", 0.0
-        elif not (lat and lon):
-            # No coordinates in the usage extract, so the walk-radius test
-            # cannot run. The proposed feed still says the stop is unserved.
-            status, dist = "loses_all_service_unplaced", float("inf")
         else:
             # Fast path first; fall back to an exact scan so the reported
             # distance is real rather than "somewhere beyond the grid".
@@ -186,49 +279,52 @@ def main():
             # that the service went away.
             status = ("kept_nearby" if dist <= WALK_RADIUS_M
                       else "loses_all_service")
+        u, source = joined[code]
         rows.append({
             "stop_id": code,
-            "stop_name": u["stop_name"],
-            "muni": u["MUNI"] or "",
-            "hood": u["HOOD"] or "",
-            "lat": u["stop_lat"], "lon": u["stop_lon"],
+            "stop_name": u["stop_name"] if u else stop_names_now.get(code, ""),
+            "muni": (u["MUNI"] or "") if u else "",
+            "hood": (u["HOOD"] or "") if u else "",
+            "lat": round(lat, 6), "lon": round(lon, 6),
             "status": status,
             "metres_to_nearest_proposed_stop": (
                 "" if dist == float("inf") else round(dist)),
-            "weekday_boardings": round(fnum(u[f"B_W_{MONTH}"]), 2),
-            "saturday_boardings": round(fnum(u[f"B_S_{MONTH}"]), 2),
-            "sunday_boardings": round(fnum(u[f"B_U_{MONTH}"]), 2),
+            "weekday_boardings": (
+                "" if u is None else round(fnum(u[f"B_W_{MONTH}"]), 2)),
+            "saturday_boardings": (
+                "" if u is None else round(fnum(u[f"B_S_{MONTH}"]), 2)),
+            "sunday_boardings": (
+                "" if u is None else round(fnum(u[f"B_U_{MONTH}"]), 2)),
             "current_routes": ";".join(sorted(stop_routes_now.get(code, ()))),
+            "boardings_source": source,
         })
 
     lost = [r for r in rows if r["status"] == "loses_all_service"]
-    unplaced = [r for r in rows if r["status"] == "loses_all_service_unplaced"]
     kept = [r for r in rows if r["status"].startswith("kept")]
     nearby = [r for r in rows if r["status"] == "kept_nearby"]
-    tot_wk = sum(r["weekday_boardings"] for r in rows)
+    unknown_rows = [r for r in rows if r["boardings_source"] == BOARDINGS_UNKNOWN]
+    tot_wk = sum(fnum(r["weekday_boardings"]) for r in rows)
 
     print("=" * 68)
     print("A. STOPS LOSING ALL SERVICE".center(68))
     print("=" * 68)
-    print(f"  stops analysed (served today, with ridership data): {len(rows)}")
+    print(f"  stops analysed (every stop the current GTFS serves): {len(rows)}")
+    print(f"  boardings unknown (renumbered, no unambiguous match): "
+          f"{len(unknown_rows)}  <- never counted as zero")
     print(f"  kept, same stop id:      {len(kept) - len(nearby):5d}  "
-          f"{sum(r['weekday_boardings'] for r in kept) - sum(r['weekday_boardings'] for r in nearby):10,.0f} wkdy boardings")
+          f"{sum(fnum(r['weekday_boardings']) for r in kept) - sum(fnum(r['weekday_boardings']) for r in nearby):10,.0f} wkdy boardings")
     print(f"  kept, stop within {WALK_RADIUS_M}m: {len(nearby):5d}  "
-          f"{sum(r['weekday_boardings'] for r in nearby):10,.0f} wkdy boardings"
+          f"{sum(fnum(r['weekday_boardings']) for r in nearby):10,.0f} wkdy boardings"
           f"   <- renumbered/shifted, not lost")
     print(f"  lose all service:        {len(lost):5d}  "
-          f"{sum(r['weekday_boardings'] for r in lost):10,.0f} wkdy boardings"
-          f"  ({sum(r['weekday_boardings'] for r in lost) / tot_wk:.1%} of system)")
-    if unplaced:
-        print(f"  unplaced (no coords):    {len(unplaced):5d}  "
-              f"{sum(r['weekday_boardings'] for r in unplaced):10,.0f} wkdy "
-              f"boardings  <- unserved, but the walk test could not run")
+          f"{sum(fnum(r['weekday_boardings']) for r in lost):10,.0f} wkdy boardings"
+          f"  ({sum(fnum(r['weekday_boardings']) for r in lost) / tot_wk:.1%} of system)")
 
     print("\n  Highest-ridership stops losing all service "
           f"(no proposed stop within {WALK_RADIUS_M}m):")
-    for r in sorted(lost, key=lambda x: -x["weekday_boardings"])[:15]:
+    for r in sorted(lost, key=lambda x: -fnum(x["weekday_boardings"]))[:15]:
         place = r["hood"] or r["muni"].split("(")[0].strip()
-        print(f"    {r['weekday_boardings']:8.1f}  {r['stop_name'][:42]:42s} "
+        print(f"    {fnum(r['weekday_boardings']):8.1f}  {r['stop_name'][:42]:42s} "
               f"{place[:20]:20s} {r['metres_to_nearest_proposed_stop']:>6}m "
               f"[{r['current_routes'][:18]}]")
 
@@ -236,7 +332,7 @@ def main():
     place_tot = defaultdict(float)
     for r in lost:
         place_tot[r["hood"] or r["muni"].split("(")[0].strip() or "?"] += \
-            r["weekday_boardings"]
+            fnum(r["weekday_boardings"])
     for p, v in sorted(place_tot.items(), key=lambda x: -x[1])[:12]:
         print(f"    {v:8.1f}  {p}")
 
@@ -264,7 +360,7 @@ def main():
     with open(out, "w", newline="", encoding="utf-8") as f:
         w = csv.DictWriter(f, fieldnames=list(rows[0].keys()))
         w.writeheader()
-        w.writerows(sorted(rows, key=lambda x: -x["weekday_boardings"]))
+        w.writerows(sorted(rows, key=lambda x: -fnum(x["weekday_boardings"])))
     print(f"\nWrote {out} ({len(rows)} rows)")
     print("\nNOTE: boardings are May 2025 daily averages - the most recent month\n"
           "      PRT has published at stop level, and 'unadjusted, unofficial\n"

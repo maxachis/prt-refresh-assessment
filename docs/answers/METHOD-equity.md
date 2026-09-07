@@ -15,7 +15,7 @@ question:
 
 | Unit | What it counts | Its blind spot |
 |---|---|---|
-| **Location** (`analyze_coverage_change.py`) | 5,751 stops served today | Cannot see ground the plan adds a bus to; weights a downtown corner like a mile of Route 51 |
+| **Location** (`analyze_coverage_change.py`) | 6,284 stops a bus calls at today | Cannot see ground the plan adds a bus to; weights a downtown corner like a mile of Route 51 |
 | **Area** (`analyze_coverage_area.py`) | Square kilometres | A square kilometre of hillside counts like a square kilometre of Brookline |
 | **Population** (this) | Residents | Ecological — it describes the places a group lives, not its members |
 

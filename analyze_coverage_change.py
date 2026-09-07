@@ -62,6 +62,16 @@ both-days reading is available from the CSV.
 Bus only: rail and the inclines are outside the Refresh, and are dropped from
 both sides.
 
+THE UNIVERSE IS THE GTFS, not the usage extract: every bus stop the current
+feed serves is a measured location, whether or not the boardings extract has
+a row for it under that id. Boardings then join by id, carried across an
+unambiguous renumbering (`analyze_service_loss.usage_by_stop`); everywhere
+else they are UNKNOWN and the CSV cell is blank, never 0 -- `boardings_source`
+on every row says which applies. Building the universe from the usage extract
+instead used to drop 533 stops a bus calls at every day, because a
+renumbering leaves the retired id with ridership and no service and the
+current id with service and no ridership.
+
 One trap in the CURRENT feed, and the reason day types are resolved for real
 dates rather than read off calendar.txt columns. Service id 4 has monday=1 and
 looks like an ordinary weekday calendar, but calendar_dates suppresses it on
@@ -86,7 +96,8 @@ import gtfs
 from gtfs import DAYS, SAMPLE
 from analyze_frequency_change import (PERIODS, PKEYS, PRIMARY, RADII, Grid,
                                       period_of, to_axis)
-from analyze_service_loss import MONTH, fnum, load_usage
+from analyze_service_loss import (MONTH, fnum, load_usage, usage_by_stop,
+                                  BOARDINGS_UNKNOWN)
 
 DATA = Path("data")
 RAW = DATA / "raw"
@@ -429,12 +440,20 @@ def main():
 
     route_days_report(cur_days, prop_days, cur.holiday_only)
 
-    totals = {r["stop_code"]: r for r in usage
-              if r["route_code"] == "All Routes" and r["mode"] == "BUS"}
     served = {sid for d in DAYS for sid in cur_counts[d]}
     prop_served = {sid for d in DAYS for sid in prop_counts[d]}
-    print(f"\n  bus stops with ridership data: {len(totals):,}   "
-          f"served today: {len(served):,}   proposed: {len(prop_served):,}")
+
+    # The universe is the GTFS: every bus stop served today, not every stop
+    # with a row in the usage extract -- see usage_by_stop's docstring in
+    # analyze_service_loss.py. Boardings then join on id, carried across an
+    # unambiguous renumbering; everywhere else they are UNKNOWN, never zero.
+    coords = {sid: cur_coords[sid] for sid in served if sid in cur_coords}
+    joined = usage_by_stop(usage, coords)
+    unknown = sum(1 for _u, source in joined.values()
+                  if source == BOARDINGS_UNKNOWN)
+    print(f"\n  bus stops served today: {len(coords):,}   "
+          f"proposed: {len(prop_served):,}   "
+          f"boardings unknown for {unknown:,} of them")
 
     grids = {}
     for radius in RADII:
@@ -448,21 +467,25 @@ def main():
         grids[radius] = (gcur, gprop)
 
     rows = []
-    for code, u in totals.items():
-        if code not in served or code not in cur_coords:
-            continue
-        lat, lon = cur_coords[code]
+    for code in sorted(coords):
+        lat, lon = coords[code]
+        u, source = joined[code]
         # Geometry and trips come from the GTFS, so its name is the one that
         # describes this location; the usage extract's name and place labels ride
         # along on the same id and disagree for 116 of them (see id_name_mismatch).
-        row = {"stop_id": code, "stop_name": cur_names.get(code, u["stop_name"]),
-               "usage_stop_name": u["stop_name"],
-               "id_name_mismatch": int(name_mismatch(u["stop_name"],
-                                                     cur_names.get(code))),
-               "muni": u["MUNI"] or "", "hood": u["HOOD"] or "",
+        # Where boardings are unknown there is no usage name to disagree with.
+        row = {"stop_id": code,
+               "stop_name": cur_names.get(code, u["stop_name"] if u else ""),
+               "usage_stop_name": u["stop_name"] if u else "",
+               "id_name_mismatch": (int(name_mismatch(u["stop_name"],
+                                                       cur_names.get(code)))
+                                     if u else 0),
+               "muni": (u["MUNI"] or "") if u else "",
+               "hood": (u["HOOD"] or "") if u else "",
                "lat": round(lat, 6), "lon": round(lon, 6)}
         for day in DAYS:
-            row[f"{day}_boardings"] = round(fnum(u[BOARDINGS[day]]), 2)
+            row[f"{day}_boardings"] = (
+                "" if u is None else round(fnum(u[BOARDINGS[day]]), 2))
 
         for radius in RADII:
             gcur, gprop = grids[radius]
@@ -504,6 +527,7 @@ def main():
                 key = label.replace("-", "_").lower()
                 row[f"cur_{key}{sfx}"] = int(tier_value(cur_flags, days, want_hourly))
                 row[f"prop_{key}{sfx}"] = int(tier_value(prop_flags, days, want_hourly))
+        row["boardings_source"] = source
         rows.append(row)
 
     tier_report(rows)
@@ -515,7 +539,7 @@ def main():
     with open(out, "w", newline="", encoding="utf-8") as f:
         w = csv.DictWriter(f, fieldnames=list(rows[0].keys()))
         w.writeheader()
-        w.writerows(sorted(rows, key=lambda x: -x["weekday_boardings"]))
+        w.writerows(sorted(rows, key=lambda x: -fnum(x["weekday_boardings"])))
     print(f"\nWrote {out} ({len(rows):,} rows)")
     print("\nNOTE: boardings are May 2025 daily averages, the most recent month\n"
           "      PRT publishes at stop level, and are 'unadjusted, unofficial\n"
@@ -525,7 +549,9 @@ def main():
 
 
 def weight(r, label):
-    return sum(r[f"{d}_boardings"] for d in TIER_WEIGHT[label])
+    """Boardings for the tier's day set. A blank (unknown) reads as 0.0 here,
+    for summation only -- the CSV cell itself stays blank, never 0."""
+    return sum(fnum(r[f"{d}_boardings"]) for d in TIER_WEIGHT[label])
 
 
 def tier_report(rows):
@@ -534,9 +560,12 @@ def tier_report(rows):
           .center(76))
     print("=" * 76)
     mism = [r for r in rows if r["id_name_mismatch"]]
+    unknown = [r for r in rows if r["boardings_source"] == BOARDINGS_UNKNOWN]
     print(f"  locations analysed: {len(rows):,}    "
-          f"of which the usage extract and the GTFS disagree about the stop id: "
-          f"{len(mism)}\n  ({sum(r['weekday_boardings'] for r in mism):,.0f} "
+          f"of which boardings are unknown (renumbered, no unambiguous match): "
+          f"{len(unknown):,}  <- never counted as zero")
+    print(f"  of which the usage extract and the GTFS disagree about the stop id: "
+          f"{len(mism)}\n  ({sum(fnum(r['weekday_boardings']) for r in mism):,.0f} "
           f"weekday boardings; their trip counts are sound, their names, place "
           f"labels\n  and boardings are not, so they are left out of the example "
           f"lists below)")
@@ -559,7 +588,7 @@ def tier_report(rows):
                 if r[f"cur_{day}_trips"] > 0 and r[f"prop_{day}_trips"] == 0]
         all_gone = sum(1 for r in lost if not r["prop_week_any_minimum"])
         day_only = [r for r in lost if r["prop_week_any_minimum"]]
-        bd = sum(r[f"{day}_boardings"] for r in day_only)
+        bd = sum(fnum(r[f"{day}_boardings"]) for r in day_only)
         print(f"    {day:9s} {len(lost):5,d} locations lose it"
               f"   {all_gone:5,d} lose all service entirely"
               f"   {len(day_only):5,d} keep weekday service but lose {day}"
@@ -572,7 +601,7 @@ def tier_report(rows):
             continue  # counted by analyze_service_loss.py, not a weekend story
         if r["cur_weekends_any_minimum"] and not r["prop_weekends_any_minimum"]:
             place[r["hood"] or r["muni"].split("(")[0].strip() or "?"] += (
-                r["saturday_boardings"] + r["sunday_boardings"])
+                fnum(r["saturday_boardings"]) + fnum(r["sunday_boardings"]))
     for p, v in sorted(place.items(), key=lambda x: -x[1])[:12]:
         print(f"    {v:8.1f}  {p}")
     if not place:
@@ -584,18 +613,20 @@ def tier_report(rows):
                 and r[f"prop_{day}_trips"] > 0 and not r["id_name_mismatch"]]
         print(f"\n  Busiest locations dropping below hourly on {label}, while "
               f"keeping some service (6am-6pm, max 60-minute gap):")
-        for r in sorted(hits, key=lambda x: -x[f"{day}_boardings"])[:12]:
+        for r in sorted(hits, key=lambda x: -fnum(x[f"{day}_boardings"]))[:12]:
             p = r["hood"] or r["muni"].split("(")[0].strip()
-            print(f"    {r[f'{day}_boardings']:8.1f}  {r['stop_name'][:38]:38s} "
+            print(f"    {fnum(r[f'{day}_boardings']):8.1f}  "
+                  f"{r['stop_name'][:38]:38s} "
                   f"{p[:18]:18s} {r[f'cur_{day}_trips']:6d} -> "
                   f"{r[f'prop_{day}_trips']:6d} {day} trips")
 
     print("\n  Busiest locations rising to hourly on weekdays:")
     hits = [r for r in rows if not r["cur_week_any_hourly"]
             and r["prop_week_any_hourly"] and not r["id_name_mismatch"]]
-    for r in sorted(hits, key=lambda x: -x["weekday_boardings"])[:10]:
+    for r in sorted(hits, key=lambda x: -fnum(x["weekday_boardings"]))[:10]:
         p = r["hood"] or r["muni"].split("(")[0].strip()
-        print(f"    {r['weekday_boardings']:8.1f}  {r['stop_name'][:38]:38s} "
+        print(f"    {fnum(r['weekday_boardings']):8.1f}  "
+              f"{r['stop_name'][:38]:38s} "
               f"{p[:18]:18s} {r['cur_weekday_trips']:6d} -> "
               f"{r['prop_weekday_trips']:6d} weekday trips")
 
@@ -656,6 +687,7 @@ def replacement_report(rows, prop_route_ids):
                 "id_name_mismatch": r["id_name_mismatch"],
                 "muni": r["muni"], "hood": r["hood"],
                 "weekday_boardings": r["weekday_boardings"],
+                "boardings_source": r["boardings_source"],
                 "cur_weekday_trips": c, "prop_weekday_trips": p,
                 "pct_change": round(pct, 1),
                 "routes_lost": ";".join(sorted(lost)),
@@ -668,16 +700,19 @@ def replacement_report(rows, prop_route_ids):
     print("C. STOPS WHERE ONE ROUTE REPLACES ANOTHER AT COMPARABLE SERVICE"
           .center(76))
     print("=" * 76)
-    b = sum(h["weekday_boardings"] for h in hits)
+    b = sum(fnum(h["weekday_boardings"]) for h in hits)
+    unknown = sum(1 for h in hits if h["boardings_source"] == BOARDINGS_UNKNOWN)
     print(f"  {len(hits):,} of {len(rows):,} locations, {b:,.0f} weekday "
-          f"boardings: weekday trips within "
-          f"{REPLACE_TOLERANCE_PCT}%, at most {REPLACE_MAX_ROUTES} routes today,"
-          f"\n  and a genuine route change after translating renumbering away.")
+          f"boardings ({unknown:,} unknown, never counted as zero): weekday "
+          f"trips within {REPLACE_TOLERANCE_PCT}%, at most {REPLACE_MAX_ROUTES} "
+          f"routes today,\n  and a genuine route change after translating "
+          f"renumbering away.")
     print("\n  Busiest (excluding rows whose stop id the two feeds disagree on):")
     clean = [h for h in hits if not h["id_name_mismatch"]]
-    for h in sorted(clean, key=lambda x: -x["weekday_boardings"])[:15]:
+    for h in sorted(clean, key=lambda x: -fnum(x["weekday_boardings"]))[:15]:
         place = h["hood"] or h["muni"].split("(")[0].strip()
-        print(f"    {h['weekday_boardings']:7.1f}  {h['stop_name'][:34]:34s} "
+        print(f"    {fnum(h['weekday_boardings']):7.1f}  "
+              f"{h['stop_name'][:34]:34s} "
               f"{place[:18]:18s} -{h['routes_lost']:14s} +{h['routes_gained']:14s}"
               f" {h['pct_change']:+6.1f}%")
 
@@ -685,7 +720,7 @@ def replacement_report(rows, prop_route_ids):
     with open(out, "w", newline="", encoding="utf-8") as f:
         w = csv.DictWriter(f, fieldnames=list(hits[0].keys()))
         w.writeheader()
-        w.writerows(sorted(hits, key=lambda x: -x["weekday_boardings"]))
+        w.writerows(sorted(hits, key=lambda x: -fnum(x["weekday_boardings"])))
     print(f"\n  Wrote {out} ({len(hits)} rows)")
 
 
