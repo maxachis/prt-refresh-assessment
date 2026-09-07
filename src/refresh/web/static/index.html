@@ -4,6 +4,9 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Bus Line Refresh — what changes here?</title>
+  <!-- Declaring an icon is also what stops the browser asking for
+       /favicon.ico, which this app does not serve. -->
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
   <!-- MapLibre is vendored under static/vendor/ (pinned 4.7.1) and served
        same-origin, so the map does not depend on a CDN. -->
   <link rel="stylesheet" href="/vendor/maplibre-gl.css" />
@@ -92,8 +95,7 @@
        it is the sentence carrying the count, the day and the walk radius. */
     #legend-box.collapsed #legend > *:not(.lg-head) { display:none; }
     #legend-box.collapsed #legend-reset,
-    #legend-box.collapsed #legend-select,
-    #legend-box.collapsed #legend-clear { display:none; }
+    #legend-box.collapsed .lg-tools { display:none; }
     #legend-box.collapsed .lg-head { margin-bottom:0; padding-right:14px; }
     .lg-head { font-size:12px; margin:0 2px 8px; }
     .lg-head b { font-size:14px; }
@@ -122,12 +124,29 @@
     .lg-n { font-variant-numeric:tabular-nums; color:var(--muted); }
     .lg-foot { font-size:10.5px; color:var(--muted); margin:8px 2px 0;
       line-height:1.4; }
-    #legend-reset, #legend-select, #legend-clear { margin:6px 8px 0 2px; }
-    /* Armed reads as pressed, not as a link: while the brush is on, a drag
-       paints instead of panning, and that is a big enough change to what the
-       map does that the control has to look held down rather than clicked. */
-    #legend-select[aria-pressed="true"] { color:var(--ink);
-      text-decoration:underline; }
+    #legend-reset { margin:6px 0 0 2px; }
+    .lg-tools { display:flex; align-items:center; gap:10px; margin:8px 0 0 2px; }
+    /* Borrows the toolbar's own on/off vocabulary -- same neutral fill, same
+       inversion -- so a pressed control means one thing across the app, and
+       so the brush does not spend a colour the map needs for data. */
+    .toggle { background:#0c0e12; color:var(--muted); border:1px solid var(--line);
+      border-radius:8px; padding:4px 10px; font:inherit; font-size:12px;
+      cursor:pointer; }
+    .toggle:hover { color:var(--ink); }
+    .toggle[aria-pressed="true"] { background:var(--sel); color:#0c0e12;
+      font-weight:600; }
+    /* What a stroke would take, drawn under the cursor. Sized in script from
+       the same constant the hit test uses, so the ring cannot promise a reach
+       the selection does not have. */
+    #brush { position:absolute; z-index:3; pointer-events:none;
+      border-radius:50%; border:1.5px solid rgba(18,22,28,.8);
+      background:rgba(18,22,28,.10); transform:translate(-50%,-50%); }
+    /* Held down reads as filled, hovering as an outline. With the system
+       cursor hidden under it, this ring is the only thing on screen that can
+       say whether a stroke is happening -- and it stays a neutral ink, since
+       every colour on this map already means something about service. */
+    #brush.painting { border-width:2px; border-color:rgba(18,22,28,.95);
+      background:rgba(18,22,28,.34); }
     /* The surface's own key: a continuous strip, because a swatch list would
        imply the ramp has buckets and the buckets are published criteria. */
     #legend .lg-ramp { margin:8px 0 2px; }
@@ -701,6 +720,8 @@
       <div id="panel"></div>
     </div>
     <div id="map">
+      <!-- The brush's reach, following the cursor while the mode is armed. -->
+      <div id="brush" hidden></div>
       <!-- On a phone the toolbar is a mode you enter rather than a band
            permanently across the map. 1,135 px of controls were being scrolled
            sideways through a 322 px window with the scrollbar hidden, so the
@@ -859,11 +880,18 @@
              reader paints, which is the one scope on this key that nobody
              else can reproduce by looking at the same screen -- so the head
              line says the count was hand-picked, and the link carries the
-             stops. -->
-        <button class="link" id="legend-select" aria-pressed="false"
-                title="Drag across the map to select stops; tap one to add or remove it"
-                >Select stops</button>
-        <button class="link hidden" id="legend-clear">Clear</button>
+             stops.
+
+             A held-down button rather than a link, because it is a MODE:
+             while it is on, a drag paints instead of panning, and a control
+             that changes what dragging the map does has to look like
+             something you can leave switched on. -->
+        <div class="lg-tools">
+          <button class="toggle" id="legend-select" aria-pressed="false"
+                  title="Drag across the map to select stops; tap one to add or remove it"
+                  >Select stops</button>
+          <button class="link hidden" id="legend-clear">Clear</button>
+        </div>
         <div id="pin-key" class="legend hidden"></div>
       </div>
       <!-- Shown only in an embed, where it is the whole of the site's

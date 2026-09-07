@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
-  countIn, sumRidersIn, STYLE, viewportScope, selectionScope,
+  countIn, sumRidersIn, STYLE, viewportScope, selectionScope, withinBrush,
 } from './change';
 import { BUCKET, CUR, ID, PROP, PUBLISHED, RIDERS, ChangePoint } from './types';
 
@@ -154,5 +154,24 @@ describe('selectionScope', () => {
   it('counts nothing when nothing is picked', () => {
     const c = countIn(pts, 0, KEYS, selectionScope(new Set()));
     expect(Object.values(c).every((n) => n === 0)).toBe(true);
+  });
+});
+
+describe('withinBrush', () => {
+  // The map answers with a rectangle; the reader is watching a circle. The
+  // corners are the difference, and they are stops the ring never touched.
+  const dots = [
+    { id: 'c:mid', x: 100, y: 100 },
+    { id: 'c:edge', x: 100, y: 113 },   // 13px away, inside a 14px brush
+    { id: 'c:corner', x: 113, y: 113 }, // in the query box, outside the ring
+    { id: 'c:far', x: 200, y: 100 },
+  ];
+
+  it('takes what the ring covers and leaves the box corners', () => {
+    expect(withinBrush(100, 100, 14, dots)).toEqual(['c:mid', 'c:edge']);
+  });
+
+  it('takes nothing when the stroke is over empty ground', () => {
+    expect(withinBrush(500, 500, 14, dots)).toEqual([]);
   });
 });
