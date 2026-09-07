@@ -1,0 +1,20 @@
+<!--
+  The finding, at 16 pixels: some places lose service and some gain it.
+
+  Both halves of the ramp, in the ramp's own two colours (`change.STYLE`'s
+  `gone` and `doubled`), because a tab icon is the one surface on this site
+  with no room for a caveat. A lone red dot would be the map editorialising in
+  the only place it cannot qualify what it is saying. The circle is the mark
+  the Locations view already draws.
+
+  The equity brief carries this same artwork inline, since its standalone file
+  has to work with no network at all. Keep the two in step: the other copy is
+  `build_equity_brief.FAVICON_SVG`.
+
+  (No double hyphens anywhere in this note: an SVG is XML, and XML forbids
+  them inside a comment. It parses as an icon or it does not render at all.)
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+  <path d="M16 2a14 14 0 0 0 0 28z" fill="#e8232f"/>
+  <path d="M16 2a14 14 0 0 1 0 28z" fill="#12a163"/>
+</svg>

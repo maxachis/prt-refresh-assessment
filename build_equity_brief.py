@@ -1072,12 +1072,32 @@ def fill_slots(template, builders):
     return SLOT.sub(lambda m: builders[m.group(1)](), template)
 
 
+# The tab icon: half the ramp's loss red, half its gain green, which is the
+# finding in the one place on the site with no room for a caveat. Inlined
+# rather than linked because the standalone brief is read from disk and
+# emailed on, and a file reference would be a broken icon the moment it left
+# this repo. The map serves the identical artwork as a file
+# (`web/static/favicon.svg`); the two are small enough to keep in step by
+# hand, and change roughly never.
+# Single-quoted inside, because it rides in a double-quoted href: the SVG's
+# own quotes would otherwise close the attribute on the first one. The `#` of
+# each colour is percent-encoded for the same reason -- raw, it starts a URL
+# fragment and the icon silently becomes half a document.
+FAVICON_SVG = ("<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'>"
+               "<path d='M16 2a14 14 0 0 0 0 28z' fill='%23e8232f'/>"
+               "<path d='M16 2a14 14 0 0 1 0 28z' fill='%2312a163'/>"
+               "</svg>")
+FAVICON_LINK = (f'<link rel="icon" type="image/svg+xml" '
+                f'href="data:image/svg+xml,{FAVICON_SVG}">')
+
+
 def _html(body, *, theme=None, extra_css="", top=""):
     root = f' data-theme="{theme}"' if theme else ""
     return (f'<!doctype html>\n<html lang="en"{root}>\n<head>\n'
             '<meta charset="utf-8">\n'
             '<meta name="viewport" content="width=device-width,initial-scale=1">\n'
             f"<title>{PAGE_TITLE}</title>\n"
+            f"{FAVICON_LINK}\n"
             f"<style>{CSS}{extra_css}</style>\n</head>\n<body>\n{top}"
             f"<main>\n{body}</main>\n</body>\n</html>\n")
 
