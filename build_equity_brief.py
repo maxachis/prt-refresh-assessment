@@ -646,16 +646,30 @@ code { font-size:.9em; background:var(--code-bg); padding:.1em .35em;
    own without reading a county-wide ranking end to end. */
 .places-index { margin:1.6em 0 .4em; padding:.9em 1.1em .3em;
   border:1px solid var(--rule); border-radius:4px; background:var(--stripe); }
-.places-index ul { list-style:none; display:flex; flex-wrap:wrap;
-  gap:.35em 1.1em; padding:0; margin:0 0 .2em; font-size:.9rem; }
+/* A directory, not a paragraph of links: 38 places wrapped as running text
+   read as one grey block, and finding your own municipality in it meant
+   reading all of them. Columns of one name per line, alphabetical down each
+   column, with the count on the right where the eye can compare them. The
+   column width is a length, not a number, so the same rule gives three
+   columns on a laptop and one on a phone. */
+.places-index ul { list-style:none; padding:0; margin:0 0 .4em;
+  font-size:.9rem; columns:15em; column-gap:2em; }
+.places-index li { break-inside:avoid; display:flex; align-items:baseline;
+  gap:.5em; padding:.2em 0; border-bottom:1px solid var(--rule); }
+/* The leader: the gap between a name and its number, so a short name and a
+   long one still hand the eye to the same column of digits. */
+.places-index li::after { content:""; flex:1 1 auto;
+  border-bottom:1px dotted var(--rule); margin-bottom:.22em; order:1; }
 .places-index a { color:var(--ink); text-decoration:none;
   border-bottom:1px solid transparent; }
 .places-index a:hover { border-bottom-color:currentColor; }
 .places-index a:focus-visible { outline:2px solid currentColor;
   outline-offset:3px; border-radius:2px; }
-.places-index .count { color:var(--axis); margin-left:.3em;
+.places-index .count { color:var(--muted); order:2;
   font-variant-numeric:tabular-nums; }
-.places-index .table-note { margin:.2em 0 .7em; }
+.places-index .table-note { margin:.5em 0 .7em; }
+.places-index .toc-title span { text-transform:none; letter-spacing:.02em;
+  color:var(--axis); }
 /* On a phone the five columns force the page itself to scroll sideways, which
    nothing else here does. The stop count is the column a reader can lose --
    the street, the place and the riders are the row -- and it stays in the CSV
@@ -931,11 +945,11 @@ def place_index(ranked):
         first.setdefault(place, rank)
     chips = "".join(
         f'<li><a href="#{row_anchor(first[p])}">{escape(p)}</a>'
-        f'<span class="count">({counts[p]})</span></li>'
+        f'<span class="count">{counts[p]}</span></li>'
         for p in sorted(first))
     return ('<nav class="places-index" aria-label="Places losing service">'
             f'<div class="toc-title">{len(first)} places lose a bus '
-            "somewhere</div>"
+            "somewhere<span> &middot; removals in each</span></div>"
             f"<ul>{chips}</ul>"
             '<p class="table-note">Alphabetical. Each jumps to that place\'s '
             "largest loss; the list itself is ranked across the county, so "

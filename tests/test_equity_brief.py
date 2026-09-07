@@ -311,6 +311,7 @@ def test_the_place_index_names_every_place_once_and_points_into_the_list():
             removed_row(place="Baldwin borough", weekday_boardings=5.0)]
     index = brief.place_index(brief.rank_removed(rows))
     assert index.index("Baldwin") < index.index("Ross")      # alphabetical
-    assert "(2)" in index and "(1)" in index
+    assert '<span class="count">2</span>' in index
+    assert '<span class="count">1</span>' in index
     # Baldwin's busiest cluster ranks first, so its chip lands on row 1.
     assert 'href="#r1"' in index and 'href="#r3"' in index
