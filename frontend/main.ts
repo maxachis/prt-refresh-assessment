@@ -1369,6 +1369,18 @@ function moveBrushRing(x: number, y: number) {
   ring.hidden = !selectMode;
 }
 
+/**
+ * Whether the ring is a preview or a stroke in progress.
+ *
+ * The gap between hovering and painting is a whole button-press, and on a
+ * map with the pointer hidden there is otherwise nothing on screen that
+ * distinguishes them -- a reader who thinks they are painting and is only
+ * hovering leaves with an empty selection and no idea why.
+ */
+function setBrushPainting(on: boolean) {
+  $('brush').classList.toggle('painting', on);
+}
+
 function hideBrushRing() {
   $('brush').hidden = true;
 }
@@ -1412,6 +1424,7 @@ function initBrush() {
     if (!selectMode) return;
     painting = true;
     moved = false;
+    setBrushPainting(true);
   };
   const move = (e: any) => {
     moveBrushRing(e.point.x, e.point.y);
@@ -1422,6 +1435,7 @@ function initBrush() {
     if (took) countSoon();
   };
   const end = (e: any) => {
+    setBrushPainting(false);
     if (!painting) return;
     painting = false;
     if (!moved) {

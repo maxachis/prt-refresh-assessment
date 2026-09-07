@@ -138,6 +138,12 @@
     #brush { position:absolute; z-index:3; pointer-events:none;
       border-radius:50%; border:1.5px solid rgba(18,22,28,.8);
       background:rgba(18,22,28,.10); transform:translate(-50%,-50%); }
+    /* Held down reads as filled, hovering as an outline. With the system
+       cursor hidden under it, this ring is the only thing on screen that can
+       say whether a stroke is happening -- and it stays a neutral ink, since
+       every colour on this map already means something about service. */
+    #brush.painting { border-width:2px; border-color:rgba(18,22,28,.95);
+      background:rgba(18,22,28,.34); }
     /* The surface's own key: a continuous strip, because a swatch list would
        imply the ramp has buckets and the buckets are published criteria. */
     #legend .lg-ramp { margin:8px 0 2px; }
