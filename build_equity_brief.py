@@ -935,8 +935,10 @@ def place_index(ranked):
 
     The list below it is ranked county-wide, which is the right order for the
     finding and the wrong one for a resident looking for their own
-    neighbourhood among 286 rows. A place's chip lands on its largest loss;
-    the count says how many more of its clusters sit further down.
+    neighbourhood among 286 rows. A place's line lands on its largest loss;
+    the count says how many more of its clusters sit further down. Neither
+    fact is spelled out on the page any more -- the shape says it, and the
+    prose above the table already explains what a row is.
     """
     first, counts = {}, Counter()
     for rank, r in enumerate(ranked, start=1):
@@ -950,10 +952,7 @@ def place_index(ranked):
     return ('<nav class="places-index" aria-label="Places losing service">'
             f'<div class="toc-title">{len(first)} places lose a bus '
             "somewhere<span> &middot; removals in each</span></div>"
-            f"<ul>{chips}</ul>"
-            '<p class="table-note">Alphabetical. Each jumps to that place\'s '
-            "largest loss; the list itself is ranked across the county, so "
-            "its other clusters sit further down.</p></nav>")
+            f"<ul>{chips}</ul></nav>")
 
 
 def borrowed_caveat(ranked):
