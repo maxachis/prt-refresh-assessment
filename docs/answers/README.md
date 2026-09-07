@@ -223,12 +223,10 @@ These apply to every answer here, and each has bitten at least once:
     nearly their whole route list because the 61A–D become the 60X/61X/62X and the
     P-flyers become L-limiteds. Any stop-level route comparison has to translate
     through `route_crosswalk.csv` first and fold the S-variants into their
-    parents: doing so cuts the STOP-ROUTE-REPLACE candidate set from 901 stops to
-    749, and to **401** once stops carrying more than four routes today are
+    parents: doing so cuts the STOP-ROUTE-REPLACE candidate set from 975 stops to
+    816, and to **401** once stops carrying more than four routes today are
     excluded as well, since a Downtown stop with 38 routes is never a clean
-    substitution ([STOP-ROUTE-REPLACE.md](STOP-ROUTE-REPLACE.md)). (The 901 and
-    749 figures predate the stop-universe fix and have not been reproduced
-    against the rebuilt universe.)
+    substitution ([STOP-ROUTE-REPLACE.md](STOP-ROUTE-REPLACE.md)).
 
 12. **RETRACTED: the on-demand zone figures.** This caveat carried "18.3 of the
     80.1 km² losing all fixed-route service — 23% — falls inside a proposed

@@ -43,16 +43,12 @@ The clusters worth naming:
 
 ## Renumbering is not replacement
 
-The filters that make this answer meaningful cut a large raw candidate set down
-substantially. The final row is current as of the stop-universe fix
-(`docs/worklog/a-renumbered-stop-falls-out-of-the-measured-universe.md`); the
-first two rows predate it and have not been reproduced against the rebuilt
-universe:
+The filters that make this answer meaningful cut the raw candidate set by 59%:
 
 | Test | Locations | Boardings |
 |---|---:|---:|
-| Route sets differ, trips within 10% | 901 | 24,997 |
-| …after translating current numbers to their final numbers | 749 | 22,244 |
+| Route sets differ, trips within 10% | 975 | 28,336 |
+| …after translating current numbers to their final numbers | 816 | 25,481 |
 | …and only where at most 4 routes serve the stop today | **401** | **3,817** |
 
 The first row is dominated by Downtown, where the 61A–D become the 60X/61X/62X
