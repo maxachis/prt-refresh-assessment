@@ -564,15 +564,22 @@ def compute_change(con, radius: float = PRIMARY_RADIUS):
     return out
 
 
-# How a packed point is laid out: three fixed columns, then one group per day
+# How a packed point is laid out: four fixed columns, then one group per day
 # type. Defined here rather than spelled as literals at the two places that
 # read it, because the client mirrors these offsets in frontend/types.ts and a
 # stride that drifts on one side silently recolours the map on the other.
+#
+# `id` is the fourth because a dot has to be nameable, not just locatable: the
+# brush that selects dots hands the legend a set of them and the URL a way to
+# say which, and a row index cannot do that job -- the order is the server's,
+# and a rebuild that reordered it would quietly reselect different stops in a
+# link somebody had already sent.
 POINT_STRIDE = 4
-def CUR_AT(day: int) -> int: return 3 + POINT_STRIDE * day
-def PROP_AT(day: int) -> int: return 4 + POINT_STRIDE * day
-def BUCKET_AT(day: int) -> int: return 5 + POINT_STRIDE * day
-def RIDERS_AT(day: int) -> int: return 6 + POINT_STRIDE * day
+LAT_AT, LON_AT, PUBLISHED_AT, ID_AT = 0, 1, 2, 3
+def CUR_AT(day: int) -> int: return 4 + POINT_STRIDE * day
+def PROP_AT(day: int) -> int: return 5 + POINT_STRIDE * day
+def BUCKET_AT(day: int) -> int: return 6 + POINT_STRIDE * day
+def RIDERS_AT(day: int) -> int: return 7 + POINT_STRIDE * day
 
 
 def point_boardings(con) -> dict[str, dict[str, float | None]]:
@@ -615,9 +622,11 @@ def change_layer(con, radius: float = PRIMARY_RADIUS):
     memory instead of refetching -- 152 locations keep their weekday buses and
     lose the weekend entirely, and that comparison should cost nothing.
 
-    Each row is [lat, lon, published, then per day: cur, prop, bucket index,
-    boardings]. Boardings are `null`, never 0, at a point the proposed network
-    serves and today's does not -- see `point_boardings`.
+    Each row is [lat, lon, published, id, then per day: cur, prop, bucket
+    index, boardings]. Boardings are `null`, never 0, at a point the proposed
+    network serves and today's does not -- see `point_boardings`. The id is
+    `change_points`'s own -- `c:<stop_id>` or `p:<stop_id>` -- and it ships so
+    that a selection made on the map can be named in a link.
     """
     rows = con.execute(
         "SELECT point_id, day, lat, lon, published, cur_trips, prop_trips, "
@@ -630,7 +639,8 @@ def change_layer(con, radius: float = PRIMARY_RADIUS):
     for r in rows:
         p = packed.setdefault(
             r["point_id"], [round(r["lat"], 6), round(r["lon"], 6),
-                            r["published"], *([0] * (POINT_STRIDE * len(DAYS)))])
+                            r["published"], r["point_id"],
+                            *([0] * (POINT_STRIDE * len(DAYS)))])
         day = DAYS.index(r["day"])
         p[CUR_AT(day):RIDERS_AT(day) + 1] = [
             r["cur_trips"], r["prop_trips"], idx[r["bucket"]],
@@ -640,7 +650,7 @@ def change_layer(con, radius: float = PRIMARY_RADIUS):
         "radius": int(radius),
         "days": list(DAYS),
         "buckets": [{"key": k, "label": lab} for k, lab in BUCKETS],
-        "fields": ["lat", "lon", "published",
+        "fields": ["lat", "lon", "published", "id",
                    *[f"{d}_{f}" for d in DAYS
                      for f in ("cur", "prop", "bucket", "riders")]],
         "points": list(packed.values()),

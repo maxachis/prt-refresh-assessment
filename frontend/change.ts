@@ -27,6 +27,7 @@
  */
 import {
   ChangeLayer, ChangePoint, Day, DAYS, BUCKET, CUR, PROP, field, riders,
+  pointId,
 } from './types';
 import { fetchJSON } from './utils';
 
@@ -60,9 +61,26 @@ export const STYLE: Record<string, { color: string; size: number }> = {
 const SRC = 'change';
 const LAYER = 'change-dots';
 
+/** `true` for a dot the reader has painted. */
+const SELECTED: any = ['boolean', ['feature-state', 'selected'], false];
+/** Ink, not a hue: the ramp owns every colour that means something here. */
+const SELECTED_HALO = '#15181e';
+
 let data: ChangeLayer | null = null;
 /** Buckets the reader has switched off by clicking the legend. */
 const hidden = new Set<string>();
+
+/**
+ * The dots the reader has painted, by their server ids.
+ *
+ * A second scope for the same figures, and the first one in this app that is
+ * neither published nor derived from the question: the viewport is arbitrary
+ * too, but it is arbitrary in a way a link reproduces exactly, and a
+ * hand-painted set is only as reproducible as the ids that name it. That is
+ * why it holds ids rather than row indices, and why `urlstate` writes them
+ * out in full.
+ */
+const selected = new Set<string>();
 
 export function layerData(): ChangeLayer | null {
   return data;
@@ -73,7 +91,109 @@ export function isHidden(key: string): boolean {
 }
 
 /**
- * Points inside `bounds`, tallied by bucket for one day type.
+ * Which dots one figure is counted over.
+ *
+ * The legend's numbers were always scoped -- to the viewport -- and painting
+ * makes that scope a choice rather than a fact, so it becomes a value the
+ * caller passes instead of four coordinates each of these helpers tests for
+ * itself. Everything else about the counting is unchanged: still tallied from
+ * the raw rows, so a bucket switched off in the key keeps reporting its
+ * total.
+ */
+export type Scope = (p: ChangePoint) => boolean;
+
+export function viewportScope(
+  west: number, south: number, east: number, north: number,
+): Scope {
+  return (p) => inBounds(p, west, south, east, north);
+}
+
+export function selectionScope(ids: ReadonlySet<string>): Scope {
+  return (p) => ids.has(pointId(p));
+}
+
+export function selection(): ReadonlySet<string> {
+  return selected;
+}
+
+/** Sorted, so the same painted set always writes the same link. */
+export function selectionIds(): string[] {
+  return [...selected].sort();
+}
+
+export function selectionSize(): number {
+  return selected.size;
+}
+
+/**
+ * Paint, unpaint, or replace the selection, repainting only what changed.
+ *
+ * Feature state rather than a re-`setData`: the layer is ~5,900 dots and this
+ * runs on every pointer move of a drag.
+ */
+export function addToSelection(map: maplibregl.Map, ids: Iterable<string>) {
+  for (const id of ids) {
+    if (selected.has(id)) continue;
+    selected.add(id);
+    mark(map, id, true);
+  }
+}
+
+export function toggleSelected(map: maplibregl.Map, id: string) {
+  if (selected.delete(id)) mark(map, id, false);
+  else {
+    selected.add(id);
+    mark(map, id, true);
+  }
+}
+
+export function setSelection(map: maplibregl.Map, ids: Iterable<string>) {
+  clearSelection(map);
+  addToSelection(map, ids);
+}
+
+export function clearSelection(map: maplibregl.Map) {
+  for (const id of selected) mark(map, id, false);
+  selected.clear();
+}
+
+function mark(map: maplibregl.Map, id: string, on: boolean) {
+  // A selection can arrive from a link before the layer has loaded, and
+  // MapLibre throws on a feature state set against a source it has no data
+  // for yet. The set is the record; the halo catches up when the dots land.
+  try {
+    map.setFeatureState({ source: SRC, id }, { selected: on });
+  } catch {
+    /* the dots have not arrived; `restoreSelection` re-marks them */
+  }
+}
+
+/** Re-apply the halo after the dots are (re)loaded. */
+function restoreSelection(map: maplibregl.Map) {
+  for (const id of selected) mark(map, id, true);
+}
+
+/**
+ * The dots under a brush stroke, by id.
+ *
+ * Deliberately what is RENDERED, unlike every count in this file: you can
+ * only paint what you can see, so a bucket switched off in the key cannot be
+ * picked up by a stroke passing over where its dots would be. That is the
+ * same rule the key already follows from the other side -- switching a bucket
+ * off does not drop what it has already counted.
+ */
+export function dotsUnder(
+  map: maplibregl.Map, x: number, y: number, radiusPx: number,
+): string[] {
+  const box: [[number, number], [number, number]] = [
+    [x - radiusPx, y - radiusPx], [x + radiusPx, y + radiusPx]];
+  return map.queryRenderedFeatures(box as any, { layers: [LAYER] })
+    .map((f) => f.id as string)
+    .filter((id) => id !== undefined);
+}
+
+/**
+ * Points inside `scope`, tallied by bucket for one day type.
  *
  * Counted from the raw rows rather than from `queryRenderedFeatures`, which
  * only sees what survived the legend filter and what the current tile has
@@ -81,14 +201,13 @@ export function isHidden(key: string): boolean {
  * just switched off, or turning a layer off would look like the losses in view
  * had gone away.
  */
-export function countInBounds(
-  points: ChangePoint[], dayIndex: number, keys: string[],
-  west: number, south: number, east: number, north: number,
+export function countIn(
+  points: ChangePoint[], dayIndex: number, keys: string[], scope: Scope,
 ): Record<string, number> {
   const out: Record<string, number> = {};
   for (const k of keys) out[k] = 0;
   for (const p of points) {
-    if (!inBounds(p, west, south, east, north)) continue;
+    if (!scope(p)) continue;
     const key = keys[field(p, BUCKET(dayIndex))];
     if (key !== undefined) out[key]++;
   }
@@ -101,18 +220,18 @@ function inBounds(p: ChangePoint, west: number, south: number,
   return lat >= south && lat <= north && lon >= west && lon <= east;
 }
 
-/** Boardings in view per bucket, and how much of the view they speak for. */
+/** Boardings in scope per bucket, and how much of the scope they speak for. */
 export interface RiderTally {
   /** Observed daily boardings, summed per bucket. */
   riders: Record<string, number>;
   /** How many locations each of those totals is made of. */
   measured: Record<string, number>;
-  /** Locations in view with no ridership record at all — see below. */
+  /** Locations in scope with no ridership record at all — see below. */
   unmeasured: number;
 }
 
 /**
- * The same points as `countInBounds`, weighted by who boards at them.
+ * The same points as `countIn`, weighted by who boards at them.
  *
  * The second denominator for one set of dots (convention 15). Counting
  * locations says the plan strands 593 places; counting boardings says those
@@ -126,9 +245,8 @@ export interface RiderTally {
  * plan's gains rather than as the absence of any way to measure them. The
  * legend renders `unmeasured` as a sentence for that reason.
  */
-export function sumRidersInBounds(
-  points: ChangePoint[], dayIndex: number, keys: string[],
-  west: number, south: number, east: number, north: number,
+export function sumRidersIn(
+  points: ChangePoint[], dayIndex: number, keys: string[], scope: Scope,
 ): RiderTally {
   const tally: RiderTally = { riders: {}, measured: {}, unmeasured: 0 };
   for (const k of keys) {
@@ -136,7 +254,7 @@ export function sumRidersInBounds(
     tally.measured[k] = 0;
   }
   for (const p of points) {
-    if (!inBounds(p, west, south, east, north)) continue;
+    if (!scope(p)) continue;
     const key = keys[field(p, BUCKET(dayIndex))];
     if (key === undefined) continue;
     const n = riders(p, dayIndex);
@@ -163,6 +281,7 @@ function toGeoJSON(layer: ChangeLayer) {
         type: 'Feature' as const,
         geometry: { type: 'Point' as const, coordinates: [p[1], p[0]] },
         properties: {
+          id: pointId(p),
           published: p[2],
           ...Object.fromEntries(DAYS.flatMap((_d, i) => [
             [`b${i}`, keys[field(p, BUCKET(i))]],
@@ -193,6 +312,10 @@ function sizeExpr(dayIndex: number): any {
 export function initChangeLayer(map: maplibregl.Map) {
   map.addSource(SRC, {
     type: 'geojson',
+    // The server's own name for a dot becomes the feature id, which is what
+    // lets a painted selection be held as a set of ids and drawn with feature
+    // state instead of by rewriting the whole collection on every stroke.
+    promoteId: 'id',
     data: { type: 'FeatureCollection', features: [] } as any,
   });
   // Beneath the walk circle and the two stop layers, which belong to whatever
@@ -210,8 +333,18 @@ export function initChangeLayer(map: maplibregl.Map) {
       // sits on a surface cell of its OWN colour -- a green dot on green
       // ground -- so the halo is what keeps the dot visible against the layer
       // that agrees with it, not against the basemap it's already clear of.
-      'circle-stroke-color': 'rgba(255,255,255,.9)',
-      'circle-stroke-width': ['interpolate', ['linear'], ['zoom'], 9, 0.5, 12, 1, 16, 1.6],
+      'circle-stroke-color': ['case', SELECTED, SELECTED_HALO, 'rgba(255,255,255,.9)'],
+      // A selected dot is drawn with a heavier, darker ring and nothing else.
+      // Colour and size are both taken here -- they carry the bucket, which is
+      // a published criterion -- so the halo is the only channel left that can
+      // say "this one is in the count" without saying something untrue about
+      // how much service it lost.
+      // The selection test sits INSIDE the zoom ramp rather than around it:
+      // MapLibre allows only one zoom-based interpolate per expression.
+      'circle-stroke-width': ['interpolate', ['linear'], ['zoom'],
+        9, ['case', SELECTED, 1.6, 0.5],
+        12, ['case', SELECTED, 2.4, 1],
+        16, ['case', SELECTED, 3.2, 1.6]],
     },
   }, 'walk-fill');
 }
@@ -219,6 +352,10 @@ export function initChangeLayer(map: maplibregl.Map) {
 export async function loadChangeLayer(map: maplibregl.Map, radius: number, day: Day) {
   data = await fetchJSON<ChangeLayer>(`/api/change?radius=${radius}`);
   (map.getSource(SRC) as maplibregl.GeoJSONSource).setData(toGeoJSON(data) as any);
+  // The dots are the same set at either radius (query.change_points), so a
+  // selection survives a radius change -- but the feature state does not
+  // survive the data being replaced under it.
+  restoreSelection(map);
   setChangeDay(map, day);
   return data;
 }

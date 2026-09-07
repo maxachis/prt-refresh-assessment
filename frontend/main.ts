@@ -4,6 +4,8 @@ import { render, renderEmpty, setDay, activeDay, placeLabel } from './place';
 import { oneSeatPanelHTML, oneSeatPromptHTML } from './oneseatpanel';
 import {
   initChangeLayer, loadChangeLayer, setChangeDay, toggleBucket, resetBuckets,
+  dotsUnder, addToSelection, toggleSelected, clearSelection, setSelection,
+  selection, selectionIds, selectionSize,
   layerData, dotLabel,
 } from './change';
 import {
@@ -167,6 +169,12 @@ let selectedPlace: string | null = null;
 // control that changes what is on the ground.
 let placeFill: PlaceFill = DEFAULT_PLACE_FILL;
 
+// Whether the brush is armed, so a drag paints stops instead of panning the
+// map. A mode rather than a modifier because a phone has no modifier: paint
+// and pan are the same gesture there, and a shift-drag would leave the
+// feature unreachable on the device most of this map's readers are on.
+let selectMode = false;
+
 // Which view is on screen. Two of them — one-seat and travel time — take a
 // destination, and one of those two answers on a click rather than on a load,
 // so the click handler and the day control both have to know which is active.
@@ -215,6 +223,10 @@ map.on('load', () => {
   renderPanel();
 
   map.on('click', (e: any) => {
+    // The brush owns the pointer while it is armed: a stroke ends in a click
+    // event, and answering it would open the panel for whichever dot the
+    // reader happened to stop on.
+    if (selectMode) return;
     if (pinMode) {
       setDestination({ lat: e.lngLat.lat, lon: e.lngLat.lng });
       return;
@@ -287,6 +299,8 @@ map.on('load', () => {
     popup.setLngLat(e.lngLat)
       .setHTML(placeTooltipHTML(f.properties, placeFill, activeDay())).addTo(map);
   });
+
+  initBrush();
 
   map.on('moveend', () => {
     // Recorded on every move, including the ones the app makes itself when it
@@ -402,6 +416,11 @@ map.on('load', () => {
     // control needs no line here: it is drawn inside the panel, which the
     // view switch replaces wholesale.)
     $('place-fill-controls').classList.toggle('hidden', view !== 'places');
+    // The brush paints dots, so it means nothing in the views that have none.
+    // Disarmed rather than merely hidden: a mode left armed behind a control
+    // the reader can no longer see would swallow their next click.
+    if (!dotsOn()) setSelectMode(false);
+    refreshSelectControls();
     refreshDayControls();
     if (!picksDestination) setPinMode(false);
     showDestinationMarker();
@@ -464,6 +483,13 @@ map.on('load', () => {
   $('legend-reset').addEventListener('click', () => {
     resetBuckets(map, activeDay());
     refreshLegend();
+  });
+  $('legend-select').addEventListener('click', () => setSelectMode(!selectMode));
+  $('legend-clear').addEventListener('click', () => {
+    clearSelection(map);
+    refreshSelectControls();
+    refreshLegend();
+    syncUrl();
   });
 
   // The key and the toolbar together were most of a phone's map. Collapsing
@@ -544,6 +570,7 @@ map.on('load', () => {
   initControlSheet();
 
   refreshStateLine();
+  refreshSelectControls();
   refreshEmbedLink();
   if (!applyOpening(opening)) {
     void loadChangeLayer(map, radius, activeDay()).then(refreshLegend);
@@ -628,6 +655,9 @@ function applyOpening(s: Partial<UrlState>): boolean {
     if ('key' in s.dest) press(CONTROL.dest, s.dest.key);
     else setDestination(s.dest);
   }
+  // Before the view, and needing no fetch to have happened: the selection is
+  // a set of ids, and the halo catches up with them when the dots arrive.
+  if (s.selection) setSelection(map, s.selection);
   if (s.view) press(CONTROL.view, s.view);
   // Last, because it answers the question the controls above have just
   // finished describing.
@@ -658,6 +688,7 @@ function syncUrl() {
     camera,
     place: selectedPlace,
     placeFill,
+    selection: selectionIds(),
   };
   const search = toSearch(state);
   // The mode is not part of the question, so it is not in what `toSearch`
@@ -816,6 +847,7 @@ function renderLegendBody() {
     surface: surfaceOn() ? surfaceData() : null,
     unit: surfaceUnit,
     population: populationData(),
+    selection: selection(),
   });
 }
 
@@ -1284,6 +1316,91 @@ function placeMarker(lat: number, lon: number) {
   } else {
     marker.setLngLat([lon, lat]);
   }
+}
+
+/** How wide a stroke is, in screen pixels. A fingertip, not a hairline. */
+const BRUSH_RADIUS_PX = 14;
+
+/** Are the dots on screen at all? The brush only means something if they are. */
+function dotsOn(): boolean {
+  return view === 'dots' || view === 'both';
+}
+
+/**
+ * Arm or disarm the brush.
+ *
+ * Panning is disabled while it is armed, which is the whole reason this is a
+ * mode: with `dragPan` live, every stroke would drag the county out from
+ * under the stops being painted.
+ */
+function setSelectMode(on: boolean) {
+  selectMode = on && dotsOn();
+  if (selectMode) map.dragPan.disable();
+  else map.dragPan.enable();
+  map.getCanvas().style.cursor = selectMode ? 'crosshair' : '';
+  refreshSelectControls();
+}
+
+/** The brush's two buttons: whether it is armed, and whether there is
+ *  anything to clear. */
+function refreshSelectControls() {
+  const b = $('legend-select');
+  b.classList.toggle('hidden', !dotsOn());
+  b.setAttribute('aria-pressed', String(selectMode));
+  b.textContent = selectMode ? 'Done selecting' : 'Select stops';
+  $('legend-clear').classList.toggle('hidden', !dotsOn() || !selectionSize());
+}
+
+/**
+ * Painting: drag to add stops, tap to add or remove one.
+ *
+ * A drag only ever ADDS, and the tap is what takes a stop back out. A brush
+ * that toggled everything it passed over would flicker a stop in and out on
+ * a stroke that crossed itself, which on a dense corridor is most strokes.
+ *
+ * The legend and the URL are updated at the END of a stroke rather than on
+ * every pointer move: the counts are a sentence to read, not an animation,
+ * and rewriting the address bar sixty times a second is how a browser starts
+ * dropping history writes.
+ */
+function initBrush() {
+  let painting = false;
+  let moved = false;
+
+  const start = () => {
+    if (!selectMode) return;
+    painting = true;
+    moved = false;
+  };
+  const move = (e: any) => {
+    if (!painting) return;
+    moved = true;
+    addToSelection(map, dotsUnder(map, e.point.x, e.point.y, BRUSH_RADIUS_PX));
+  };
+  const end = (e: any) => {
+    if (!painting) return;
+    painting = false;
+    if (!moved) {
+      // A tap: the nearest dot under the finger, toggled. `dotsUnder` returns
+      // them in render order, which puts the topmost -- the one the reader
+      // sees themselves aiming at -- first.
+      const [id] = dotsUnder(map, e.point.x, e.point.y, BRUSH_RADIUS_PX);
+      if (id) toggleSelected(map, id);
+    }
+    refreshSelectControls();
+    refreshLegend();
+    syncUrl();
+  };
+
+  map.on('mousedown', start);
+  map.on('mousemove', move);
+  map.on('mouseup', end);
+  // Touch is the same three events under different names, and it is the case
+  // the mode exists for: with `dragPan` off, a finger drag reports points the
+  // same way a mouse drag does.
+  map.on('touchstart', start);
+  map.on('touchmove', move);
+  map.on('touchend', end);
 }
 
 /**

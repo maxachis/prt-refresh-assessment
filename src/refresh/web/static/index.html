@@ -91,7 +91,9 @@
     /* Collapsed keeps the head line -- every legend here opens with one, and
        it is the sentence carrying the count, the day and the walk radius. */
     #legend-box.collapsed #legend > *:not(.lg-head) { display:none; }
-    #legend-box.collapsed #legend-reset { display:none; }
+    #legend-box.collapsed #legend-reset,
+    #legend-box.collapsed #legend-select,
+    #legend-box.collapsed #legend-clear { display:none; }
     #legend-box.collapsed .lg-head { margin-bottom:0; padding-right:14px; }
     .lg-head { font-size:12px; margin:0 2px 8px; }
     .lg-head b { font-size:14px; }
@@ -120,7 +122,12 @@
     .lg-n { font-variant-numeric:tabular-nums; color:var(--muted); }
     .lg-foot { font-size:10.5px; color:var(--muted); margin:8px 2px 0;
       line-height:1.4; }
-    #legend-reset { margin:6px 0 0 2px; }
+    #legend-reset, #legend-select, #legend-clear { margin:6px 8px 0 2px; }
+    /* Armed reads as pressed, not as a link: while the brush is on, a drag
+       paints instead of panning, and that is a big enough change to what the
+       map does that the control has to look held down rather than clicked. */
+    #legend-select[aria-pressed="true"] { color:var(--ink);
+      text-decoration:underline; }
     /* The surface's own key: a continuous strip, because a swatch list would
        imply the ramp has buckets and the buckets are published criteria. */
     #legend .lg-ramp { margin:8px 0 2px; }
@@ -848,6 +855,15 @@
                 title="Collapse the key">–</button>
         <div id="legend"></div>
         <button class="link" id="legend-reset">Show all</button>
+        <!-- The brush. It scopes the counts above it to a set of stops the
+             reader paints, which is the one scope on this key that nobody
+             else can reproduce by looking at the same screen -- so the head
+             line says the count was hand-picked, and the link carries the
+             stops. -->
+        <button class="link" id="legend-select" aria-pressed="false"
+                title="Drag across the map to select stops; tap one to add or remove it"
+                >Select stops</button>
+        <button class="link hidden" id="legend-clear">Clear</button>
         <div id="pin-key" class="legend hidden"></div>
       </div>
       <!-- Shown only in an embed, where it is the whole of the site's

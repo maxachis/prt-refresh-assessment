@@ -548,6 +548,27 @@ changes published findings.
     be able to say which. This is convention 13's Beechview trap one unit
     further down.
 
+17. **A hand-painted selection is a scope, not a measure — and it is the one
+    scope on the map nobody else can reproduce.** The Locations key can be
+    narrowed from the viewport to a set of stops the reader paints with the
+    brush (`change.selectionScope`, the `sel=` parameter). Nothing about the
+    counting changes: same buckets, same boardings, same rule that a stop
+    with no ridership record is named rather than added as a zero. What
+    changes is who chose the denominator. The viewport is arbitrary too, but
+    it is arbitrary in a way a link reproduces exactly, so three things are
+    not optional. The head line says the count was hand-picked ("1,034 daily
+    boardings at 9 selected stops", never "in view"), because the figure is
+    otherwise indistinguishable from a published one. The stops travel in the
+    URL, written out as ids rather than packed, so a screenshot can be
+    checked against the map that produced it. And the surface's ground and
+    people figures are **suppressed** while a selection is live rather than
+    left counting the viewport underneath it — a 100 m cell has no stop to
+    select, and two scopes in one key, one of them silent, is the trap
+    `docs/worklog/the-site-has-two-numbers-that-look-like-people.md`
+    describes at a larger scale. A painted number is evidence about the
+    stops somebody chose; quoting it as a finding about the plan needs the
+    same care as any other selected sample.
+
 State data vintage and PRT's own accuracy disclaimer (stop figures are
 "unadjusted, unofficial totals" that may understate ridership by up to 30%)
 wherever these numbers are quoted. Report gains as plainly as losses — the

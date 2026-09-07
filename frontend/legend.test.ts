@@ -24,17 +24,17 @@ const LAYER: ChangeLayer = {
   ],
   fields: [],
   points: [
-    //  lat     lon     pub  weekday          saturday        sunday
-    [40.44, -79.99, 1, 40, 0, 0, 100, 30, 0, 0, 60, 20, 0, 0, 40],   // gone
-    [40.45, -79.98, 1, 40, 0, 0, 25, 30, 0, 0, 15, 20, 0, 0, 10],    // gone
-    [40.44, -79.97, 1, 10, 40, 5, 400, 8, 30, 5, 200, 5, 20, 5, 90], // doubled
-    [40.44, -79.96, 1, 10, 10, 7, 0, 0, 0, 7, 0, 0, 0, 7, 0],        // none
-    [41.90, -79.99, 1, 40, 0, 0, 900, 30, 0, 0, 500, 20, 0, 0, 300], // out of view
+    //  lat     lon    pub  id       weekday          saturday        sunday
+    [40.44, -79.99, 1, 'c:1', 40, 0, 0, 100, 30, 0, 0, 60, 20, 0, 0, 40],   // gone
+    [40.45, -79.98, 1, 'c:2', 40, 0, 0, 25, 30, 0, 0, 15, 20, 0, 0, 10],    // gone
+    [40.44, -79.97, 1, 'c:3', 10, 40, 5, 400, 8, 30, 5, 200, 5, 20, 5, 90], // doubled
+    [40.44, -79.96, 1, 'c:4', 10, 10, 7, 0, 0, 0, 7, 0, 0, 0, 7, 0],        // none
+    [41.90, -79.99, 1, 'c:5', 40, 0, 0, 900, 30, 0, 0, 500, 20, 0, 0, 300], // out of view
   ],
 };
 
 /** A location the plan adds a bus to: served proposed, nothing there today. */
-const NEW_POINT = [40.44, -79.95, 0, 0, 30, 6, null, 0, 20, 6, null,
+const NEW_POINT = [40.44, -79.95, 0, 'p:9', 0, 30, 6, null, 0, 20, 6, null,
                    0, 10, 6, null];
 
 const BOX = { west: -80.1, south: 40.3, east: -79.9, north: 40.5 };
@@ -258,5 +258,69 @@ describe('the key for the marks around the pin', () => {
     // "stops within 400 m" line it is a key for.
     const words = pinKeyHTML(400).replace(/<[^>]*>/g, ' ').trim().split(/\s+/);
     expect(words.length).toBeLessThanOrEqual(22);
+  });
+});
+
+describe('renderLegend with a painted selection', () => {
+  // The one scope on this key a reader cannot reproduce by looking at the
+  // same screen, so every figure it produces has to say it was hand-picked.
+  const PICKED = new Set(['c:1', 'c:5']);   // one in view, one well outside
+
+  it('counts the stops picked rather than the ones on screen', () => {
+    const el = stub();
+    renderLegend(el, { layer: LAYER, day: 'weekday', bounds: BOX,
+                       weight: 'locations', selection: PICKED });
+    expect(el.innerHTML).toMatch(/<b>2<\/b>\s*of 2 selected stops/);
+    expect(el.innerHTML).not.toContain('locations in view');
+  });
+
+  it('says a hand-picked count was hand-picked', () => {
+    const el = stub();
+    renderLegend(el, { layer: LAYER, day: 'weekday', bounds: BOX,
+                       weight: 'locations', selection: PICKED });
+    expect(el.innerHTML).toContain('stops you painted');
+  });
+
+  it('weighs the picked stops by boardings, naming the scope in the head', () => {
+    const el = stub();
+    renderLegend(el, { layer: LAYER, day: 'weekday', bounds: BOX,
+                       weight: 'riders', selection: PICKED });
+    expect(el.innerHTML).toMatch(/<b>1,000<\/b>\s*daily boardings at 2 selected stops/);
+  });
+
+  it('falls back to the view when nothing has been painted', () => {
+    const el = stub();
+    renderLegend(el, { layer: LAYER, day: 'weekday', bounds: BOX,
+                       weight: 'locations', selection: new Set() });
+    expect(el.innerHTML).toMatch(/<b>3<\/b>\s*locations in view/);
+  });
+});
+
+describe('the surface figures under a painted selection', () => {
+  // Ground and people are measured over 100 m cells, which have no stops to
+  // select. Leaving them counting the viewport while the dots above them
+  // counted a painted set would put two scopes in one key, one of them
+  // silently — so they say what they are instead of printing a number.
+  const opts = { layer: LAYER, day: 'weekday' as const, bounds: BOX,
+                 weight: 'locations' as const, surface: SURFACE,
+                 selection: new Set(['c:1']) };
+
+  it('drops the square kilometres and says why', () => {
+    const el = stub();
+    renderLegend(el, { ...opts, unit: 'area' });
+    expect(el.innerHTML).not.toContain('km² lose all service');
+    expect(el.innerHTML).toContain('not the stops you selected');
+  });
+
+  it('drops the resident figures too', () => {
+    const el = stub();
+    renderLegend(el, { ...opts, unit: 'people', population: POPULATION });
+    expect(el.innerHTML).not.toContain('people lose all service');
+  });
+
+  it('keeps the ramp, which is a key and still true of what is painted', () => {
+    const el = stub();
+    renderLegend(el, { ...opts, unit: 'area' });
+    expect(el.innerHTML).toContain('buses per day, proposed vs today');
   });
 });

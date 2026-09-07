@@ -20,7 +20,9 @@ import {
   Day, ChangeLayer, SurfaceLayer, CorridorLayer, CorridorKlass, OneSeatLayer,
   Weight, SurfaceUnit, PopulationLayer,
 } from './types';
-import { STYLE, countInBounds, sumRidersInBounds, isHidden } from './change';
+import {
+  STYLE, countIn, sumRidersIn, isHidden, viewportScope, selectionScope,
+} from './change';
 import {
   RAMP, GONE_COLOR, NEW_COLOR, summariseInBounds,
 } from './surface';
@@ -109,6 +111,22 @@ function populationLines(
 }
 
 /**
+ * What the surface's numbers say when the reader has painted a selection.
+ *
+ * They say nothing, and say so. Ground and people are measured over 100 m
+ * cells, which have no stops to be selected: leaving them counting the
+ * viewport while the dots above them counted 42 painted stops would put two
+ * different scopes in one key, one of them silently — the same trap
+ * docs/worklog/the-site-has-two-numbers-that-look-like-people.md is about, at
+ * a smaller scale. So the ramp stays (it is a key, and still true of what is
+ * painted) and the figures go.
+ */
+const SCOPED_SURFACE_NOTE = `
+      <div class="lg-ends" style="margin-top:6px">Ground and people are
+        measured across the view, not the stops you selected — a 100 m cell
+        has no stop to select. Clear the selection to count them.</div>`;
+
+/**
  * The surface's key and in-view figures, when the surface is on screen.
  *
  * A continuous strip rather than a list of swatches, deliberately: swatches
@@ -129,8 +147,10 @@ export function surfaceKey(opts: {
   bounds: { west: number; south: number; east: number; north: number };
   unit: SurfaceUnit;
   population?: PopulationLayer | null;
+  /** Whether a painted selection has narrowed the counts above this key. */
+  scoped?: boolean;
 }) {
-  const { layer, day, bounds, unit, population } = opts;
+  const { layer, day, bounds, unit, population, scoped = false } = opts;
   const gradient = RAMP.map(([stop, color]) =>
     `${color} ${((stop + 2) / 4 * 100).toFixed(1)}%`).join(', ');
 
@@ -148,8 +168,9 @@ export function surfaceKey(opts: {
           <button data-surface-unit="${u}" aria-pressed="${unit === u}"
                   class="${unit === u ? 'active' : ''}">${UNIT_LABEL[u]}</button>`).join('')}
       </div>
-      ${unit === 'people' ? populationLines(day, bounds, population)
-                           : areaLines(layer, day, bounds)}
+      ${scoped ? SCOPED_SURFACE_NOTE
+                : unit === 'people' ? populationLines(day, bounds, population)
+                                    : areaLines(layer, day, bounds)}
     </div>`;
 }
 
@@ -364,21 +385,34 @@ export interface LegendOptions {
   unit?: SurfaceUnit;
   /** The surface's population reading; absent until it has been fetched. */
   population?: PopulationLayer | null;
+  /**
+   * The dots the reader has painted, if any.
+   *
+   * A non-empty set replaces the viewport as the scope of every count here,
+   * and the head line says so rather than leaving "in view" over a number
+   * that is no longer of the view. Nothing else about the counting changes:
+   * a bucket hidden in the key still reports its total, and a stop with no
+   * ridership record is still named rather than added as a zero.
+   */
+  selection?: ReadonlySet<string> | null;
 }
 
 export function renderLegend(el: HTMLElement, opts: LegendOptions) {
   const {
-    layer, day, bounds, weight, surface, unit = 'area', population,
+    layer, day, bounds, weight, surface, unit = 'area', population, selection,
   } = opts;
   const keys = layer.buckets.map((b) => b.key);
   const dayIndex = layer.days.indexOf(day);
   const { west, south, east, north } = bounds;
   const shown = visible(layer);
 
-  const counts = countInBounds(
-    layer.points, dayIndex, keys, west, south, east, north);
+  const painted = selection && selection.size > 0 ? selection : null;
+  const scope = painted
+    ? selectionScope(painted) : viewportScope(west, south, east, north);
+
+  const counts = countIn(layer.points, dayIndex, keys, scope);
   const tally = weight === 'riders'
-    ? sumRidersInBounds(layer.points, dayIndex, keys, west, south, east, north)
+    ? sumRidersIn(layer.points, dayIndex, keys, scope)
     : null;
 
   // An em dash, not a 0: a bucket whose locations in view all lack a ridership
@@ -390,11 +424,20 @@ export function renderLegend(el: HTMLElement, opts: LegendOptions) {
   // Not "weekday boardings": the muted suffix beside it already names the day
   // type, and the head line is the one that gets screenshotted, so saying it
   // twice costs the room the caveat needs.
+  // "at N stops you selected", not "in view": a painted scope is the one
+  // thing on this key nobody else can reproduce by looking at the same
+  // screen, so the number never appears without saying it was hand-picked.
+  const where = painted
+    ? `at ${painted.size.toLocaleString()} selected stop${painted.size === 1 ? '' : 's'}`
+    : 'in view';
   const head = tally
     ? `<b>${Math.round(shown.reduce((n, b) => n + tally.riders[b.key], 0))
-        .toLocaleString()}</b> daily boardings in view`
-    : `<b>${shown.reduce((n, b) => n + counts[b.key], 0).toLocaleString()}</b>
-       locations in view`;
+        .toLocaleString()}</b> daily boardings ${where}`
+    : painted
+      ? `<b>${shown.reduce((n, b) => n + counts[b.key], 0).toLocaleString()}</b>
+         of ${painted.size.toLocaleString()} selected stops`
+      : `<b>${shown.reduce((n, b) => n + counts[b.key], 0).toLocaleString()}</b>
+         locations in view`;
 
   el.innerHTML = `
     <div class="lg-head">
@@ -413,8 +456,14 @@ export function renderLegend(el: HTMLElement, opts: LegendOptions) {
         <span class="lg-lab">${esc(b.label)}</span>
         <span class="lg-n">${cell(b.key)}</span>
       </button>`).join('')}
-    ${surface ? surfaceKey({ layer: surface, day, bounds, unit, population }) : ''}
+    ${surface ? surfaceKey({
+      layer: surface, day, bounds, unit, population, scoped: !!painted,
+    }) : ''}
     ${tally ? riderFoot(tally.unmeasured) : `
     <div class="lg-foot">Buses per day within the walk radius, both directions.
-      Counts are locations, not riders.</div>`}`;
+      Counts are locations, not riders.</div>`}
+    ${painted ? `
+    <div class="lg-foot">These are the stops you painted, not everything on
+      screen — a selection you chose by hand, so quote it as one. The link in
+      your address bar carries it.</div>` : ''}`;
 }

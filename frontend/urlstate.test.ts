@@ -13,6 +13,7 @@ const FULL: UrlState = {
   camera: { lat: 40.44, lon: -80.0, zoom: 13.5 },
   place: 'baldwin borough',
   placeFill: 'gained',
+  selection: ['c:10005', 'p:2201'],
 };
 
 describe('toSearch', () => {
@@ -137,5 +138,29 @@ describe('isFramed', () => {
     // throw is itself the answer: only a framed page has a top it cannot see.
     const win = { self: {}, get top(): unknown { throw new Error('cross-origin'); } };
     expect(isFramed(win)).toBe(true);
+  });
+});
+
+describe('a painted selection in the link', () => {
+  it('writes the stops out in full, so the link can be read and edited', () => {
+    const p = new URLSearchParams(toSearch(FULL));
+    expect(p.get('sel')).toBe('c:10005,p:2201');
+  });
+
+  it('leaves nothing behind when nothing has been painted', () => {
+    const p = new URLSearchParams(toSearch({ ...FULL, selection: [] }));
+    expect(p.has('sel')).toBe(false);
+  });
+
+  it('round-trips', () => {
+    expect(parseUrlState(toSearch(FULL)).selection).toEqual(['c:10005', 'p:2201']);
+  });
+
+  it('drops the ids it cannot read and keeps the rest', () => {
+    // Unlike every other parameter here, which is ignored whole: this is the
+    // one a person hand-edits forty entries of, and one typo should cost the
+    // typo rather than the other thirty-nine.
+    const s = parseUrlState('?sel=c:10005,not an id,p:2201').selection;
+    expect(s).toEqual(['c:10005', 'p:2201']);
   });
 });

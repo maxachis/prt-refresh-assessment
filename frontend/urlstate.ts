@@ -51,7 +51,21 @@ export const PARAM = {
   camera: 'map',
   place: 'place',
   placeFill: 'placefill',
+  selection: 'sel',
 } as const;
+
+/**
+ * A dot's id, as `/api/change` names it: `c:<stop_id>` where a bus stops
+ * today, `p:<stop_id>` where only the proposed network does.
+ *
+ * Written out in full rather than packed, because these URLs are meant to be
+ * hand-edited by whoever is building an embed -- a compressed selection would
+ * be shorter and would take the one part of the link a person can still read
+ * and reason about. A stop id is five characters, so a painted corridor costs
+ * a few hundred; a selection of the whole county would cost more than a URL
+ * can carry, and is not what the brush is for.
+ */
+const POINT_ID = /^[cp]:[\w.:-]{1,32}$/;
 
 /** How the one-seat day control's two positions are spelled in a URL. */
 const ONESEAT_DAY = { any: 'any', selected: 'selected' } as const;
@@ -88,6 +102,8 @@ export interface UrlState {
   place: string | null;
   /** Which of the Places choropleth's two readings is on the map. */
   placeFill: PlaceFill;
+  /** The dots painted on the Locations view, by id; empty when none are. */
+  selection: string[];
 }
 
 /** Is this page inside someone else's? */
@@ -129,6 +145,11 @@ export function toSearch(s: UrlState): string {
   // default reading, so writing it into every link would make the toggle
   // look like a choice the reader had made rather than the map's own start.
   if (s.placeFill !== DEFAULT_PLACE_FILL) p.set(PARAM.placeFill, s.placeFill);
+  // Absence, like `at` and `place`: nothing has been painted until somebody
+  // paints it. It is written whenever something has been, because a count
+  // scoped by hand is exactly the one a reader cannot reproduce from the rest
+  // of the URL -- see the head line the legend prints over it.
+  if (s.selection.length) p.set(PARAM.selection, s.selection.join(','));
   return `?${p}`;
 }
 
@@ -171,6 +192,15 @@ export function parseUrlState(search: string): Partial<UrlState> {
 
   const place = p.get(PARAM.place);
   if (place) s.place = place;
+
+  // Per-token rather than all-or-nothing, unlike every other parameter here:
+  // a hand-edited list of forty ids with one typo in it should lose the typo,
+  // not the other thirty-nine. An id that parses but names no dot is dropped
+  // where the selection is applied, which is the only place that knows.
+  const sel = p.get(PARAM.selection);
+  if (sel !== null) {
+    s.selection = sel.split(',').filter((id) => POINT_ID.test(id));
+  }
 
   const placeFill = p.get(PARAM.placeFill);
   if (placeFill === 'lost' || placeFill === 'gained' || placeFill === 'service') {

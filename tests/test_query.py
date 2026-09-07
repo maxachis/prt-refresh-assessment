@@ -292,8 +292,8 @@ def test_change_layer_packs_every_point_and_day(con):
                     (query.PRIMARY_RADIUS,)).fetchone()[0]
     assert len(layer["points"]) == n
     assert [b["key"] for b in layer["buckets"]] == list(query.BUCKET_KEYS)
-    # [lat, lon, published] + 4 fields x 3 day types
-    width = 3 + query.POINT_STRIDE * len(query.DAYS)
+    # [lat, lon, published, id] + 4 fields x 3 day types
+    width = 4 + query.POINT_STRIDE * len(query.DAYS)
     assert all(len(p) == width for p in layer["points"])
     assert len(layer["fields"]) == width
 
@@ -597,3 +597,20 @@ def test_a_place_too_small_to_have_a_share_is_not_given_one(con):
 
     ranked = [r for r in query.places(con) if r["share_lost"] is not None]
     assert max(ranked, key=lambda r: r["share_lost"])["place"] != "Trafford borough"
+
+
+def test_change_layer_carries_the_point_id(con):
+    """A dot has to be nameable, not just locatable.
+
+    The paint-to-select brush hands the legend a set of dots and the URL a way
+    to say which ones; both need an identity that survives a rebuild, and an
+    index into `points` does not -- the row order is the server's, and a
+    reordering would silently reselect different stops in a link somebody had
+    already sent.
+    """
+    layer = query.change_layer(con, query.PRIMARY_RADIUS)
+    assert layer["fields"][query.ID_AT] == "id"
+    ids = {r["point_id"] for r in con.execute(
+        "SELECT DISTINCT point_id FROM change WHERE radius = ?",
+        (query.PRIMARY_RADIUS,))}
+    assert {p[query.ID_AT] for p in layer["points"]} == ids

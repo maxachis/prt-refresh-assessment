@@ -64,7 +64,15 @@ export interface SideResult {
  * One row of the citywide layer, columnar to keep ~5,900 locations under a few
  * hundred kilobytes on the wire:
  *
- *   [lat, lon, published, wCur, wProp, wBucket, wRiders, sCur, ..., uRiders]
+ *   [lat, lon, published, id, wCur, wProp, wBucket, wRiders, sCur, ..., uRiders]
+ *
+ * `id` is the server's own name for the location -- `c:<stop_id>` where a bus
+ * stops today, `p:<stop_id>` where only the proposed network stops -- and it
+ * is the one field here that is not a number. It ships because a dot has to be
+ * nameable and not merely locatable: a painted selection is a set of these,
+ * and a row index could not stand in for them, since the order is the
+ * server's and a rebuild that reordered it would silently reselect different
+ * stops in a link somebody had already sent.
  *
  * All three day types travel together so switching between them repaints from
  * memory rather than refetching — 152 locations keep their weekday buses and
@@ -75,7 +83,7 @@ export interface SideResult {
  * because no bus stops there today. Zero would read as "nobody uses this",
  * which is a claim about the plan's gains that no observed number can make.
  */
-export type ChangePoint = (number | null)[];
+export type ChangePoint = (number | string | null)[];
 
 /**
  * Offsets into a ChangePoint for day `i` of DAYS.
@@ -85,11 +93,15 @@ export type ChangePoint = (number | null)[];
  * offsets are pinned by frontend/change.test.ts as well as by the API tests.
  */
 export const POINT_STRIDE = 4;
-export const CUR = (i: number) => 3 + POINT_STRIDE * i;
-export const PROP = (i: number) => 4 + POINT_STRIDE * i;
-export const BUCKET = (i: number) => 5 + POINT_STRIDE * i;
-export const RIDERS = (i: number) => 6 + POINT_STRIDE * i;
+export const CUR = (i: number) => 4 + POINT_STRIDE * i;
+export const PROP = (i: number) => 5 + POINT_STRIDE * i;
+export const BUCKET = (i: number) => 6 + POINT_STRIDE * i;
+export const RIDERS = (i: number) => 7 + POINT_STRIDE * i;
 export const PUBLISHED = 2;
+export const ID = 3;
+
+/** The server's name for this location; see ChangePoint. */
+export const pointId = (p: ChangePoint): string => p[ID] as string;
 
 /** A packed field that is always present. */
 export const field = (p: ChangePoint, i: number): number => p[i] as number;
