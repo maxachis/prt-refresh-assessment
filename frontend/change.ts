@@ -129,14 +129,21 @@ export function selectionSize(): number {
  * Paint, unpaint, or replace the selection, repainting only what changed.
  *
  * Feature state rather than a re-`setData`: the layer is ~5,900 dots and this
- * runs on every pointer move of a drag.
+ * runs on every pointer move of a drag. `addToSelection` reports how many
+ * dots it actually took, so a caller can redraw the counts only on the
+ * frames where they changed.
  */
-export function addToSelection(map: maplibregl.Map, ids: Iterable<string>) {
+export function addToSelection(
+  map: maplibregl.Map, ids: Iterable<string>,
+): number {
+  let added = 0;
   for (const id of ids) {
     if (selected.has(id)) continue;
     selected.add(id);
     mark(map, id, true);
+    added++;
   }
+  return added;
 }
 
 export function toggleSelected(map: maplibregl.Map, id: string) {
@@ -174,6 +181,25 @@ function restoreSelection(map: maplibregl.Map) {
 }
 
 /**
+ * Which of the dots a query box returned are actually under the brush.
+ *
+ * The map can only be asked for features inside a RECTANGLE, and the brush
+ * the reader is watching is a circle. Left as the rectangle, a stroke would
+ * pick up stops in its corners that the ring on screen never touched -- a
+ * selection that does not match the thing that drew it, in a view whose
+ * whole job is that the number and the picture agree.
+ */
+export function withinBrush(
+  cx: number, cy: number, radiusPx: number,
+  dots: { id: string; x: number; y: number }[],
+): string[] {
+  const r2 = radiusPx * radiusPx;
+  return dots
+    .filter((d) => (d.x - cx) ** 2 + (d.y - cy) ** 2 <= r2)
+    .map((d) => d.id);
+}
+
+/**
  * The dots under a brush stroke, by id.
  *
  * Deliberately what is RENDERED, unlike every count in this file: you can
@@ -187,9 +213,14 @@ export function dotsUnder(
 ): string[] {
   const box: [[number, number], [number, number]] = [
     [x - radiusPx, y - radiusPx], [x + radiusPx, y + radiusPx]];
-  return map.queryRenderedFeatures(box as any, { layers: [LAYER] })
-    .map((f) => f.id as string)
-    .filter((id) => id !== undefined);
+  const dots = map.queryRenderedFeatures(box as any, { layers: [LAYER] })
+    .filter((f) => f.id !== undefined)
+    .map((f) => {
+      const [lon, lat] = (f.geometry as any).coordinates;
+      const at = map.project([lon, lat]);
+      return { id: f.id as string, x: at.x, y: at.y };
+    });
+  return withinBrush(x, y, radiusPx, dots);
 }
 
 /**

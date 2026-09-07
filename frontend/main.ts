@@ -1337,7 +1337,10 @@ function setSelectMode(on: boolean) {
   selectMode = on && dotsOn();
   if (selectMode) map.dragPan.disable();
   else map.dragPan.enable();
-  map.getCanvas().style.cursor = selectMode ? 'crosshair' : '';
+  // No crosshair: the ring under the cursor is the pointer now, and a system
+  // cursor on top of it only competes with it for the reader's aim.
+  map.getCanvas().style.cursor = selectMode ? 'none' : '';
+  if (!selectMode) hideBrushRing();
   refreshSelectControls();
 }
 
@@ -1347,8 +1350,27 @@ function refreshSelectControls() {
   const b = $('legend-select');
   b.classList.toggle('hidden', !dotsOn());
   b.setAttribute('aria-pressed', String(selectMode));
-  b.textContent = selectMode ? 'Done selecting' : 'Select stops';
+  b.textContent = selectMode ? 'Selecting' : 'Select stops';
   $('legend-clear').classList.toggle('hidden', !dotsOn() || !selectionSize());
+}
+
+/**
+ * The ring under the cursor, showing what a stroke would take.
+ *
+ * A brush whose reach is invisible is one the reader calibrates by painting
+ * the wrong stops and undoing them. It is drawn at exactly `BRUSH_RADIUS_PX`
+ * and the hit test is round to match (`withinBrush`) -- a ring that promised
+ * a circle while the selection took a square would be worse than no ring.
+ */
+function moveBrushRing(x: number, y: number) {
+  const ring = $('brush');
+  ring.style.left = `${x}px`;
+  ring.style.top = `${y}px`;
+  ring.hidden = !selectMode;
+}
+
+function hideBrushRing() {
+  $('brush').hidden = true;
 }
 
 /**
@@ -1358,14 +1380,33 @@ function refreshSelectControls() {
  * that toggled everything it passed over would flicker a stop in and out on
  * a stroke that crossed itself, which on a dense corridor is most strokes.
  *
- * The legend and the URL are updated at the END of a stroke rather than on
- * every pointer move: the counts are a sentence to read, not an animation,
- * and rewriting the address bar sixty times a second is how a browser starts
- * dropping history writes.
+ * The COUNTS follow the brush live -- a reader painting a corridor is
+ * watching the number, and one that arrives after they let go makes them
+ * paint blind. They are redrawn on the animation frame, and only on the
+ * frames that actually took a new stop. The URL waits for the end of the
+ * stroke: rewriting the address bar sixty times a second is how a browser
+ * starts dropping history writes, and nobody reads a link mid-drag.
  */
 function initBrush() {
+  // Sized here rather than in the stylesheet, so the ring and the hit test
+  // cannot drift apart: both are this one number.
+  const ring = $('brush');
+  ring.style.width = `${BRUSH_RADIUS_PX * 2}px`;
+  ring.style.height = `${BRUSH_RADIUS_PX * 2}px`;
+
   let painting = false;
   let moved = false;
+  let pendingCount = false;
+
+  const countSoon = () => {
+    if (pendingCount) return;
+    pendingCount = true;
+    requestAnimationFrame(() => {
+      pendingCount = false;
+      refreshSelectControls();
+      refreshLegend();
+    });
+  };
 
   const start = () => {
     if (!selectMode) return;
@@ -1373,9 +1414,12 @@ function initBrush() {
     moved = false;
   };
   const move = (e: any) => {
+    moveBrushRing(e.point.x, e.point.y);
     if (!painting) return;
     moved = true;
-    addToSelection(map, dotsUnder(map, e.point.x, e.point.y, BRUSH_RADIUS_PX));
+    const took = addToSelection(
+      map, dotsUnder(map, e.point.x, e.point.y, BRUSH_RADIUS_PX));
+    if (took) countSoon();
   };
   const end = (e: any) => {
     if (!painting) return;
@@ -1395,6 +1439,8 @@ function initBrush() {
   map.on('mousedown', start);
   map.on('mousemove', move);
   map.on('mouseup', end);
+  // The ring belongs to the pointer, so it leaves with it.
+  map.getCanvas().addEventListener('mouseleave', hideBrushRing);
   // Touch is the same three events under different names, and it is the case
   // the mode exists for: with `dragPan` off, a finger drag reports points the
   // same way a mouse drag does.
