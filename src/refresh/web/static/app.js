@@ -301,7 +301,7 @@
     the pavement itself, and shows the rest.</div>`}function Us(e){return e<1?"":`
     <div class="lg-row lg-static lg-key">
       <i class="lg-ring"></i>
-      <span class="lg-lab">New stop location</span>
+      <span class="lg-lab">no stop here today</span>
       <span class="lg-n">${e.toLocaleString()}</span>
     </div>`}function Co(e,t){let{layer:n,day:o,bounds:a,weight:s,surface:r,unit:l="area",population:u,selection:p}=t,m=n.buckets.map(w=>w.key),v=n.days.indexOf(o),{west:k,south:x,east:j,north:g}=a,G=Es(n),_=p&&p.size>0?p:null,K=_?jn(_):Hn(k,x,j,g),ct=Kn(n.points,v,m,K),W=s==="riders"?Yn(n.points,v,m,K):null,Ia=w=>W?W.measured[w]?Math.round(W.riders[w]).toLocaleString():"\u2014":ct[w].toLocaleString(),Ua=_?`at ${_.size.toLocaleString()} selected stop${_.size===1?"":"s"}`:"in view",Ja=W?`<b>${Math.round(G.reduce((w,ye)=>w+W.riders[ye.key],0)).toLocaleString()}</b> daily boardings ${Ua}`:_?`<b>${G.reduce((w,ye)=>w+ct[ye.key],0).toLocaleString()}</b>
          of ${_.size.toLocaleString()} selected stops`:`<b>${G.reduce((w,ye)=>w+ct[ye.key],0).toLocaleString()}</b>

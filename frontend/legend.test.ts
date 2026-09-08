@@ -125,7 +125,7 @@ describe('renderLegend', () => {
     renderLegend(el, { layer: { ...LAYER, points: [...LAYER.points, NEW_POINT] },
                        day: 'weekday', bounds: BOX, weight: 'locations' });
     expect(el.innerHTML).toContain('lg-ring');
-    expect(prose(el)).toContain('New stop location');
+    expect(prose(el)).toContain('no stop here today');
   });
 
   it('counts the ringed places in the same scope as every other row', () => {
@@ -137,7 +137,7 @@ describe('renderLegend', () => {
     renderLegend(el, {
       layer: { ...LAYER, points: [...LAYER.points, NEW_POINT, far] },
       day: 'weekday', bounds: BOX, weight: 'locations' });
-    expect(el.innerHTML).toMatch(/lg-ring[\s\S]*?New stop location[\s\S]*?<span class="lg-n">1<\/span>/);
+    expect(el.innerHTML).toMatch(/lg-ring[\s\S]*?no stop here today[\s\S]*?<span class="lg-n">1<\/span>/);
   });
 
   it('drops the ring line when nothing in view is a new place', () => {

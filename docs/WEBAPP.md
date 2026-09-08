@@ -371,7 +371,7 @@ Three things follow.
 
 **And the map says which dots those are.** Every `published = 0` point is drawn
 with a detached ring round it, and the Locations key carries the ring as a
-swatch with the count in view — "New stop location", below the bucket rows and
+swatch with the count in view — "no stop here today", below the bucket rows and
 behind a rule, because it is not a bucket: it cuts across all of them, since a
 place the plan adds a stop to still lands in whichever service bucket it earns.
 Without the ring the only thing distinguishing a new pole from an existing stop
@@ -383,6 +383,16 @@ It is a key line rather than a switch (the ring follows the dot it annotates, so
 there is nothing to filter), and it is dropped entirely rather than shown as a
 zero, since it is a note about which dots are on screen rather than an outcome
 of the plan.
+
+**The label may not say "new", and that is not fussiness.** The `new` bucket
+beside it means no bus within the walk radius today; the ring means no pole
+within 150 m. At 400 m the two come apart — the 260 ringed points spread over
+six buckets, only 121 of them blue, and 15 sit on corridors the plan is
+thinning — while every blue point is ringed. So the blue set is strictly inside
+the ringed set, and two nested categories both called "new" is a key a reader
+cannot use. The label names the pole today ("no stop here today"), which is the
+test the ring actually applies. "New stop location" and "New stop under
+Refresh" were both tried on 2026-09-08 and both withdrawn.
 
 The identity radius is fixed at 150 m whatever walk radius is asked for. The
 point set has to describe the same places at 400 m and 150 m or the two stop

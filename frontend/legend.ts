@@ -447,7 +447,7 @@ function newPlaceRow(n: number) {
   return `
     <div class="lg-row lg-static lg-key">
       <i class="lg-ring"></i>
-      <span class="lg-lab">New stop location</span>
+      <span class="lg-lab">no stop here today</span>
       <span class="lg-n">${n.toLocaleString()}</span>
     </div>`;
 }

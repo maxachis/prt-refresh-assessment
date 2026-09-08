@@ -168,9 +168,21 @@ screen and there is nothing for it to filter; and it disappears at zero rather
 than sitting there as a row, because unlike the buckets above it there is no
 "cannot happen here" reading to protect.
 
-> Max named the label on 2026-09-08. "New stop under Refresh" was tried first
-> and rejected as overreach: two of the points are existing poles the plan moved
-> more than 150 m, which are new *places* without being new *stops*.
+The label took three goes on 2026-09-08, and the two that failed both failed
+for reasons worth keeping. **"New stop under Refresh"** overreaches: two of the
+points are existing poles the plan moved more than 150 m, which are new
+*places* without being new *stops*. **"New stop location"** collides with the
+`new` bucket printed four rows above it. Those two marks answer different
+questions — the bucket asks whether any bus comes within the walk radius, the
+ring whether any pole stands within 150 m — but at 400 m the blue set is
+strictly *inside* the ringed set (121 of 260), so the key offered a reader two
+nested categories both called "new" and no way to tell which was which. Max
+found that at Millvale's Grant Avenue, where five ringed dots read `more` and
+`doubled` because today's buses pass a block away on Evergreen Avenue and East
+Ohio Street while nothing stops on Grant itself.
+
+> Max chose **"no stop here today"** on 2026-09-08: name the test the ring
+> applies, and leave "new" to the bucket that is a published criterion.
 
 What is still not marked: the 263 stops the plan adds at corners that already
 have one. They change a dot's colour and nothing else, by design — that is
