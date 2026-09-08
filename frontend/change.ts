@@ -81,41 +81,43 @@ const SELECTED: any = ['boolean', ['feature-state', 'selected'], false];
 const SELECTED_HALO = '#15181e';
 
 /**
- * The ring drawn round a dot at a place with no stop of its own today.
+ * A place the plan puts a stop where none stands today, drawn HOLLOW.
  *
- * Answers the one question the colour cannot: a dot reading `doubled` at a
- * pole the plan has yet to build looks identical to one at a stop that has
- * stood for fifty years, and at 400 m nothing on screen separated them. The
- * ring says "no stop stands here today" -- `published = 0`, the identity test
- * in `query.UNIVERSE_DEDUP_M`, not a claim about service.
+ * One mark, one claim. Until 2026-09-08 these dots carried a service colour
+ * and a ring: the colour said what happens to the buses within the walk
+ * radius, the ring said no pole stands here, and a reader met "doubled or
+ * better" and "no stop here today" on one dot and read a contradiction. Both
+ * statements were true and they have different footprints -- 400 m of walking
+ * against 15 m of kerb -- which is not something a key can teach fast enough.
  *
- * It is deliberately STABLE ACROSS THE TWO RADII, where the colour is not.
- * The same location reads `new service` at 150 m and `doubled` at 400 m,
- * which is convention 4 working; the ring describes the pole rather than the
- * catchment, so it does not move when the walk radius does. At 150 m the blue
- * bucket happens to pick out almost exactly this set, and a reader could take
- * blue to mean "new stop" and be right by coincidence -- the ring is what
- * makes that inference legitimate instead of lucky.
+ * WHY NOT AN EIGHTH COLOUR, which is the obvious answer. The palette is full.
+ * Searching the whole HSL space at the contrast the other seven hold (2.9-4.2
+ * against Positron), the best available colour sits at deltaE 14.6 from its
+ * nearest neighbour under the worst of normal vision and the three
+ * dichromacies -- and that neighbour is `new`, the one it must never be
+ * confused with. The ramp's own sign-crossing pairs are held to 40. Going
+ * darker buys separation (a near-black navy reaches 37.9) at 15:1 contrast,
+ * which would make the plan's 260 additions the loudest mark on a map whose
+ * subject includes 633 locations losing every bus -- overstating the gains,
+ * which CLAUDE.md forbids as plainly as it forbids overstating the losses.
  *
- * Drawn as a detached outline rather than a heavier halo, because a heavy
- * dark halo is the selection's mark (SELECTED_HALO above) and two ink rings
- * of different weights would be a distinction nobody can hold. The gap is
- * what separates them at a glance.
+ * So the mark uses the channel the palette has left: fill. A filled dot is a
+ * stop that stands today, coloured by what happens to its service; a hollow
+ * dot is a stop the plan adds. Filled against hollow is the oldest way a map
+ * says actual against proposed, it survives every colour deficiency because
+ * it is not a colour, and it cannot be read as a position on the loss-gain
+ * ramp -- which is the point, because these locations are not on it.
+ *
+ * The outline is ink rather than a hue for the same reason: a hue would put
+ * the dot back on the ramp. It is heavier than the white halo the filled dots
+ * carry, because here the outline IS the dot rather than a separator.
  */
-const NEW_PLACE_RING = 'change-new-place-rings';
 const NEW_PLACE: any = ['==', ['get', 'published'], 0];
+/** The pseudo-bucket the key toggles these by; never a `query.BUCKETS` key. */
+export const NEW_PLACE_KEY = 'newplace';
 const NEW_PLACE_INK = '#15181e';
-/**
- * How far the ring stands off the dot, per zoom stop.
- *
- * It scales with the dot rather than being fixed, and that is not cosmetic. At
- * county scale a dot is about a pixel, so a constant standoff draws a circle
- * several times the size of the mark inside it: 260 of 6,544 points would
- * carry the loudest symbol on a map whose subject is the other 6,284. The
- * ring has to stay an annotation on a dot at every zoom, never a mark in its
- * own right.
- */
-const NEW_PLACE_GAP: Record<number, number> = { 9: 1.4, 12: 2.2, 16: 3.4 };
+/** Between `doubled` (4.5) and `gone` (6): present, not shouting. */
+const NEW_PLACE_SIZE = 5;
 
 let data: ChangeLayer | null = null;
 /** Buckets the reader has switched off by clicking the legend. */
@@ -289,7 +291,11 @@ export function countIn(
   const out: Record<string, number> = {};
   for (const k of keys) out[k] = 0;
   for (const p of points) {
-    if (!scope(p)) continue;
+    // Stops that stand today only. The buckets are convention 4's published
+    // criteria and their citywide counts are measured over exactly this set,
+    // so folding the plan's additions in would put a number under a published
+    // label that no published file agrees with. `countNewPlacesIn` has them.
+    if (!scope(p) || field(p, PUBLISHED) === 0) continue;
     const key = keys[field(p, BUCKET(dayIndex))];
     if (key !== undefined) out[key]++;
   }
@@ -297,15 +303,16 @@ export function countIn(
 }
 
 /**
- * Points in scope that no stop stands at today -- the ones the map rings.
+ * Places the plan puts a stop where none stands today, in scope.
  *
- * Counted here rather than in the legend so that the key line and the ring
- * layer read the same field (`published`) by the same rule; a key that
- * counted one thing while the map drew another would be worse than no key.
+ * Counted here rather than in the legend so the key and the map read the same
+ * field (`published`) by the same rule; a key that counted one thing while the
+ * map drew another would be worse than no key.
  *
- * It is not a bucket, and deliberately not folded into `countIn`: the buckets
- * partition every dot by what happens to its service, and this cuts across
- * all of them. A new place can land in any bucket the plan gives it.
+ * These are NOT a bucket and are deliberately outside `countIn`: the buckets
+ * are published criteria measured over the stops that exist today, and a
+ * location with no stop has no service today to compare against. It is a
+ * category of dot, not a seventh outcome.
  */
 export function countNewPlacesIn(points: ChangePoint[], scope: Scope): number {
   let n = 0;
@@ -325,7 +332,7 @@ export interface RiderTally {
   riders: Record<string, number>;
   /** How many locations each of those totals is made of. */
   measured: Record<string, number>;
-  /** Locations in scope with no ridership record at all — see below. */
+  /** Stops in scope the usage extract has no figure for — see below. */
   unmeasured: number;
 }
 
@@ -337,12 +344,15 @@ export interface RiderTally {
  * places carry 0.8% of the system's riders. Both are true, which is why this
  * sits beside the location count rather than replacing it.
  *
- * A location with no ridership record is kept out of every total and counted
- * separately, never folded in as a zero. Those are the places the proposed
- * network serves and today's does not: no bus stops there now, so nobody
- * boards there now, and a 0 in the `new` row would read as a finding about the
- * plan's gains rather than as the absence of any way to measure them. The
+ * A stop with no ridership record is kept out of every total and counted
+ * separately, never folded in as a zero: the extract simply has no figure for
+ * it, and a 0 would state a boardings finding the data cannot support. The
  * legend renders `unmeasured` as a sentence for that reason.
+ *
+ * The places the plan adds a stop to are outside this entirely, not merely
+ * unmeasured. Nobody boards where no bus stops, so they can never carry an
+ * observed figure -- that is convention 15's one-sidedness, and the legend
+ * says it in its own row rather than inside this total.
  */
 export function sumRidersIn(
   points: ChangePoint[], dayIndex: number, keys: string[], scope: Scope,
@@ -353,7 +363,12 @@ export function sumRidersIn(
     tally.measured[k] = 0;
   }
   for (const p of points) {
-    if (!scope(p)) continue;
+    // Today's stops, like `countIn`: this is the same dots under a second
+    // denominator, so it cannot be counted over a different set. It also
+    // makes `unmeasured` mean what the legend says it means -- stops the
+    // usage extract has no figure for, rather than those plus every location
+    // that cannot have one.
+    if (!scope(p) || field(p, PUBLISHED) === 0) continue;
     const key = keys[field(p, BUCKET(dayIndex))];
     if (key === undefined) continue;
     const n = riders(p, dayIndex);
@@ -398,28 +413,24 @@ function rampExpr(dayIndex: number, field: 'color' | 'size'): any {
   return ['match', ['get', `b${dayIndex}`], ...cases, STYLE.none[field]];
 }
 
+/** The ramp, except that a new place takes no colour from it -- see above. */
+function colorExpr(dayIndex: number): any {
+  return ['case', NEW_PLACE, 'rgba(0,0,0,0)', rampExpr(dayIndex, 'color')];
+}
+
+/** One size for a new place: it has no bucket, so it has no bucket's size. */
+function baseSizeExpr(dayIndex: number): any {
+  return ['case', NEW_PLACE, NEW_PLACE_SIZE, rampExpr(dayIndex, 'size')];
+}
+
 function sizeExpr(dayIndex: number): any {
   // Dots shrink with zoom rather than staying fixed: at county scale the layer
   // has to read as a field of colour, and at street scale as individual
   // locations you can aim at.
   return ['interpolate', ['linear'], ['zoom'],
-    9, ['*', rampExpr(dayIndex, 'size'), 0.45],
-    12, rampExpr(dayIndex, 'size'),
-    16, ['*', rampExpr(dayIndex, 'size'), 1.9]];
-}
-
-/**
- * The dot's own size, stood off far enough to read as a separate outline.
- *
- * The gap is added at each zoom stop rather than around the whole expression:
- * MapLibre requires a `zoom` interpolate to be top-level, so `['+', sizeExpr,
- * gap]` is rejected outright at `addLayer` and takes the layer with it.
- */
-function ringExpr(dayIndex: number): any {
-  const at = (zoom: number, scale: number): any =>
-    ['+', ['*', rampExpr(dayIndex, 'size'), scale], NEW_PLACE_GAP[zoom]];
-  return ['interpolate', ['linear'], ['zoom'],
-    9, at(9, 0.45), 12, at(12, 1), 16, at(16, 1.9)];
+    9, ['*', baseSizeExpr(dayIndex), 0.45],
+    12, baseSizeExpr(dayIndex),
+    16, ['*', baseSizeExpr(dayIndex), 1.9]];
 }
 
 export function initChangeLayer(map: maplibregl.Map) {
@@ -436,7 +447,7 @@ export function initChangeLayer(map: maplibregl.Map) {
   map.addLayer({
     id: LAYER, type: 'circle', source: SRC,
     paint: {
-      'circle-color': rampExpr(0, 'color'),
+      'circle-color': colorExpr(0),
       'circle-radius': sizeExpr(0),
       'circle-opacity': 0.85,
       // A near-white halo, not a dark hairline, and one that grows with zoom.
@@ -446,7 +457,11 @@ export function initChangeLayer(map: maplibregl.Map) {
       // sits on a surface cell of its OWN colour -- a green dot on green
       // ground -- so the halo is what keeps the dot visible against the layer
       // that agrees with it, not against the basemap it's already clear of.
-      'circle-stroke-color': ['case', SELECTED, SELECTED_HALO, 'rgba(255,255,255,.9)'],
+      // A new place is drawn BY its outline, so the outline is ink there and
+      // a halo everywhere else. Selection still wins: it is the only state a
+      // reader creates themselves, and it has to be visible on either mark.
+      'circle-stroke-color': ['case',
+        SELECTED, SELECTED_HALO, NEW_PLACE, NEW_PLACE_INK, 'rgba(255,255,255,.9)'],
       // A selected dot is drawn with a heavier, darker ring and nothing else.
       // Colour and size are both taken here -- they carry the bucket, which is
       // a published criterion -- so the halo is the only channel left that can
@@ -454,27 +469,14 @@ export function initChangeLayer(map: maplibregl.Map) {
       // how much service it lost.
       // The selection test sits INSIDE the zoom ramp rather than around it:
       // MapLibre allows only one zoom-based interpolate per expression.
+      // Heavier for a new place than for a filled dot's halo: there the
+      // stroke separates a dot from the ground, here it IS the dot.
       'circle-stroke-width': ['interpolate', ['linear'], ['zoom'],
-        9, ['case', SELECTED, 1.6, 0.5],
-        12, ['case', SELECTED, 2.4, 1],
-        16, ['case', SELECTED, 3.2, 1.6]],
+        9, ['case', SELECTED, 1.6, NEW_PLACE, 0.9, 0.5],
+        12, ['case', SELECTED, 2.4, NEW_PLACE, 1.5, 1],
+        16, ['case', SELECTED, 3.2, NEW_PLACE, 2.2, 1.6]],
     },
   }, 'walk-fill');
-  // Beneath the dots: the ring sits outside the dot's own radius, so the dot
-  // covers nothing of it, and drawing it lower keeps the dots themselves the
-  // thing the cursor and the eye land on.
-  map.addLayer({
-    id: NEW_PLACE_RING, type: 'circle', source: SRC,
-    filter: NEW_PLACE,
-    paint: {
-      'circle-color': 'rgba(0,0,0,0)',
-      'circle-radius': ringExpr(0),
-      'circle-stroke-color': NEW_PLACE_INK,
-      'circle-stroke-opacity': 0.55,
-      'circle-stroke-width': ['interpolate', ['linear'], ['zoom'],
-        9, 0.6, 12, 1, 16, 1.4],
-    },
-  }, LAYER);
 }
 
 export async function loadChangeLayer(map: maplibregl.Map, radius: number, day: Day) {
@@ -490,9 +492,8 @@ export async function loadChangeLayer(map: maplibregl.Map, radius: number, day: 
 
 export function setChangeDay(map: maplibregl.Map, day: Day) {
   const i = DAYS.indexOf(day);
-  map.setPaintProperty(LAYER, 'circle-color', rampExpr(i, 'color'));
+  map.setPaintProperty(LAYER, 'circle-color', colorExpr(i));
   map.setPaintProperty(LAYER, 'circle-radius', sizeExpr(i));
-  map.setPaintProperty(NEW_PLACE_RING, 'circle-radius', ringExpr(i));
   applyFilter(map, day);
 }
 
@@ -510,20 +511,28 @@ export function resetBuckets(map: maplibregl.Map, day: Day) {
 function applyFilter(map: maplibregl.Map, day: Day) {
   const i = DAYS.indexOf(day);
   const off = ['none', ...hidden];
-  const shown: any = ['!', ['in', ['get', `b${i}`], ['literal', off]]];
-  map.setFilter(LAYER, shown);
-  // The ring follows the dot it belongs to. A ring left behind by a bucket
-  // the reader switched off would be an outline round nothing.
-  map.setFilter(NEW_PLACE_RING, ['all', shown, NEW_PLACE] as any);
+  // New places answer to their own switch, not to a bucket's: they are no
+  // longer drawn in a bucket's colour, so hiding `doubled` must not take the
+  // 44 new places whose service happens to double with it.
+  map.setFilter(LAYER, ['case',
+    NEW_PLACE, !hidden.has(NEW_PLACE_KEY),
+    ['!', ['in', ['get', `b${i}`], ['literal', off]]]] as any);
 }
 
 /** Hover text for one dot. Trips both sides, never a bare delta. */
 export function dotLabel(props: any, day: Day, buckets: { key: string; label: string }[]) {
   const i = DAYS.indexOf(day);
   const key = props[`b${i}`];
-  const label = buckets.find((b) => b.key === key)?.label ?? key;
+  // A new place is not in a bucket on screen, so it does not report one here
+  // either -- the tooltip was the last place the old contradiction survived.
+  // The trips still follow, because they are true and they are the walk
+  // radius's answer, which the second line says out loud.
+  const label = props.published === 0
+    ? 'the plan adds a stop here'
+    : buckets.find((b) => b.key === key)?.label ?? key;
   const cur = props[`c${i}`], prop = props[`p${i}`];
   const dayWord = day === 'weekday' ? 'weekday' : day;
-  return `<b>${label}</b><br>${cur} → ${prop} buses per ${dayWord}<br>` +
+  const within = props.published === 0 ? ' within a walk' : '';
+  return `<b>${label}</b><br>${cur} → ${prop} buses per ${dayWord}${within}<br>` +
     `<span style="opacity:.6">click for the full comparison</span>`;
 }

@@ -115,19 +115,16 @@
        A hairline ring keeps every swatch legible on both grounds without
        changing the colour the map is actually painted with. */
     #legend .lg-row i { box-shadow:inset 0 0 0 1px rgba(255,255,255,.35); }
-    /* A key line rather than a filter: it annotates the dots the rows above
-       already counted, so it hangs below them with a rule instead of joining
-       the run of switches. */
-    #legend .lg-row.lg-key { margin-top:4px; padding-top:5px;
-      border-top:1px solid var(--line); }
-    /* The mark the map draws round a place with no stop today. The map paints
-       it near-black against Positron; here it has to read against a dark
-       panel, so the swatch copies the form -- a dot with a detached outline --
-       and not the ink. The outline offset is what keeps the two apart, the
-       same way it does on the map. */
-    #legend .lg-row i.lg-ring { width:4px; height:4px; margin:0 3px;
-      background:#9aa3b2; box-shadow:none;
-      outline:1px solid rgba(255,255,255,.75); outline-offset:2px; }
+    /* The mark for a stop the plan adds: hollow, because the palette has no
+       eighth colour left that a reader with a colour deficiency could tell
+       from the seven (see legend.newPlaceRow). The map draws the same form on
+       a near-white basemap in near-black ink; here it has to read on a dark
+       panel, so the swatch copies the FORM -- an unfilled ring the size of the
+       filled dots beside it -- and not the ink. `background:none` overrides
+       the inline colour the coloured rows set, and the inset ring the swatches
+       share becomes the whole mark. */
+    #legend .lg-row i.lg-hollow { background:none;
+      box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.85); }
     /* Locations or riders: the same dots under two denominators, so the switch
        sits inside the key with the counts it changes rather than in the
        toolbar with the controls that change the question. */

@@ -25,6 +25,15 @@ export interface StopRef {
   lat: number;
   lon: number;
   metres: number;
+  /**
+   * Whether no stop stands within 150 m of this pole today — the fact the map
+   * draws as a ring.
+   *
+   * Proposed stops only, and absent rather than false on today's side: a stop
+   * that runs today stands where a stop stands today, so the question has no
+   * content there. Same one-sidedness as boardings, for a different reason.
+   */
+  new_place?: boolean;
 }
 
 /**

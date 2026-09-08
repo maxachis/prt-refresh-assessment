@@ -339,6 +339,25 @@ def test_unpublished_points_have_no_stop_of_their_own_today(con):
                                       query.UNIVERSE_DEDUP_M, "current")
 
 
+def test_a_stop_prt_kept_the_id_of_is_never_a_new_place(con):
+    """PRT's own stop id outranks the distance rule that guesses at identity.
+
+    A pole PRT moved down the block keeps its id, and 150 m is a guess about
+    when two coordinates are the same corner -- so where the two disagree, the
+    id wins: the agency saying "this is that stop" is evidence, and a distance
+    threshold is a convention. Two stops in the current feed disagree, both
+    relocations rather than additions: 20918 (Churchill Rd + Holland, 152 m)
+    and 18627 (Hwy Rt 286 + Royal Oak Dr, moved to Old Frankstown Rd, 178 m).
+    Drawn as new places they would say the plan adds a stop where it moves one.
+    """
+    shared = {r["stop_id"] for r in con.execute(
+        "SELECT stop_id FROM stops WHERE side = 'proposed' AND stop_id IN "
+        "(SELECT stop_id FROM stops WHERE side = 'current')")}
+    assert shared, "no ids in common -- the fixture cannot test this"
+    new_places = {p[0] for p in query.change_points(con) if p[3] == 0}
+    assert not {f"p:{sid}" for sid in shared} & new_places
+
+
 def test_new_coverage_points_are_not_all_a_gain(con):
     """The set must never be read, or drawn, as the plan's gains.
 
@@ -666,3 +685,29 @@ def test_the_identity_radius_is_not_the_access_radius(con):
 
     published = {p for p in ids if p.startswith("c:")}
     assert published == {p for p in at_400 if p.startswith("c:")}
+
+
+def test_the_panel_says_which_proposed_stops_stand_where_none_stands_today(con):
+    """The ring is on the map; the panel that explains a dot has to know it too.
+
+    Same rule and same constant as the point universe -- no current stop within
+    `UNIVERSE_DEDUP_M` -- so the panel cannot say a stop is new while the map
+    draws it as an infill of an existing one, or the reverse.
+    """
+    # Millvale's Grant Avenue: today's buses pass on East Ohio Street and
+    # Evergreen Avenue, and the plan runs them up Grant itself.
+    at = query.place(con, 40.48005, -79.97341, 400)
+
+    proposed = at["proposed"]["stops"]
+    assert proposed, "the plan serves this corner"
+    assert all("new_place" in s for s in proposed)
+    assert any(s["new_place"] for s in proposed)
+
+    for s in proposed:
+        near = query.stops_within(
+            con, s["lat"], s["lon"], query.UNIVERSE_DEDUP_M, "current")
+        assert s["new_place"] is (not near)
+
+    # One-sided, like boardings: a stop that runs today stands where a stop
+    # stands today, so the question is not asked of that side.
+    assert all("new_place" not in s for s in at["current"]["stops"])

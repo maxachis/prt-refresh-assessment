@@ -24,7 +24,7 @@
 import { esc, clock, duration, signed, pct } from './utils';
 import {
   PKEYS, PERIOD_LABEL, Day, PlaceResult, DayService, OneSeatVerdict, OneSeatDay,
-  Boardings, PlacePopulation,
+  Boardings, PlacePopulation, StopRef,
 } from './types';
 
 let day: Day = 'weekday';
@@ -351,6 +351,35 @@ export function serviceSummaryText(p: PlaceResult, d: Day): string {
  * proposed half and never will be, so a column standing empty beside a
  * today figure would read as a fall to zero rather than as an absence.
  */
+/**
+ * How many of the plan's stops here stand where no stop stands today.
+ *
+ * The panel's half of the map's ring. A reader who sees a ringed dot and
+ * clicks it for detail was, until this line, told what happens to the buses
+ * within a walk and nothing whatever about the stop -- which is the fact that
+ * brought them there, and the fact three separate readers have gone looking
+ * for since the plan was published.
+ *
+ * Phrased "N of M" rather than as a bare count because the interesting figure
+ * is the share: two of three proposed stops being new says something a "2"
+ * beside a "10" does not. The server decides it, through the one predicate the
+ * map's own point set uses (`query.is_new_place`), so this cannot call a stop
+ * new that the map draws as an infill of its neighbour.
+ *
+ * Absent, not zero, where nothing qualifies. The commonest corner in the city
+ * has the plan re-serving stops that already stand, and printing a 0 there
+ * answers a question the reader has not asked.
+ */
+function newPlacesFact(stops: StopRef[]): string {
+  const n = stops.filter((s) => s.new_place).length;
+  if (!n) return '';
+  // The threshold rides in the label, not in a trailing clause: "8 of 10
+  // within 150 m of them" parses just as easily as "8 of the 10 are within
+  // 150 m", which is the opposite of what it says.
+  return `<dt>Stops the plan adds where none stands within 150 m</dt>
+    <dd>${n} of ${stops.length}</dd>`;
+}
+
 function boardingsFact(b: Boardings | null, d: Day): string {
   if (!b) return '';
   const stops = b.measured + b.unmeasured;
@@ -476,6 +505,7 @@ export function serviceBodyHTML(p: PlaceResult, d: Day, middle = ''): string {
                 grade(bm, am, 'less'))}
       <dt>Stops within ${p.radius} m</dt>
       ${compare(String(p.current.stops.length), String(p.proposed.stops.length))}
+      ${newPlacesFact(p.proposed.stops)}
       ${boardingsFact(before.boardings, d)}
     </dl>
     ${boardingsNote(before.boardings)}

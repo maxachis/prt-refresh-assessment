@@ -350,18 +350,25 @@ then a PRT consultant on the four stops route 34 gains on McMonagle Avenue,
 which are 29 to 393 m from the stops on Banksville Road, against the pair on
 Forsythe Road 685 m out which did draw dots.
 
-At 150 m the point set is 6,544 locations: the 6,284 `coverage_change.csv`
-publishes plus 260 the proposed network serves with no pole of their own today.
-Three things follow.
+At 150 m the point set is 6,542 locations: the 6,284 `coverage_change.csv`
+publishes plus 258 the proposed network serves with no pole of their own today.
+Four things follow.
 
 - **No published figure moves.** Published counts filter on `published = 1` and
   every point this governs is `published = 0`. The weekday buckets at 400 m
   read 633 gone, 298 halved, 1420 less, 1583 same, 2113 more, 237 doubled
   before and after.
+- **PRT's own stop id outranks the distance.** A pole PRT moved down the block
+  keeps its id, and 150 m is only a guess about when two coordinates are the
+  same corner — so where they disagree the id wins (`query.is_new_place`). Two
+  stops disagree, both relocations: 20918 (Churchill Rd + Holland) at 152 m and
+  18627 (Hwy Rt 286 + Royal Oak Dr, now Old Frankstown Rd) at 178 m. Drawn as
+  new places they would say the plan adds a stop where it moves one.
 - **An unpublished point is not a gain.** It says the plan puts a stop where no
-  stop stands, and the bucket then says what changes there: 139 of the 260 read
-  `more`, `same`, `less` or `halved` rather than `new`, and 15 sit on corridors
-  the plan is thinning. Reading the set as the plan's gains would be wrong, and
+  stop stands. What happens to the buses there is a different question, and at
+  400 m on a weekday 137 of the 258 would land in `more`, `same`, `less` or
+  `halved` rather than `new`, 14 of them where the plan is thinning service.
+  Reading the set as the plan's gains would be wrong, and
   `tests/test_query.py::test_new_coverage_points_are_not_all_a_gain` pins it.
 - **Overlapping ground can now be counted twice.** At 400 m a new-coverage
   point could not fall inside a published point's circle; at 150 m it can, so
@@ -369,30 +376,47 @@ Three things follow.
   weighed against the invisibility and accepted — Max, 2026-09-08. It is the
   reason the threshold is a named constant with the trade written beside it.
 
-**And the map says which dots those are.** Every `published = 0` point is drawn
-with a detached ring round it, and the Locations key carries the ring as a
-swatch with the count in view — "no stop here today", below the bucket rows and
-behind a rule, because it is not a bucket: it cuts across all of them, since a
-place the plan adds a stop to still lands in whichever service bucket it earns.
-Without the ring the only thing distinguishing a new pole from an existing stop
-was the colour, and at 150 m the blue `new` bucket happens to pick out almost
-exactly the unpublished set — 260 of 261 on a weekday — so a reader inferring
-"new stop" from blue would be right by coincidence and wrong at 400 m, which is
-the view McMonagle Avenue was read in. The ring is the same mark at both radii.
-It is a key line rather than a switch (the ring follows the dot it annotates, so
-there is nothing to filter), and it is dropped entirely rather than shown as a
-zero, since it is a note about which dots are on screen rather than an outcome
-of the plan.
+**And the map says which dots those are: they are drawn hollow.** A filled dot
+is a stop that stands today; an unfilled one, ink outline and no centre, is a
+stop the plan adds. The Locations key carries it as a row of its own — **"the
+plan adds a stop here"** — with the count in view and its own switch, and those
+dots join the head line's total.
 
-**The label may not say "new", and that is not fussiness.** The `new` bucket
-beside it means no bus within the walk radius today; the ring means no pole
-within 150 m. At 400 m the two come apart — the 260 ringed points spread over
-six buckets, only 121 of them blue, and 15 sit on corridors the plan is
-thinning — while every blue point is ringed. So the blue set is strictly inside
-the ringed set, and two nested categories both called "new" is a key a reader
-cannot use. The label names the pole today ("no stop here today"), which is the
-test the ring actually applies. "New stop location" and "New stop under
-Refresh" were both tried on 2026-09-08 and both withdrawn.
+**They are not in a service bucket, and that took three tries.** They were
+first drawn in their bucket's colour with a ring round them, so Grant Avenue in
+Millvale read "doubled or better" and "no stop within 150 m today" at once. Max
+called that incongruous on 2026-09-08 and it is: both marks are true and they
+measure different footprints — the colour counts every bus within a quarter
+mile, the ring is about the pole itself — so a key naming one distance leaves
+the reader resolving a contradiction that was never there. A location with no
+stop today also has no service today to compare against, which is exactly what
+the buckets compare. So it is a category of dot rather than a seventh outcome:
+out of `countIn`, out of `sumRidersIn`, counted in its own row.
+
+The cost is stated rather than hidden: those dots no longer show what happens
+to the buses within a walk of them, including the 14 weekday places the plan is
+thinning. Streets and the answer panel still carry that, and the panel prints
+"Stops the plan adds where none stands within 150 m" for the poles inside one
+walk radius.
+
+**Hollow rather than an eighth colour, because the palette is full.** That was
+the intent and it does not survive measurement. Searching the colours inside
+the band the ramp holds against Positron (2.9–4.2 contrast), the best
+separation any candidate reaches from all seven existing inks — across normal
+vision and the three dichromacies, `frontend/cvd.ts` — is ΔE 14.6, against the
+40 the ramp's own sign-crossing pairs are held to, and its nearest neighbour is
+the `new` blue, the one dot it must never be confused with. Going darker buys
+separation (a near-black navy reaches 37.9) at 15:1 contrast, which would make
+the plan's added stops the loudest mark on a map that also shows 633 locations
+losing every bus — overstating gains. The fill channel is free, carries no
+position on a loss–gain ramp, and survives every colour deficiency because it
+is not a colour.
+
+**Earlier labels, all withdrawn on 2026-09-08.** "New stop under Refresh"
+claimed more than the data does (some are relocations). "New stop location"
+nested inside the `new` bucket's "new service" — two categories both called
+new. "No stop within 150 m today" was accurate and still collided with the
+colour beside it, which is what forced the colour out rather than the words.
 
 The identity radius is fixed at 150 m whatever walk radius is asked for. The
 point set has to describe the same places at 400 m and 150 m or the two stop

@@ -50,6 +50,39 @@ const PLACE: PlaceResult = {
   oneseat: [],
 };
 
+/** Proposed stops, some of which stand where no stop stands today. */
+function withNewPlaces(flags: boolean[]): PlaceResult {
+  return { ...PLACE, proposed: { ...PLACE.proposed,
+    stops: flags.map((f, i) => ({ stop_id: `p${i}`, name: `STOP ${i}`,
+      lat: 40.4, lon: -80.01, metres: 100, new_place: f })) } };
+}
+
+describe('the stops the plan puts where none stands today', () => {
+  it('says how many, so the map ring has an explanation in the panel', () => {
+    // The complaint that started this was a reader seeing no mark where the
+    // plan adds stops. A ring answers that on the map; the panel a click
+    // opens said nothing at all, so the reader who went looking for detail
+    // found the service change and no mention of the stop.
+    const html = serviceBodyHTML(withNewPlaces([true, true, false]), 'weekday');
+    expect(html).toContain('Stops the plan adds where none stands within 150 m');
+    expect(html).toContain('2 of 3');
+  });
+
+  it('says nothing when every proposed stop replaces one that stands today', () => {
+    // A zero here would answer a question the reader did not ask, on the
+    // commonest kind of corner there is.
+    const html = serviceBodyHTML(withNewPlaces([false, false]), 'weekday');
+    expect(html).not.toContain('Stops the plan adds where none stands within 150 m');
+  });
+
+  it('never asks the question of the stops that run today', () => {
+    // One-sided by construction, like boardings: a stop running today stands
+    // where a stop stands today.
+    const html = serviceBodyHTML(PLACE, 'weekday');
+    expect(html).not.toContain('Stops the plan adds where none stands within 150 m');
+  });
+});
+
 describe('the key under the chart', () => {
   // The two colours key the bars AND the stop dots the map draws around the
   // pin, which nothing else on screen names. A reader who cannot tell an

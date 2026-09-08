@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
-  countIn, sumRidersIn, STYLE, viewportScope, selectionScope, withinBrush,
+  countIn, countNewPlacesIn, sumRidersIn, STYLE, viewportScope, selectionScope,
+  withinBrush,
 } from './change';
 import { BUCKET, CUR, ID, PROP, PUBLISHED, RIDERS, ChangePoint } from './types';
 
@@ -15,8 +16,20 @@ let nextId = 0;
 
 function row(lat: number, lon: number, weekdayBucket: number,
              riders: number | null = 10, id = `c:${++nextId}`): ChangePoint {
-  return [lat, lon, riders === null ? 0 : 1, id,
+  return [lat, lon, 1, id,
           40, 20, weekdayBucket, riders, 30, 15, 1, riders, 20, 10, 1, riders];
+}
+
+/**
+ * A place the plan puts a stop where none stands today (`published = 0`).
+ *
+ * Never in a bucket and never in a rider total: no bus stops there, so it has
+ * no service today to compare against and nobody has boarded there.
+ */
+function addedPlace(lat: number, lon: number, weekdayBucket: number,
+                    id = `p:${++nextId}`): ChangePoint {
+  return [lat, lon, 0, id,
+          0, 20, weekdayBucket, null, 0, 15, 1, null, 0, 10, 1, null];
 }
 
 const BOX_SCOPE = (b: { w: number; s: number; e: number; n: number }) =>
@@ -61,6 +74,16 @@ describe('countIn', () => {
     expect(sat.gone).toBe(0);
   });
 
+  it('counts only the stops that stand today', () => {
+    // The buckets compare today's service to the plan's, and a place with no
+    // stop today has nothing on the left-hand side. Counted in one anyway, a
+    // dot read "doubled or better" and "the plan adds a stop here" at once.
+    const pts = [row(40.44, -79.99, 0), addedPlace(40.44, -79.98, 5)];
+    const c = countIn(pts, 0, KEYS, BOX_SCOPE({ w: -80.1, s: 40.3, e: -79.9, n: 40.5 }));
+    expect(c.gone).toBe(1);
+    expect(c.doubled).toBe(0);
+  });
+
   it('returns a zero for every bucket, so the legend never omits a row', () => {
     const c = countIn([], 0, KEYS, BOX_SCOPE(BOX));
     expect(Object.keys(c).sort()).toEqual([...KEYS].sort());
@@ -94,7 +117,8 @@ describe('sumRidersIn', () => {
     row(40.44, -79.99, 0, 100),    // gone,    inside, 100 boardings
     row(40.45, -79.98, 0, 25),     // gone,    inside,  25 boardings
     row(40.44, -79.97, 5, 400),    // doubled, inside
-    row(40.44, -79.96, 6, null),   // new,     inside, no record at all
+    row(40.44, -79.96, 6, null),   // new,     inside, stands today, no record
+    addedPlace(40.44, -79.955, 6),  // a stop the plan adds, inside the box
     row(41.90, -79.99, 0, 900),    // gone,    north of the box
   ];
   const BOX = { w: -80.1, s: 40.3, e: -79.9, n: 40.5 };
@@ -106,13 +130,23 @@ describe('sumRidersIn', () => {
     expect(t.riders.halved).toBe(0);
   });
 
-  it('keeps a location with no ridership record out of every total', () => {
-    // The plan adds a bus here. Counting it as 0 riders would say nobody will
-    // use it, which is a claim no observed number can make.
+  it('keeps a stop with no ridership record out of every total', () => {
+    // 209 stops that run today carry no row in the usage extract. Counting
+    // one as 0 riders would say nobody boards there, which the absence of a
+    // record cannot support.
     const t = sumRidersIn(pts, 0, KEYS, BOX_SCOPE(BOX));
     expect(t.riders.new).toBe(0);
     expect(t.measured.new).toBe(0);
     expect(t.unmeasured).toBe(1);
+  });
+
+  it('leaves out the places the plan adds a stop to, not even as unmeasured', () => {
+    // A different absence from the one above, and running them together was
+    // the old defect: nobody has boarded where no bus stops, so these can
+    // never carry a figure. The legend says that in its own row.
+    const t = sumRidersIn(pts, 0, KEYS, BOX_SCOPE(BOX));
+    expect(t.unmeasured).toBe(1);
+    expect(countNewPlacesIn(pts, BOX_SCOPE(BOX))).toBe(1);
   });
 
   it('counts the measured locations behind each total', () => {

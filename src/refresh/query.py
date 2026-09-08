@@ -368,6 +368,29 @@ def stop_boardings(con, stop_ids, day: str):
             "unmeasured": len(stop_ids) - len(counted)}
 
 
+def is_new_place(con, stop_id: str, lat: float, lon: float,
+                 dedup: float = UNIVERSE_DEDUP_M) -> bool:
+    """Does the plan put a stop here where none stands today?
+
+    Two rules, in this order, and the order is the point. PRT keeping a stop's
+    id is the agency saying "this is that stop", which outranks any distance
+    threshold: 20918 (Churchill Rd + Holland) moved 152 m and 18627 (Hwy Rt 286
+    + Royal Oak Dr, now Old Frankstown Rd) moved 178 m, and both are poles
+    relocated down the block rather than stops the plan adds. Failing that, the
+    question is whether any stop stands within `UNIVERSE_DEDUP_M` -- an
+    identity test, deliberately not the walk radius (see that constant).
+
+    One predicate because the map's point set and the answer panel's flag both
+    ask it. Two implementations of one threshold would let the panel call a
+    stop new while the map drew it as an infill of its neighbour, and nothing
+    on screen could tell a reader which had drifted.
+    """
+    if con.execute("SELECT 1 FROM stops WHERE side = 'current' "
+                   "AND stop_id = ? LIMIT 1", (stop_id,)).fetchone():
+        return False
+    return not stops_within(con, lat, lon, dedup, "current")
+
+
 def side_at_place(con, side: str, lat: float, lon: float, radius: float):
     """Everything one network offers at one location, all three day types."""
     stops = stops_within(con, lat, lon, radius, side)
@@ -395,10 +418,21 @@ def side_at_place(con, side: str, lat: float, lon: float, radius: float):
                           if side == "current" else None),
         }
 
+    # Which of these poles the plan puts where none stands today -- the dots
+    # the map draws hollow. Asked of the proposed side only, and one-sided for
+    # the same reason boardings are: a stop that runs today stands, by
+    # definition, where a stop stands today, so the question has no content
+    # there.
+    def out(s):
+        row = {"stop_id": s[0], "name": s[1], "lat": s[2], "lon": s[3],
+               "metres": round(s[4])}
+        if side == "proposed":
+            row["new_place"] = is_new_place(con, s[0], s[2], s[3])
+        return row
+
     return {
         "side": side,
-        "stops": [{"stop_id": s[0], "name": s[1], "lat": s[2], "lon": s[3],
-                   "metres": round(s[4])} for s in stops],
+        "stops": [out(s) for s in stops],
         "days": days,
     }
 
@@ -551,10 +585,15 @@ def change_points(con, radius: float = PRIMARY_RADIUS, *,
     adds service is not an honest one.
 
     An unpublished point is NOT a claim that the ground is newly served. It is
-    a claim that the plan puts a stop somewhere no stop stands, and the bucket
-    it lands in then says what actually changes there: 139 of the 260 read
-    "more", "same", "less" or "halved" rather than "new", and 15 of them are on
-    corridors the plan is thinning. Reading the set as a gain would be wrong.
+    a claim that the plan puts a stop somewhere no stop stands, and what
+    actually changes there is a separate question: at 400 m on a weekday 137 of
+    the 258 would fall in "more", "same", "less" or "halved" rather than "new",
+    and 14 of them are on corridors the plan is thinning. Reading the set as a
+    gain would be wrong. Since 2026-09-08 the map does not paint them in a
+    bucket's colour at all -- it draws them hollow -- because a dot reading
+    "doubled or better" AND "the plan adds a stop here" reads as a
+    contradiction rather than as two answers; the bucket is still computed and
+    still in this table, and the answer panel still reports it.
 
     Note they are selected at UNIVERSE_DEDUP_M whatever radius is asked for.
     The point set has to be the same at 400 m and 150 m or the two radii stop
@@ -570,7 +609,7 @@ def change_points(con, radius: float = PRIMARY_RADIUS, *,
 
     for r in con.execute("SELECT stop_id, lat, lon FROM stops "
                          "WHERE side = 'proposed' ORDER BY stop_id"):
-        if not stops_within(con, r["lat"], r["lon"], dedup, "current"):
+        if is_new_place(con, r["stop_id"], r["lat"], r["lon"], dedup):
             pts.append((f"p:{r['stop_id']}", r["lat"], r["lon"], 0))
     return pts
 

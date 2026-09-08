@@ -22,8 +22,8 @@ import {
   Weight, SurfaceUnit, PopulationLayer,
 } from './types';
 import {
-  STYLE, countIn, countNewPlacesIn, sumRidersIn, isHidden, viewportScope,
-  selectionScope,
+  STYLE, countIn, countNewPlacesIn, NEW_PLACE_KEY, sumRidersIn, isHidden,
+  viewportScope, selectionScope,
 } from './change';
 import {
   RAMP, GONE_COLOR, NEW_COLOR, summariseInBounds,
@@ -351,20 +351,32 @@ const WEIGHT_LABEL: Record<Weight, string> = {
  * Not in the methods list, where the other caveats live: this one changes what
  * the number on screen means rather than qualifying it, and the number is
  * designed to be screenshotted. All three are convention 15.
+ *
+ * Two different absences, and running them together was the old defect. A
+ * location the plan adds a stop to CANNOT carry a boardings figure -- no bus
+ * stops there, so nobody has boarded there -- and it is now a hollow dot with
+ * its own row above, so this line names it as the reason the whole weighting
+ * is one-sided. A stop that stands today and has no figure is a gap in the
+ * usage extract, which is a smaller and duller fact; it is held out of every
+ * bucket total rather than added as a zero, and it is said second.
  */
-function riderFoot(unmeasured: number) {
-  const n = unmeasured.toLocaleString();
-  const places = `${n} location${unmeasured === 1 ? '' : 's'} in view`;
-  const gain = unmeasured === 1 ? 'gains' : 'gain';
-  const gains = unmeasured
-    ? `<b>${places}</b> ${gain} a bus where none stops today: no boardings to `
+function riderFoot(unmeasured: number, newPlaces: number) {
+  const n = newPlaces.toLocaleString();
+  const places = `${n} location${newPlaces === 1 ? '' : 's'} in view`;
+  const gain = newPlaces === 1 ? 'gains' : 'gain';
+  const gains = newPlaces
+    ? `<b>${places}</b> ${gain} a stop where none stands today: no boardings to `
       + 'weigh. This counts what is at risk, never what is gained.'
     : 'Boardings exist only where a bus stops today, so this counts what is at '
       + 'risk, never what is gained.';
+  const gaps = unmeasured
+    ? ` ${unmeasured.toLocaleString()} stop${unmeasured === 1 ? ' has' : 's have'}`
+      + ' no figure in the extract, and are left out rather than counted as none.'
+    : '';
   // Its own class because the phone layout hides `.lg-foot` for room: this
   // one is not a footnote, it is what the number above it means, and the
   // stylesheet exempts it by name.
-  return `<div class="lg-foot lg-foot-riders">${gains}
+  return `<div class="lg-foot lg-foot-riders">${gains}${gaps}
     Boardings are PRT's May 2025 daily averages: unlinked trips,
     not people, and by PRT's own disclaimer up to 30% low.</div>`;
 }
@@ -411,45 +423,69 @@ function infillFoot() {
 }
 
 /**
- * The key line for the ring the map draws round a place with no stop today.
+ * The key for the dots drawn hollow: places the plan puts a stop where none
+ * stands within 150 m today.
  *
- * A row, not a sentence, because the ring is a mark on the map and every
- * other mark on the map has a swatch here. Prose was where it started and it
- * was the wrong place: a reader who sees an unfamiliar outline looks at the
- * key, not at the footnote under it.
+ * A row, not a sentence, because this is a mark on the map and every other
+ * mark on the map has a swatch here. Prose was where it started and it was the
+ * wrong place: a reader who meets an unfamiliar mark looks at the key.
  *
- * Three things it is not.
+ * WHY IT IS NOT A BUCKET, and why it took three tries to get here. These dots
+ * used to carry a bucket colour with a ring drawn round them, so Grant Avenue
+ * in Millvale read "doubled or better" AND "no stop within 150 m today" at
+ * once. Max called that incongruous on 2026-09-08 and it is: both marks are
+ * true and they measure different footprints -- the colour is every bus within
+ * a QUARTER MILE, the ring is the pole itself -- and a key naming only one
+ * distance leaves the reader to resolve a contradiction that was never there.
+ * So the colour goes. A location with no stop today has no service today to
+ * compare against, which is exactly what the buckets compare; it is a category
+ * of dot, not a seventh outcome, and it is counted here rather than there.
  *
- * NOT A BUCKET. The coloured rows above partition the dots by what happens to
- * their service; this cuts across all of them, since a place the plan adds a
- * stop to still lands in whichever service bucket it earns. So it sits below
- * the bucket rows with a rule above it, and it is not part of the head line's
- * total -- those locations are already counted once, in their own colour.
+ * WHY HOLLOW AND NOT AN EIGHTH COLOUR. That was the intent, and the palette is
+ * full. Searching the colours that hold the basemap contrast band the ramp
+ * uses (2.9-4.2 against Positron), the best separation any candidate reaches
+ * from all seven existing inks -- measured across normal vision and the three
+ * dichromacies with `cvd.deltaE` -- is 14.6, against the 40 the ramp's own
+ * sign-crossing pairs are held to, and its nearest neighbour is the `new`
+ * blue, the one dot it must never be confused with. Going darker buys
+ * separation (a near-black navy reaches 37.9) at 15:1 contrast, which would
+ * make the plan's added stops the loudest mark on a map that also shows 633
+ * locations losing every bus -- overstating gains, which this repo forbids.
+ * The fill channel is free and carries no position on a loss-gain ramp: a
+ * filled dot is a stop that stands today, a hollow one is a stop the plan
+ * adds. It survives every colour deficiency because it is not a colour.
  *
- * NOT A SWITCH. Every coloured row here is a filter, and this one has nothing
- * to filter: the ring follows the dot it annotates, so turning it off would
- * hide a fact about dots that stay on screen. `lg-static` is the class the
- * corridor and one-seat keys already use for exactly this.
+ * WHAT THE ROW GIVES UP. These dots no longer report what happens to the
+ * buses within a walk of them, and for 137 of the weekday 258 at 400 m that
+ * was a real reading: 14 sit where the plan is ALSO thinning service, Mt Royal
+ * Blvd opposite Ebonhurst Manor going from 42 buses within a quarter mile to
+ * 10. The trade is that the reading was never legible while it contradicted
+ * the mark beside it. Streets and the answer panel still carry it.
  *
- * NOT THE MAP'S INK. The map paints the ring near-black because it sits on a
- * near-white basemap; this panel is dark, so the swatch copies the FORM -- a
- * dot with a detached outline -- in a colour that reads here. Same trick the
- * hairline on every other swatch plays, one step further.
+ * IT IS A SWITCH, unlike the ring it replaces. The ring annotated a dot that
+ * stayed on screen, so hiding it would have hidden a fact about a visible dot;
+ * these ARE dots, in no bucket, so they answer to their own toggle
+ * (`change.NEW_PLACE_KEY`) exactly as every colour does. They also join the
+ * head line's total, because they are locations in view that no coloured row
+ * counts.
  *
- * It is dropped entirely when the scope holds none, unlike the bucket rows
- * above, which stay at zero so a reader can tell "does not happen here" from
- * "cannot happen here". There is no such reading to protect: this line is a
- * note about which dots are on screen, and "0 new stops" is a sentence about
- * nothing.
+ * The row is dropped when the scope holds none, and unlike the bucket rows
+ * above it does not stay at zero: a reader cannot tell "does not happen here"
+ * from "cannot happen here" for a category that has no counterfactual, and an
+ * empty row would invite the first reading. At the 150 m walk setting these
+ * are also every dot in the `new` bucket, because there "no bus nearby" and
+ * "no pole nearby" are the same sentence.
  */
 function newPlaceRow(n: number) {
-  if (n < 1) return '';
+  if (!n) return '';
+  const off = isHidden(NEW_PLACE_KEY);
   return `
-    <div class="lg-row lg-static lg-key">
-      <i class="lg-ring"></i>
-      <span class="lg-lab">no stop here today</span>
+    <button class="lg-row ${off ? 'off' : ''}" data-bucket="${NEW_PLACE_KEY}"
+            aria-pressed="${!off}">
+      <i class="lg-hollow"></i>
+      <span class="lg-lab">the plan adds a stop here</span>
       <span class="lg-n">${n.toLocaleString()}</span>
-    </div>`;
+    </button>`;
 }
 
 export interface LegendOptions {
@@ -489,6 +525,7 @@ export function renderLegend(el: HTMLElement, opts: LegendOptions) {
     ? selectionScope(painted) : viewportScope(west, south, east, north);
 
   const counts = countIn(layer.points, dayIndex, keys, scope);
+  const newPlaces = countNewPlacesIn(layer.points, scope);
   const tally = weight === 'riders'
     ? sumRidersIn(layer.points, dayIndex, keys, scope)
     : null;
@@ -508,13 +545,18 @@ export function renderLegend(el: HTMLElement, opts: LegendOptions) {
   const where = painted
     ? `at ${painted.size.toLocaleString()} selected stop${painted.size === 1 ? '' : 's'}`
     : 'in view';
+  // Every dot in scope, coloured or hollow. The added places are no longer in
+  // a bucket, so a total built from the coloured rows alone would undercount
+  // what is on screen -- and the boardings total deliberately does not gain
+  // them, because nobody has boarded where no bus stops (convention 15).
+  const locations = shown.reduce((n, b) => n + counts[b.key], 0) + newPlaces;
   const head = tally
     ? `<b>${Math.round(shown.reduce((n, b) => n + tally.riders[b.key], 0))
         .toLocaleString()}</b> daily boardings ${where}`
     : painted
-      ? `<b>${shown.reduce((n, b) => n + counts[b.key], 0).toLocaleString()}</b>
+      ? `<b>${locations.toLocaleString()}</b>
          of ${painted.size.toLocaleString()} selected stops`
-      : `<b>${shown.reduce((n, b) => n + counts[b.key], 0).toLocaleString()}</b>
+      : `<b>${locations.toLocaleString()}</b>
          locations in view`;
 
   el.innerHTML = `
@@ -534,11 +576,11 @@ export function renderLegend(el: HTMLElement, opts: LegendOptions) {
         <span class="lg-lab">${esc(b.label)}</span>
         <span class="lg-n">${cell(b.key)}</span>
       </button>`).join('')}
-    ${newPlaceRow(countNewPlacesIn(layer.points, scope))}
+    ${newPlaceRow(newPlaces)}
     ${surface ? surfaceKey({
       layer: surface, day, bounds, unit, population, scoped: !!painted,
     }) : ''}
-    ${tally ? riderFoot(tally.unmeasured) : `
+    ${tally ? riderFoot(tally.unmeasured, newPlaces) : `
     <div class="lg-foot">Buses per day within the walk radius, both
       directions — counting locations, not riders.</div>`}
     ${infillFoot()}

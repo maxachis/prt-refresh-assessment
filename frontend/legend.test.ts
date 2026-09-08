@@ -49,6 +49,10 @@ const LAYER: ChangeLayer = {
 const NEW_POINT = [40.44, -79.95, 0, 'p:9', 0, 30, 6, null, 0, 20, 6, null,
                    0, 10, 6, null];
 
+/** A pole the plan adds where buses already ran: hollow, and not `new`. */
+const NEW_STOP = [40.44, -79.955, 0, 'p:8', 40, 90, 5, null, 30, 70, 5, null,
+                  20, 50, 5, null];
+
 const BOX = { west: -80.1, south: 40.3, east: -79.9, north: 40.5 };
 
 describe('renderLegend', () => {
@@ -117,18 +121,27 @@ describe('renderLegend', () => {
       'plus the places the plan puts a stop where none stands within 150 m');
   });
 
-  it('keys the ring as a swatch, not as a sentence in the footnote', () => {
-    // The ring is a symbol on the map, and a symbol explained only in prose
-    // is one a reader has to read a paragraph to decode. It gets the same
+  it('keys the added stops as a row of their own, with a hollow swatch', () => {
+    // The mark is a symbol on the map, and a symbol explained only in prose is
+    // one a reader has to read a paragraph to decode. It gets the same
     // swatch-label-count line every colour on this key gets.
     const el = stub();
     renderLegend(el, { layer: { ...LAYER, points: [...LAYER.points, NEW_POINT] },
                        day: 'weekday', bounds: BOX, weight: 'locations' });
-    expect(el.innerHTML).toContain('lg-ring');
-    expect(prose(el)).toContain('no stop here today');
+    expect(el.innerHTML).toContain('lg-hollow');
+    expect(prose(el)).toContain('the plan adds a stop here');
   });
 
-  it('counts the ringed places in the same scope as every other row', () => {
+  it('makes the added stops a switch, like every other row', () => {
+    // They are dots now rather than an annotation on somebody else's dot, so
+    // hiding them hides only themselves.
+    const el = stub();
+    renderLegend(el, { layer: { ...LAYER, points: [...LAYER.points, NEW_POINT] },
+                       day: 'weekday', bounds: BOX, weight: 'locations' });
+    expect(el.innerHTML).toContain('data-bucket="newplace"');
+  });
+
+  it('counts the added stops in the same scope as every other row', () => {
     // One added place in view, one outside it. A key line whose count came
     // from the whole city would sit under a head line that says "in view".
     const far = [41.9, -79.99, 0, 'p:99', 0, 30, 6, null, 0, 20, 6, null,
@@ -137,17 +150,39 @@ describe('renderLegend', () => {
     renderLegend(el, {
       layer: { ...LAYER, points: [...LAYER.points, NEW_POINT, far] },
       day: 'weekday', bounds: BOX, weight: 'locations' });
-    expect(el.innerHTML).toMatch(/lg-ring[\s\S]*?no stop here today[\s\S]*?<span class="lg-n">1<\/span>/);
+    expect(el.innerHTML).toMatch(/lg-hollow[\s\S]*?<span class="lg-n">1<\/span>/);
   });
 
-  it('drops the ring line when nothing in view is a new place', () => {
+  it('keeps an added stop out of the service buckets entirely', () => {
+    // NEW_STOP goes from 40 buses to 90, which is `doubled`. Counted there it
+    // would read "doubled or better" AND "the plan adds a stop here" at once
+    // -- two true marks with different footprints, which reads as a
+    // contradiction. Max called that incongruous on 2026-09-08.
+    const el = stub();
+    renderLegend(el, { layer: { ...LAYER, points: [...LAYER.points, NEW_STOP] },
+                       day: 'weekday', bounds: BOX, weight: 'locations' });
+    expect(el.innerHTML).toMatch(/data-bucket="doubled"[\s\S]*?<span class="lg-n">1</);
+    expect(el.innerHTML).toMatch(/lg-hollow[\s\S]*?<span class="lg-n">1<\/span>/);
+  });
+
+  it('counts the added stops into the locations in view', () => {
+    // No coloured row counts them any more, so a total built from those alone
+    // would be smaller than the dots on screen.
+    const el = stub();
+    renderLegend(el, { layer: { ...LAYER, points: [...LAYER.points, NEW_POINT] },
+                       day: 'weekday', bounds: BOX, weight: 'locations' });
+    expect(el.innerHTML).toMatch(/<b>4<\/b>\s*locations in view/);
+  });
+
+  it('drops the row when nothing in view is a place the plan adds a stop to', () => {
     // Every other row stays at zero because a bucket that vanishes reads as
     // impossible rather than absent. This one is different: it is not an
-    // outcome of the plan, it is a note about which dots are drawn at all,
-    // and "0 places have no stop today" is a sentence about nothing.
+    // outcome of the plan, and "0 places have no stop today" is a sentence
+    // about nothing.
     const el = stub();
     renderLegend(el, { layer: LAYER, day: 'weekday', bounds: BOX, weight: 'locations' });
-    expect(el.innerHTML).not.toContain('lg-ring');
+    expect(el.innerHTML).not.toContain('lg-hollow');
+    expect(el.innerHTML).not.toContain('data-bucket="newplace"');
   });
 });
 
