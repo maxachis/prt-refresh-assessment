@@ -375,6 +375,41 @@ function riderFoot(unmeasured: number) {
     that may understate ridership by up to 30%.</div>`;
 }
 
+/**
+ * Why a street the plan adds stops to can have no dot on it.
+ *
+ * The point set is every stop a bus calls at today, plus the proposed stops
+ * with nothing within the walk radius today (`query.change_points`). Infill --
+ * a stop the plan adds a couple of hundred metres from one that already exists
+ * -- earns neither, so the gain lands in the colour of the neighbouring dot
+ * and the new stop's own kerb stays bare. That is the honest drawing of a
+ * walk-access question, and it reads as an omission: two separate readers,
+ * PPT and PRT, have now taken bare ground beside a recoloured dot as the
+ * plan's new service missing from the data.
+ *
+ * The first sentence has to name both halves of that set, not just the stops
+ * that exist today. The blue bucket a row above is precisely the half that
+ * does not sit at a stop today, so "a dot sits where a bus stops today" would
+ * be contradicted by the key it is printed under -- and a reader who noticed
+ * would be right to trust the rest of the box less.
+ *
+ * In both weightings, unlike the caveats above it. A rider counting boardings
+ * is likelier to make this reading than one counting dots, not less, because
+ * the added stops have no boardings either and so cannot show up in the tally
+ * at all.
+ *
+ * It names Streets because that view answers the question this one raises --
+ * McMonagle Avenue has no dot and draws blue there -- and a caveat that only
+ * says what the map cannot show leaves the reader where it found them.
+ */
+function infillFoot() {
+  return `<div class="lg-foot">Dots mark the places a bus stops today, plus the
+    ground the plan adds a bus to where nothing stops within the walk radius
+    now. So a stop the plan adds beside one that already exists changes a dot's
+    colour rather than adding one. Streets colours the pavement itself, and
+    shows the rest.</div>`;
+}
+
 export interface LegendOptions {
   layer: ChangeLayer;
   day: Day;
@@ -463,6 +498,7 @@ export function renderLegend(el: HTMLElement, opts: LegendOptions) {
     ${tally ? riderFoot(tally.unmeasured) : `
     <div class="lg-foot">Buses per day within the walk radius, both directions.
       Counts are locations, not riders.</div>`}
+    ${infillFoot()}
     ${painted ? `
     <div class="lg-foot">These are the stops you painted, not everything on
       screen — a selection you chose by hand, so quote it as one. The link in

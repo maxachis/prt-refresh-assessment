@@ -9,6 +9,18 @@ function stub() {
   return { innerHTML: '' } as unknown as HTMLElement & { innerHTML: string };
 }
 
+/**
+ * The rendered copy as a reader sees it: one line, single-spaced.
+ *
+ * A sentence in the source is wrapped to the column, so asserting on it
+ * verbatim pins where the line breaks fall as tightly as the words. That
+ * fails on a rewrap that changed nothing, which teaches the next person to
+ * loosen the assertion rather than to read it.
+ */
+function prose(el: { innerHTML: string }) {
+  return el.innerHTML.replace(/\s+/g, ' ');
+}
+
 const LAYER: ChangeLayer = {
   radius: 400,
   days: ['weekday', 'saturday', 'sunday'],
@@ -81,6 +93,28 @@ describe('renderLegend', () => {
     renderLegend(el, { layer: LAYER, day: 'sunday', bounds: BOX, weight: 'locations' });
     expect(el.innerHTML).toContain('not riders');
     expect(el.innerHTML).toContain('a Sunday');
+  });
+
+  it('says a stop the plan adds beside an existing one recolours rather than appears', () => {
+    // Twice now a reader has taken bare ground on a street the plan adds
+    // stops to as the plan's gain being missing, when the gain is in the
+    // colour of the dot at the stop a short walk away.
+    for (const weight of ['locations', 'riders'] as const) {
+      const el = stub();
+      renderLegend(el, { layer: LAYER, day: 'weekday', bounds: BOX, weight });
+      expect(prose(el)).toContain("changes a dot's colour rather than adding one");
+    }
+  });
+
+  it('describes the whole point set, not only the stops that exist today', () => {
+    // The blue bucket is the half that does not sit at a stop today, so a
+    // sentence claiming every dot does contradicts a row of the same key.
+    const el = stub();
+    renderLegend(el, { layer: LAYER, day: 'weekday', bounds: BOX, weight: 'locations' });
+    expect(prose(el)).not.toContain('A dot sits where a bus stops today');
+    expect(prose(el)).toContain(
+      'plus the ground the plan adds a bus to where nothing stops within the '
+      + 'walk radius now');
   });
 });
 
