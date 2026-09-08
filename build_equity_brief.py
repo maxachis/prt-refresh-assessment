@@ -1085,7 +1085,7 @@ def fill_slots(template, builders):
 # fragment and the icon silently becomes half a document.
 FAVICON_SVG = ("<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'>"
                "<path d='M16 2a14 14 0 0 0 0 28z' fill='%23e8232f'/>"
-               "<path d='M16 2a14 14 0 0 1 0 28z' fill='%2312a163'/>"
+               "<path d='M16 2a14 14 0 0 1 0 28z' fill='%23bd60e7'/>"
                "</svg>")
 FAVICON_LINK = (f'<link rel="icon" type="image/svg+xml" '
                 f'href="data:image/svg+xml,{FAVICON_SVG}">')

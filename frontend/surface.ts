@@ -17,6 +17,13 @@
  *    the legend keeps saying that its counts are locations.
  *  - GAINS READ AS LOUDLY AS LOSSES: the ramp is symmetric about no-change in
  *    both saturation and lightness.
+ *  - GAIN IS VIOLET, NOT GREEN, for the same reason change.ts's dots moved:
+ *    a fill has no second channel at all, so a red/green ramp was the
+ *    layer's whole failure for a red-green dichromat, not half of it. The
+ *    `[1, ...]` and `[2, ...]` anchors match `STYLE.doubled` and the change
+ *    layer's "quadrupled or better" exactly, so the two views keep agreeing
+ *    where they can. See
+ *    docs/worklog/the-change-ramp-fails-red-green-colour-blindness.md.
  *  - TOTAL LOSS AND NEW SERVICE ARE STEPS, NOT RAMP ENDS. `gone` is a
  *    categorical outcome, not "a lot less", and letting it fade in from
  *    "quartered" would bury the plainest finding on the map in a gradient.
@@ -48,8 +55,8 @@ export const RAMP: [number, string][] = [
   [-1, '#ef5c33'],          // halved — LOSE-FREQUENCY-HALF's edge
   [-0.138, DEAD_BAND_COLOR], // dead band
   [0.138, DEAD_BAND_COLOR],
-  [1, '#12a163'],           // doubled — GAIN-FREQUENCY-DOUBLE's edge
-  [2, '#0b7a48'],           // quadrupled or better
+  [1, '#bd60e7'],           // doubled — GAIN-FREQUENCY-DOUBLE's edge
+  [2, '#961bed'],           // quadrupled or better
 ];
 
 export const GONE_COLOR = '#e8232f';

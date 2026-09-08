@@ -18,9 +18,15 @@
  *    service-neutral redesign, and a map that draws losses larger than gains
  *    would lie at a glance, which is the one distance at which nobody reads
  *    the caveats.
- *  - COLOUR IS NOT THE ONLY CHANNEL. Size carries the same signal, so the
- *    extremes are still the extremes for a reader who cannot separate the red
- *    from the green.
+ *  - GAIN IS VIOLET, NOT GREEN, BECAUSE SIZE DOES NOT RESCUE COLOUR. Sizes run
+ *    6 / 4.5 / 3 outward from `same` on BOTH sides, so size encodes how big a
+ *    change is and never which way it goes -- `less` and `more` are both
+ *    size 3. Under red-green colour blindness a red/green ramp put those two
+ *    opposite findings at the same size AND the same apparent hue. Moving the
+ *    gain half onto violet (`more`, `doubled`) fixes the direction read for
+ *    the two red-green deficiencies; a hue redundancy in shape or hatch is
+ *    still the only complete answer and remains open --
+ *    docs/worklog/the-change-ramp-fails-red-green-colour-blindness.md.
  *  - EVERY COUNT SAYS WHICH DAY TYPE IT IS. 152 locations keep their weekday
  *    buses and lose the weekend entirely; on a weekday-only map they are
  *    invisible, so the day control governs this layer and not just the panel.
@@ -34,26 +40,34 @@ import { fetchJSON } from './utils';
 /**
  * Colour and size per bucket, in ramp order.
  *
- * Red for loss and green for gain matches the delta colours the panel already
- * uses, which is worth more than picking a colour-blind-optimal pair the rest
- * of the app would then contradict. The redundancy is size: `gone` and `new`
- * are the largest dots on the map and `same` the smallest, so the extremes
- * survive any colour deficiency.
+ * Loss stays red; gain is violet rather than green, because red/green is
+ * exactly the pair roughly 1 in 12 men cannot separate, and size does not
+ * cover for it -- see the module note above. Violet, not the more
+ * obvious blue, because blue was already spoken for: `new` is `#0f79c9` and
+ * `GONE_COLOR`/`NEW_COLOR` are shared with the street and one-seat layers, so
+ * a blue gain ramp would either collide with "new service" or force those
+ * layers to repaint too. frontend/cvd.test.ts pins the worst-case distance
+ * between every loss/gain bucket pair under normal vision and all three
+ * dichromat simulations, so this can't silently drift back. `gone` and `new`
+ * are still the largest dots and `same` the smallest -- size still carries
+ * magnitude, just never direction.
  *
  * The ramp is also balanced for CONTRAST against the basemap, not just for
  * saturation. Gains at the previous brightness read ~1.6:1 against Positron
  * where losses read ~3.1:1 -- "gains as loud as losses" was true of hue and
  * size but not of the one channel that decides whether you see a dot at all.
- * frontend/contrast.test.ts now enforces a 2.5:1 floor per bucket and 6%
- * loss/gain symmetry, so this can't silently drift back.
+ * frontend/contrast.test.ts enforces a 2.5:1 floor per bucket and 6%
+ * loss/gain symmetry, so this can't silently drift back either -- the violet
+ * hexes were chosen from a grid search constrained by that floor, which is
+ * why they are not more saturated.
  */
 export const STYLE: Record<string, { color: string; size: number }> = {
   gone:    { color: '#e8232f', size: 6 },
   halved:  { color: '#ef5c33', size: 4.5 },
   less:    { color: '#b06a55', size: 3 },
   same:    { color: '#6b7280', size: 2.5 },
-  more:    { color: '#478a68', size: 3 },
-  doubled: { color: '#12a163', size: 4.5 },
+  more:    { color: '#996cb4', size: 3 },
+  doubled: { color: '#bd60e7', size: 4.5 },
   new:     { color: '#0f79c9', size: 6 },
   none:    { color: '#3a3f4a', size: 2 },
 };

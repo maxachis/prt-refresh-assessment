@@ -7,6 +7,13 @@
   the only place it cannot qualify what it is saying. The circle is the mark
   the Locations view already draws.
 
+  The gain half is violet because the ramp's is: split red against green, the
+  two halves sat at a CIE76 distance of 18.6 under protanopia, so the icon
+  read as one flat disc to the readers the split exists for. Violet against
+  red is 66.8 at its worst across the three dichromat simulations. Keep this
+  in step with `change.STYLE.doubled`; frontend/cvd.test.ts pins the ramp it
+  is taken from, not this file.
+
   The equity brief carries this same artwork inline, since its standalone file
   has to work with no network at all. Keep the two in step: the other copy is
   `build_equity_brief.FAVICON_SVG`.
@@ -16,5 +23,5 @@
 -->
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
   <path d="M16 2a14 14 0 0 0 0 28z" fill="#e8232f"/>
-  <path d="M16 2a14 14 0 0 1 0 28z" fill="#12a163"/>
+  <path d="M16 2a14 14 0 0 1 0 28z" fill="#bd60e7"/>
 </svg>

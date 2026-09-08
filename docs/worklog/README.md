@@ -42,3 +42,5 @@ pass — a reader who stops halfway down must not be misinformed.
 | [WordPress sandboxes an embed it does not trust, and MapLibre goes blank in it](wordpress-sandboxes-the-embed-and-maplibre-goes-blank.md) | **closed 2026-09-02 by Max** — oEmbed provider built, measured against WordPress, and removed; kept for the measurement |
 | [122 stops sit on an island of the walk network](some-stops-sit-on-an-island-of-the-walk-network.md) | open, not fixed |
 | [The published travel times to Oakland lagged a build behind the anchor](travel-times-to-oakland-lagged-the-narrower-anchor.md) | fixed, awaiting close — rebuilt 2026-09-05; kept for what the one coupling test does *not* catch |
+| [The change ramp fails red-green colour blindness](the-change-ramp-fails-red-green-colour-blindness.md) | fixed, awaiting close — gain half moved to violet and pinned by a test; shape redundancy deferred, and a tritanopia trade-off is Max's to overturn |
+| [The brief's six demographic colours are not colour-blind safe](the-brief-charts-reuse-six-hues-two-of-which-collide.md) | open, not fixed — two chart series collide at ΔE 2.9; categorical, so lower risk than the map ramp was |
