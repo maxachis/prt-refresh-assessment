@@ -337,12 +337,17 @@ Three decisions worth keeping:
 
 `?newstops=off` to hide them. Blue rings over the dots, on by default in
 Locations and Both, at the 521 stops the proposed feed carries that today's
-feed does not.
+feed does not. The switch is a **row of the key**, clicked like a bucket, not
+a group in the toolbar: the toolbar chooses which question the map is
+answering, and these are not a seventh question but a mark inside the one the
+dots already ask. Switched off the row stays, faded and still counting, the
+way a hidden bucket does — the key filters what is drawn, never what is
+counted.
 
 They exist because the dots cannot draw them. A dot is a measurement point for
 a walk-access question, and a proposed stop earns one only where nothing stops
 within 400 m today — the **new coverage** row of the table above, 121 of them.
-The other 414 are infill: a stop the plan adds a couple of hundred metres from
+The other 400 are infill: a stop the plan adds a couple of hundred metres from
 one that already exists, whose service lands in the colour of the neighbouring
 dot while its own kerb stays bare. That is the honest drawing of the question
 the dots ask, and it reads as an omission. Three separate readers took bare
@@ -373,7 +378,10 @@ Four rules keep it from becoming a measurement it is not.
 On by default, unlike every other optional layer, because off by default would
 leave the reader who does not know to look exactly where all three reports
 found them. Drawn only in the two views made of dots: Streets already draws the
-same gain as pavement, and the other views measure in units a stop is not. See
+same gain as pavement, and the other views measure in units a stop is not. They
+are fetched whenever one of those views is on, even when the reader has
+switched them off, because the row that switches them back on cannot be drawn
+for a layer that was never fetched. See
 `docs/worklog/a-new-stop-the-plan-adds-draws-no-dot.md`.
 
 ### Locations or riders: the legend's second denominator

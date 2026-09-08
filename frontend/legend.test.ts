@@ -51,6 +51,12 @@ const NEW_POINT = [40.44, -79.95, 0, 'p:9', 0, 30, 6, null, 0, 20, 6, null,
 
 const BOX = { west: -80.1, south: 40.3, east: -79.9, north: 40.5 };
 
+const ADDED = [{
+  stop_id: '10010339', name: 'McMonagle Ave + N Meadowcroft Ave',
+  lat: 40.400897, lon: -80.04878, routes: ['34'],
+  trips: { weekday: 19, saturday: 15, sunday: 14 },
+}];
+
 describe('renderLegend', () => {
   it('counts only what is in view, and says which day type', () => {
     const el = stub();
@@ -110,15 +116,31 @@ describe('renderLegend', () => {
     const el = stub();
     renderLegend(el, {
       layer: LAYER, day: 'weekday', bounds: BOX, weight: 'locations',
-      added: [
-        {
-          stop_id: '10010339', name: 'McMonagle Ave + N Meadowcroft Ave',
-          lat: 40.400897, lon: -80.04878, routes: ['34'],
-          trips: { weekday: 19, saturday: 15, sunday: 14 },
-        },
-      ],
+      added: ADDED, addedVisible: true,
     });
     expect(prose(el)).toContain('stop the plan adds');
+    expect(prose(el)).toContain('data-added-stops');
+  });
+
+  // The row IS the switch, so it has to survive being switched off -- a key
+  // that dropped it would leave nothing to switch back on. It fades like a
+  // hidden bucket and, like one, keeps reporting its count.
+  it('keeps the added-stops row, faded and still counting, when they are off', () => {
+    const el = stub();
+    renderLegend(el, {
+      layer: LAYER, day: 'weekday', bounds: BOX, weight: 'locations',
+      added: ADDED, addedVisible: false,
+    });
+    expect(prose(el)).toContain('data-added-stops');
+    expect(prose(el)).toContain('aria-pressed="false"');
+    expect(prose(el)).toMatch(/stop the plan adds<\/span> <span class="lg-n">1</);
+  });
+
+  // Nothing to key and nothing to switch until the fetch lands.
+  it('has no added-stops row before the layer has been fetched', () => {
+    const el = stub();
+    renderLegend(el, { layer: LAYER, day: 'weekday', bounds: BOX, weight: 'locations' });
+    expect(prose(el)).not.toContain('data-added-stops');
   });
 
   // The rings are the answer to the caveat, so the caveat points at them --
@@ -126,13 +148,17 @@ describe('renderLegend', () => {
   // Streets, which is the view that can still show the gain.
   it('points the infill caveat at the rings only when they are drawn', () => {
     const off = stub();
-    renderLegend(off, { layer: LAYER, day: 'weekday', bounds: BOX, weight: 'locations' });
+    renderLegend(off, {
+      layer: LAYER, day: 'weekday', bounds: BOX, weight: 'locations',
+      added: ADDED, addedVisible: false,
+    });
     expect(prose(off)).not.toContain('the rings are those stops themselves');
-    expect(prose(off)).toContain('stop the plan adds');   // the caveat's own words
+    expect(prose(off)).toContain('Streets colours the pavement itself');
 
     const on = stub();
     renderLegend(on, {
-      layer: LAYER, day: 'weekday', bounds: BOX, weight: 'locations', added: [],
+      layer: LAYER, day: 'weekday', bounds: BOX, weight: 'locations',
+      added: ADDED, addedVisible: true,
     });
     expect(prose(on)).toContain('the rings are those stops themselves');
   });

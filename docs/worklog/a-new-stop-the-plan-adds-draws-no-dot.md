@@ -1,9 +1,9 @@
 # A new stop the plan adds usually draws no dot of its own
 
-414 of the 535 stops the Refresh adds have nothing in the Locations view at
+400 of the 521 stops the Refresh adds had nothing in the Locations view at
 their own kerb, because a proposed stop earns a dot only where nothing stops
-within 400 m today. Three readers have now taken that bare ground as the plan's
-new service missing from the data.
+within 400 m today. Three readers took that bare ground as the plan's new
+service missing from the data.
 
 Fixed, awaiting close. The added stops are now a layer of their own — blue
 rings over the dots, on by default in Locations and Both — after the wording
@@ -80,23 +80,46 @@ the reader's question — *where does the plan add stops?* — is a stop-level
 question the Locations view is not answering and cannot be made to answer
 without breaking what it does measure.
 
-## What is not yet decided
+## What was built
 
-Whether the map grows a way to see the added stops as stops. Sketch, for Max to
-take or reject: a **thin layer of the proposed network's new stops**, drawn as
-small open marks distinct from the change dots, off by default with its own
-legend row, reading straight off `stops` where `side='proposed'` and the id is
-absent from the current feed. It changes no measurement and enters no count —
-convention 15's rule that a location the plan adds has no observed boardings
-still holds, and these marks would carry no reading at all, only a name and its
-scheduled calls on click.
+`query.added_stops` serves the proposed feed's stops that are absent from the
+current one, and `frontend/added.ts` draws them as unfilled blue rings above
+the change dots, with a hover carrying the stop's routes and its calls on the
+selected day. The switch is a **row of the Locations key**, clicked like a
+bucket and, like a hidden bucket, still reporting its count once switched off;
+it rides in a link as `newstops=on|off`.
+
+Three things it deliberately does not do. It **enters no count**: these stops
+are not in `change_points`, so no published bucket, boardings total or area
+figure moves. It carries **no reading** — a name and a timetable, never a
+bucket or a change figure — because whether a neighbourhood gains *access*
+stays the dots' question and the surface's. And a **renumbered stop is not an
+added one**: 14 of the 535 new proposed ids sit within 25 m of a current id the
+proposed feed dropped, with the two names transposed ("CORBET ST + 6TH"
+reappearing as "Corbet St + E 6th Ave"), and they are excluded, leaving 521 —
+of which 121 draw a dot of their own and 400 did not draw anything at all
+before this.
+
+> Max chose to build it on 2026-09-08, on the reasoning in "Why the wording fix
+> was not enough" above, and moved the switch out of the toolbar and into the
+> key the same day: the added stops are a mark inside the question the dots
+> already ask, not a seventh question, and the toolbar is where the question
+> is chosen.
+
+The one place the built thing departs from the sketch Max approved: it defaults
+to **on**, where the sketch said off. The agent changed that while building and
+is flagging it rather than burying it — a layer off by default would have left
+the reader who does not know to look exactly where all three reports found
+them, which was the whole complaint. Switching it off is one click and the
+choice rides in the link.
+
 
 Rejected here, by the agent, and re-openable:
 
 - **Widen the point set so every new stop earns a dot.** Rejected because the
   bucket counts published in `docs/answers/` and on `/findings` are measured
   over this set, and because `change_points` selects at `PRIMARY_RADIUS` at
-  every radius precisely so that 400 m and 150 m stay comparable; adding 414
+  every radius precisely so that 400 m and 150 m stay comparable; adding 400
   points would make the two radii measure different universes.
 - **Shrink the selection radius so near-misses like Meadowcroft qualify.**
   Rejected because it moves an arbitrary threshold rather than removing the

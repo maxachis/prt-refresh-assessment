@@ -424,10 +424,21 @@ function infillFoot(rings: boolean) {
  * The added-stops row: a ring, a count in view, and no change figure at all.
  *
  * It sits below the ramp rather than inside it because it is not a bucket.
- * Every row above answers "how did service change here" and can be clicked to
- * filter the map; this one answers "where will PRT build a stop", takes no
- * position on whether anywhere gains access, and is switched from the toolbar
- * with the rest of the questions. Hence `lg-static`: nothing to click.
+ * Every row above answers "how did service change here"; this one answers
+ * "where will PRT build a stop" and takes no position on whether anywhere
+ * gains access.
+ *
+ * It is a button all the same, and switches its own layer the way the bucket
+ * rows switch theirs. What a reader learns from this key is that a row is a
+ * thing on the map and clicking it takes the thing away; a row that looked
+ * identical and did nothing would be the exception they find by clicking it.
+ * That is why the switch is here rather than a group of its own in the
+ * toolbar: the toolbar chooses which QUESTION the map is answering, and the
+ * added stops are not a seventh question, they are a mark inside the one the
+ * dots already ask.
+ *
+ * Switched off it keeps reporting its count, exactly as a hidden bucket does
+ * -- the key is a filter over what is drawn, never over what is counted.
  *
  * The count is scoped to the viewport like the bucket counts, and NOT to a
  * painted selection -- the brush paints measured dots, and a ring is not one
@@ -439,16 +450,18 @@ function addedRow(
   stops: AddedStop[],
   bounds: { west: number; south: number; east: number; north: number },
   scoped: boolean,
+  shown: boolean,
 ) {
   const n = scoped
     ? stops.length
     : countAddedInBounds(stops, bounds.west, bounds.south, bounds.east, bounds.north);
   return `
-    <div class="lg-row lg-static">
+    <button class="lg-row ${shown ? '' : 'off'}" data-added-stops
+            aria-pressed="${shown}">
       <i class="lg-ring" style="box-shadow:inset 0 0 0 2px ${ADDED_STOP_COLOR}"></i>
       <span class="lg-lab">stop the plan adds${scoped ? ' (citywide)' : ''}</span>
       <span class="lg-n">${n.toLocaleString()}</span>
-    </div>`;
+    </button>`;
 }
 
 export interface LegendOptions {
@@ -473,19 +486,22 @@ export interface LegendOptions {
    */
   selection?: ReadonlySet<string> | null;
   /**
-   * The stops the plan adds, when that layer is on screen.
+   * The stops the plan adds, once they have been fetched.
    *
-   * Absent means the reader has switched the rings off (or they have not
-   * loaded yet), and the key then says nothing about them at all rather than
-   * keying a mark that is not there.
+   * Present whether or not the rings are currently drawn, because the row is
+   * the switch: a key that dropped the row when the reader switched it off
+   * would leave nothing to switch back on. Absent only before the fetch
+   * lands, when there is genuinely nothing to say.
    */
   added?: AddedStop[] | null;
+  /** Whether those rings are on the map right now. */
+  addedVisible?: boolean;
 }
 
 export function renderLegend(el: HTMLElement, opts: LegendOptions) {
   const {
     layer, day, bounds, weight, surface, unit = 'area', population, selection,
-    added,
+    added, addedVisible = false,
   } = opts;
   const keys = layer.buckets.map((b) => b.key);
   const dayIndex = layer.days.indexOf(day);
@@ -542,14 +558,14 @@ export function renderLegend(el: HTMLElement, opts: LegendOptions) {
         <span class="lg-lab">${esc(b.label)}</span>
         <span class="lg-n">${cell(b.key)}</span>
       </button>`).join('')}
-    ${added ? addedRow(added, bounds, !!painted) : ''}
+    ${added ? addedRow(added, bounds, !!painted, addedVisible) : ''}
     ${surface ? surfaceKey({
       layer: surface, day, bounds, unit, population, scoped: !!painted,
     }) : ''}
     ${tally ? riderFoot(tally.unmeasured) : `
     <div class="lg-foot">Buses per day within the walk radius, both directions.
       Counts are locations, not riders.</div>`}
-    ${infillFoot(!!added)}
+    ${infillFoot(addedVisible)}
     ${painted ? `
     <div class="lg-foot">These are the stops you painted, not everything on
       screen — a selection you chose by hand, so quote it as one. The link in

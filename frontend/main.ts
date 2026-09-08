@@ -77,7 +77,6 @@ const CONTROL = {
   view: 'data-view',
   dest: 'data-dest',
   placeFill: 'data-place-fill',
-  addedStops: 'data-added-stops',
 } as const;
 
 /**
@@ -190,9 +189,12 @@ let view = 'dots';
 //
 // On by default, unlike every other optional layer here, and that is the
 // point of it: the readers who reported the added stops as missing would not
-// have found a switch they had no reason to look for. It is remembered
-// across view changes rather than reset, so a reader who switched the rings
-// off, went to look at Streets and came back does not find them on again.
+// have found a switch they had no reason to look for. Its switch is a row of
+// the legend rather than a toolbar group -- the toolbar chooses which
+// question the map answers, and this is a mark inside the dots' question,
+// not a seventh question. Remembered across view changes rather than reset,
+// so a reader who switched the rings off, went to look at Streets and came
+// back does not find them on again.
 let addedStopsWanted = true;
 
 // The answer panel, as a bottom sheet on a phone and as an inert stub in the
@@ -413,7 +415,7 @@ map.on('load', () => {
     void showPlaces(view === 'places');
     // Only over the dots. Streets already draws the same gain as pavement,
     // and the other three views measure in units a stop is not.
-    void showAddedStops(dotsOn() && addedStopsWanted);
+    void showAddedStops(dotsOn());
     // One-seat and the shared location report answer different questions from
     // the same fetched answer, so switching between them redraws rather than
     // refetches. Leaving the journey view is handled by `showJourney`, which
@@ -439,9 +441,6 @@ map.on('load', () => {
     // control needs no line here: it is drawn inside the panel, which the
     // view switch replaces wholesale.)
     $('place-fill-controls').classList.toggle('hidden', view !== 'places');
-    // The rings only exist over the dots, so the switch that hides them is
-    // hidden with them rather than left as a control that does nothing.
-    $('added-stops-controls').classList.toggle('hidden', !dotsOn());
     // The brush paints dots, so it means nothing in the views that have none.
     // Disarmed rather than merely hidden: a mode left armed behind a control
     // the reader can no longer see would swallow their next click.
@@ -475,15 +474,6 @@ map.on('load', () => {
   // creates it, so the repaint only happens once the layer is actually on
   // screen. Nothing is lost by skipping it here -- `showPlaces` already
   // applies whatever `placeFill` holds by the time it turns the layer on.
-  // Show or hide the stops the plan adds. A switch rather than a view of its
-  // own: it answers the same "what changes here" question the dots do, one
-  // unit down, and a reader comparing a lost dot with the stop the plan puts
-  // two streets over needs both on screen at once.
-  segment(CONTROL.addedStops, (b) => {
-    addedStopsWanted = b.dataset.addedStops === 'on';
-    void showAddedStops(dotsOn() && addedStopsWanted);
-  });
-
   segment(CONTROL.placeFill, (b) => {
     placeFill = b.dataset.placeFill as PlaceFill;
     if (placesOn()) setPlacesFill(map, placeFill, activeDay());
@@ -507,6 +497,15 @@ map.on('load', () => {
     if (u) {
       surfaceUnit = u.dataset.surfaceUnit as SurfaceUnit;
       void showSurfaceUnit(surfaceUnit);
+      syncUrl();
+      return;
+    }
+    // Switched from the key like a bucket, because that is what it looks
+    // like there. `showAddedStops` redraws the legend itself.
+    const rings = (e.target as HTMLElement).closest<HTMLElement>('[data-added-stops]');
+    if (rings) {
+      addedStopsWanted = !addedStopsWanted;
+      void showAddedStops(dotsOn());
       syncUrl();
       return;
     }
@@ -613,8 +612,7 @@ map.on('load', () => {
   // Not inside the branch above: `applyOpening` only presses the controls a
   // link actually carried, and the opening view is one made of dots either
   // way unless the link said otherwise.
-  void showAddedStops(dotsOn() && addedStopsWanted);
-  $('added-stops-controls').classList.toggle('hidden', !dotsOn());
+  void showAddedStops(dotsOn());
   void loadMeta();
   void loadDestinations();
 });
@@ -689,13 +687,12 @@ function applyOpening(s: Partial<UrlState>): boolean {
   // turns the layer on, so pressing it first paints the fill correctly on
   // the first frame instead of the default and then a second repaint.
   if (s.placeFill) press(CONTROL.placeFill, s.placeFill);
-  // Before the view, like the radius and the fill above: the view handler
-  // reads `addedStopsWanted` when it decides whether to draw the rings, so
-  // pressing it first opens with the layer the link asked for rather than
-  // drawing it and then taking it away.
-  if (s.addedStops !== undefined) {
-    press(CONTROL.addedStops, s.addedStops ? 'on' : 'off');
-  }
+  // Like `weight` and `surfaceUnit` above, this has no toolbar button to
+  // press -- its switch is a row of the legend, which is redrawn after the
+  // layer arrives. Set before the view all the same, because the view handler
+  // reads it when it decides whether to draw the rings, and a link that
+  // asked for them off should never draw them once.
+  if (s.addedStops !== undefined) addedStopsWanted = s.addedStops;
   if (s.dest) {
     // A dropped pin has no button to press; a named district does, and
     // pressing it lights the toolbar as well as moving the destination.
@@ -896,7 +893,8 @@ function renderLegendBody() {
     unit: surfaceUnit,
     population: populationData(),
     selection: selection(),
-    added: addedStopsOn() ? addedStopsData() : null,
+    added: addedStopsData(),
+    addedVisible: addedStopsOn(),
   });
 }
 
@@ -941,16 +939,22 @@ async function showSurfaceUnit(unit: SurfaceUnit) {
 }
 
 /**
- * Turn the added-stops rings on or off, fetching them the first time.
+ * Draw the added-stops rings, or not, fetching them the first time.
+ *
+ * Takes whether the CURRENT VIEW has them rather than whether they are
+ * wanted, and reads the reader's own switch itself, because the two decide
+ * different things. The fetch follows the view: the switch that turns the
+ * rings back on is a row of the legend, and a key cannot offer a row for a
+ * layer it never fetched -- so a link arriving with `newstops=off` still
+ * loads them, and simply draws none.
  *
  * Fetched on first use like the surface and the corridors, and for the same
- * reason -- except that here "first use" is the opening screen, because the
- * layer defaults to on. It is one small response and it never changes with
- * the radius or the day: a stop is a stop on every calendar, and the day only
- * decides what the hover says about its trips.
+ * reason. It is one small response and it never changes with the radius or
+ * the day: a stop is a stop on every calendar, and the day only decides what
+ * the hover says about its trips.
  */
-async function showAddedStops(on: boolean) {
-  if (on && !addedStopsData()) {
+async function showAddedStops(inView: boolean) {
+  if (inView && !addedStopsData()) {
     try {
       await loadAddedStops(map);
     } catch (err) {
@@ -964,7 +968,7 @@ async function showAddedStops(on: boolean) {
       return;
     }
   }
-  setAddedStopsVisible(map, on);
+  setAddedStopsVisible(map, inView && addedStopsWanted);
   refreshLegend();
 }
 

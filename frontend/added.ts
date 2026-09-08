@@ -9,7 +9,7 @@
  * existing stop is drawn as a colour change on that stop's dot and the new
  * kerb stays bare. Three separate readers — PPT on Penn Avenue, then a PRT
  * consultant on the four stops route 34 gains on McMonagle Avenue — have read
- * that bare ground as the plan's gain missing from the data. 414 of the 521
+ * that bare ground as the plan's gain missing from the data. 400 of the 521
  * added stops are in that position, and a sentence in the key did not fix it,
  * because a caveat does not compete with the absence of a mark on the street
  * a reader is looking at.

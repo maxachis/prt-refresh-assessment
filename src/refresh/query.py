@@ -540,7 +540,7 @@ def added_stops(con):
     honest drawing of a walk-access question and it reads as an omission: three
     separate readers, most recently a PRT consultant looking at the four stops
     route 34 gains on McMonagle Avenue, took bare ground beside a recoloured
-    dot as the plan's gain missing from the data. 414 of the 521 added stops
+    dot as the plan's gain missing from the data. 400 of the 521 added stops
     are in that position.
 
     So the stops are drawn as themselves, and three rules keep this from
