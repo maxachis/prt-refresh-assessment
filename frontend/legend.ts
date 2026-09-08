@@ -125,9 +125,9 @@ function populationLines(
  * painted) and the figures go.
  */
 const SCOPED_SURFACE_NOTE = `
-      <div class="lg-ends" style="margin-top:6px">Ground and people are
-        measured across the view, not the stops you selected — a 100 m cell
-        has no stop to select. Clear the selection to count them.</div>`;
+      <div class="lg-ends" style="margin-top:6px">Ground and people count the
+        whole view, not the stops you selected — a 100 m cell has no stop to
+        select. Clear the selection to count them.</div>`;
 
 /**
  * The surface's key and in-view figures, when the surface is on screen.
@@ -225,11 +225,10 @@ export function renderCorridorLegend(el: HTMLElement, layer: CorridorLayer) {
       <span><b>${n(addedPct)}%</b> of today's pavement gained</span>
     </div>
     <div class="lg-ends" style="margin-top:4px">citywide, not in view</div>
-    <div class="lg-foot">A piece of street either has a bus on it or it doesn't —
-      this is not a walk-access question, so there is no radius here. A place
-      can keep full walk access while a specific street loses its only bus, if
-      a parallel block picks up the trip instead. See Locations or Surface for
-      what you can still reach on foot.</div>`;
+    <div class="lg-foot">A street either has a bus on it or it doesn't, so
+      there is no walk radius here. A street can lose its only bus while the
+      block beside it keeps one: for what a rider can still reach on foot, see
+      Locations or Surface.</div>`;
 }
 
 /**
@@ -264,13 +263,10 @@ export function renderOneSeatLegend(
   const restricted = layer.day && layer.day !== ANY_DAY;
   const dayNote = restricted
     ? `Restricted to routes running on ${DAY_WORD[layer.day as Day]
-      } at both ends — <b>not</b> the published day-free answer, which counts a
-      route that calls here on any calendar. A ride shown here as surviving
-      still may run only hourly on that day.`
-    : `No day type enters this — a route serves a place or it doesn't — so a
-      one-seat ride that survives may still be hourly on a Sunday, or take an
-      hour to make. Switch the one-seat control to "Selected day" to ask
-      about one day instead.`;
+      } at both ends — <b>not</b> the published answer, which counts a route
+      calling here on any calendar.`
+    : `No day type enters this, as published — a route serves a place or it
+      doesn't. Switch the one-seat control to "Selected day" for one day.`;
 
   el.innerHTML = `
     <div class="lg-head">
@@ -290,11 +286,10 @@ export function renderOneSeatLegend(
         `${(layer.counts[k] ?? 0).toLocaleString()} ${esc(label(k))}`).join(' · ')}
     </div>
     <div class="lg-foot">Can a rider reach ${esc(to)} without transferring?
-      ${dayNote} No travel time enters it either, so a surviving ride may take
-      an hour to make. Click a dot for that location's actual
-      timetable. This is also the only view that counts the T and the inclines:
-      they are unchanged by the Refresh, but leaving them out would show the
-      South Hills losing rides the Blue Line still runs.</div>`;
+      ${dayNote} No frequency or travel time enters it: a surviving ride may
+      run hourly, or take an hour. Click a dot for that location's timetable.
+      The only view here that counts the T and the inclines — without them the
+      South Hills would read as losing rides the Blue Line still runs.</div>`;
 }
 
 /**
@@ -363,18 +358,16 @@ function riderFoot(unmeasured: number) {
   const places = `${n} location${unmeasured === 1 ? '' : 's'} in view`;
   const gain = unmeasured === 1 ? 'gains' : 'gain';
   const gains = unmeasured
-    ? `<b>${places}</b> ${gain} a bus where none stops today, so there is no `
-      + 'ridership to weigh there — this weighting can measure what is at risk '
-      + 'and never what is gained.'
-    : 'Nothing observed can weigh a location the plan adds a bus to, so this '
-      + 'weighting measures what is at risk and never what is gained.';
+    ? `<b>${places}</b> ${gain} a bus where none stops today: no boardings to `
+      + 'weigh. This counts what is at risk, never what is gained.'
+    : 'Boardings exist only where a bus stops today, so this counts what is at '
+      + 'risk, never what is gained.';
   // Its own class because the phone layout hides `.lg-foot` for room: this
   // one is not a footnote, it is what the number above it means, and the
   // stylesheet exempts it by name.
   return `<div class="lg-foot lg-foot-riders">${gains}
-    Boardings are PRT's May 2025 daily averages at stops that exist today —
-    unlinked trips, not people, and by PRT's own disclaimer unofficial totals
-    that may understate ridership by up to 30%.</div>`;
+    Boardings are PRT's May 2025 daily averages: unlinked trips,
+    not people, and by PRT's own disclaimer up to 30% low.</div>`;
 }
 
 /**
@@ -414,10 +407,10 @@ function infillFoot(rings: boolean) {
   const where = rings
     ? `the rings are those stops themselves. Streets colours the pavement.`
     : `Streets colours the pavement itself, and shows the rest.`;
-  return `<div class="lg-foot">Dots mark the places a bus stops today, plus the
-    ground the plan adds a bus to where nothing stops within the walk radius
-    now. So a stop the plan adds beside one that already exists changes a dot's
-    colour rather than adding one &mdash; ${where}</div>`;
+  return `<div class="lg-foot">Dots mark today's stops, plus the ground the plan
+    adds a bus to where nothing stops within the walk radius now. A stop added
+    beside an existing one changes a dot's colour rather than adding one
+    &mdash; ${where}</div>`;
 }
 
 /**
@@ -563,11 +556,11 @@ export function renderLegend(el: HTMLElement, opts: LegendOptions) {
       layer: surface, day, bounds, unit, population, scoped: !!painted,
     }) : ''}
     ${tally ? riderFoot(tally.unmeasured) : `
-    <div class="lg-foot">Buses per day within the walk radius, both directions.
-      Counts are locations, not riders.</div>`}
+    <div class="lg-foot">Buses per day within the walk radius, both
+      directions — counting locations, not riders.</div>`}
     ${infillFoot(addedVisible)}
     ${painted ? `
-    <div class="lg-foot">These are the stops you painted, not everything on
-      screen — a selection you chose by hand, so quote it as one. The link in
-      your address bar carries it.</div>` : ''}`;
+    <div class="lg-foot">The stops you painted, not everything on screen —
+      hand-picked, so quote it as a sample. The link in your address bar
+      carries it.</div>` : ''}`;
 }

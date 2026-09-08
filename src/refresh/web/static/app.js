@@ -232,9 +232,9 @@
         <span><b>${s(a.none)}</b> have no bus either way</span>
       </div>
       ${o}`}var Ws=`
-      <div class="lg-ends" style="margin-top:6px">Ground and people are
-        measured across the view, not the stops you selected \u2014 a 100 m cell
-        has no stop to select. Clear the selection to count them.</div>`;function qs(e){let{layer:t,day:n,bounds:o,unit:a,population:s,scoped:r=!1}=e;return`
+      <div class="lg-ends" style="margin-top:6px">Ground and people count the
+        whole view, not the stops you selected \u2014 a 100 m cell has no stop to
+        select. Clear the selection to count them.</div>`;function qs(e){let{layer:t,day:n,bounds:o,unit:a,population:s,scoped:r=!1}=e;return`
     <div class="lg-ramp">
       <div class="lg-lab">Surface \u2014 buses per day, proposed vs today</div>
       <div class="lg-bar" style="background:linear-gradient(90deg, ${Mt.map(([u,p])=>`${p} ${((u+2)/4*100).toFixed(1)}%`).join(", ")})"></div>
@@ -264,16 +264,12 @@
       <span><b>${a(o)}%</b> of today's pavement gained</span>
     </div>
     <div class="lg-ends" style="margin-top:4px">citywide, not in view</div>
-    <div class="lg-foot">A piece of street either has a bus on it or it doesn't \u2014
-      this is not a walk-access question, so there is no radius here. A place
-      can keep full walk access while a specific street loses its only bus, if
-      a parallel block picks up the trip instead. See Locations or Surface for
-      what you can still reach on foot.</div>`}function Uo(e,t,n){let o=t.statuses.map(m=>m.key),a=Eo(t.points,o,n.west,n.south,n.east,n.north),s=m=>t.statuses.find(v=>v.key===m)?.label??m,r=Ke.reduce((m,v)=>m+(a[v]??0),0),l=qt(t),u=t.day&&t.day!==We,p=u?`Restricted to routes running on ${Xt[t.day]} at both ends \u2014 <b>not</b> the published day-free answer, which counts a
-      route that calls here on any calendar. A ride shown here as surviving
-      still may run only hourly on that day.`:`No day type enters this \u2014 a route serves a place or it doesn't \u2014 so a
-      one-seat ride that survives may still be hourly on a Sunday, or take an
-      hour to make. Switch the one-seat control to "Selected day" to ask
-      about one day instead.`;e.innerHTML=`
+    <div class="lg-foot">A street either has a bus on it or it doesn't, so
+      there is no walk radius here. A street can lose its only bus while the
+      block beside it keeps one: for what a rider can still reach on foot, see
+      Locations or Surface.</div>`}function Uo(e,t,n){let o=t.statuses.map(m=>m.key),a=Eo(t.points,o,n.west,n.south,n.east,n.north),s=m=>t.statuses.find(v=>v.key===m)?.label??m,r=Ke.reduce((m,v)=>m+(a[v]??0),0),l=qt(t),u=t.day&&t.day!==We,p=u?`Restricted to routes running on ${Xt[t.day]} at both ends \u2014 <b>not</b> the published answer, which counts a route
+      calling here on any calendar.`:`No day type enters this, as published \u2014 a route serves a place or it
+      doesn't. Switch the one-seat control to "Selected day" for one day.`;e.innerHTML=`
     <div class="lg-head">
       One-seat ride to <b>${d(l)}</b>
       <span class="muted">\xB7 ${r.toLocaleString()} locations in view
@@ -289,23 +285,21 @@
       citywide: ${Ke.map(m=>`${(t.counts[m]??0).toLocaleString()} ${d(s(m))}`).join(" \xB7 ")}
     </div>
     <div class="lg-foot">Can a rider reach ${d(l)} without transferring?
-      ${p} No travel time enters it either, so a surviving ride may take
-      an hour to make. Click a dot for that location's actual
-      timetable. This is also the only view that counts the T and the inclines:
-      they are unchanged by the Refresh, but leaving them out would show the
-      South Hills losing rides the Blue Line still runs.</div>`}function Jo(e){return`
+      ${p} No frequency or travel time enters it: a surviving ride may
+      run hourly, or take an hour. Click a dot for that location's timetable.
+      The only view here that counts the T and the inclines \u2014 without them the
+      South Hills would read as losing rides the Blue Line still runs.</div>`}function Jo(e){return`
     <div class="pk-head">Around the pin</div>
     <span><i class="sw-pin"></i>the pin</span>
     <span><i class="sw-walk"></i>the ${e} m walk</span>
     <span><i class="sw-now"></i>stop today</span>
     <span><i class="sw-prop"></i>stop proposed</span>
-    <span><i class="sw-both"></i>both, same spot</span>`}var jo={locations:"Locations",riders:"Riders"};function er(e){let n=`${e.toLocaleString()} location${e===1?"":"s"} in view`;return`<div class="lg-foot lg-foot-riders">${e?`<b>${n}</b> ${e===1?"gains":"gain"} a bus where none stops today, so there is no ridership to weigh there \u2014 this weighting can measure what is at risk and never what is gained.`:"Nothing observed can weigh a location the plan adds a bus to, so this weighting measures what is at risk and never what is gained."}
-    Boardings are PRT's May 2025 daily averages at stops that exist today \u2014
-    unlinked trips, not people, and by PRT's own disclaimer unofficial totals
-    that may understate ridership by up to 30%.</div>`}function tr(e){return`<div class="lg-foot">Dots mark the places a bus stops today, plus the
-    ground the plan adds a bus to where nothing stops within the walk radius
-    now. So a stop the plan adds beside one that already exists changes a dot's
-    colour rather than adding one &mdash; ${e?"the rings are those stops themselves. Streets colours the pavement.":"Streets colours the pavement itself, and shows the rest."}</div>`}function nr(e,t,n,o){let a=n?e.length:ko(e,t.west,t.south,t.east,t.north);return`
+    <span><i class="sw-both"></i>both, same spot</span>`}var jo={locations:"Locations",riders:"Riders"};function er(e){let n=`${e.toLocaleString()} location${e===1?"":"s"} in view`;return`<div class="lg-foot lg-foot-riders">${e?`<b>${n}</b> ${e===1?"gains":"gain"} a bus where none stops today: no boardings to weigh. This counts what is at risk, never what is gained.`:"Boardings exist only where a bus stops today, so this counts what is at risk, never what is gained."}
+    Boardings are PRT's May 2025 daily averages: unlinked trips,
+    not people, and by PRT's own disclaimer up to 30% low.</div>`}function tr(e){return`<div class="lg-foot">Dots mark today's stops, plus the ground the plan
+    adds a bus to where nothing stops within the walk radius now. A stop added
+    beside an existing one changes a dot's colour rather than adding one
+    &mdash; ${e?"the rings are those stops themselves. Streets colours the pavement.":"Streets colours the pavement itself, and shows the rest."}</div>`}function nr(e,t,n,o){let a=n?e.length:ko(e,t.west,t.south,t.east,t.north);return`
     <button class="lg-row ${o?"":"off"}" data-added-stops
             aria-pressed="${o}">
       <i class="lg-ring" style="box-shadow:inset 0 0 0 2px ${zt}"></i>
@@ -333,13 +327,13 @@
     ${m?nr(m,a,!!C,v):""}
     ${r?qs({layer:r,day:o,bounds:a,unit:l,population:u,scoped:!!C}):""}
     ${G?er(G.unmeasured):`
-    <div class="lg-foot">Buses per day within the walk radius, both directions.
-      Counts are locations, not riders.</div>`}
+    <div class="lg-foot">Buses per day within the walk radius, both
+      directions \u2014 counting locations, not riders.</div>`}
     ${tr(v)}
     ${C?`
-    <div class="lg-foot">These are the stops you painted, not everything on
-      screen \u2014 a selection you chose by hand, so quote it as one. The link in
-      your address bar carries it.</div>`:""}`}var Qt="#4aa3ff",Xo="#ffa23a",Zt="headline",qe="journey",Qo="journey-rides",Zo="journey-walks",or=[Qo,Zo],ea=null,ta=!1;function Qe(){return ea}function en(){return ta}function ar(e,t){let n=e.radii[t],o=[];for(let a of["current","proposed"]){let s=n[a].itinerary;if(s)for(let r of s.legs){let l=r.from??e.origin,u=r.to??e.destination,p=[[l.lon,l.lat],[u.lon,u.lat]],m=r.path?.length?r.path:p;o.push({type:"Feature",geometry:{type:"LineString",coordinates:m},properties:{side:a,kind:r.kind,route:r.route}})}}return{type:"FeatureCollection",features:o}}function Go(){return["match",["get","side"],"current",Qt,"proposed",Xo,Qt]}function Vo(e){let t=(n,o)=>["match",["get","side"],"proposed",o*e,n*e];return["interpolate",["linear"],["zoom"],9,t(3.5,2),14,t(7,4)]}function na(e,t){e.addSource(qe,{type:"geojson",data:{type:"FeatureCollection",features:[]}}),e.addLayer({id:Qo,type:"line",source:qe,filter:["==",["get","kind"],"ride"],layout:{visibility:"none","line-cap":"round","line-join":"round"},paint:{"line-color":Go(),"line-width":Vo(1),"line-opacity":.85}},t),e.addLayer({id:Zo,type:"line",source:qe,filter:["==",["get","kind"],"walk"],layout:{visibility:"none","line-cap":"butt","line-join":"round"},paint:{"line-color":Go(),"line-width":Vo(.6),"line-opacity":.8,"line-dasharray":[1.5,1.5]}},t)}function oa(e,t){ta=t;for(let n of or)e.setLayoutProperty(n,"visibility",t?"visible":"none")}function tn(e,t){ea=t;let n=t?ar(t,Zt):{type:"FeatureCollection",features:[]};e.getSource(qe).setData(n)}function aa(e,t,n){return`/api/journey?lat=${e.lat.toFixed(6)}&lon=${e.lon.toFixed(6)}&dest_lat=${t.lat.toFixed(6)}&dest_lon=${t.lon.toFixed(6)}&day=${n}`}var Yo=e=>`${e.toFixed(1)} min`;function sa(e){return e==null?"\u2014":e===0?"no change":e>0?`${Yo(e)} slower`:`${Yo(-e)} faster`}function Ko(e,t){return e?e.name?d(e.name):`stop ${d(e.stop_id)}`:t}function sr(e,t){let n=Math.round(e.arrive-e.depart);if(e.kind==="walk"){let o=Ko(e.to,"the destination");return`<div class="jl"><span class="jl-what">walk ${n} min</span>
+    <div class="lg-foot">The stops you painted, not everything on screen \u2014
+      hand-picked, so quote it as a sample. The link in your address bar
+      carries it.</div>`:""}`}var Qt="#4aa3ff",Xo="#ffa23a",Zt="headline",qe="journey",Qo="journey-rides",Zo="journey-walks",or=[Qo,Zo],ea=null,ta=!1;function Qe(){return ea}function en(){return ta}function ar(e,t){let n=e.radii[t],o=[];for(let a of["current","proposed"]){let s=n[a].itinerary;if(s)for(let r of s.legs){let l=r.from??e.origin,u=r.to??e.destination,p=[[l.lon,l.lat],[u.lon,u.lat]],m=r.path?.length?r.path:p;o.push({type:"Feature",geometry:{type:"LineString",coordinates:m},properties:{side:a,kind:r.kind,route:r.route}})}}return{type:"FeatureCollection",features:o}}function Go(){return["match",["get","side"],"current",Qt,"proposed",Xo,Qt]}function Vo(e){let t=(n,o)=>["match",["get","side"],"proposed",o*e,n*e];return["interpolate",["linear"],["zoom"],9,t(3.5,2),14,t(7,4)]}function na(e,t){e.addSource(qe,{type:"geojson",data:{type:"FeatureCollection",features:[]}}),e.addLayer({id:Qo,type:"line",source:qe,filter:["==",["get","kind"],"ride"],layout:{visibility:"none","line-cap":"round","line-join":"round"},paint:{"line-color":Go(),"line-width":Vo(1),"line-opacity":.85}},t),e.addLayer({id:Zo,type:"line",source:qe,filter:["==",["get","kind"],"walk"],layout:{visibility:"none","line-cap":"butt","line-join":"round"},paint:{"line-color":Go(),"line-width":Vo(.6),"line-opacity":.8,"line-dasharray":[1.5,1.5]}},t)}function oa(e,t){ta=t;for(let n of or)e.setLayoutProperty(n,"visibility",t?"visible":"none")}function tn(e,t){ea=t;let n=t?ar(t,Zt):{type:"FeatureCollection",features:[]};e.getSource(qe).setData(n)}function aa(e,t,n){return`/api/journey?lat=${e.lat.toFixed(6)}&lon=${e.lon.toFixed(6)}&dest_lat=${t.lat.toFixed(6)}&dest_lon=${t.lon.toFixed(6)}&day=${n}`}var Yo=e=>`${e.toFixed(1)} min`;function sa(e){return e==null?"\u2014":e===0?"no change":e>0?`${Yo(e)} slower`:`${Yo(-e)} faster`}function Ko(e,t){return e?e.name?d(e.name):`stop ${d(e.stop_id)}`:t}function sr(e,t){let n=Math.round(e.arrive-e.depart);if(e.kind==="walk"){let o=Ko(e.to,"the destination");return`<div class="jl"><span class="jl-what">walk ${n} min</span>
             <span class="muted">to ${o}</span></div>`}return`<div class="jl"><span class="jl-what">ride
           <span class="route">${d(e.route??"?")}</span> ${n} min</span>
           <span class="muted">to ${Ko(e.to,"the destination")}</span></div>`}function Wo(e,t){let n=[],o=null;for(let a of e.legs){let s=o?Math.round(a.depart-o.arrive):0;s>0&&n.push(`<div class="jl jl-wait"><span class="jl-what">wait ${s} min</span></div>`),n.push(sr(a,t)),o=a}return n.join("")}var rr={no_origin_coverage:"No bus stops within a walk of this point on one or both networks, so there is no trip to time from here. That is a coverage answer rather than a travel-time one \u2014 the Locations and Surface views are where it is measured.",no_dest_coverage:"No bus stops within a walk of the destination on one or both networks, so there is nothing to arrive at. That is a coverage answer rather than a travel-time one \u2014 the Locations and Surface views are where it is measured.",no_journey:"Both ends have buses, but no trip connects them inside this window on one or both networks \u2014 within the transfer walk below, and with a change of bus allowed."};function Xe(e){return e.median_min==null?"\u2014":e.median_min.toFixed(1)}function ir(e){return`
