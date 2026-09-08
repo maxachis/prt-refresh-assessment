@@ -7,9 +7,10 @@ service missing from the data.
 
 Fixed, awaiting close. The threshold that decides whether a proposed stop is
 its own place to measure is now 150 m rather than the walk radius, so the dot
-appears at the stop and its colour says what changes there. An inventory layer
-of blue rings was built first, on 2026-09-08, and removed the same day when the
-better fix was found.
+appears at the stop and its colour says what changes there, and the dot carries
+a ring saying no stop stands there today. A separate inventory layer of blue
+rings was built first, on 2026-09-08, and removed the same day when the better
+fix was found.
 
 ## What was happening
 
@@ -138,6 +139,44 @@ it and it is not a new place. The 25 m rule and its 14 exclusions went with
 
 > Max decided both on 2026-09-08: adopt the 150 m identity radius, and get rid
 > of the rings.
+
+**Then a third round, because the 400 m view still said nothing.** Max checked
+the fix at both radii and found the remaining hole: at 150 m the new stops read
+as new, at 400 m they did not. The rings had been the only thing separating "a
+new pole" from "a stop that exists today", and removing them left the colour to
+carry that on its own. At 150 m the colour appears to manage it — 260 of the
+261 dots in the blue `new` bucket on a weekday are exactly the unpublished
+points — but that is a coincidence of the two rules agreeing at one radius, not
+a signal. At 400 m the same places sit in `more` or `doubled` with nothing to
+mark them, which is precisely the view the consultant read McMonagle Avenue in.
+
+So the ring came back, in the one place it costs nothing: **on the dot itself**,
+not as a layer of its own. `published = 0` draws a detached outline round the
+dot, which is one channel rather than a second unit, is the same mark at 400 m
+and 150 m, and cannot be read as a separate inventory because there is nothing
+underneath it to double-count. It follows the bucket filter, so a ring is never
+left round a dot the reader has switched off, and its standoff scales with the
+dot — a fixed one made 260 of 6,544 points the loudest mark on a county-wide
+map whose subject is the other 6,284.
+
+The key carries it as a swatch rather than a sentence: a ring, the label **New
+stop location**, and the count in view, below the coloured rows and behind a
+rule. Prose was where it started, and Max moved it — "let's have it so the ring
+is viewable in the legend, rather than something mentioned in the description."
+It is a key line, not a switch, because the ring annotates dots that stay on
+screen and there is nothing for it to filter; and it disappears at zero rather
+than sitting there as a row, because unlike the buckets above it there is no
+"cannot happen here" reading to protect.
+
+> Max named the label on 2026-09-08. "New stop under Refresh" was tried first
+> and rejected as overreach: two of the points are existing poles the plan moved
+> more than 150 m, which are new *places* without being new *stops*.
+
+What is still not marked: the 263 stops the plan adds at corners that already
+have one. They change a dot's colour and nothing else, by design — that is
+convention 2, and the footnote says so. A reader who wants the pole inventory
+rather than the access change is not served by this view at all, and the
+question of whether the site should answer that at all is still open.
 
 ## The cost that was accepted
 

@@ -32,8 +32,8 @@
  *    invisible, so the day control governs this layer and not just the panel.
  */
 import {
-  ChangeLayer, ChangePoint, Day, DAYS, BUCKET, CUR, PROP, field, riders,
-  pointId,
+  ChangeLayer, ChangePoint, Day, DAYS, BUCKET, CUR, PROP, PUBLISHED, field,
+  riders, pointId,
 } from './types';
 import { fetchJSON } from './utils';
 
@@ -79,6 +79,43 @@ const LAYER = 'change-dots';
 const SELECTED: any = ['boolean', ['feature-state', 'selected'], false];
 /** Ink, not a hue: the ramp owns every colour that means something here. */
 const SELECTED_HALO = '#15181e';
+
+/**
+ * The ring drawn round a dot at a place with no stop of its own today.
+ *
+ * Answers the one question the colour cannot: a dot reading `doubled` at a
+ * pole the plan has yet to build looks identical to one at a stop that has
+ * stood for fifty years, and at 400 m nothing on screen separated them. The
+ * ring says "no stop stands here today" -- `published = 0`, the identity test
+ * in `query.UNIVERSE_DEDUP_M`, not a claim about service.
+ *
+ * It is deliberately STABLE ACROSS THE TWO RADII, where the colour is not.
+ * The same location reads `new service` at 150 m and `doubled` at 400 m,
+ * which is convention 4 working; the ring describes the pole rather than the
+ * catchment, so it does not move when the walk radius does. At 150 m the blue
+ * bucket happens to pick out almost exactly this set, and a reader could take
+ * blue to mean "new stop" and be right by coincidence -- the ring is what
+ * makes that inference legitimate instead of lucky.
+ *
+ * Drawn as a detached outline rather than a heavier halo, because a heavy
+ * dark halo is the selection's mark (SELECTED_HALO above) and two ink rings
+ * of different weights would be a distinction nobody can hold. The gap is
+ * what separates them at a glance.
+ */
+const NEW_PLACE_RING = 'change-new-place-rings';
+const NEW_PLACE: any = ['==', ['get', 'published'], 0];
+const NEW_PLACE_INK = '#15181e';
+/**
+ * How far the ring stands off the dot, per zoom stop.
+ *
+ * It scales with the dot rather than being fixed, and that is not cosmetic. At
+ * county scale a dot is about a pixel, so a constant standoff draws a circle
+ * several times the size of the mark inside it: 260 of 6,544 points would
+ * carry the loudest symbol on a map whose subject is the other 6,284. The
+ * ring has to stay an annotation on a dot at every zoom, never a mark in its
+ * own right.
+ */
+const NEW_PLACE_GAP: Record<number, number> = { 9: 1.4, 12: 2.2, 16: 3.4 };
 
 let data: ChangeLayer | null = null;
 /** Buckets the reader has switched off by clicking the legend. */
@@ -259,6 +296,23 @@ export function countIn(
   return out;
 }
 
+/**
+ * Points in scope that no stop stands at today -- the ones the map rings.
+ *
+ * Counted here rather than in the legend so that the key line and the ring
+ * layer read the same field (`published`) by the same rule; a key that
+ * counted one thing while the map drew another would be worse than no key.
+ *
+ * It is not a bucket, and deliberately not folded into `countIn`: the buckets
+ * partition every dot by what happens to its service, and this cuts across
+ * all of them. A new place can land in any bucket the plan gives it.
+ */
+export function countNewPlacesIn(points: ChangePoint[], scope: Scope): number {
+  let n = 0;
+  for (const p of points) if (scope(p) && field(p, PUBLISHED) === 0) n++;
+  return n;
+}
+
 function inBounds(p: ChangePoint, west: number, south: number,
                   east: number, north: number): boolean {
   const lat = field(p, 0), lon = field(p, 1);
@@ -354,6 +408,20 @@ function sizeExpr(dayIndex: number): any {
     16, ['*', rampExpr(dayIndex, 'size'), 1.9]];
 }
 
+/**
+ * The dot's own size, stood off far enough to read as a separate outline.
+ *
+ * The gap is added at each zoom stop rather than around the whole expression:
+ * MapLibre requires a `zoom` interpolate to be top-level, so `['+', sizeExpr,
+ * gap]` is rejected outright at `addLayer` and takes the layer with it.
+ */
+function ringExpr(dayIndex: number): any {
+  const at = (zoom: number, scale: number): any =>
+    ['+', ['*', rampExpr(dayIndex, 'size'), scale], NEW_PLACE_GAP[zoom]];
+  return ['interpolate', ['linear'], ['zoom'],
+    9, at(9, 0.45), 12, at(12, 1), 16, at(16, 1.9)];
+}
+
 export function initChangeLayer(map: maplibregl.Map) {
   map.addSource(SRC, {
     type: 'geojson',
@@ -392,6 +460,21 @@ export function initChangeLayer(map: maplibregl.Map) {
         16, ['case', SELECTED, 3.2, 1.6]],
     },
   }, 'walk-fill');
+  // Beneath the dots: the ring sits outside the dot's own radius, so the dot
+  // covers nothing of it, and drawing it lower keeps the dots themselves the
+  // thing the cursor and the eye land on.
+  map.addLayer({
+    id: NEW_PLACE_RING, type: 'circle', source: SRC,
+    filter: NEW_PLACE,
+    paint: {
+      'circle-color': 'rgba(0,0,0,0)',
+      'circle-radius': ringExpr(0),
+      'circle-stroke-color': NEW_PLACE_INK,
+      'circle-stroke-opacity': 0.55,
+      'circle-stroke-width': ['interpolate', ['linear'], ['zoom'],
+        9, 0.6, 12, 1, 16, 1.4],
+    },
+  }, LAYER);
 }
 
 export async function loadChangeLayer(map: maplibregl.Map, radius: number, day: Day) {
@@ -409,6 +492,7 @@ export function setChangeDay(map: maplibregl.Map, day: Day) {
   const i = DAYS.indexOf(day);
   map.setPaintProperty(LAYER, 'circle-color', rampExpr(i, 'color'));
   map.setPaintProperty(LAYER, 'circle-radius', sizeExpr(i));
+  map.setPaintProperty(NEW_PLACE_RING, 'circle-radius', ringExpr(i));
   applyFilter(map, day);
 }
 
@@ -426,7 +510,11 @@ export function resetBuckets(map: maplibregl.Map, day: Day) {
 function applyFilter(map: maplibregl.Map, day: Day) {
   const i = DAYS.indexOf(day);
   const off = ['none', ...hidden];
-  map.setFilter(LAYER, ['!', ['in', ['get', `b${i}`], ['literal', off]]] as any);
+  const shown: any = ['!', ['in', ['get', `b${i}`], ['literal', off]]];
+  map.setFilter(LAYER, shown);
+  // The ring follows the dot it belongs to. A ring left behind by a bucket
+  // the reader switched off would be an outline round nothing.
+  map.setFilter(NEW_PLACE_RING, ['all', shown, NEW_PLACE] as any);
 }
 
 /** Hover text for one dot. Trips both sides, never a bare delta. */

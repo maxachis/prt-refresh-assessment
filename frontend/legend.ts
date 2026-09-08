@@ -22,7 +22,8 @@ import {
   Weight, SurfaceUnit, PopulationLayer,
 } from './types';
 import {
-  STYLE, countIn, sumRidersIn, isHidden, viewportScope, selectionScope,
+  STYLE, countIn, countNewPlacesIn, sumRidersIn, isHidden, viewportScope,
+  selectionScope,
 } from './change';
 import {
   RAMP, GONE_COLOR, NEW_COLOR, summariseInBounds,
@@ -405,8 +406,50 @@ function riderFoot(unmeasured: number) {
 function infillFoot() {
   return `<div class="lg-foot">Dots mark today's stops, plus the places the plan
     puts a stop where none stands within 150 m. A stop added right beside an
-    existing one changes a dot's colour rather than adding one &mdash; Streets
-    colours the pavement itself, and shows the rest.</div>`;
+    existing one changes a dot's colour rather than adding one; Streets colours
+    the pavement itself, and shows the rest.</div>`;
+}
+
+/**
+ * The key line for the ring the map draws round a place with no stop today.
+ *
+ * A row, not a sentence, because the ring is a mark on the map and every
+ * other mark on the map has a swatch here. Prose was where it started and it
+ * was the wrong place: a reader who sees an unfamiliar outline looks at the
+ * key, not at the footnote under it.
+ *
+ * Three things it is not.
+ *
+ * NOT A BUCKET. The coloured rows above partition the dots by what happens to
+ * their service; this cuts across all of them, since a place the plan adds a
+ * stop to still lands in whichever service bucket it earns. So it sits below
+ * the bucket rows with a rule above it, and it is not part of the head line's
+ * total -- those locations are already counted once, in their own colour.
+ *
+ * NOT A SWITCH. Every coloured row here is a filter, and this one has nothing
+ * to filter: the ring follows the dot it annotates, so turning it off would
+ * hide a fact about dots that stay on screen. `lg-static` is the class the
+ * corridor and one-seat keys already use for exactly this.
+ *
+ * NOT THE MAP'S INK. The map paints the ring near-black because it sits on a
+ * near-white basemap; this panel is dark, so the swatch copies the FORM -- a
+ * dot with a detached outline -- in a colour that reads here. Same trick the
+ * hairline on every other swatch plays, one step further.
+ *
+ * It is dropped entirely when the scope holds none, unlike the bucket rows
+ * above, which stay at zero so a reader can tell "does not happen here" from
+ * "cannot happen here". There is no such reading to protect: this line is a
+ * note about which dots are on screen, and "0 new stops" is a sentence about
+ * nothing.
+ */
+function newPlaceRow(n: number) {
+  if (n < 1) return '';
+  return `
+    <div class="lg-row lg-static lg-key">
+      <i class="lg-ring"></i>
+      <span class="lg-lab">New stop location</span>
+      <span class="lg-n">${n.toLocaleString()}</span>
+    </div>`;
 }
 
 export interface LegendOptions {
@@ -491,6 +534,7 @@ export function renderLegend(el: HTMLElement, opts: LegendOptions) {
         <span class="lg-lab">${esc(b.label)}</span>
         <span class="lg-n">${cell(b.key)}</span>
       </button>`).join('')}
+    ${newPlaceRow(countNewPlacesIn(layer.points, scope))}
     ${surface ? surfaceKey({
       layer: surface, day, bounds, unit, population, scoped: !!painted,
     }) : ''}

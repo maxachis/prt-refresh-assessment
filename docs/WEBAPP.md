@@ -369,6 +369,21 @@ Three things follow.
   weighed against the invisibility and accepted — Max, 2026-09-08. It is the
   reason the threshold is a named constant with the trade written beside it.
 
+**And the map says which dots those are.** Every `published = 0` point is drawn
+with a detached ring round it, and the Locations key carries the ring as a
+swatch with the count in view — "New stop location", below the bucket rows and
+behind a rule, because it is not a bucket: it cuts across all of them, since a
+place the plan adds a stop to still lands in whichever service bucket it earns.
+Without the ring the only thing distinguishing a new pole from an existing stop
+was the colour, and at 150 m the blue `new` bucket happens to pick out almost
+exactly the unpublished set — 260 of 261 on a weekday — so a reader inferring
+"new stop" from blue would be right by coincidence and wrong at 400 m, which is
+the view McMonagle Avenue was read in. The ring is the same mark at both radii.
+It is a key line rather than a switch (the ring follows the dot it annotates, so
+there is nothing to filter), and it is dropped entirely rather than shown as a
+zero, since it is a note about which dots are on screen rather than an outcome
+of the plan.
+
 The identity radius is fixed at 150 m whatever walk radius is asked for. The
 point set has to describe the same places at 400 m and 150 m or the two stop
 being comparable; selecting at whatever radius was asked for would fill the

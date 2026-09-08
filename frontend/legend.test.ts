@@ -116,6 +116,39 @@ describe('renderLegend', () => {
     expect(prose(el)).toContain(
       'plus the places the plan puts a stop where none stands within 150 m');
   });
+
+  it('keys the ring as a swatch, not as a sentence in the footnote', () => {
+    // The ring is a symbol on the map, and a symbol explained only in prose
+    // is one a reader has to read a paragraph to decode. It gets the same
+    // swatch-label-count line every colour on this key gets.
+    const el = stub();
+    renderLegend(el, { layer: { ...LAYER, points: [...LAYER.points, NEW_POINT] },
+                       day: 'weekday', bounds: BOX, weight: 'locations' });
+    expect(el.innerHTML).toContain('lg-ring');
+    expect(prose(el)).toContain('New stop location');
+  });
+
+  it('counts the ringed places in the same scope as every other row', () => {
+    // One added place in view, one outside it. A key line whose count came
+    // from the whole city would sit under a head line that says "in view".
+    const far = [41.9, -79.99, 0, 'p:99', 0, 30, 6, null, 0, 20, 6, null,
+                 0, 10, 6, null];
+    const el = stub();
+    renderLegend(el, {
+      layer: { ...LAYER, points: [...LAYER.points, NEW_POINT, far] },
+      day: 'weekday', bounds: BOX, weight: 'locations' });
+    expect(el.innerHTML).toMatch(/lg-ring[\s\S]*?New stop location[\s\S]*?<span class="lg-n">1<\/span>/);
+  });
+
+  it('drops the ring line when nothing in view is a new place', () => {
+    // Every other row stays at zero because a bucket that vanishes reads as
+    // impossible rather than absent. This one is different: it is not an
+    // outcome of the plan, it is a note about which dots are drawn at all,
+    // and "0 places have no stop today" is a sentence about nothing.
+    const el = stub();
+    renderLegend(el, { layer: LAYER, day: 'weekday', bounds: BOX, weight: 'locations' });
+    expect(el.innerHTML).not.toContain('lg-ring');
+  });
 });
 
 describe('renderLegend weighted by ridership', () => {
