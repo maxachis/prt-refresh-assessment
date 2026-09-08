@@ -38,9 +38,12 @@ pass — a reader who stops halfway down must not be misinformed.
 | [Two scripts now name a place differently](two-scripts-now-name-a-place-differently.md) | open, deliberate and scoped — travel time still names by nearest stop |
 | [The service map has findings nothing publishes](the-service-map-has-findings-nothing-publishes.md) | open, decision owed — whether per-place bus service becomes a published answer |
 | [A deleted stop is not a lost bus, and nothing counts which is which](consolidation-is-not-counted-apart-from-loss.md) | open, decision owed — measured and the views audited against it; raised by Max |
+| [A boardings figure the pipeline flags as wrong still gets counted](a-flagged-wrong-boardings-figure-still-gets-counted.md) | open, decision owed — 119 reused stop codes; flagged in the CSV, summed everywhere downstream |
 | [A renumbered stop falls out of the measured universe](a-renumbered-stop-falls-out-of-the-measured-universe.md) | fixed, awaiting close — 533 served stops were measured nowhere, 40 of them removals; raised by PPT |
 | [WordPress sandboxes an embed it does not trust, and MapLibre goes blank in it](wordpress-sandboxes-the-embed-and-maplibre-goes-blank.md) | **closed 2026-09-02 by Max** — oEmbed provider built, measured against WordPress, and removed; kept for the measurement |
 | [122 stops sit on an island of the walk network](some-stops-sit-on-an-island-of-the-walk-network.md) | open, not fixed |
 | [The published travel times to Oakland lagged a build behind the anchor](travel-times-to-oakland-lagged-the-narrower-anchor.md) | fixed, awaiting close — rebuilt 2026-09-05; kept for what the one coupling test does *not* catch |
 | [The change ramp fails red-green colour blindness](the-change-ramp-fails-red-green-colour-blindness.md) | fixed, awaiting close — gain half moved to violet and pinned by a test; shape redundancy deferred, and a tritanopia trade-off is Max's to overturn |
+| [A new stop the plan adds usually draws no dot of its own](a-new-stop-the-plan-adds-draws-no-dot.md) | fixed, awaiting close — drawn as rings, on by default; raised by PRT |
+| [The committed database predates the stop-universe fix](the-committed-database-predates-the-stop-universe-fix.md) | open, decision owed — three regression tests fail on a clean checkout |
 | [The brief's six demographic colours are not colour-blind safe](the-brief-charts-reuse-six-hues-two-of-which-collide.md) | open, not fixed — two chart series collide at ΔE 2.9; categorical, so lower risk than the map ramp was |

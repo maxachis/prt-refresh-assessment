@@ -432,3 +432,19 @@ def test_the_panel_names_the_place_the_point_is_actually_in(client):
     p = client.get("/api/place?lat=40.47&lon=-79.83&radius=400").json()
     assert p["population"]["place"] == "Penn Hills municipality"
     assert p["population"]["lost"] > 3_000
+
+
+def test_added_stops_are_served_with_no_radius_or_day(client):
+    """The inventory takes none of the map's controls, and must not grow any.
+
+    A stop is a stop on every calendar and it is not a catchment, so a
+    `radius` or `day` here would suggest the layer answers a walk-access
+    question. It does not -- see `query.added_stops`.
+    """
+    r = client.get("/api/added-stops")
+    assert r.status_code == 200
+    stops = r.json()
+    assert len(stops) > 400
+    one = stops[0]
+    assert set(one) == {"stop_id", "name", "lat", "lon", "routes", "trips"}
+    assert set(one["trips"]) == {"weekday", "saturday", "sunday"}

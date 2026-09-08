@@ -333,6 +333,49 @@ Three decisions worth keeping:
    them. See below — it is the one control here that changes what the numbers
    mean rather than which question is asked.
 
+### The stops the plan adds
+
+`?newstops=off` to hide them. Blue rings over the dots, on by default in
+Locations and Both, at the 521 stops the proposed feed carries that today's
+feed does not.
+
+They exist because the dots cannot draw them. A dot is a measurement point for
+a walk-access question, and a proposed stop earns one only where nothing stops
+within 400 m today — the **new coverage** row of the table above, 121 of them.
+The other 414 are infill: a stop the plan adds a couple of hundred metres from
+one that already exists, whose service lands in the colour of the neighbouring
+dot while its own kerb stays bare. That is the honest drawing of the question
+the dots ask, and it reads as an omission. Three separate readers took bare
+ground beside a recoloured dot as the plan's gain missing from the data — PPT
+on Penn Avenue, then a PRT consultant on the four stops route 34 gains on
+McMonagle Avenue, which are 29 to 393 m from the stops on Banksville Road and
+so draw no dot, against the pair on Forsythe Road 685 m out which do.
+
+Four rules keep it from becoming a measurement it is not.
+
+- **It is an inventory, not a reading.** A ring carries a name, its routes and
+  its calls per day type. No bucket, no boardings, no change figure. Whether
+  the neighbourhood gains *access* stays the dots' question and the surface's,
+  per convention 10.
+- **It enters no count.** These stops are not in `query.change_points`, so no
+  published bucket count, boardings total or area figure moves because they
+  became visible. Convention 15's asymmetry holds too: a stop the plan adds
+  has no observed boardings and never can.
+- **A ring, not a dot, and the shape is doing the work.** It shares
+  `NEW_COLOR` with the surface's and the street view's "new service", so blue
+  means the plan adds something across all three — which means hue cannot
+  separate it from the `new` bucket. Filled versus hollow does.
+- **A renumbered stop is not an added one.** 14 of the 535 proposed ids absent
+  from the current feed sit within 25 m of a current id the proposed feed
+  dropped, names transposed — "CORBET ST + 6TH" reappearing as "Corbet St + E
+  6th Ave". No bus arrives anywhere new, and they are excluded.
+
+On by default, unlike every other optional layer, because off by default would
+leave the reader who does not know to look exactly where all three reports
+found them. Drawn only in the two views made of dots: Streets already draws the
+same gain as pavement, and the other views measure in units a stop is not. See
+`docs/worklog/a-new-stop-the-plan-adds-draws-no-dot.md`.
+
 ### Locations or riders: the legend's second denominator
 
 `?weight=riders`. The same dots in the same buckets, counted by PRT's May 2025
@@ -860,6 +903,7 @@ Reasoning and evidence:
 | `GET /api/population?radius=` | Residents per 100 m cell, split into lose-all / gain / keep / neither, all three day types. Same lattice as the surface; citywide totals are `equity_change.csv`'s. Radius must be 400 or 150. |
 | `GET /api/surface?radius=` | The magnitude surface: every covered 100 m cell, all three day types, columnar as lattice indices. Radius must be 400 or 150. ~1.3 MB, 198 KB gzipped. |
 | `GET /api/corridors?day=` | Every street run kept, lost or added for one day type, with citywide kilometres by class. No radius — a corridor is pavement, not a catchment. ~290 KB weekday. |
+| `GET /api/added-stops` | Every stop the plan adds — the proposed feed's stops absent from the current one, with their routes and their calls per day type. No radius and no day: a stop is a stop on every calendar and it is not a catchment. 521 rows, ~70 KB. Nothing here enters a published count. |
 | `GET /api/oneseat?radius=&dest=` *or* `&dest_lat=&dest_lon=` | Every location's one-seat verdict for one destination, named or dropped. Not precomputed — only its expensive half is, which is what lets the destination be arbitrary. `day=` defaults to `any`, the published day-free answer; a day type restricts both ends and is a different measurement. |
 | `GET /api/journey?lat=&lon=&dest_lat=&dest_lon=&day=` | How long the trip takes door to door, both networks, over every ready-minute of the weekday 07:00–09:00 peak. Answered at both transfer radii, with `sign_flips` where they disagree about which network is faster. Nothing precomputed and no radius control — seconds, not milliseconds. |
 | `GET /api/places` | Every named place the plan changes, ranked by residents who lose all buses, with each place's own population as the denominator and its share — withheld below 100 residents. Day-free and Allegheny-only. |
@@ -886,7 +930,8 @@ self-documenting.
 
 | Parameter | Value |
 |---|---|
-| `view` | `dots`, `surface`, `both`, `corridors`, `oneseat`, `journey` |
+| `view` | `dots`, `surface`, `both`, `corridors`, `oneseat`, `journey`, `places` |
+| `newstops` | `on` (the default) or `off` — whether the stops the plan adds are drawn over the dots. Written either way, unlike `weight` and `surfaceunit`: it decides what the map draws rather than how a count is denominated |
 | `day` | `weekday`, `saturday`, `sunday` |
 | `radius` | `400` or `150` (convention 4's two radii) |
 | `oneseatday` | `any` — the published day-free measure — or `selected` (convention 13) |

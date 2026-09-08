@@ -14,6 +14,7 @@ const FULL: UrlState = {
   place: 'baldwin borough',
   placeFill: 'gained',
   selection: ['c:10005', 'p:2201'],
+  addedStops: true,
 };
 
 describe('toSearch', () => {
@@ -27,6 +28,14 @@ describe('toSearch', () => {
     expect(p.get('weight')).toBe('riders');
     expect(p.get('surfaceunit')).toBe('people');
     expect(p.get('placefill')).toBe('gained');
+  });
+
+  // Written either way: it decides what the map draws, so it belongs with
+  // the controls above rather than with the two second readings below them.
+  it('writes the added-stops switch in both positions', () => {
+    expect(new URLSearchParams(toSearch(FULL)).get('newstops')).toBe('on');
+    expect(new URLSearchParams(toSearch({ ...FULL, addedStops: false }))
+      .get('newstops')).toBe('off');
   });
 
   it('leaves the place fill out of a link that is mapping the default, losses', () => {
@@ -82,6 +91,12 @@ describe('parseUrlState', () => {
   it('returns nothing for an unadorned URL', () => {
     expect(parseUrlState('')).toEqual({});
     expect(parseUrlState('?')).toEqual({});
+  });
+
+  it('reads the added-stops switch, and ignores a value it has no button for', () => {
+    expect(parseUrlState('?newstops=off').addedStops).toBe(false);
+    expect(parseUrlState('?newstops=on').addedStops).toBe(true);
+    expect(parseUrlState('?newstops=maybe').addedStops).toBeUndefined();
   });
 
   it('reads a point to ask at', () => {

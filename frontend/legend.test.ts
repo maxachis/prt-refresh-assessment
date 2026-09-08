@@ -106,6 +106,37 @@ describe('renderLegend', () => {
     }
   });
 
+  it('keys the added-stops rings, with a count in view and no change figure', () => {
+    const el = stub();
+    renderLegend(el, {
+      layer: LAYER, day: 'weekday', bounds: BOX, weight: 'locations',
+      added: [
+        {
+          stop_id: '10010339', name: 'McMonagle Ave + N Meadowcroft Ave',
+          lat: 40.400897, lon: -80.04878, routes: ['34'],
+          trips: { weekday: 19, saturday: 15, sunday: 14 },
+        },
+      ],
+    });
+    expect(prose(el)).toContain('stop the plan adds');
+  });
+
+  // The rings are the answer to the caveat, so the caveat points at them --
+  // but only while they are on screen. Switched off, it goes back to naming
+  // Streets, which is the view that can still show the gain.
+  it('points the infill caveat at the rings only when they are drawn', () => {
+    const off = stub();
+    renderLegend(off, { layer: LAYER, day: 'weekday', bounds: BOX, weight: 'locations' });
+    expect(prose(off)).not.toContain('the rings are those stops themselves');
+    expect(prose(off)).toContain('stop the plan adds');   // the caveat's own words
+
+    const on = stub();
+    renderLegend(on, {
+      layer: LAYER, day: 'weekday', bounds: BOX, weight: 'locations', added: [],
+    });
+    expect(prose(on)).toContain('the rings are those stops themselves');
+  });
+
   it('describes the whole point set, not only the stops that exist today', () => {
     // The blue bucket is the half that does not sit at a stop today, so a
     // sentence claiming every dot does contradicts a row of the same key.

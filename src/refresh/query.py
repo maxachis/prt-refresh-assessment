@@ -508,6 +508,103 @@ def bucket(cur: float, prop: float) -> str:
     return "same"
 
 
+# How close a retired stop has to be for a new proposed id to be the same pole
+# under a new number rather than a stop the plan adds.
+#
+# 535 proposed ids are absent from the current feed. 14 of them sit within this
+# distance of a *retired* current id -- one the proposed feed itself dropped --
+# and every one of those is the same corner with its name transposed:
+# "CORBET ST + 6TH" reappearing as "Corbet St + E 6th Ave", "ROSS STREET PRTX
+# STATION" as "FIFTH AVE + ROSS ST". No bus arrives anywhere new. Drawing them
+# as stops the plan adds would put a claim on the map that the feed does not
+# support, in the one layer whose entire job is to say where the plan adds a
+# stop.
+#
+# The distance is `analyze_service_loss.FORMER_ID_MAX_M`, restated rather than
+# imported because this module ships inside the installed package and the
+# analyses are root scripts -- `build_webdb.py` reaches this way across, never
+# the other. Same value for the same reason: PRT publishes coordinates to a
+# handful of metres, so 25 m is tight enough that only the same pole clears it.
+RENUMBERING_MAX_M = 25
+
+
+def added_stops(con):
+    """Every stop the plan adds, as stops -- not as measured locations.
+
+    This is the only layer in the app whose unit is a stop PRT will build,
+    and it exists because the layer beside it cannot answer the question
+    readers keep asking it. `change_points` below paints locations, and a
+    proposed stop earns a location of its own only where nothing stops within
+    PRIMARY_RADIUS today; infill 200 m from an existing stop is drawn as a
+    colour change on that stop's dot, and the new kerb stays bare. That is the
+    honest drawing of a walk-access question and it reads as an omission: three
+    separate readers, most recently a PRT consultant looking at the four stops
+    route 34 gains on McMonagle Avenue, took bare ground beside a recoloured
+    dot as the plan's gain missing from the data. 414 of the 521 added stops
+    are in that position.
+
+    So the stops are drawn as themselves, and three rules keep this from
+    turning into a measurement it is not.
+
+    IT IS AN INVENTORY, NOT A READING. Every other citywide layer carries a
+    number that means something about change -- a bucket, a percentage, a
+    count of residents. This carries a name and its scheduled calls, nothing
+    more. A mark here says only "the proposed feed stops a bus at this
+    kerb"; whether the neighbourhood gains access is the dots' question and
+    the surface's, and this layer must never be quoted for it.
+
+    IT ENTERS NO COUNT. These stops are not in `change_points`, so no
+    published bucket count, boardings total or area figure moves because they
+    are now visible. Convention 15's asymmetry still holds too: a stop the
+    plan adds has no observed boardings and never can, so there is nothing to
+    weight it by.
+
+    A RENUMBERED STOP IS NOT AN ADDED ONE. See RENUMBERING_MAX_M above: 14 of
+    the 535 new ids are today's pole under tomorrow's number, and they are
+    dropped rather than drawn.
+
+    Computed on request rather than stored, because everything it needs is
+    already in `stops` and `departures` and a table would put a rebuild --
+    which the deploy box cannot always finish
+    (docs/worklog/the-deploy-box-runs-out-of-memory-building-the-database.md)
+    -- between this answer and a reader.
+    """
+    current = {r["stop_id"] for r in con.execute(
+        "SELECT stop_id FROM stops WHERE side = 'current'")}
+    proposed_ids = {r["stop_id"] for r in con.execute(
+        "SELECT stop_id FROM stops WHERE side = 'proposed'")}
+    retired = current - proposed_ids
+
+    trips: dict[str, dict[str, int]] = defaultdict(dict)
+    routes: dict[str, set[str]] = defaultdict(set)
+    for r in con.execute(
+            "SELECT stop_id, route, day, n FROM departures "
+            "WHERE side = 'proposed'"):
+        trips[r["stop_id"]][r["day"]] = \
+            trips[r["stop_id"]].get(r["day"], 0) + r["n"]
+        routes[r["stop_id"]].add(r["route"])
+
+    out = []
+    for r in con.execute(
+            "SELECT stop_id, name, lat, lon FROM stops "
+            "WHERE side = 'proposed' ORDER BY stop_id"):
+        if r["stop_id"] in current:
+            continue
+        near = stops_within(con, r["lat"], r["lon"], RENUMBERING_MAX_M,
+                            "current")
+        if any(s[0] in retired for s in near):
+            continue
+        out.append({
+            "stop_id": r["stop_id"],
+            "name": r["name"],
+            "lat": r["lat"],
+            "lon": r["lon"],
+            "routes": sorted(routes[r["stop_id"]]),
+            "trips": {day: trips[r["stop_id"]].get(day, 0) for day in DAYS},
+        })
+    return out
+
+
 def change_points(con, radius: float = PRIMARY_RADIUS):
     """The locations the citywide layer paints: (point_id, lat, lon, published).
 

@@ -18,6 +18,7 @@
  */
 import { esc } from './utils';
 import {
+  AddedStop,
   Day, ChangeLayer, SurfaceLayer, CorridorLayer, CorridorKlass, OneSeatLayer,
   Weight, SurfaceUnit, PopulationLayer,
 } from './types';
@@ -29,6 +30,7 @@ import {
 } from './surface';
 import { summarisePopulationInBounds } from './population';
 import { KLASS_COLOR, pavementPct } from './corridor';
+import { ADDED_STOP_COLOR, countInBounds as countAddedInBounds } from './added';
 import {
   STATUS_STYLE, STATUS_ORDER, countInBounds as countOneSeatInBounds,
   destinationLabel, ANY_DAY,
@@ -401,13 +403,52 @@ function riderFoot(unmeasured: number) {
  * It names Streets because that view answers the question this one raises --
  * McMonagle Avenue has no dot and draws blue there -- and a caveat that only
  * says what the map cannot show leaves the reader where it found them.
+ *
+ * Since the added stops became a layer of their own, the sentence also has to
+ * say where they went: the rings ARE those stops, so the caveat now explains
+ * a mark on screen rather than an absence. It says so only when that layer is
+ * actually on, because a key that points at rings the reader has switched off
+ * is worse than one that never mentioned them.
  */
-function infillFoot() {
+function infillFoot(rings: boolean) {
+  const where = rings
+    ? `the rings are those stops themselves. Streets colours the pavement.`
+    : `Streets colours the pavement itself, and shows the rest.`;
   return `<div class="lg-foot">Dots mark the places a bus stops today, plus the
     ground the plan adds a bus to where nothing stops within the walk radius
     now. So a stop the plan adds beside one that already exists changes a dot's
-    colour rather than adding one. Streets colours the pavement itself, and
-    shows the rest.</div>`;
+    colour rather than adding one &mdash; ${where}</div>`;
+}
+
+/**
+ * The added-stops row: a ring, a count in view, and no change figure at all.
+ *
+ * It sits below the ramp rather than inside it because it is not a bucket.
+ * Every row above answers "how did service change here" and can be clicked to
+ * filter the map; this one answers "where will PRT build a stop", takes no
+ * position on whether anywhere gains access, and is switched from the toolbar
+ * with the rest of the questions. Hence `lg-static`: nothing to click.
+ *
+ * The count is scoped to the viewport like the bucket counts, and NOT to a
+ * painted selection -- the brush paints measured dots, and a ring is not one
+ * of them. A row that silently kept counting the whole view under a selection
+ * is exactly the two-scopes-in-one-key trap convention 17 forbids, so under a
+ * selection the row says citywide instead of pretending to share the scope.
+ */
+function addedRow(
+  stops: AddedStop[],
+  bounds: { west: number; south: number; east: number; north: number },
+  scoped: boolean,
+) {
+  const n = scoped
+    ? stops.length
+    : countAddedInBounds(stops, bounds.west, bounds.south, bounds.east, bounds.north);
+  return `
+    <div class="lg-row lg-static">
+      <i class="lg-ring" style="box-shadow:inset 0 0 0 2px ${ADDED_STOP_COLOR}"></i>
+      <span class="lg-lab">stop the plan adds${scoped ? ' (citywide)' : ''}</span>
+      <span class="lg-n">${n.toLocaleString()}</span>
+    </div>`;
 }
 
 export interface LegendOptions {
@@ -431,11 +472,20 @@ export interface LegendOptions {
    * ridership record is still named rather than added as a zero.
    */
   selection?: ReadonlySet<string> | null;
+  /**
+   * The stops the plan adds, when that layer is on screen.
+   *
+   * Absent means the reader has switched the rings off (or they have not
+   * loaded yet), and the key then says nothing about them at all rather than
+   * keying a mark that is not there.
+   */
+  added?: AddedStop[] | null;
 }
 
 export function renderLegend(el: HTMLElement, opts: LegendOptions) {
   const {
     layer, day, bounds, weight, surface, unit = 'area', population, selection,
+    added,
   } = opts;
   const keys = layer.buckets.map((b) => b.key);
   const dayIndex = layer.days.indexOf(day);
@@ -492,13 +542,14 @@ export function renderLegend(el: HTMLElement, opts: LegendOptions) {
         <span class="lg-lab">${esc(b.label)}</span>
         <span class="lg-n">${cell(b.key)}</span>
       </button>`).join('')}
+    ${added ? addedRow(added, bounds, !!painted) : ''}
     ${surface ? surfaceKey({
       layer: surface, day, bounds, unit, population, scoped: !!painted,
     }) : ''}
     ${tally ? riderFoot(tally.unmeasured) : `
     <div class="lg-foot">Buses per day within the walk radius, both directions.
       Counts are locations, not riders.</div>`}
-    ${infillFoot()}
+    ${infillFoot(!!added)}
     ${painted ? `
     <div class="lg-foot">These are the stops you painted, not everything on
       screen — a selection you chose by hand, so quote it as one. The link in
