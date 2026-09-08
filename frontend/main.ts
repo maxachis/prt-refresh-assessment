@@ -23,11 +23,6 @@ import {
   layerData as corridorData, isVisible as corridorOn,
 } from './corridor';
 import {
-  initAddedStopsLayer, initAddedStopsHover, loadAddedStops,
-  setAddedStopsVisible,
-  layerData as addedStopsData, isVisible as addedStopsOn,
-} from './added';
-import {
   initOneSeatLayer, loadOneSeatLayer, setOneSeatVisible, oneSeatDayFor,
   dayControlsShown,
   layerData as oneSeatData, isVisible as oneSeatOn,
@@ -185,18 +180,6 @@ let selectMode = false;
 // so the click handler and the day control both have to know which is active.
 let view = 'dots';
 
-// Whether the reader wants the stops the plan adds drawn over the dots.
-//
-// On by default, unlike every other optional layer here, and that is the
-// point of it: the readers who reported the added stops as missing would not
-// have found a switch they had no reason to look for. Its switch is a row of
-// the legend rather than a toolbar group -- the toolbar chooses which
-// question the map answers, and this is a mark inside the dots' question,
-// not a seventh question. Remembered across view changes rather than reset,
-// so a reader who switched the rings off, went to look at Streets and came
-// back does not find them on again.
-let addedStopsWanted = true;
-
 // The answer panel, as a bottom sheet on a phone and as an inert stub in the
 // two-column layout. Created once the map exists, because moving it changes
 // how much map is left to aim at.
@@ -240,8 +223,6 @@ map.on('load', () => {
   // Above the dots and below the click marks: a ring buried under a dot it is
   // meant to sit beside would be no more visible than the bare kerb this
   // layer exists to fill.
-  initAddedStopsLayer(map, 'walk-fill');
-  initAddedStopsHover(map, activeDay);
   renderPanel();
 
   map.on('click', (e: any) => {
@@ -413,9 +394,6 @@ map.on('load', () => {
     void showOneSeat(view === 'oneseat');
     showJourney(view === 'journey', previous === 'journey');
     void showPlaces(view === 'places');
-    // Only over the dots. Streets already draws the same gain as pavement,
-    // and the other three views measure in units a stop is not.
-    void showAddedStops(dotsOn());
     // One-seat and the shared location report answer different questions from
     // the same fetched answer, so switching between them redraws rather than
     // refetches. Leaving the journey view is handled by `showJourney`, which
@@ -497,15 +475,6 @@ map.on('load', () => {
     if (u) {
       surfaceUnit = u.dataset.surfaceUnit as SurfaceUnit;
       void showSurfaceUnit(surfaceUnit);
-      syncUrl();
-      return;
-    }
-    // Switched from the key like a bucket, because that is what it looks
-    // like there. `showAddedStops` redraws the legend itself.
-    const rings = (e.target as HTMLElement).closest<HTMLElement>('[data-added-stops]');
-    if (rings) {
-      addedStopsWanted = !addedStopsWanted;
-      void showAddedStops(dotsOn());
       syncUrl();
       return;
     }
@@ -609,10 +578,6 @@ map.on('load', () => {
   if (!applyOpening(opening)) {
     void loadChangeLayer(map, radius, activeDay()).then(refreshLegend);
   }
-  // Not inside the branch above: `applyOpening` only presses the controls a
-  // link actually carried, and the opening view is one made of dots either
-  // way unless the link said otherwise.
-  void showAddedStops(dotsOn());
   void loadMeta();
   void loadDestinations();
 });
@@ -687,12 +652,6 @@ function applyOpening(s: Partial<UrlState>): boolean {
   // turns the layer on, so pressing it first paints the fill correctly on
   // the first frame instead of the default and then a second repaint.
   if (s.placeFill) press(CONTROL.placeFill, s.placeFill);
-  // Like `weight` and `surfaceUnit` above, this has no toolbar button to
-  // press -- its switch is a row of the legend, which is redrawn after the
-  // layer arrives. Set before the view all the same, because the view handler
-  // reads it when it decides whether to draw the rings, and a link that
-  // asked for them off should never draw them once.
-  if (s.addedStops !== undefined) addedStopsWanted = s.addedStops;
   if (s.dest) {
     // A dropped pin has no button to press; a named district does, and
     // pressing it lights the toolbar as well as moving the destination.
@@ -733,7 +692,6 @@ function syncUrl() {
     place: selectedPlace,
     placeFill,
     selection: selectionIds(),
-    addedStops: addedStopsWanted,
   };
   const search = toSearch(state);
   // The mode is not part of the question, so it is not in what `toSearch`
@@ -893,8 +851,6 @@ function renderLegendBody() {
     unit: surfaceUnit,
     population: populationData(),
     selection: selection(),
-    added: addedStopsData(),
-    addedVisible: addedStopsOn(),
   });
 }
 
@@ -935,40 +891,6 @@ async function ensurePopulationLoaded() {
  */
 async function showSurfaceUnit(unit: SurfaceUnit) {
   if (unit === 'people' && surfaceOn()) await ensurePopulationLoaded();
-  refreshLegend();
-}
-
-/**
- * Draw the added-stops rings, or not, fetching them the first time.
- *
- * Takes whether the CURRENT VIEW has them rather than whether they are
- * wanted, and reads the reader's own switch itself, because the two decide
- * different things. The fetch follows the view: the switch that turns the
- * rings back on is a row of the legend, and a key cannot offer a row for a
- * layer it never fetched -- so a link arriving with `newstops=off` still
- * loads them, and simply draws none.
- *
- * Fetched on first use like the surface and the corridors, and for the same
- * reason. It is one small response and it never changes with the radius or
- * the day: a stop is a stop on every calendar, and the day only decides what
- * the hover says about its trips.
- */
-async function showAddedStops(inView: boolean) {
-  if (inView && !addedStopsData()) {
-    try {
-      await loadAddedStops(map);
-    } catch (err) {
-      // A ring that never arrives is a missing mark, not a wrong number, and
-      // the dots underneath are unaffected -- so this fails quietly on the
-      // map rather than putting an error over a view that still answers
-      // every question it did before. Loudly in the console, though: a
-      // silent catch here is how a layer goes missing without anybody
-      // learning why.
-      console.error('added stops failed to load', err);
-      return;
-    }
-  }
-  setAddedStopsVisible(map, inView && addedStopsWanted);
   refreshLegend();
 }
 

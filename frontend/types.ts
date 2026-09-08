@@ -284,24 +284,6 @@ export interface PopulationLayer {
   cells: PopulationCell[];
 }
 
-/**
- * A stop the plan adds: one PRT will build, not a location something was
- * measured at.
- *
- * It carries no bucket, no boardings and no change figure, because there is
- * nothing about it to compare — it does not exist today. `trips` is how many
- * times a bus calls there on each day type under the plan, which is the most
- * this can say and still be an inventory. See `frontend/added.ts`.
- */
-export interface AddedStop {
-  stop_id: string;
-  name: string;
-  lat: number;
-  lon: number;
-  routes: string[];
-  trips: Record<Day, number>;
-}
-
 /** A run's outcome: whether a bus runs on this piece of street today, under the plan, or both. */
 export type CorridorKlass = 'kept' | 'lost' | 'added';
 

@@ -179,22 +179,6 @@ def create_app(db_path: str | Path = "data/refresh.db") -> FastAPI:
         """
         return query.corridor_layer(con, day)
 
-    @app.get("/api/added-stops")
-    def api_added_stops():
-        """Every stop the plan adds, as an inventory rather than a reading.
-
-        No `radius` and no `day`. A stop is a stop on every calendar, and it
-        is not a catchment -- the walk radius belongs to the layers that ask
-        what a rider can reach, and this one only says where PRT will stop a
-        bus. The per-day trip counts ride along so a mark can say how much
-        service calls there, but nothing here is scoped by the controls
-        beside it.
-
-        Nothing in this response enters a published count; see
-        `query.added_stops` for the three rules that keep it that way.
-        """
-        return query.added_stops(con)
-
     @app.get("/api/places")
     def api_places():
         """Every named Allegheny place the plan changes, ranked by the client.

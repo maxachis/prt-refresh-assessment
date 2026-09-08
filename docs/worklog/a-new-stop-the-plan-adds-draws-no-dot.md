@@ -5,37 +5,42 @@ their own kerb, because a proposed stop earns a dot only where nothing stops
 within 400 m today. Three readers took that bare ground as the plan's new
 service missing from the data.
 
-Fixed, awaiting close. The added stops are now a layer of their own — blue
-rings over the dots, on by default in Locations and Both — after the wording
-fix shipped for the second report (e07f592) failed to answer the third, which
-came from a PRT consultant looking at the deployed build that contains it.
+Fixed, awaiting close. The threshold that decides whether a proposed stop is
+its own place to measure is now 150 m rather than the walk radius, so the dot
+appears at the stop and its colour says what changes there. An inventory layer
+of blue rings was built first, on 2026-09-08, and removed the same day when the
+better fix was found.
 
-## What is happening
+## What was happening
 
-The point set is `query.change_points` (`src/refresh/query.py:511`): every stop
-a bus calls at today, plus proposed stops with no current stop inside
-`PRIMARY_RADIUS`. That is the right universe for a walk-access question — a
-stop added 200 m from one that already exists changes how much service that
-location has, not whether it has any — and it is the universe the published
-bucket counts are measured over.
+*This section describes the behaviour before 2026-09-08. The last column is
+what the same stops draw now.*
 
-The consequence is that infill is drawn as a **colour change on the
-neighbouring dot**, and the new stop's own kerb stays bare. Which of the two a
-new stop gets is decided by a straight-line distance to the nearest current
-stop, so it turns on tens of metres:
+The point set is `query.change_points`: every stop a bus calls at today, plus
+proposed stops with no current stop of their own nearby. "Nearby" was
+`PRIMARY_RADIUS`, the walk radius — see "What was built" below for why that
+turned out to be the defect rather than the design.
 
-| Proposed stop | Nearest current stop | Own dot? |
-|---|---|---|
-| Forsythe Rd opp Woodridge Dr | 697 m | yes |
-| Forsythe Rd + Woodridge Dr | 685 m | yes |
-| Forsythe Rd + Swallow Hill Rd | 337 m | no |
-| McMonagle Ave + N Meadowcroft Ave (both kerbs) | 388 m, 393 m | no |
-| McMonagle Ave + Banksville Rd (both kerbs) | 29 m, 39 m | no |
-| McFarland Rd + Dell Ave (both kerbs) | 226 m, 251 m | no |
+The consequence was that infill is drawn as a **colour change on the
+neighbouring dot**, with the new stop's own kerb left bare. Which of the two a
+new stop got was decided by a straight-line distance to the nearest current
+stop, so it turned on tens of metres:
 
-That table is the consultant's report exactly: the Forsythe pair draws blue
-without being clicked, the McMonagle stops on the same route do not, and the
-McMonagle/Meadowcroft pair misses the threshold by 7 and 12 metres.
+| Proposed stop | Nearest current stop | Own dot at 400 m | at 150 m |
+|---|---|---|---|
+| Forsythe Rd opp Woodridge Dr | 697 m | yes | yes |
+| Forsythe Rd + Woodridge Dr | 685 m | yes | yes |
+| Forsythe Rd + Swallow Hill Rd | 337 m | no | yes |
+| McMonagle Ave + N Meadowcroft Ave (both kerbs) | 388 m, 393 m | no | yes |
+| McMonagle Ave + Banksville Rd (both kerbs) | 29 m, 39 m | no | no |
+| McFarland Rd + Dell Ave (both kerbs) | 226 m, 251 m | no | yes |
+
+That table is the consultant's report exactly: the Forsythe pair drew blue
+without being clicked, the McMonagle stops on the same route did not, and the
+McMonagle/Meadowcroft pair missed the threshold by 7 and 12 metres. The one
+row still reading "no" is the pair 29 and 39 m from a stop on Banksville Road,
+which genuinely is the same corner — that is the identity rule working, not
+failing.
 
 Reproduce:
 
@@ -75,67 +80,103 @@ shows the rest."* It is in the deployed build
 → 1, checked 2026-09-08).
 
 The third report arrived against that build. A caveat under the key does not
-compete with the absence of a mark on the street the reader is looking at, and
-the reader's question — *where does the plan add stops?* — is a stop-level
-question the Locations view is not answering and cannot be made to answer
-without breaking what it does measure.
+compete with the absence of a mark on the street the reader is looking at.
 
-## What was built
+The sentence that stood here — that the reader's question is a stop-level one
+"the Locations view is not answering and cannot be made to answer without
+breaking what it does measure" — was **wrong in its second half**, and believing
+it is what produced the ring layer instead of the fix. The Locations view can
+answer it, because a stop the plan adds where no stop stands *is* a location,
+and saying so breaks nothing it measures.
 
-`query.added_stops` serves the proposed feed's stops that are absent from the
-current one, and `frontend/added.ts` draws them as unfilled blue rings above
-the change dots, with a hover carrying the stop's routes and its calls on the
-selected day. The switch is a **row of the Locations key**, clicked like a
-bucket and, like a hidden bucket, still reporting its count once switched off;
-it rides in a link as `newstops=on|off`.
+## What was built, and what replaced it
 
-Three things it deliberately does not do. It **enters no count**: these stops
-are not in `change_points`, so no published bucket, boardings total or area
-figure moves. It carries **no reading** — a name and a timetable, never a
-bucket or a change figure — because whether a neighbourhood gains *access*
-stays the dots' question and the surface's. And a **renumbered stop is not an
-added one**: 14 of the 535 new proposed ids sit within 25 m of a current id the
-proposed feed dropped, with the two names transposed ("CORBET ST + 6TH"
-reappearing as "Corbet St + E 6th Ave"), and they are excluded, leaving 521 —
-of which 121 draw a dot of their own and 400 did not draw anything at all
-before this.
+**First, an inventory layer** (b12f9e2, 81db1f2): `query.added_stops` served
+the proposed feed's stops absent from the current one and `frontend/added.ts`
+drew them as unfilled blue rings above the dots, switched from a row of the
+key. It answered the complaint — the stops became visible — at the cost of
+putting two units in one view, a locational criterion and a stop criterion side
+by side, sharing a colour and separated only by shape.
 
-> Max chose to build it on 2026-09-08, on the reasoning in "Why the wording fix
-> was not enough" above, and moved the switch out of the toolbar and into the
-> key the same day: the added stops are a mark inside the question the dots
-> already ask, not a seventh question, and the toolbar is where the question
-> is chosen.
+**Then the threshold itself.** Max read the ring layer back and named the cost:
+"technically resolves this, but now mixes locational criterion with stop
+criterion." That reframing is what found the real defect. The 400 m in
+`change_points` was doing two different jobs under one number — *access*, how
+far a rider will walk, and *identity*, whether a pole is a distinct place to
+measure — and only the first had ever been argued. The identity rule had simply
+inherited the walk distance.
 
-The one place the built thing departs from the sketch Max approved: it defaults
-to **on**, where the sketch said off. The agent changed that while building and
-is flagging it rather than burying it — a layer off by default would have left
-the reader who does not know to look exactly where all three reports found
-them, which was the whole complaint. Switching it off is one click and the
-choice rides in the link.
+`query.UNIVERSE_DEDUP_M` now names it and sets it to **150 m**, convention 4's
+strict same-corner test, which is the radius the identity question was written
+for. The rings were removed entirely.
 
+What the map does now at McMonagle: two dots appear where there were none,
+coloured `doubled` — 20 weekday buses within a quarter mile becoming 45. That
+is a true reading, drawn where the reader was looking, in the unit the view
+already uses.
 
-Rejected here, by the agent, and re-openable:
+Measured before the change was made:
 
-- **Widen the point set so every new stop earns a dot.** Rejected because the
-  bucket counts published in `docs/answers/` and on `/findings` are measured
-  over this set, and because `change_points` selects at `PRIMARY_RADIUS` at
-  every radius precisely so that 400 m and 150 m stay comparable; adding 400
-  points would make the two radii measure different universes.
-- **Shrink the selection radius so near-misses like Meadowcroft qualify.**
-  Rejected because it moves an arbitrary threshold rather than removing the
-  cliff — some stop is always 5 m the wrong side of it — and because that
-  radius is convention 4's published quarter mile.
-- **Leave it at the key.** That was the state this entry was opened against,
-  and the third report is the evidence against it.
+| Identity radius | New-coverage points |
+|---|---:|
+| 400 m (was) | 121 |
+| 300 m | 152 |
+| 250 m | 179 |
+| 200 m | 217 |
+| 150 m (is) | 260 |
 
-## Settled: Streets keeps no rings
+Of the 139 points added, 105 sit on ground gaining service, 19 unchanged, and
+**15 are losing it** — new poles on corridors the plan is thinning. The ring
+layer drew those 15 as an unqualified gain; the dots read them correctly.
+`test_new_coverage_points_are_not_all_a_gain` pins that the set can never be
+read as the plan's gains.
 
-The rings are drawn only in the two views made of dots. Streets already draws
-the same gain as pavement, so the two marks would say one thing twice — but
-the key sends a reader to Streets for the rest of the gain and they arrive to
-no stops, which is a small gap of its own.
+Renumbering needs no special case any more. A renumbered stop stands at the
+same pole as the current id it replaces, so a current stop is within 150 m of
+it and it is not a new place. The 25 m rule and its 14 exclusions went with
+`added_stops`.
 
-> Max settled this on 2026-09-08: leave it, and reopen only if a reader
-> actually reports it. Nothing about the rings needs to change to add them
-> later — `showAddedStops` takes whether the current view has them, and
-> Streets would be one more view that does.
+> Max decided both on 2026-09-08: adopt the 150 m identity radius, and get rid
+> of the rings.
+
+## The cost that was accepted
+
+At 400 m a new-coverage point could not fall inside a published point's circle,
+which made the in-view key a partition of the ground. At 150 m it can, so
+`change.countIn` may count overlapping ground under two identities. This is
+convention 2's warning, and it is now a real exposure rather than a structural
+impossibility.
+
+It was weighed against the invisibility — 400 stops drawing no mark, reported
+three times from outside — and the invisibility was judged worse. The trade is
+written beside the constant so the next reader meets it before changing the
+number.
+
+`test_unpublished_points_have_no_bus_within_the_headline_radius` asserted the
+old impossibility directly and had to be retired. Its replacement,
+`test_unpublished_points_have_no_stop_of_their_own_today`, asserts the identity
+rule that actually builds the set, and says in its own docstring why the
+stronger claim is gone.
+
+## The correction worth keeping
+
+This entry previously rejected "widen the point set so every new stop earns a
+dot" on the grounds that the published bucket counts are measured over that set
+and would be restated. **That reasoning was wrong**, and it is what kept the
+real fix out of reach for a day. Published counts filter on `published = 1`
+(`tests/test_query.py`), and every point the identity radius governs is
+`published = 0`; the weekday buckets at 400 m read 633/298/1420/1583/2113/237
+before and after the change, verified by rebuild.
+
+The shape of the error: a constraint that was true of *one* point set —
+convention 4's, which really is fixed and really does have to stay comparable
+across radii — was carried over to a different set that merely sits in the same
+table, without checking which filter the published numbers actually use. The
+second rejected approach ("shrink the selection radius") was closer to right
+than its own reasoning allowed, and was dismissed as "moving an arbitrary
+threshold" when the point was that the threshold had never been argued at all.
+
+The remaining rejected approach stands:
+
+- **Leave it at the key** (wording only). That was the state this entry was
+  opened against, and the third report is the evidence against it.

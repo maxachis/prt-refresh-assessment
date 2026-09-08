@@ -98,6 +98,28 @@ RTREE_PAD_M = 10.0
 # same-corner sensitivity test. Convention 4: radius is reported, not chosen,
 # so the API exposes it and the UI shows both.
 PRIMARY_RADIUS = 400
+
+# How far apart two stops have to be before the proposed one counts as its own
+# place to measure, rather than the same place as a stop that exists today.
+#
+# THIS IS NOT THE ACCESS RADIUS ABOVE, and until 2026-09-08 it silently was.
+# Access asks how far a rider will walk; identity asks whether a pole is a
+# distinct location. Those are different questions, and the identity rule had
+# simply inherited the walk distance without ever being argued for. At 400 m it
+# folded 400 of the 521 stops the plan adds into a neighbouring location, so a
+# street gaining its first ever stop could show no mark at all -- reported three
+# times from outside, most legibly by a PRT consultant reading McMonagle Avenue.
+#
+# 150 m is convention 4's strict same-corner test, which is the radius this
+# question was written for. THE COST IS REAL AND IS ACCEPTED: a new-coverage
+# point may now fall inside a published point's circle, so overlapping ground
+# can be counted twice by the in-view key, which at 400 m was impossible by
+# construction. That trade was Max's call on 2026-09-08.
+#
+# Changing it moves no published figure. Published counts filter on
+# `published = 1` and every point this governs is `published = 0`; the weekday
+# buckets at 400 m read 633/298/1420/1583/2113/237 either way.
+UNIVERSE_DEDUP_M = 150
 RADII = (400, 150)
 
 # --- the lattice the magnitude surface is drawn on ------------------------
@@ -508,104 +530,8 @@ def bucket(cur: float, prop: float) -> str:
     return "same"
 
 
-# How close a retired stop has to be for a new proposed id to be the same pole
-# under a new number rather than a stop the plan adds.
-#
-# 535 proposed ids are absent from the current feed. 14 of them sit within this
-# distance of a *retired* current id -- one the proposed feed itself dropped --
-# and every one of those is the same corner with its name transposed:
-# "CORBET ST + 6TH" reappearing as "Corbet St + E 6th Ave", "ROSS STREET PRTX
-# STATION" as "FIFTH AVE + ROSS ST". No bus arrives anywhere new. Drawing them
-# as stops the plan adds would put a claim on the map that the feed does not
-# support, in the one layer whose entire job is to say where the plan adds a
-# stop.
-#
-# The distance is `analyze_service_loss.FORMER_ID_MAX_M`, restated rather than
-# imported because this module ships inside the installed package and the
-# analyses are root scripts -- `build_webdb.py` reaches this way across, never
-# the other. Same value for the same reason: PRT publishes coordinates to a
-# handful of metres, so 25 m is tight enough that only the same pole clears it.
-RENUMBERING_MAX_M = 25
-
-
-def added_stops(con):
-    """Every stop the plan adds, as stops -- not as measured locations.
-
-    This is the only layer in the app whose unit is a stop PRT will build,
-    and it exists because the layer beside it cannot answer the question
-    readers keep asking it. `change_points` below paints locations, and a
-    proposed stop earns a location of its own only where nothing stops within
-    PRIMARY_RADIUS today; infill 200 m from an existing stop is drawn as a
-    colour change on that stop's dot, and the new kerb stays bare. That is the
-    honest drawing of a walk-access question and it reads as an omission: three
-    separate readers, most recently a PRT consultant looking at the four stops
-    route 34 gains on McMonagle Avenue, took bare ground beside a recoloured
-    dot as the plan's gain missing from the data. 400 of the 521 added stops
-    are in that position.
-
-    So the stops are drawn as themselves, and three rules keep this from
-    turning into a measurement it is not.
-
-    IT IS AN INVENTORY, NOT A READING. Every other citywide layer carries a
-    number that means something about change -- a bucket, a percentage, a
-    count of residents. This carries a name and its scheduled calls, nothing
-    more. A mark here says only "the proposed feed stops a bus at this
-    kerb"; whether the neighbourhood gains access is the dots' question and
-    the surface's, and this layer must never be quoted for it.
-
-    IT ENTERS NO COUNT. These stops are not in `change_points`, so no
-    published bucket count, boardings total or area figure moves because they
-    are now visible. Convention 15's asymmetry still holds too: a stop the
-    plan adds has no observed boardings and never can, so there is nothing to
-    weight it by.
-
-    A RENUMBERED STOP IS NOT AN ADDED ONE. See RENUMBERING_MAX_M above: 14 of
-    the 535 new ids are today's pole under tomorrow's number, and they are
-    dropped rather than drawn.
-
-    Computed on request rather than stored, because everything it needs is
-    already in `stops` and `departures` and a table would put a rebuild --
-    which the deploy box cannot always finish
-    (docs/worklog/the-deploy-box-runs-out-of-memory-building-the-database.md)
-    -- between this answer and a reader.
-    """
-    current = {r["stop_id"] for r in con.execute(
-        "SELECT stop_id FROM stops WHERE side = 'current'")}
-    proposed_ids = {r["stop_id"] for r in con.execute(
-        "SELECT stop_id FROM stops WHERE side = 'proposed'")}
-    retired = current - proposed_ids
-
-    trips: dict[str, dict[str, int]] = defaultdict(dict)
-    routes: dict[str, set[str]] = defaultdict(set)
-    for r in con.execute(
-            "SELECT stop_id, route, day, n FROM departures "
-            "WHERE side = 'proposed'"):
-        trips[r["stop_id"]][r["day"]] = \
-            trips[r["stop_id"]].get(r["day"], 0) + r["n"]
-        routes[r["stop_id"]].add(r["route"])
-
-    out = []
-    for r in con.execute(
-            "SELECT stop_id, name, lat, lon FROM stops "
-            "WHERE side = 'proposed' ORDER BY stop_id"):
-        if r["stop_id"] in current:
-            continue
-        near = stops_within(con, r["lat"], r["lon"], RENUMBERING_MAX_M,
-                            "current")
-        if any(s[0] in retired for s in near):
-            continue
-        out.append({
-            "stop_id": r["stop_id"],
-            "name": r["name"],
-            "lat": r["lat"],
-            "lon": r["lon"],
-            "routes": sorted(routes[r["stop_id"]]),
-            "trips": {day: trips[r["stop_id"]].get(day, 0) for day in DAYS},
-        })
-    return out
-
-
-def change_points(con, radius: float = PRIMARY_RADIUS):
+def change_points(con, radius: float = PRIMARY_RADIUS, *,
+                  dedup: float = UNIVERSE_DEDUP_M):
     """The locations the citywide layer paints: (point_id, lat, lon, published).
 
     Two sets, and the distinction is carried through to the client rather than
@@ -617,17 +543,25 @@ def change_points(con, radius: float = PRIMARY_RADIUS):
     boardings are unknown rather than zero). Counts over this set are the
     published counts, which is the point of keeping it identifiable.
 
-    The rest are places the proposed network serves where nothing stops within
-    PRIMARY_RADIUS today. That denominator cannot see them -- it can only
-    measure change where a bus stops now -- so on the published set alone every
-    genuinely new piece of coverage is invisible, and a map that can only draw
-    losses in the places the plan adds service is not an honest one.
+    The rest are places the proposed network serves with no stop of their own
+    today, `UNIVERSE_DEDUP_M` deciding what "of their own" means. That
+    denominator cannot see them -- it can only measure change where a bus stops
+    now -- so on the published set alone every genuinely new piece of coverage
+    is invisible, and a map that can only draw losses in the places the plan
+    adds service is not an honest one.
 
-    Note they are selected at PRIMARY_RADIUS whatever radius is asked for. The
-    point set has to be the same at 400 m and 150 m or the two radii stop being
-    comparable: at 150 m most of the proposed network is "more than a radius
-    from a current stop", and the layer would fill with new-service dots that
-    are the smaller circle's artefact rather than the plan's doing.
+    An unpublished point is NOT a claim that the ground is newly served. It is
+    a claim that the plan puts a stop somewhere no stop stands, and the bucket
+    it lands in then says what actually changes there: 139 of the 260 read
+    "more", "same", "less" or "halved" rather than "new", and 15 of them are on
+    corridors the plan is thinning. Reading the set as a gain would be wrong.
+
+    Note they are selected at UNIVERSE_DEDUP_M whatever radius is asked for.
+    The point set has to be the same at 400 m and 150 m or the two radii stop
+    describing the same places, and a fixed identity radius is what keeps them
+    comparable -- selecting at whatever radius was asked for would fill the
+    strict view with new-service dots that are the smaller circle's artefact
+    rather than the plan's doing.
     """
     pts = [(f"c:{r['stop_id']}", r["lat"], r["lon"], 1) for r in con.execute(
         "SELECT p.stop_id, s.lat, s.lon FROM stop_place p "
@@ -636,12 +570,13 @@ def change_points(con, radius: float = PRIMARY_RADIUS):
 
     for r in con.execute("SELECT stop_id, lat, lon FROM stops "
                          "WHERE side = 'proposed' ORDER BY stop_id"):
-        if not stops_within(con, r["lat"], r["lon"], PRIMARY_RADIUS, "current"):
+        if not stops_within(con, r["lat"], r["lon"], dedup, "current"):
             pts.append((f"p:{r['stop_id']}", r["lat"], r["lon"], 0))
     return pts
 
 
-def compute_change(con, radius: float = PRIMARY_RADIUS):
+def compute_change(con, radius: float = PRIMARY_RADIUS, *,
+                   dedup: float = UNIVERSE_DEDUP_M):
     """Rows for the `change` table: every point, every day type, at one radius.
 
     This is the same measurement `place()` makes when a reader clicks, run
@@ -650,7 +585,8 @@ def compute_change(con, radius: float = PRIMARY_RADIUS):
     cannot disagree. Roughly 20 seconds per radius; `build_webdb.py` calls it.
     """
     out = []
-    for point_id, lat, lon, published in change_points(con, radius):
+    for point_id, lat, lon, published in change_points(con, radius,
+                                                      dedup=dedup):
         cur = side_at_place(con, "current", lat, lon, radius)["days"]
         prop = side_at_place(con, "proposed", lat, lon, radius)["days"]
         for day in DAYS:

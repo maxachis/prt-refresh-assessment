@@ -44,6 +44,6 @@ pass — a reader who stops halfway down must not be misinformed.
 | [122 stops sit on an island of the walk network](some-stops-sit-on-an-island-of-the-walk-network.md) | open, not fixed |
 | [The published travel times to Oakland lagged a build behind the anchor](travel-times-to-oakland-lagged-the-narrower-anchor.md) | fixed, awaiting close — rebuilt 2026-09-05; kept for what the one coupling test does *not* catch |
 | [The change ramp fails red-green colour blindness](the-change-ramp-fails-red-green-colour-blindness.md) | fixed, awaiting close — gain half moved to violet and pinned by a test; shape redundancy deferred, and a tritanopia trade-off is Max's to overturn |
-| [A new stop the plan adds usually draws no dot of its own](a-new-stop-the-plan-adds-draws-no-dot.md) | fixed, awaiting close — drawn as rings, on by default; raised by PRT |
+| [A new stop the plan adds usually draws no dot of its own](a-new-stop-the-plan-adds-draws-no-dot.md) | fixed, awaiting close — a stop is its own place at 150 m, not the walk radius; rings built then removed; raised by PRT |
 | [A stale local database fails the tests as though the code broke](a-stale-local-database-fails-the-tests-as-a-code-bug.md) | fixed, awaiting close — rebuilt 2026-09-08; nothing still distinguishes an old build from a regression |
 | [The brief's six demographic colours are not colour-blind safe](the-brief-charts-reuse-six-hues-two-of-which-collide.md) | open, not fixed — two chart series collide at ΔE 2.9; categorical, so lower risk than the map ramp was |

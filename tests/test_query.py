@@ -319,15 +319,39 @@ def test_change_points_are_the_same_set_at_both_radii(con):
     assert at[400] == at[150]
 
 
-def test_unpublished_points_have_no_bus_within_the_headline_radius(con):
-    """The added points are places nothing serves today -- that is what they are
-    for. If one had current service it would be double-counting a published
-    location under a second identity."""
+def test_unpublished_points_have_no_stop_of_their_own_today(con):
+    """What an unpublished point claims, stated as the rule that builds it.
+
+    It claims the plan puts a stop where no stop stands within
+    UNIVERSE_DEDUP_M -- an identity test. It does NOT claim the ground is
+    newly served: until 2026-09-08 the two were the same assertion, because
+    the identity radius was the access radius, and this test asserted
+    `cur_trips == 0`. It cannot any more, and that is the point of the change
+    rather than a regression in it. A point 200 m from a busy stop is a real
+    new pole on ground that already has a bus, and the bucket says so.
+    """
     rows = con.execute(
-        "SELECT cur_trips FROM change WHERE published = 0 AND radius = ?",
-        (query.PRIMARY_RADIUS,)).fetchall()
+        "SELECT lat, lon FROM change WHERE published = 0 AND radius = ? "
+        "AND day = 'weekday'", (query.PRIMARY_RADIUS,)).fetchall()
     assert rows, "no new-coverage points at all -- change_points() found none"
-    assert all(r["cur_trips"] == 0 for r in rows)
+    for r in rows:
+        assert not query.stops_within(con, r["lat"], r["lon"],
+                                      query.UNIVERSE_DEDUP_M, "current")
+
+
+def test_new_coverage_points_are_not_all_a_gain(con):
+    """The set must never be read, or drawn, as the plan's gains.
+
+    Some of these poles go on corridors the plan is thinning, and if every one
+    of them landed in a gain bucket the layer would be an advertisement rather
+    than a measurement. Convention 15's asymmetry one unit over: a stop being
+    added says nothing about whether service there goes up.
+    """
+    buckets = {r["bucket"] for r in con.execute(
+        "SELECT DISTINCT bucket FROM change WHERE published = 0 "
+        "AND radius = ? AND day = 'weekday'", (query.PRIMARY_RADIUS,))}
+    assert buckets & {"less", "halved", "gone"}, \
+        f"every new-coverage point reads as a gain or unchanged: {buckets}"
 
 
 # --------------------------------------------------------------------------
@@ -614,3 +638,31 @@ def test_change_layer_carries_the_point_id(con):
         "SELECT DISTINCT point_id FROM change WHERE radius = ?",
         (query.PRIMARY_RADIUS,))}
     assert {p[query.ID_AT] for p in layer["points"]} == ids
+
+
+def test_the_identity_radius_is_not_the_access_radius(con):
+    """Two different questions, and they stopped sharing a number on 2026-09-08.
+
+    Access asks how far a rider will walk; identity asks whether a proposed
+    pole is its own place to measure. The identity radius is the strict
+    same-corner distance, and it must stay independent of the walk radius the
+    caller asks for -- a point set that moved with the radius would stop
+    describing the same places at 400 m and 150 m.
+
+    The direction of the inequality is the fix itself: widening identity back
+    to the access radius drops points, and those are the 139 stops that drew
+    no mark at all.
+    """
+    assert query.UNIVERSE_DEDUP_M == 150
+    assert query.UNIVERSE_DEDUP_M != query.PRIMARY_RADIUS
+
+    ids = {p[0] for p in query.change_points(con)}
+    at_400 = {p[0] for p in query.change_points(con, dedup=query.PRIMARY_RADIUS)}
+    assert at_400 < ids
+
+    # Selecting at whatever radius was asked for is the thing that must not
+    # happen: both radii describe one point set.
+    assert ids == {p[0] for p in query.change_points(con, 150)}
+
+    published = {p for p in ids if p.startswith("c:")}
+    assert published == {p for p in at_400 if p.startswith("c:")}

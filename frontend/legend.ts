@@ -18,7 +18,6 @@
  */
 import { esc } from './utils';
 import {
-  AddedStop,
   Day, ChangeLayer, SurfaceLayer, CorridorLayer, CorridorKlass, OneSeatLayer,
   Weight, SurfaceUnit, PopulationLayer,
 } from './types';
@@ -30,7 +29,6 @@ import {
 } from './surface';
 import { summarisePopulationInBounds } from './population';
 import { KLASS_COLOR, pavementPct } from './corridor';
-import { ADDED_STOP_COLOR, countInBounds as countAddedInBounds } from './added';
 import {
   STATUS_STYLE, STATUS_ORDER, countInBounds as countOneSeatInBounds,
   destinationLabel, ANY_DAY,
@@ -397,64 +395,18 @@ function riderFoot(unmeasured: number) {
  * McMonagle Avenue has no dot and draws blue there -- and a caveat that only
  * says what the map cannot show leaves the reader where it found them.
  *
- * Since the added stops became a layer of their own, the sentence also has to
- * say where they went: the rings ARE those stops, so the caveat now explains
- * a mark on screen rather than an absence. It says so only when that layer is
- * actually on, because a key that points at rings the reader has switched off
- * is worse than one that never mentioned them.
+ * The threshold it names is 150 m, not the walk radius, and the difference is
+ * the whole of what changed on 2026-09-08: a dot is its own place when no
+ * stop stands within a SHORT walk of it, which is a question about poles, and
+ * not when nothing serves it within a QUARTER MILE, which is a question about
+ * access. At the old threshold 400 of the 521 stops the plan adds drew no
+ * mark and McMonagle Avenue looked untouched.
  */
-function infillFoot(rings: boolean) {
-  const where = rings
-    ? `the rings are those stops themselves. Streets colours the pavement.`
-    : `Streets colours the pavement itself, and shows the rest.`;
-  return `<div class="lg-foot">Dots mark today's stops, plus the ground the plan
-    adds a bus to where nothing stops within the walk radius now. A stop added
-    beside an existing one changes a dot's colour rather than adding one
-    &mdash; ${where}</div>`;
-}
-
-/**
- * The added-stops row: a ring, a count in view, and no change figure at all.
- *
- * It sits below the ramp rather than inside it because it is not a bucket.
- * Every row above answers "how did service change here"; this one answers
- * "where will PRT build a stop" and takes no position on whether anywhere
- * gains access.
- *
- * It is a button all the same, and switches its own layer the way the bucket
- * rows switch theirs. What a reader learns from this key is that a row is a
- * thing on the map and clicking it takes the thing away; a row that looked
- * identical and did nothing would be the exception they find by clicking it.
- * That is why the switch is here rather than a group of its own in the
- * toolbar: the toolbar chooses which QUESTION the map is answering, and the
- * added stops are not a seventh question, they are a mark inside the one the
- * dots already ask.
- *
- * Switched off it keeps reporting its count, exactly as a hidden bucket does
- * -- the key is a filter over what is drawn, never over what is counted.
- *
- * The count is scoped to the viewport like the bucket counts, and NOT to a
- * painted selection -- the brush paints measured dots, and a ring is not one
- * of them. A row that silently kept counting the whole view under a selection
- * is exactly the two-scopes-in-one-key trap convention 17 forbids, so under a
- * selection the row says citywide instead of pretending to share the scope.
- */
-function addedRow(
-  stops: AddedStop[],
-  bounds: { west: number; south: number; east: number; north: number },
-  scoped: boolean,
-  shown: boolean,
-) {
-  const n = scoped
-    ? stops.length
-    : countAddedInBounds(stops, bounds.west, bounds.south, bounds.east, bounds.north);
-  return `
-    <button class="lg-row ${shown ? '' : 'off'}" data-added-stops
-            aria-pressed="${shown}">
-      <i class="lg-ring" style="box-shadow:inset 0 0 0 2px ${ADDED_STOP_COLOR}"></i>
-      <span class="lg-lab">stop the plan adds${scoped ? ' (citywide)' : ''}</span>
-      <span class="lg-n">${n.toLocaleString()}</span>
-    </button>`;
+function infillFoot() {
+  return `<div class="lg-foot">Dots mark today's stops, plus the places the plan
+    puts a stop where none stands within 150 m. A stop added right beside an
+    existing one changes a dot's colour rather than adding one &mdash; Streets
+    colours the pavement itself, and shows the rest.</div>`;
 }
 
 export interface LegendOptions {
@@ -478,23 +430,11 @@ export interface LegendOptions {
    * ridership record is still named rather than added as a zero.
    */
   selection?: ReadonlySet<string> | null;
-  /**
-   * The stops the plan adds, once they have been fetched.
-   *
-   * Present whether or not the rings are currently drawn, because the row is
-   * the switch: a key that dropped the row when the reader switched it off
-   * would leave nothing to switch back on. Absent only before the fetch
-   * lands, when there is genuinely nothing to say.
-   */
-  added?: AddedStop[] | null;
-  /** Whether those rings are on the map right now. */
-  addedVisible?: boolean;
 }
 
 export function renderLegend(el: HTMLElement, opts: LegendOptions) {
   const {
     layer, day, bounds, weight, surface, unit = 'area', population, selection,
-    added, addedVisible = false,
   } = opts;
   const keys = layer.buckets.map((b) => b.key);
   const dayIndex = layer.days.indexOf(day);
@@ -551,14 +491,13 @@ export function renderLegend(el: HTMLElement, opts: LegendOptions) {
         <span class="lg-lab">${esc(b.label)}</span>
         <span class="lg-n">${cell(b.key)}</span>
       </button>`).join('')}
-    ${added ? addedRow(added, bounds, !!painted, addedVisible) : ''}
     ${surface ? surfaceKey({
       layer: surface, day, bounds, unit, population, scoped: !!painted,
     }) : ''}
     ${tally ? riderFoot(tally.unmeasured) : `
     <div class="lg-foot">Buses per day within the walk radius, both
       directions — counting locations, not riders.</div>`}
-    ${infillFoot(addedVisible)}
+    ${infillFoot()}
     ${painted ? `
     <div class="lg-foot">The stops you painted, not everything on screen —
       hand-picked, so quote it as a sample. The link in your address bar
