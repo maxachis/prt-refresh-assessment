@@ -128,9 +128,14 @@ Rejected here, by the agent, and re-openable:
 - **Leave it at the key.** That was the state this entry was opened against,
   and the third report is the evidence against it.
 
-## What is still open
+## Settled: Streets keeps no rings
 
-Whether the rings should be drawn in the **Streets** view too. They are not:
-that view already draws the same gain as pavement, and the two marks would say
-the same thing twice. But Streets is where the key sends a reader who wants
-the rest of the gain, and arriving to no stops is its own small gap.
+The rings are drawn only in the two views made of dots. Streets already draws
+the same gain as pavement, so the two marks would say one thing twice — but
+the key sends a reader to Streets for the rest of the gain and they arrive to
+no stops, which is a small gap of its own.
+
+> Max settled this on 2026-09-08: leave it, and reopen only if a reader
+> actually reports it. Nothing about the rings needs to change to add them
+> later — `showAddedStops` takes whether the current view has them, and
+> Streets would be one more view that does.
