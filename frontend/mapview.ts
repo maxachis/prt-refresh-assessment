@@ -24,16 +24,29 @@ import { StopRef } from './types';
  */
 export const NOW = '#15181e';
 /**
- * And a stop the plan proposes, unchanged.
+ * And a stop the plan proposes -- now a RING around a core, not a disc.
  *
- * This one has the same defect at a smaller size -- worst-case ΔE 16.7 from
- * "halved or worse", which is also an orange -- and it is deliberately not
- * fixed here: Max chose the ink-for-today change, and moving both marks at
- * once would leave nothing on screen that keeps the today/proposed pairing
- * legible. Filed at
- * `docs/worklog/the-pin-marks-borrow-the-dot-palette.md`.
+ * As a filled orange dot this had the same defect as the blue one, ΔE 16.7
+ * from "halved or worse", which is the worse direction to be wrong in: it
+ * says the plan cut service at a corner where it is proposing a stop. Drawn
+ * as a ring, the orange never claims the middle of a mark, and what a reader
+ * reads as the mark's colour is the core.
  */
 export const PROP = '#ffa23a';
+
+/**
+ * The core of a proposed stop: white where nothing stands there today.
+ *
+ * This is what makes one mark carry both feeds. The CORE says today -- ink
+ * for a stop that stands, white for ground the plan is adding one to -- and
+ * the RING says the plan stops here. So a kept stop is an ink core in an
+ * orange ring, a new one is an empty orange ring, and a stop only today has
+ * no ring at all. Max asked for the proposed mark to take a core on
+ * 2026-09-09; giving it the same ink core would have made "the plan adds a
+ * stop" and "both networks stop here" the same picture, which is the one
+ * distinction this key exists to draw.
+ */
+export const PROP_CORE = '#ffffff';
 
 /**
  * Circle geometry for the walk radius, since MapLibre has no metre-radius fill.
@@ -86,14 +99,14 @@ export function initMapLayers(map: maplibregl.Map) {
   });
 
   // Proposed sits under current so that where a stop survives in both feeds the
-  // blue "today" dot reads on top of the orange halo, rather than one network
-  // appearing to have deleted a stop that is merely underneath.
+  // ink "today" core fills the orange ring, rather than one network appearing
+  // to have deleted a stop that is merely underneath. The two layers compose
+  // into one mark on purpose: ring for the plan, core for today.
   map.addLayer({
     id: 'stops-prop-c', type: 'circle', source: 'stops-prop',
     paint: {
-      'circle-radius': 7, 'circle-color': PROP,
-      'circle-opacity': 0.85, 'circle-stroke-width': 1,
-      'circle-stroke-color': '#3a2a10',
+      'circle-radius': 7, 'circle-color': PROP_CORE,
+      'circle-stroke-width': 3, 'circle-stroke-color': PROP,
     },
   });
   map.addLayer({

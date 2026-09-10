@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { simulate, deltaE, worstCaseDistance } from './cvd';
 import { STYLE } from './change';
-import { NOW } from './mapview';
+import { NOW, PROP_CORE } from './mapview';
 import { RAMP, GONE_COLOR, NEW_COLOR, DEAD_BAND_COLOR } from './surface';
 
 // The floor this file exists to enforce: docs/worklog/
@@ -132,10 +132,18 @@ const PIN_MARK_FLOOR = 25;
 const KEYED_BUCKETS = Object.keys(STYLE).filter((k) => k !== 'none');
 
 describe('the pin marks stay out of the dot palette', () => {
-  for (const key of KEYED_BUCKETS) {
-    it(`"stop today" is tellable from ${key}`, () => {
-      expect(worstCaseDistance(NOW, STYLE[key].color))
-        .toBeGreaterThanOrEqual(PIN_MARK_FLOOR);
-    });
+  // Both marks are read by their FILL, which is what a dot is: ink where a
+  // stop stands today, white where only the plan puts one there. The orange
+  // is a ring around that fill rather than a disc of its own, because as a
+  // disc it was ΔE 16.7 from "halved or worse" -- close enough to say the
+  // plan cut service at a corner where it proposes a stop.
+  for (const [name, ink] of [['stop today', NOW],
+                             ['stop proposed', PROP_CORE]] as const) {
+    for (const key of KEYED_BUCKETS) {
+      it(`"${name}" is tellable from ${key}`, () => {
+        expect(worstCaseDistance(ink, STYLE[key].color))
+          .toBeGreaterThanOrEqual(PIN_MARK_FLOOR);
+      });
+    }
   }
 });

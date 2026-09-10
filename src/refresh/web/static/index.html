@@ -20,6 +20,10 @@
          still means today in the panel, where nothing can be mistaken for a
          dot. */
       --now-mark:#15181e;
+      /* And the core of a proposed stop: white where nothing stands there
+         today. The orange became a ring around this core rather than a disc
+         of its own -- as a disc it read as the "halved or worse" bucket. */
+      --prop-core:#ffffff;
       /* A route both networks run. Achromatic on purpose -- it is the absence
          of a change, and any hue here would be read as one -- but lighter than
          the prose it sits among, which --muted is not. */
@@ -334,6 +338,11 @@
        and the map's ink mark is invisible on a dark surface cell. */
     #pin-key .sw-now { background:var(--now-mark);
       box-shadow:0 0 0 1px rgba(255,255,255,.9); }
+    /* A proposed stop is a ring with an empty core, the way the map draws it.
+       The panel's own `.sw-prop` stays a solid orange: there it labels the
+       chart's bars, which are solid orange. */
+    #pin-key .sw-prop { background:var(--prop-core);
+      box-shadow:inset 0 0 0 3px var(--prop); }
     .legend .sw-walk { background:none; border:1px dashed var(--walk); height:7px; }
     .legend .sw-pin { background:var(--pin); width:7px; height:7px;
       border-radius:50%; }
