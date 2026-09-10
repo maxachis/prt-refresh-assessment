@@ -1108,7 +1108,7 @@ Mesa's CPU rasteriser, which names itself `llvmpipe, or similar`. The same is
 true of any browser falling back to SwiftShader, of a locked-down office
 desktop, and of the cheap end of the phones a public-comment audience reads on.
 
-Two things were done about it on 2026-09-10, and one thing was deliberately not.
+Three things were done about it on 2026-09-10, and one thing was deliberately not.
 
 **Fewer pixels, not fewer dots** (`frontend/hardware.ts`). The canvas is capped
 at 2 device pixels per CSS pixel on any machine — above that the returns are
@@ -1134,6 +1134,30 @@ tooltip left alone while the pointer stays on one feature. **19 queries → 1,
 and 5.1 ms → 1.0 ms of main-thread JavaScript per pointer move at zoom 12**
 (p90 17.4 → 5.1 ms). It also collapses the two popups that could previously
 stand open at once, the pin marks having owned one of their own.
+
+**A different basemap where nothing can draw the usual one**
+(`hardware.basemapStyle`). This is the change that dwarfs the other two, and
+none of it is about this site's own drawing. The basemap is Positron, and as a
+vector style it is 55 layers — 26 line, 19 symbol, 9 fill — re-tessellated and
+re-filled every frame. Measured on a bare map with none of this site's layers
+on it: hiding every vector layer took a drag from 564–868 ms per frame to
+**37–47 ms**; hiding all 19 label layers changed nothing, so it is not text.
+Against a raster basemap, arms alternated twice in one run, the same camera and
+drag: **952 / 1,500 / 1,300 / 441 ms vector against 115 / 52 / 109 / 39 ms
+raster**, two distributions that do not overlap. So a software renderer is now
+served the basemap as pictures — two image layers, ground and names, drawn
+beneath every mark this site adds — and everything with a graphics chip keeps
+the vector style, which costs it nothing and stays sharp at any resolution.
+Raster labels cannot be restyled or held out from under a dot, and they are
+soft on a high-resolution screen; that is a real cost, and it is only paid by
+the readers whose alternative was a map that does not pan.
+
+The tiles are **Esri's Light Gray Canvas**, not the CARTO Positron raster the
+measurement above was taken on: CARTO now stamps `API KEY REQUIRED` across
+every tile served without an account. Esri's are keyless, their land samples
+`#efefef` against the `#f2efe9` `contrast.ts` pins the dot palette to, and
+their attribution rides on the map. **Whether this site's use of them needs an
+ArcGIS account is not settled** — see the worklog entry.
 
 **Not fewer features.** Thinning the dots at low zoom is the obvious third
 lever and it is the one that may not be pulled: the key counts the rows, not

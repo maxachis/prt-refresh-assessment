@@ -87,6 +87,90 @@ export function fadeMs(m: Machine): number {
 export const DEFAULT_FADE_MS = 300;
 
 /**
+ * The basemap everyone with a graphics chip gets: OpenFreeMap's Positron.
+ *
+ * 55 layers -- 26 line, 19 symbol, 9 fill -- re-tessellated and re-filled on
+ * every frame, which is what makes it worth swapping below.
+ */
+export const VECTOR_STYLE_URL = 'https://tiles.openfreemap.org/styles/positron';
+
+/**
+ * The same map already drawn, as pictures: Esri's Light Gray Canvas.
+ *
+ * NOT CARTO'S POSITRON RASTER, which is what the measurement was taken on.
+ * CARTO now stamps "API KEY REQUIRED" across every tile served without an
+ * account, so it cannot be used here as it stands. Esri's is the nearest
+ * keyless light-grey basemap: land samples #efefef against Positron's
+ * #fafaf8, near enough that the dot palette reads the same on it.
+ *
+ * ITS TERMS ARE NOT SETTLED. The tiles serve without a key and the attribution
+ * below is a condition of using them; whether this site's use needs an ArcGIS
+ * account is a question for Max before anything is deployed.
+ */
+export const RASTER_TILES = [
+  'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/'
+  + 'World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}',
+];
+
+/**
+ * The names, which Esri ships as a second transparent layer.
+ *
+ * Not decoration. The base alone carries almost no place labels at county
+ * zooms -- Pittsburgh itself is unnamed on it -- and a reader scanning the
+ * whole plan has nothing to orient by. Two image layers is still two draws
+ * against the vector style's 55, and it is drawn beneath every mark this site
+ * adds, so a label can never sit on top of a dot.
+ */
+export const RASTER_LABEL_TILES = [
+  'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/'
+  + 'World_Light_Gray_Reference/MapServer/tile/{z}/{y}/{x}',
+];
+
+/** A condition of using the tiles, and it rides on the map, not in a doc. */
+export const RASTER_ATTRIBUTION =
+  'Tiles &copy; Esri &mdash; Esri, DeLorme, NAVTEQ, '
+  + '<a href="https://www.openstreetmap.org/copyright">&copy; OpenStreetMap</a> contributors';
+
+/**
+ * Which basemap to draw, decided by what is drawing it.
+ *
+ * THE ONE CHANGE THAT MOVES THE FRAME RATE ON A MACHINE WITH NO GPU. A vector
+ * style is 55 layers of geometry rebuilt every frame; a raster style is one
+ * image drawn to the screen. Measured on this repo's llvmpipe browser, at the
+ * same camera and drag, arms alternated: 952/1,500/1,300/441 ms per frame
+ * vector against 115/52/109/39 ms raster, with no overlap between them.
+ *
+ * WHY ONLY SOFTWARE RENDERERS GET IT. Raster tiles are pictures: their labels
+ * cannot be restyled, cannot be held out from under this site's own marks, and
+ * are soft on a high-resolution screen. A reader with a graphics chip pays
+ * nothing for the vector style and should keep the sharper map; a reader whose
+ * processor is drawing every fragment is choosing between a soft map and one
+ * that does not pan. The two are the same design (both are Positron), so the
+ * site does not become two different-looking maps.
+ *
+ * The raster land fill samples as #fafaf8 against the #f2efe9 `contrast.ts`
+ * pins the dot palette to -- lighter ground, so every mark's contrast against
+ * it goes slightly up and no floor is at risk.
+ */
+export function basemapStyle(m: Machine): string | object {
+  if (!drawsInSoftware(m.renderer)) return VECTOR_STYLE_URL;
+  const source = (tiles: string[]) => ({
+    type: 'raster', tileSize: 256, attribution: RASTER_ATTRIBUTION, tiles,
+  });
+  return {
+    version: 8,
+    sources: {
+      basemap: source(RASTER_TILES),
+      'basemap-labels': source(RASTER_LABEL_TILES),
+    },
+    layers: [
+      { id: 'basemap', type: 'raster', source: 'basemap' },
+      { id: 'basemap-labels', type: 'raster', source: 'basemap-labels' },
+    ],
+  };
+}
+
+/**
  * Ask the browser what is drawing, without touching the map's own context.
  *
  * A throwaway canvas, read once and dropped. Everything here is allowed to

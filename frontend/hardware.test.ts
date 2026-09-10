@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   canvasScale, drawsInSoftware, fadeMs, readMachine,
   DEFAULT_FADE_MS, MAX_SCALE, SOFTWARE_SCALE,
+  basemapStyle, VECTOR_STYLE_URL, RASTER_TILES, RASTER_LABEL_TILES,
 } from './hardware';
 
 describe('drawsInSoftware', () => {
@@ -77,5 +78,39 @@ describe('readMachine', () => {
     const win2 = { devicePixelRatio: 3,
                    document: { createElement: () => { throw new Error('no'); } } };
     expect(readMachine(win2)).toEqual({ renderer: null, dpr: 3 });
+  });
+});
+
+describe('which basemap a machine is given', () => {
+  const machine = (renderer: string | null) => ({ renderer, dpr: 1 });
+
+  it('gives a machine with a graphics chip the vector style', () => {
+    expect(basemapStyle(machine('Apple M2'))).toBe(VECTOR_STYLE_URL);
+  });
+
+  it('gives a browser that will not name its renderer the vector style', () => {
+    expect(basemapStyle(machine(null))).toBe(VECTOR_STYLE_URL);
+  });
+
+  it('gives a CPU rasteriser a raster style instead', () => {
+    const style = basemapStyle(machine('llvmpipe, or similar')) as any;
+    expect(typeof style).toBe('object');
+    expect(style.layers.every((l: any) => l.type === 'raster')).toBe(true);
+  });
+
+  it('draws the names above the ground, and both beneath every mark', () => {
+    const style = basemapStyle(machine('llvmpipe')) as any;
+    expect(style.layers.map((l: any) => l.source))
+      .toEqual(['basemap', 'basemap-labels']);
+    expect(style.sources['basemap'].tiles).toEqual(RASTER_TILES);
+    expect(style.sources['basemap-labels'].tiles).toEqual(RASTER_LABEL_TILES);
+  });
+
+  it('names the tiles it borrows, on every raster source it builds', () => {
+    const style = basemapStyle(machine('SwiftShader')) as any;
+    for (const src of Object.values(style.sources) as any[]) {
+      expect(src.attribution).toMatch(/OpenStreetMap/);
+      expect(src.attribution).toMatch(/Esri/);
+    }
   });
 });

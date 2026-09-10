@@ -46,7 +46,7 @@ import {
 } from './urlstate';
 import { fullViewLabel, isEmbedded, withEmbed, withoutEmbed } from './embed';
 import { initSheet, onLayoutFlip, Sheet } from './sheet';
-import { canvasScale, fadeMs, readMachine } from './hardware';
+import { basemapStyle, canvasScale, fadeMs, readMachine } from './hardware';
 import { initHover } from './hover';
 import {
   PlaceResult, Day, OneSeatDay, JourneyResult, NamedDestination, Weight,
@@ -208,7 +208,9 @@ const machine = readMachine();
 
 const map = new maplibregl.Map({
   container: 'map',
-  style: 'https://tiles.openfreemap.org/styles/positron',
+  // Positron either way -- as 55 layers of geometry where something can draw
+  // them, as pictures where the processor would have to. See `basemapStyle`.
+  style: basemapStyle(machine) as any,
   // Fragments are the whole cost on a software renderer and most of it on a
   // weak GPU. Capped at the device's own ratio, at 2 on any hardware, and at
   // 1 where the renderer names itself a CPU rasteriser.

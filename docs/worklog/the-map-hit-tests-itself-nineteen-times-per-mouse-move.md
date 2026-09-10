@@ -191,7 +191,8 @@ frame.
   **37-47 ms** in the same run. Substantially the whole frame is the basemap.
 - **Hiding all 19 label layers changed nothing** (1,033-1,113 ms against
   1,102-1,118 ms, warm). It is not glyph placement or text collision.
-- **A raster basemap against the vector one**, arms alternated twice in one run:
+- **A raster basemap against the vector one** (this is the one that was built),
+  arms alternated twice in one run:
   vector **952 / 1,500 / 1,300 / 441 ms** median, raster **115 / 52 / 109 /
   39 ms**. The two distributions do not overlap. Call it an order of magnitude;
   the spread is too wide to quote a ratio.
@@ -206,10 +207,29 @@ Nothing in this site inserts a layer relative to a basemap layer id -- every
 `addLayer` anchors to one of our own -- so a raster style is a drop-in for the
 drawing code.
 
-**Not done, and it is a decision rather than an implementation.** Serving
-someone else's raster tiles from a public site is a dependency with terms
-attached, and the tile source is Max's to choose. See the open questions at the
-bottom of this entry.
+**Built on 2026-09-10, for software renderers only** — Max's call: "Let's try
+only CPU-only readers." `hardware.basemapStyle` hands MapLibre the vector style
+where something can draw it and a raster style where the processor would have
+to, the same test that already decides the pixel cap. The app's own countywide
+dot view now drags at **152 / 183 / 167 ms** per frame on this browser.
+
+**The tiles are not CARTO's**, though the measurement was. CARTO now stamps
+`API KEY REQUIRED` diagonally across every tile it serves without an account —
+it is on every screenshot taken of the first attempt. The keyless substitute is
+**Esri's Light Gray Canvas**, whose land samples `#efefef` against Positron's
+`#fafaf8` and the `#f2efe9` `contrast.ts` pins to: near enough that the dot
+palette reads the same, and no contrast floor moves.
+
+Esri ships its labels as a **second transparent layer**, and it is not
+optional: the base alone leaves Pittsburgh unnamed at county zooms, so a reader
+scanning the whole plan has nothing to orient by. Two image layers is still two
+draws against 55, and both are beneath every mark this site adds, so a place
+name can never sit on top of a dot.
+
+**One thing is still owed before this is deployed: whether using Esri's tiles
+here needs an ArcGIS account.** The tiles serve without a key and the
+attribution is drawn on the map, which is a condition of using them; that is
+not the same as having read the terms.
 
 ## What else has not been addressed
 
@@ -229,12 +249,16 @@ bottom of this entry.
 
 ## Open questions
 
-1. **Which raster tiles, if any.** CARTO's are what was measured and their terms
-   govern a public site's use of them; self-rendering the same style to raster
-   and serving it from the deploy box is the alternative that owes nobody.
-2. **Who gets the raster basemap.** Renderer-conditional, the way the pixel cap
-   already is, would leave a reader with a GPU the vector map and give a
-   CPU-only reader the fast one -- at the cost of two maps to keep looking alike.
+1. **Do Esri's terms cover this use?** Settled enough to ship a local look at;
+   not settled enough to deploy. If they do not, the alternative that owes
+   nobody is rendering Positron to raster on the deploy box and serving it from
+   there, which is real work and a new dependency in a repo that has none.
+2. ~~Who gets the raster basemap~~ — settled by Max on 2026-09-10: software
+   renderers only.
+3. **The 100 m surface is now the heaviest thing this site draws.** On the
+   raster basemap the dot view drags at 152-183 ms per frame and the surface at
+   **350-400 ms**, so the 48,500 fill polygons are what is left to look at.
+   Nobody has measured them against anything yet.
 
 What none of this establishes is what the site feels like to a visitor with a
 GPU. Nobody in this session can measure that; it needs a real phone pointed at
