@@ -419,76 +419,6 @@ function riderFoot(unmeasured: number, newPlaces: number) {
 }
 
 /**
- * Why a street the plan adds stops to can have no dot on it.
- *
- * The point set is every stop a bus calls at today, plus the proposed stops
- * with nothing within the walk radius today (`query.change_points`). Infill --
- * a stop the plan adds a couple of hundred metres from one that already exists
- * -- earns neither, so the gain lands in the colour of the neighbouring dot
- * and the new stop's own kerb stays bare. That is the honest drawing of a
- * walk-access question, and it reads as an omission: two separate readers,
- * PPT and PRT, have now taken bare ground beside a recoloured dot as the
- * plan's new service missing from the data.
- *
- * The first sentence has to name both halves of that set, not just the stops
- * that exist today. The blue bucket a row above is precisely the half that
- * does not sit at a stop today, so "a dot sits where a bus stops today" would
- * be contradicted by the key it is printed under -- and a reader who noticed
- * would be right to trust the rest of the box less.
- *
- * In both weightings, unlike the caveats above it. A rider counting boardings
- * is likelier to make this reading than one counting dots, not less, because
- * the added stops have no boardings either and so cannot show up in the tally
- * at all.
- *
- * It names Streets because that view answers the question this one raises --
- * McMonagle Avenue has no dot and draws blue there -- and a caveat that only
- * says what the map cannot show leaves the reader where it found them.
- *
- * The threshold it names is 150 m, not the walk radius, and the difference is
- * the whole of what changed on 2026-09-08: a dot is its own place when no
- * stop stands within a SHORT walk of it, which is a question about poles, and
- * not when nothing serves it within a QUARTER MILE, which is a question about
- * access. At the old threshold 400 of the 521 stops the plan adds drew no
- * mark and McMonagle Avenue looked untouched.
- */
-function infillFoot() {
-  return `<div class="lg-foot">Dots mark today's stops, plus the places the plan
-    puts a stop where none stands within 150 m. A stop the plan takes away is
-    drawn as a cross instead of a colour — for what the buses near it do, read
-    the dots around it. A stop added right beside an existing one changes a
-    dot's colour rather than adding one; Streets colours the pavement itself,
-    and shows the rest.</div>`;
-}
-
-/**
- * What a removed stop does and does not mean, printed under the mark's row.
- *
- * The row above says how many stops in view the plan takes away. Left at that,
- * the natural reading is that each one is a corner losing its bus, and the
- * numbers say otherwise: of the 972 stops the plan removes countywide, 245
- * have another stop inside a 400 m walk and 193 more inside 800 m. The 534
- * with nothing inside 800 m are the ones worth the alarm, and they only read
- * as alarming if the other 438 are not counted alongside them.
- *
- * Countywide rather than in view, and it says so, because the split is a fact
- * about the plan rather than about the reader's viewport. The panel prints the
- * walk to the replacement for the stops beside a click, which is where the
- * in-view version of this question gets answered.
- *
- * The distances are walks over the pedestrian network (`refresh.walking`), not
- * straight lines -- the river and the hillsides make those two different
- * numbers here, and it is the walk a rider actually makes.
- */
-function removedFoot(n: number) {
-  if (!n) return '';
-  return `<div class="lg-foot">A removed stop is not the same as a corner
-    losing its bus: countywide, of the 972 stops the plan removes, 245 have
-    another stop within a 400 m walk and 193 more within 800 m. The remaining
-    534 have none.</div>`;
-}
-
-/**
  * The key for the dots drawn hollow: places the plan puts a stop where none
  * stands within 150 m today.
  *
@@ -737,11 +667,7 @@ export function renderLegend(el: HTMLElement, opts: LegendOptions) {
     ${surface ? surfaceKey({
       layer: surface, day, bounds, unit, population, scoped: !!painted,
     }) : ''}
-    ${tally ? riderFoot(tally.unmeasured, newPlaces) : `
-    <div class="lg-foot">Buses per day within the walk radius, both
-      directions — counting locations, not riders.</div>`}
-    ${infillFoot()}
-    ${removedFoot(removed)}
+    ${tally ? riderFoot(tally.unmeasured, newPlaces) : ''}
     ${painted ? `
     <div class="lg-foot">The stops you painted, not everything on screen —
       hand-picked, so quote it as a sample. The link in your address bar

@@ -97,33 +97,12 @@ describe('renderLegend', () => {
     expect(el.innerHTML).toMatch(/data-weight="locations"[^>]*aria-pressed="true"/);
   });
 
-  it('says the counts are locations rather than riders', () => {
+  it('still names the day the counts are measured on', () => {
+    // The head line is what survives the footnotes coming out, and the day is
+    // the one thing on it that no row repeats.
     const el = stub();
     renderLegend(el, { layer: LAYER, day: 'sunday', bounds: BOX, weight: 'locations' });
-    expect(el.innerHTML).toContain('not riders');
     expect(el.innerHTML).toContain('a Sunday');
-  });
-
-  it('says a stop the plan adds beside an existing one recolours rather than appears', () => {
-    // Twice now a reader has taken bare ground on a street the plan adds
-    // stops to as the plan's gain being missing, when the gain is in the
-    // colour of the dot at the stop a short walk away.
-    for (const weight of ['locations', 'riders'] as const) {
-      const el = stub();
-      renderLegend(el, { layer: LAYER, day: 'weekday', bounds: BOX, weight });
-      expect(prose(el)).toContain("changes a dot's colour rather than adding one");
-      expect(prose(el)).toContain("where none stands within 150 m");
-    }
-  });
-
-  it('describes the whole point set, not only the stops that exist today', () => {
-    // The blue bucket is the half that does not sit at a stop today, so a
-    // sentence claiming every dot does contradicts a row of the same key.
-    const el = stub();
-    renderLegend(el, { layer: LAYER, day: 'weekday', bounds: BOX, weight: 'locations' });
-    expect(prose(el)).not.toContain('A dot sits where a bus stops today');
-    expect(prose(el)).toContain(
-      'plus the places the plan puts a stop where none stands within 150 m');
   });
 
   it('keys the added stops as a row of their own, with a hollow swatch', () => {
@@ -241,13 +220,28 @@ describe('renderLegend', () => {
     expect(el.innerHTML).toMatch(/<b>537<\/b>\s*daily boardings in view/);
   });
 
-  it('says what a removed stop does not mean', () => {
+  // The three footnotes under the dot key -- what the counts measure, why a
+  // street the plan adds stops to can have no dot, and what a removed stop
+  // does not mean -- came out on Max's instruction on 2026-09-10: the key is
+  // a key, and three paragraphs under it were not being read.
+  // docs/worklog/the-dot-key-lost-its-caveats.md carries what they said.
+  it('carries no explanatory paragraphs under the rows', () => {
+    const el = stub();
+    renderLegend(el, {
+      layer: { ...LAYER, points: [...LAYER.points, REMOVED_STOP, NEW_POINT] },
+      day: 'weekday', bounds: BOX, weight: 'locations' });
+    expect(el.innerHTML).not.toContain('lg-foot');
+    expect(prose(el)).not.toContain('counting locations, not riders');
+    expect(prose(el)).not.toContain('Dots mark today\'s stops');
+    expect(prose(el)).not.toContain('A removed stop is not the same');
+  });
+
+  it('keeps the marks themselves keyed', () => {
     const el = stub();
     renderLegend(el, {
       layer: { ...LAYER, points: [...LAYER.points, REMOVED_STOP] },
       day: 'weekday', bounds: BOX, weight: 'locations' });
-    expect(prose(el)).toContain(
-      'A removed stop is not the same as a corner losing its bus');
+    expect(el.innerHTML).toContain('lg-cross');
   });
 
   it('says nothing about removed stops when none is in view', () => {
@@ -255,7 +249,6 @@ describe('renderLegend', () => {
     renderLegend(el, { layer: LAYER, day: 'weekday', bounds: BOX,
                        weight: 'locations' });
     expect(el.innerHTML).not.toContain('lg-cross');
-    expect(prose(el)).not.toContain('A removed stop is not the same');
   });
 
   it('counts the added stops into the locations in view', () => {
