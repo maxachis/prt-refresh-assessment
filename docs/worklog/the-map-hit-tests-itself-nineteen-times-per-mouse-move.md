@@ -74,16 +74,22 @@ hardware acceleration disabled", and Vulkan, Skia Graphite, WebGPU and **WebGL**
 drawn by the CPU there. A vector map reprojecting thousands of features per
 frame is the workload that collapses first under that, so the frame rate he
 reports is explained by the environment rather than by anything in this entry.
-(One loose end: WebGL disabled outright should stop MapLibre creating a context
-at all, so the browser he views the map in may not be the one that report came
-from.)
+WebGL itself still resolves, through Mesa's CPU rasteriser: the map page's own
+context reports `llvmpipe, or similar` as its renderer. So MapLibre runs, and
+every vertex and every fragment of every frame is computed on the CPU.
 
 > Stated by Max; from his machine, and not reproducible here.
 
-That does not retire the 19 queries. It does mean nobody should tune this map
-against measurements taken on that VM, and that the app-side lever with real
-leverage for a CPU-only renderer is the *fill* -- canvas pixel ratio, symbol
-fade, world copies, stroke work -- rather than the hit-testing above.
+That does not retire the 19 queries, and it changes what this session's own
+browser is good for. The headless Chrome used for the measurements above is
+**also llvmpipe**, so it is a poor stand-in for a visitor with a GPU and a
+faithful one for Max's VM: frame times taken here cannot predict what the
+public site feels like, but an A/B between two ways of drawing the same map
+transfers directly to the machine he is reading it on.
+
+The app-side lever with real leverage for a CPU-only renderer is the *fill* --
+canvas pixel ratio, symbol fade, world copies, stroke work -- rather than the
+hit-testing above, and it is testable here.
 
 ## Approaches considered
 
