@@ -14,6 +14,39 @@ export async function fetchJSON<T = any>(url: string): Promise<T> {
   return r.json();
 }
 
+/**
+ * The precomputed layers, held for the life of the page.
+ *
+ * `/api/change` and `/api/surface` are tables `build_webdb.py` wrote, so what
+ * comes back for one radius is the same bytes every time -- 150 KB gzipped
+ * and half a second for the dots, 1.3 MB and two seconds for the surface.
+ * Nothing here re-fetched them, so switching the walk radius to 150 m and back
+ * paid for the 400 m layer twice, and every visit to Surface paid again.
+ *
+ * THE PROMISE IS WHAT IS HELD, not the answer, so two callers that overlap --
+ * a double-clicked radius switch, or a view asking for the surface while the
+ * first ask is still in the air -- share one request rather than opening a
+ * second. A rejection is dropped rather than remembered: a cached failure
+ * would refuse that layer for the rest of the session over one lost packet.
+ *
+ * Only for URLs whose answer cannot change while the page is open. Anything
+ * that measures a point the reader picked goes through `fetchJSON`.
+ */
+const fetched = new Map<string, Promise<any>>();
+
+export function fetchJSONOnce<T = any>(url: string): Promise<T> {
+  const held = fetched.get(url);
+  if (held) return held as Promise<T>;
+  const p = fetchJSON<T>(url).catch((e) => { fetched.delete(url); throw e; });
+  fetched.set(url, p);
+  return p;
+}
+
+/** Empty the layer cache. For tests; nothing in the app invalidates it. */
+export function forgetFetched(): void {
+  fetched.clear();
+}
+
 /** Escape text destined for innerHTML. Stop names come from PRT, not from us. */
 export function esc(s: unknown): string {
   return String(s ?? '').replace(/[&<>"']/g, (c) => (

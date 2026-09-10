@@ -35,7 +35,7 @@ import {
   ChangeLayer, ChangePoint, Day, DAYS, BUCKET, CUR, PROP, PUBLISHED, REMOVED,
   field, riders, pointId,
 } from './types';
-import { fetchJSON } from './utils';
+import { fetchJSONOnce } from './utils';
 
 /**
  * Colour and size per bucket, in ramp order.
@@ -681,7 +681,10 @@ export function initChangeLayer(map: maplibregl.Map) {
 }
 
 export async function loadChangeLayer(map: maplibregl.Map, radius: number, day: Day) {
-  data = await fetchJSON<ChangeLayer>(`/api/change?radius=${radius}`);
+  // Held for the life of the page: the dot layer is the same 150 KB at a
+  // radius the reader has already visited, and toggling 400 m -> 150 m ->
+  // 400 m was three round trips of about half a second each.
+  data = await fetchJSONOnce<ChangeLayer>(`/api/change?radius=${radius}`);
   (map.getSource(SRC) as maplibregl.GeoJSONSource).setData(toGeoJSON(data) as any);
   // The dots are the same set at either radius (query.change_points), so a
   // selection survives a radius change -- but the feature state does not

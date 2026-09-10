@@ -1,5 +1,7 @@
-import { describe, it, expect } from 'vitest';
-import { clock, duration, signed, pct, esc } from './utils';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import {
+  clock, duration, signed, pct, esc, fetchJSONOnce, forgetFetched,
+} from './utils';
 
 describe('clock', () => {
   it('renders ordinary times', () => {
@@ -64,5 +66,64 @@ describe('duration', () => {
 
   it('has nothing to say where no bus runs', () => {
     expect(duration(null)).toBe('—');
+  });
+});
+
+describe('fetchJSONOnce', () => {
+  const real = globalThis.fetch;
+  let calls: string[] = [];
+
+  beforeEach(() => {
+    calls = [];
+    forgetFetched();
+    globalThis.fetch = ((url: string) => {
+      calls.push(url);
+      return Promise.resolve({
+        ok: true, statusText: 'OK', json: () => Promise.resolve({ url }),
+      });
+    }) as any;
+  });
+  afterEach(() => { globalThis.fetch = real; });
+
+  // The map's two walk radii are precomputed tables, so the second visit to
+  // one a reader has already seen is the same bytes over the same wire. The
+  // 400 m dot layer is ~150 KB gzipped and half a second; toggling to 150 m
+  // and back paid it three times.
+  it('fetches a URL once however often it is asked for', async () => {
+    const a = await fetchJSONOnce('/api/change?radius=400');
+    const b = await fetchJSONOnce('/api/change?radius=400');
+    expect(calls).toEqual(['/api/change?radius=400']);
+    expect(b).toBe(a);
+  });
+
+  it('keeps the two radii apart', async () => {
+    await fetchJSONOnce('/api/change?radius=400');
+    await fetchJSONOnce('/api/change?radius=150');
+    expect(calls).toEqual(['/api/change?radius=400', '/api/change?radius=150']);
+  });
+
+  // A reader who double-clicks the radius switch, or a view that asks for the
+  // surface while the first ask is still in the air, must not open a second
+  // 1.3 MB request: the promise is what is held, not the answer.
+  it('shares one request between callers that overlap', async () => {
+    const [a, b] = await Promise.all([
+      fetchJSONOnce('/api/surface?radius=400'),
+      fetchJSONOnce('/api/surface?radius=400'),
+    ]);
+    expect(calls).toHaveLength(1);
+    expect(b).toBe(a);
+  });
+
+  // A cached failure would be permanent: the map would refuse to load a layer
+  // for the rest of the session because one request lost the network.
+  it('does not remember a failure', async () => {
+    globalThis.fetch = (() => Promise.reject(new Error('offline'))) as any;
+    await expect(fetchJSONOnce('/api/change?radius=400')).rejects.toThrow('offline');
+    globalThis.fetch = ((url: string) => {
+      calls.push(url);
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({ url }) });
+    }) as any;
+    await expect(fetchJSONOnce('/api/change?radius=400')).resolves.toBeTruthy();
+    expect(calls).toEqual(['/api/change?radius=400']);
   });
 });

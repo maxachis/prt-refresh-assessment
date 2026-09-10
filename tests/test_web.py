@@ -69,6 +69,46 @@ def test_place_rejects_an_unusable_radius(client, radius):
     assert r.status_code == 422
 
 
+@pytest.mark.parametrize("path, builder", [
+    ("/api/change", "change_layer"),
+    ("/api/surface", "surface_layer"),
+    ("/api/population", "population_layer"),
+])
+def test_a_precomputed_layer_is_built_once_per_radius(client, monkeypatch,
+                                                      path, builder):
+    """The two big layers are tables, not measurements, so serve them from one build.
+
+    `change_layer` reads 40,590 rows and packs 6,765 points -- 309 ms; the
+    surface packs 48,526 cells -- 919 ms. Both describe a precomputed table
+    that cannot change while the process lives, and both were being rebuilt on
+    every request, so a reader toggling 400 m -> 150 m -> 400 m paid for the
+    first radius twice. Max reported the map as laggy on 2026-09-10.
+
+    The radii stay apart, which is the half that a naive single-slot cache
+    gets wrong: it would serve the 150 m layer under the 400 m question and
+    recolour the whole map.
+    """
+    from refresh import query
+
+    calls = []
+    original = getattr(query, builder)
+
+    def counted(con, radius):
+        calls.append(radius)
+        return original(con, radius)
+
+    monkeypatch.setattr(query, builder, counted)
+
+    first = client.get(path, params={"radius": 400})
+    again = client.get(path, params={"radius": 400})
+    other = client.get(path, params={"radius": 150})
+
+    assert first.status_code == again.status_code == other.status_code == 200
+    assert again.json() == first.json()
+    assert other.json()["radius"] == 150
+    assert calls.count(400) <= 1, "the same radius was rebuilt for a second reader"
+
+
 def test_routes_are_bus_only_on_both_sides(client):
     """Rail and the inclines are outside the Refresh."""
     for side in ("current", "proposed"):

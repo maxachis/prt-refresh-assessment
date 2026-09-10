@@ -19,7 +19,7 @@
  * people actually live rather than smearing them across empty ground.
  */
 import { PopulationLayer, PopulationCell, POP_LOST, POP_GAINED, POP_KEPT, POP_NONE } from './types';
-import { fetchJSON } from './utils';
+import { fetchJSONOnce } from './utils';
 
 let data: PopulationLayer | null = null;
 
@@ -28,7 +28,8 @@ export function layerData(): PopulationLayer | null {
 }
 
 export async function loadPopulationLayer(radius: number): Promise<PopulationLayer> {
-  data = await fetchJSON<PopulationLayer>(`/api/population?radius=${radius}`);
+  // Held for the life of the page, like the surface it reads beside.
+  data = await fetchJSONOnce<PopulationLayer>(`/api/population?radius=${radius}`);
   return data;
 }
 

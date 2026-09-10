@@ -18,9 +18,11 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import json
+
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.gzip import GZipMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 
 from .. import journey, query
@@ -50,6 +52,37 @@ def create_app(db_path: str | Path = "data/refresh.db") -> FastAPI:
         version="0.1.0",
     )
     app.add_middleware(GZipMiddleware, minimum_size=1000)
+
+    # The two big layers, held as the bytes they are sent as, keyed by radius.
+    #
+    # Both describe a table `build_webdb.py` precomputed, so neither can change
+    # while this process lives, and both were being rebuilt from SQLite on
+    # every request: 309 ms to pack the 6,765 dots, 919 ms to pack the 48,526
+    # surface cells. A reader toggling 400 m -> 150 m -> 400 m paid for the
+    # first radius twice, which is a large part of why Max found the map laggy
+    # on 2026-09-10.
+    #
+    # Bytes rather than the dict, because caching the dict would still leave
+    # FastAPI's encoder walking 6,765 rows of 17 on every hit. Keyed by radius,
+    # never a single slot: two radii under one key would serve the strict
+    # layer's colours under the headline question.
+    #
+    # Bounded by construction -- `query.RADII` has two members and the three
+    # endpoints reject anything else before reaching here -- so this is at most
+    # six entries, about 4 MB.
+    #
+    # NOT the one-seat layer, which looks like a fourth candidate and is not:
+    # its destination can be any point a reader drops a pin on, so keying a
+    # cache by its URL would grow without bound as they drag one around.
+    layer_cache: dict[tuple[str, int], bytes] = {}
+
+    def cached_layer(name: str, radius: float, build) -> Response:
+        key = (name, int(radius))
+        body = layer_cache.get(key)
+        if body is None:
+            body = json.dumps(build(), separators=(",", ":")).encode()
+            layer_cache[key] = body
+        return Response(content=body, media_type="application/json")
 
     def _check_point(lat: float, lon: float):
         if not (LAT_RANGE[0] <= lat <= LAT_RANGE[1]
@@ -124,7 +157,8 @@ def create_app(db_path: str | Path = "data/refresh.db") -> FastAPI:
             raise HTTPException(
                 400, f"radius must be one of {list(query.RADII)} — the change "
                      "layer is precomputed at those two")
-        return query.change_layer(con, radius)
+        return cached_layer("change", radius,
+                            lambda: query.change_layer(con, radius))
 
     @app.get("/api/surface")
     def api_surface(
@@ -143,7 +177,8 @@ def create_app(db_path: str | Path = "data/refresh.db") -> FastAPI:
             raise HTTPException(
                 400, f"radius must be one of {list(query.RADII)} — the surface "
                      "is precomputed at those two")
-        return query.surface_layer(con, radius)
+        return cached_layer("surface", radius,
+                            lambda: query.surface_layer(con, radius))
 
     @app.get("/api/population")
     def api_population(
@@ -163,7 +198,8 @@ def create_app(db_path: str | Path = "data/refresh.db") -> FastAPI:
             raise HTTPException(
                 400, f"radius must be one of {list(query.RADII)} — the people "
                      "layer is precomputed at those two")
-        return query.population_layer(con, radius)
+        return cached_layer("population", radius,
+                            lambda: query.population_layer(con, radius))
 
     @app.get("/api/corridors")
     def api_corridors(

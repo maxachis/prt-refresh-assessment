@@ -33,7 +33,7 @@
  *    the two are complements and neither is quoted alone).
  */
 import { SurfaceLayer, SurfaceCell, Day, DAYS, S_CUR, S_PROP } from './types';
-import { fetchJSON } from './utils';
+import { fetchJSONOnce } from './utils';
 
 const SRC = 'surface';
 const LAYER = 'surface-fill';
@@ -213,7 +213,9 @@ export function initSurfaceLayer(map: maplibregl.Map, beneath: string) {
 export async function loadSurfaceLayer(
   map: maplibregl.Map, radius: number, day: Day,
 ) {
-  data = await fetchJSON<SurfaceLayer>(`/api/surface?radius=${radius}`);
+  // Held for the life of the page, and the one that pays for it most: this
+  // is 1.3 MB and about two seconds, re-fetched on every visit to Surface.
+  data = await fetchJSONOnce<SurfaceLayer>(`/api/surface?radius=${radius}`);
   (map.getSource(SRC) as maplibregl.GeoJSONSource).setData(toGeoJSON(data) as any);
   setSurfaceDay(map, day);
   return data;

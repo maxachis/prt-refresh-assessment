@@ -1042,7 +1042,7 @@ Reasoning and evidence:
 | Endpoint | Returns |
 |---|---|
 | `GET /api/place?lat=&lon=&radius=` | Before and after at one point, all three day types, plus the one-seat verdicts for the named destinations. Optional `dest_lat`/`dest_lon` adds a dropped pin's verdict; `oneseat_day=` follows the map so a dot and its panel cannot answer different questions. The app's purpose; everything else is navigation. |
-| `GET /api/change?radius=` | The citywide layer: every location bucketed, all three day types, columnar, each with the boardings observed there — `null`, never 0, where the plan adds a bus and nothing stops today. Radius must be 400 or 150 — it is precomputed. ~340 KB, 88 KB gzipped. |
+| `GET /api/change?radius=` | The citywide layer: every location bucketed, all three day types, columnar, each with the boardings observed there — `null`, never 0, where the plan adds a bus and nothing stops today. Radius must be 400 or 150 — it is precomputed. ~510 KB, 149 KB gzipped. |
 | `GET /api/population?radius=` | Residents per 100 m cell, split into lose-all / gain / keep / neither, all three day types. Same lattice as the surface; citywide totals are `equity_change.csv`'s. Radius must be 400 or 150. |
 | `GET /api/surface?radius=` | The magnitude surface: every covered 100 m cell, all three day types, columnar as lattice indices. Radius must be 400 or 150. ~1.3 MB, 198 KB gzipped. |
 | `GET /api/corridors?day=` | Every street run kept, lost or added for one day type, with citywide kilometres by class. No radius — a corridor is pavement, not a catchment. ~290 KB weekday. |
@@ -1056,6 +1056,36 @@ Reasoning and evidence:
 | `GET /api/routes?side=` | Bus routes with trips, revenue hours and span per day type. |
 | `GET /api/crosswalk` | PRT's current → proposed route mapping. A labelling aid; no served number goes through it. |
 | `GET /api/meta` | Feed versions, sample dates, periods, caveats. |
+
+### The three precomputed layers are built once, not once per request
+
+`/api/change`, `/api/surface` and `/api/population` are `build_webdb.py`'s own
+tables read back out. Nothing about them can change while the process lives,
+and until 2026-09-10 every request rebuilt one from SQLite: 309 ms to pack the
+6,765 dots, 919 ms the 48,526 surface cells. A reader toggling the walk radius
+to 150 m and back paid for the 400 m layer twice, and every visit to Surface
+paid again — a large part of why Max found the map laggy.
+
+They are now held **as the bytes they are sent as**, keyed by radius, on both
+sides of the wire:
+
+- **The server** keeps at most six entries (three layers × two radii, about
+  4 MB) in `create_app`'s own `cached_layer`. Bytes rather than the dict,
+  because caching the dict would still leave FastAPI's encoder walking 6,765
+  rows of 17 on every hit. Measured cold → warm: change at 400 m 216 ms →
+  2.4 ms, surface at 400 m 397 ms → 3.4 ms.
+- **The page** holds the promise, not the answer (`utils.fetchJSONOnce`), so
+  two callers that overlap — a double-clicked radius switch, a view asking for
+  the surface while the first ask is in the air — share one request. A
+  rejection is dropped rather than remembered: a cached failure would refuse
+  that layer for the rest of the session over one lost packet.
+
+**Not the one-seat layer**, which looks like a fourth candidate and is not: its
+destination can be any point a reader drops a pin on, so a cache keyed by its
+URL would grow without bound as they drag one around. **Not the corridor
+layer** either, which is precomputed and day-keyed but is re-fetched on every
+day switch — an open candidate rather than a decision, since the day buttons
+change three other views by repainting rather than re-fetching.
 
 Two pages, not one endpoint each: `GET /` is the map and `GET /findings` is the
 equity brief.
