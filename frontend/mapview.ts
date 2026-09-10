@@ -97,12 +97,19 @@ export function movedLeaders(stops: StopRef[]) {
     }));
 }
 
-/** What a mark around the pin says when the reader hovers it. */
+/**
+ * What a mark around the pin says when the reader hovers it.
+ *
+ * Both distances name what they are measured from. Unlabelled they read as one
+ * number: a stop's plain "2 m" is how far it is from where the reader clicked,
+ * and Max read it as how far the plan had moved the pole.
+ */
 export function stopPopupHtml(p: any) {
   const side = p.side === 'current' ? 'today' : 'proposed';
   const moved = p.moved_m != null
     ? `<br>moved ${p.moved_m} m from where it stands today` : '';
-  return `<b>${p.name}</b><br>${side} · stop ${p.stop_id} · ${p.metres} m${moved}`;
+  return `<b>${p.name}</b><br>${side} · stop ${p.stop_id}`
+    + ` · ${p.metres} m from the pin${moved}`;
 }
 
 function stopFeatures(stops: StopRef[], side: string) {

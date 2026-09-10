@@ -72,6 +72,15 @@ describe('a pole the plan moves', () => {
     expect(movedLeaders([STILL])).toEqual([]);
   });
 
+  // Two distances can land on one hover, and unlabelled they read as one
+  // number: Max read a stop's "2 m" as how far the plan moved it, when it is
+  // how far the stop is from where he clicked.
+  it('names what each distance on the hover is measured from', () => {
+    const html = stopPopupHtml({ ...MOVED, side: 'proposed' });
+    expect(html).toContain('54 m from the pin');
+    expect(html).toContain('moved 21 m from where it stands today');
+  });
+
   it('says how far it moved, on the mark the reader hovers', () => {
     expect(stopPopupHtml({ ...MOVED, side: 'proposed' }))
       .toContain('moved 21 m from where it stands today');
