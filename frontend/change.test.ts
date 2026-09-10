@@ -316,7 +316,7 @@ describe('removedLine', () => {
 
   it('leaves the straight line off where the two nearly agree', () => {
     // The countywide median walk is 1.22x its own straight line, so printing
-    // both everywhere would put a second number on most of the 972 removals to
+    // both everywhere would put a second number on most of the 1,308 removals to
     // say nothing a reader needs.
     expect(removedLine({ removed: 1, replacement: 220, nearestStraight: 180 }))
       .not.toContain('straight line');

@@ -33,11 +33,11 @@ two are gone with no replacement.
    that does not sit at a stop today.
 
 3. **"A removed stop is not the same as a corner losing its bus: countywide, of
-   the 972 stops the plan removes, 245 have another stop within a 400 m walk
-   and 193 more within 800 m. The remaining 534 have none."** Left off, the
-   cross row reads as 972 corners losing their buses. The 534 with nothing
-   inside an 800 m walk are the ones worth the alarm, and they only read as
-   alarming if the other 438 are not counted alongside them.
+   the 1,308 stops the plan removes, 578 have another stop within a 400 m
+   walk and 194 more within 800 m. The remaining 536 have none."** Left off,
+   the cross row reads as 1,308 corners losing their buses. The 536 with
+   nothing inside an 800 m walk are the ones worth the alarm, and they only
+   read as alarming if the other 772 are not counted alongside them.
 
 The boardings caveat stays. It is the same kind of sentence, but convention 15
 requires it: boardings can only ever exist at stops that run today, so a key
@@ -75,5 +75,5 @@ That leaves the first and third paragraphs gone with nothing in their place —
 what the counts measure, which the Locations/Riders switch above them mostly
 says, and what a removed stop does not mean, which nothing on the map says at
 all. The second is the one worth watching: read without it, the cross row is
-972 corners losing their buses, when 245 have another stop within a 400 m walk
-and 193 more within 800 m.
+1,308 corners losing their buses, when 578 have another stop within a 400 m
+walk and 194 more within 800 m.

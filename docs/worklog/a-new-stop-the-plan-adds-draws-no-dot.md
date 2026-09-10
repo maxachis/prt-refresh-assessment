@@ -110,9 +110,10 @@ far a rider will walk, and *identity*, whether a pole is a distinct place to
 measure — and only the first had ever been argued. The identity rule had simply
 inherited the walk distance.
 
-`query.UNIVERSE_DEDUP_M` now names it and sets it to **150 m**, convention 4's
-strict same-corner test, which is the radius the identity question was written
-for. The rings were removed entirely.
+A named constant now held it at **150 m**, convention 4's strict same-corner
+test, which is the radius the identity question was written for. (It kept that
+name, `UNIVERSE_DEDUP_M`, until both marks moved to 25 m on 2026-09-10 left it
+with no callers.) The rings were removed entirely.
 
 What the map does now at McMonagle: two dots appear where there were none,
 coloured `doubled` — 20 weekday buses within a quarter mile becoming 45. That
@@ -348,12 +349,15 @@ stop it is not adding. 481 added stops, and the point universe went from 6,542
 locations to 6,765. No published figure moved: they filter on `published = 1`
 and the weekday buckets at 400 m read 633/298/1420/1583/2113/237 either way.
 
-Two consequences worth keeping. `is_removed_stop` deliberately **stopped
-being the mirror** — it still asks at 150 m, and the asymmetry is what keeps 58
-corners, three of them Downtown PRTX stations, from drawing a cross and an
-added-stop mark at once. And overlapping ground is now routinely counted
-twice by the in-view key, where at 400 m it could not be by construction;
-that was accepted rather than solved.
+Two consequences worth keeping. `is_removed_stop` **followed it to 25 m the
+same day**, after Max ruled that a retired pole the plan does not re-serve on
+the same kerb is a removal however near the plan stops; the two are exact
+mirrors again, no corner draws both marks, and the countywide removal figure
+moved from 972 to 1,308 —
+[`a-pole-the-plan-drops-quietly-has-no-mark.md`](a-pole-the-plan-drops-quietly-has-no-mark.md).
+And overlapping ground is now routinely counted twice by the in-view key, where
+at 400 m it could not be by construction; that was accepted rather than
+solved.
 
 The shape of the mistake, across all three narrowings: the map's unit of
 analysis was inherited from the coverage question (a location, conventions 1

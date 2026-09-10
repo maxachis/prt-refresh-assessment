@@ -670,11 +670,11 @@ def test_the_identity_radius_is_not_the_access_radius(con):
     150 m.
 
     Since 2026-09-10 the distance is `STOP_SAME_POLE_M`, 25 m, and it is no
-    longer an identity radius at all: it is convention 3's mirror, the
+    longer a location radius at all: it is convention 3's mirror, the
     renumbered-kerb carve-out, because Max ruled that location is not the
-    stop-by-stop view's unit. `UNIVERSE_DEDUP_M` survives as the distance
-    `is_removed_stop` asks at, and the two must not be re-merged -- see that
-    function's docstring for the 58 corners that would draw two marks.
+    stop-by-stop view's unit. `is_removed_stop` asks at the same 25 m, so both
+    marks are decided by one distance and neither can appear without the other
+    being able to.
     """
     assert query.STOP_SAME_POLE_M == 25
     assert query.STOP_SAME_POLE_M != query.PRIMARY_RADIUS
@@ -762,21 +762,20 @@ def test_the_panel_says_how_far_the_plan_moves_a_pole_it_keeps(con):
 # Two questions at one dot, and they are not the same question. The colour is
 # `bucket()` -- what happens to the buses within a walk of here -- and the mark
 # is this: does the stop itself survive. They disagree constantly and both
-# readings are true. On a weekday at 400 m, 339 of the stops the plan removes
-# still have buses within the radius: 117 read "less service", 95 "more" and 27
-# "doubled or better". A stop can be taken away on a corridor that gains
-# service, and only saying one of those would mislead.
+# readings are true. On a weekday at 400 m, 675 of the stops the plan removes
+# still have buses within the radius: 206 read "less service", 165 "about the
+# same", 192 "more" and 43 "doubled or better". A stop can be taken away on a
+# corridor that gains service, and only saying one of those would mislead.
 
 
 def test_a_renumbered_stop_is_not_drawn_as_removed(con):
     """The plan reissuing an id at the same kerb is not a stop going away.
 
-    1,406 ids that run today are absent from the plan, and 434 of them have a
-    stop the plan serves within `UNIVERSE_DEDUP_M` -- the same corner under a
-    new number. Counting those as removals would overstate the removals by 31%
-    and would put a red X on three of Downtown's busiest kerbs. The PRTX
-    stations are the sharpest case: PRT renumbers them wholesale, and the
-    replacement stands a couple of metres away.
+    1,406 ids that run today are absent from the plan, and 98 of them have a
+    stop the plan serves within `STOP_SAME_POLE_M` -- the same kerb under a new
+    number. Counting those as removals would put a red X on three of Downtown's
+    busiest kerbs. The PRTX stations are the sharpest case: PRT renumbers them
+    wholesale, and the replacement stands a couple of metres away.
     """
     for old, new in (("23101", "8681"),      # Ross Street PRTX Station
                      ("23102", "20684"),     # Market Square PRTX Station
@@ -789,6 +788,32 @@ def test_a_renumbered_stop_is_not_drawn_as_removed(con):
         assert con.execute("SELECT 1 FROM stops WHERE side = 'proposed' "
                            "AND stop_id = ?", (new,)).fetchone()
         assert query.is_removed_stop(con, old, row["lat"], row["lon"]) is False
+
+
+def test_a_pole_the_plan_drops_is_marked_removed(con):
+    """A retired id the plan does not stop at is a removal, however near a bus is.
+
+    > Max, 2026-09-10: "if it's a retired stop that is not simply moved, it
+    > should be marked as removed. The user can infer a nearby stop by looking
+    > at the map."
+
+    Before that ruling the cross asked at 150 m, so a pole the
+    plan retired while serving another kerb 74 m up the street drew no mark of
+    its own at all -- the reader saw an ordinary coloured dot, and the only
+    thing saying the stop was going was a ring that was not there. The two West
+    View poles below are the case Max was looking at. Each is absent from the
+    proposed feed, each has a stop the plan serves well inside 150 m, and each
+    must now be crossed.
+    """
+    for stop_id, nearest_m in (("1670", 95), ("1672", 74)):
+        row = con.execute("SELECT lat, lon FROM stops WHERE side = 'current' "
+                          "AND stop_id = ? LIMIT 1", (stop_id,)).fetchone()
+        assert row, f"{stop_id} is not in the current feed -- fixture changed"
+        near = query.stops_within(con, row["lat"], row["lon"], 150, "proposed")
+        assert near, f"{stop_id} has nothing proposed within 150 m any more"
+        assert min(n[4] for n in near) == pytest.approx(nearest_m, abs=5)
+        assert query.is_removed_stop(
+            con, stop_id, row["lat"], row["lon"]) is True
 
 
 def test_a_stop_prt_kept_the_id_of_is_never_removed(con):
@@ -815,8 +840,9 @@ def test_no_corner_is_both_removed_and_added(con):
     of being written independently. If the two ever took different constants, a
     renumbering would draw a red X and a hollow ring on top of each other --
     "the plan takes this stop away" and "the plan adds a stop here", at one
-    kerb, both in the key. 58 renumberings are matched by an id the plan adds
-    at that spot and are exactly the corners this would happen at.
+    kerb, both in the key. The pair held the two constants apart between
+    2026-09-10's two rulings, and 58 renumberings sat in exactly that position;
+    with one distance again the count is zero by construction.
     """
     removed = [r for r in con.execute(
         "SELECT stop_id, lat, lon FROM stops WHERE side = 'current'")
@@ -826,7 +852,7 @@ def test_no_corner_is_both_removed_and_added(con):
     new_places = {p[0][2:] for p in query.change_points(con) if p[3] == 0}
     for r in removed:
         near = {s[0] for s in query.stops_within(
-            con, r["lat"], r["lon"], query.UNIVERSE_DEDUP_M, "proposed")}
+            con, r["lat"], r["lon"], query.STOP_SAME_POLE_M, "proposed")}
         assert not (near & new_places), (
             f"{r['stop_id']} would draw removed and added at one corner")
 

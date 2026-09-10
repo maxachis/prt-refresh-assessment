@@ -99,44 +99,40 @@ RTREE_PAD_M = 10.0
 # so the API exposes it and the UI shows both.
 PRIMARY_RADIUS = 400
 
-# How far apart two stops have to be before the proposed one counts as its own
-# place to measure, rather than the same place as a stop that exists today.
+# How close a pole that runs today has to be before a stop the plan gives a new
+# id to is that same kerb renumbered rather than a stop the plan adds -- and,
+# read the other way round, how close a stop the plan serves has to be before a
+# retired id is a renumbering rather than a stop going away. ONE DISTANCE, BOTH
+# MARKS: `is_new_place` and `is_removed_stop` are mirrors, and a corner can
+# therefore never draw a cross and a hollow ring at once.
 #
 # THIS IS NOT THE ACCESS RADIUS ABOVE, and until 2026-09-08 it silently was.
-# Access asks how far a rider will walk; identity asks whether a pole is a
-# distinct location. Those are different questions, and the identity rule had
-# simply inherited the walk distance without ever being argued for. At 400 m it
-# folded 400 of the 521 stops the plan adds into a neighbouring location, so a
-# street gaining its first ever stop could show no mark at all -- reported three
-# times from outside, most legibly by a PRT consultant reading McMonagle Avenue.
+# Access asks how far a rider will walk; this asks whether two coordinates are
+# the same kerb. At 400 m it folded 400 of the stops the plan adds into a
+# neighbouring location, so a street gaining its first ever stop could show no
+# mark at all -- reported three times from outside, most legibly by a PRT
+# consultant reading McMonagle Avenue.
 #
-# 150 m is convention 4's strict same-corner test, which is the radius this
-# question was written for. THE COST IS REAL AND IS ACCEPTED: a new-coverage
-# point may now fall inside a published point's circle, so overlapping ground
-# can be counted twice by the in-view key, which at 400 m was impossible by
-# construction. That trade was Max's call on 2026-09-08.
+# Nor is it a LOCATION radius any more, which is the other thing it was. A
+# location -- whether the service around a pole is worth measuring separately,
+# convention 4's strict 150 m same-corner test -- is the unit the dots' walk
+# readings carry, and Max ruled on 2026-09-10 that "location as we've defined
+# it is not relevant to the stop-by-stop view". So the marks left it: a stop
+# the plan adds is drawn wherever the plan adds it, and a stop the plan retires
+# is crossed wherever the plan retires it, each beside whatever else stands
+# near.
+#
+# What survives of the distance test is only convention 3's mirror: a stop id
+# that vanishes is not a lost bus, and an id that appears is not a new bus.
+# PRT renumbers kerbs in place -- 54 of the 535 ids new to the plan stand within
+# 25 m of a pole that runs today, 9 of them within 10 m, and 98 of the 1,406
+# retired ids have a stop the plan serves that close. Drawing those would
+# credit the plan with a stop it is not adding, or accuse it of taking away a
+# stop that is still there under a new number.
 #
 # Changing it moves no published figure. Published counts filter on
 # `published = 1` and every point this governs is `published = 0`; the weekday
 # buckets at 400 m read 633/298/1420/1583/2113/237 either way.
-UNIVERSE_DEDUP_M = 150
-
-# How close a pole that runs today has to be before a stop the plan gives a new
-# id to is that same kerb renumbered rather than a stop the plan adds.
-#
-# THIS IS NOT THE IDENTITY RADIUS ABOVE, and since 2026-09-10 the two answer
-# different questions on purpose. `UNIVERSE_DEDUP_M` asks whether a pole is its
-# own LOCATION -- whether the service around it is worth measuring separately --
-# which is the right question for the walk-access readings the dots carry and
-# the wrong one for the marks. Max's ruling: "location as we've defined it is
-# not relevant to the stop-by-stop view", so a stop the plan adds is drawn
-# wherever the plan adds it, beside the stop it stands near.
-#
-# What survives of the distance test is only convention 3's mirror: a stop id
-# that vanishes is not a lost bus, and an id that appears is not a new bus.
-# PRT renumbers kerbs in place, and 54 of the 535 ids new to the plan stand
-# within 25 m of a pole that runs today -- 9 of them within 10 m. Drawing those
-# as stops the plan adds would credit the plan with a stop it is not adding.
 STOP_SAME_POLE_M = 25.0
 
 # How far the plan has to move a pole it keeps before the map says so.
@@ -419,12 +415,11 @@ def is_new_place(con, stop_id: str, lat: float, lon: float,
     which is convention 3's mirror and nothing more: PRT renumbers a kerb in
     place 54 times, and those are not stops the plan adds.
 
-    NO LONGER THE MIRROR OF `is_removed_stop`, which still asks at 150 m, and
-    the asymmetry is deliberate. A stop the plan takes away is only crossed
-    when the plan serves nothing within 150 m of it, so a pole the plan
-    renumbers or shifts down the block keeps its dot rather than being crossed
-    -- which means no corner can show a cross and an added stop at once, the
-    collision the old mirror existed to prevent.
+    THE MIRROR OF `is_removed_stop`, and it must stay one. That one asks the
+    same question of the other feed at the same 25 m: a retired id with no
+    proposed pole on its kerb is a removal. One threshold for both is what
+    stops a corner drawing a cross and a hollow ring at once -- a renumbering
+    is a pole the plan still serves, so both tests go quiet together.
 
     One predicate because the map's point set and the answer panel's flag both
     ask it. Two implementations of one threshold would let the panel call a
@@ -438,28 +433,38 @@ def is_new_place(con, stop_id: str, lat: float, lon: float,
 
 
 def is_removed_stop(con, stop_id: str, lat: float, lon: float,
-                    dedup: float = UNIVERSE_DEDUP_M) -> bool:
+                    dedup: float = STOP_SAME_POLE_M) -> bool:
     """Does the plan take this stop away, or only reissue its number?
 
-    The same shape as `is_new_place` -- the id first, then a distance -- but
-    NOT the same distance, and since 2026-09-10 not the mirror it used to be.
-    This one still asks at `UNIVERSE_DEDUP_M`; the other asks at 25 m. The
-    asymmetry is what keeps a renumbered kerb from drawing a red X and a
-    hollow ring at once -- "the plan takes this stop away" and "the plan adds
-    a stop here" on the same corner. Widening this one to 25 m instead, or
-    narrowing that one back to 150 m, would put 58 corners in exactly that
-    position, three of them Downtown PRTX stations whose replacement stands
-    two metres off. `tests/test_query.py` pins the pair.
+    The exact mirror of `is_new_place` -- the id first, then the same 25 m --
+    and since 2026-09-10 it is a mirror again by Max's ruling: "if it's a
+    retired stop that is not simply moved, it should be marked as removed. The
+    user can infer a nearby stop by looking at the map." The question is about
+    the kerb, not about the corridor. The plan still stopping on this kerb is
+    what spares the pole a cross, exactly as a bus already stopping on a kerb
+    is what stops the plan's stop there reading as an addition.
+
+    It asked at 150 m until that ruling -- the strict same-corner location
+    test -- which left 434 poles the plan retires drawing nothing at all: an
+    ordinary coloured dot, with the fact that the stop was going carried only
+    by the absence of the added-stop ring. Two West View poles, 95 m and 74 m
+    from a stop the plan does serve, are the case that surfaced it --
+    `docs/worklog/a-pole-the-plan-drops-quietly-has-no-mark.md`.
+
+    ONE THRESHOLD, BOTH MARKS. Because this and `is_new_place` now share
+    `STOP_SAME_POLE_M`, no corner can carry a cross and a hollow ring at once:
+    a renumbered kerb has a proposed pole within 25 m (so no cross) and a
+    current pole within 25 m (so no ring), and both marks go quiet together.
+    `tests/test_query.py` pins the pair.
 
     WHY THIS IS NOT THE SAME QUESTION AS THE COLOUR UNDER IT. `bucket()` asks
     what happens to the buses within a walk of here; this asks whether the
-    stop survives. On a weekday at 400 m, 339 of the 972 stops the plan removes
-    still have buses inside the radius -- 95 of them read "more service" and 27
-    "doubled or better". Both readings are true of a corner where PRT pulls the
-    pole on a corridor it is strengthening, and folding one into the other
-    would delete a sentence a rider needs.
+    stop survives. They disagree constantly, and a cross on a dot painted "more
+    service" is two true sentences about one corner: PRT is thinning the poles
+    on a corridor it is strengthening. Folding one into the other would delete
+    a sentence a rider needs.
 
-    Straight-line, deliberately, exactly as `UNIVERSE_DEDUP_M` says: this is an
+    Straight-line, deliberately, exactly as `STOP_SAME_POLE_M` says: this is an
     identity test -- are these two coordinates the same kerb -- not a claim
     about how far anybody will walk. The walk belongs to
     `replacement_walk_m`, which is what the panel prints once the answer here
@@ -467,9 +472,9 @@ def is_removed_stop(con, stop_id: str, lat: float, lon: float,
     IS a claim about walking. Convention 14 splits the transfer walk from the
     access radius on the same grounds.
 
-    1,406 ids run today and are absent from the plan; 434 of them fail this
-    test because the plan serves a stop within `UNIVERSE_DEDUP_M`, leaving 972
-    removals. Reporting the 1,406 would overstate them by 31%.
+    1,406 ids run today and are absent from the plan; 98 of them fail this test
+    because the plan serves a stop on the same kerb under a new number, leaving
+    1,308 removals.
     """
     if con.execute("SELECT 1 FROM stops WHERE side = 'proposed' "
                    "AND stop_id = ? LIMIT 1", (stop_id,)).fetchone():
@@ -878,13 +883,13 @@ def change_layer(con, radius: float = PRIMARY_RADIUS):
         "fields": ["lat", "lon", "published", "id", "removed",
                    *[f"{d}_{f}" for d in DAYS
                      for f in ("cur", "prop", "bucket", "riders")]],
-        # The distance to a replacement, for the 972 dots it says anything
-        # about, as [walk, straight line] to the SAME stop. A sparse map rather
-        # than two more packed columns: it is meaningful only where `removed`
-        # is 1, and columns would ship 5,570 nulls to carry 972 numbers. A
-        # removed stop with no entry here found nothing inside
-        # `build_webdb.REPLACEMENT_SEARCH_M` -- the hover has to say that
-        # rather than print a distance it does not have.
+        # The distance to a replacement, for the 772 dots it says anything
+        # about, as [walk, straight line]. A sparse map rather than two more
+        # packed columns: it is meaningful only where `removed` is 1 and a
+        # replacement was reachable, and columns would ship 5,993 nulls to
+        # carry 772 numbers. A removed stop with no entry here found nothing
+        # inside `build_webdb.REPLACEMENT_SEARCH_M` -- the hover has to say
+        # that rather than print a distance it does not have.
         #
         # Both distances travel because on this terrain they name different
         # stops, and the walk alone reads as a mistake to a reader who can see

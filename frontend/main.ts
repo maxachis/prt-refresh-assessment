@@ -262,7 +262,7 @@ map.on('load', () => {
 
   const popup = new maplibregl.Popup({ closeButton: false, offset: 8 });
   // Both marks answer the pointer. A removed stop is drawn as a cross and not
-  // as a dot, so binding the dot layer alone would leave the 972 stops the
+  // as a dot, so binding the dot layer alone would leave the 1,308 stops the
   // plan takes away with no hover at all -- and the removal sentence, with
   // the walk to the nearest surviving stop, lives in that hover.
   for (const id of CHANGE_HIT_LAYERS) {

@@ -49,20 +49,21 @@ export interface StopRef {
   moved_lat?: number;
   moved_lon?: number;
   /**
-   * Whether the plan takes this stop away — retires the id and puts no
-   * proposed stop within 150 m of it. Today's stops only, and the mirror of
-   * `new_place`: a proposed stop is not something the plan can remove.
+   * Whether the plan takes this stop away — retires the id and stops at no
+   * pole within 25 m of it. Today's stops only, and the exact mirror of
+   * `new_place`, at the same distance: a proposed stop is not something the
+   * plan can remove.
    *
    * Not a restatement of the "loses all service" colour. That colour is a
    * claim about the buses within the whole walk radius; this is a claim about
-   * one pole, and the two disagree at 339 of the 972 removed stops.
+   * one pole, and the two disagree at 675 of the 1,308 removed stops.
    */
   removed?: boolean;
   /**
    * How far the nearest stop the plan does keep is, as a walk over the
    * pedestrian network rather than as the crow flies. Present only on a
    * removed stop, and `null` there when nothing survives within an 800 m
-   * walk — which is 534 of the 972.
+   * walk — which is 536 of the 1,308.
    */
   replacement_walk_m?: number | null;
   /**
@@ -122,12 +123,12 @@ export interface SideResult {
  * stops in a link somebody had already sent.
  *
  * `removed` is the stop's own fate rather than the walk radius's: 1 where the
- * plan takes this pole away and leaves no proposed stop within 150 m, 0
+ * plan takes this pole away and stops at no pole within 25 m of it, 0
  * everywhere else. It rides beside the buckets rather than among them because
  * it answers a different question -- the colour is what happens to the buses
  * within a walk, this is what happens to the stop the reader is standing at,
- * and 339 of the 972 removed stops sit in a bucket other than "loses all
- * service", 122 of them in one that gains.
+ * and 675 of the 1,308 removed stops sit in a bucket other than "loses all
+ * service", 235 of them in one that gains.
  *
  * All three day types travel together so switching between them repaints from
  * memory rather than refetching — 152 locations keep their weekday buses and

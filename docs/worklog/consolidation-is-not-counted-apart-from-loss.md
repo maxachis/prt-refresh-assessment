@@ -204,7 +204,10 @@ The map's dots view, renamed **Stop-by-stop**, now answers the stop's own
 question separately from the service question. A stop the plan takes away is
 drawn as a red cross and a place the plan adds a stop to as a hollow ring, both
 decided by `query.is_removed_stop` and `is_new_place` — exact mirrors on the
-same 150 m identity constant, so a renumbered kerb cannot draw both.
+same 25 m same-pole constant, so a renumbered kerb cannot draw both. (They were
+mirrored at 150 m when this was written; both moved to 25 m on 2026-09-10, the
+ring first and the cross after Max ruled that a retired pole is a removal
+however near the plan stops.)
 
 **A dot is a cross or a colour, never both** (Max, 2026-09-09). The first cut
 carried the mark *over* the coloured dot, on the argument that the two
@@ -217,13 +220,13 @@ weekday at 400 m all 633 "loses all service" locations are removed stops, so
 that key row reads 0 there and the published 633 lives only in the published
 files.
 
-That gives the split a number on screen for the first time: 972 stops removed
-countywide, of which 245 have another stop within a 400 m walk, 193 more within
-800 m, and 534 none. Those walks are routed on the pedestrian network by
+That gives the split a number on screen for the first time: 1,308 stops
+removed countywide, of which 578 have another stop within a 400 m walk, 194 more
+within 800 m, and 536 none. Those walks are routed on the pedestrian network by
 `build_webdb.write_stop_fates` and stored on `stop_place`, so the panel and the
 hover can print "nearest stop is a 189 m walk" at the corner where the reader is
 standing. The key prints the countywide split under the mark's row, because a
-count of crosses alone reads as 972 corners losing their bus.
+count of crosses alone reads as 1,308 corners losing their bus.
 
 What this does **not** settle, and why the entry stays open:
 

@@ -291,7 +291,8 @@ CREATE TABLE place_block_group (
 -- change bucket the map colours it by: `removed` is `query.is_removed_stop` --
 -- the plan runs no stop at this kerb, at one identity distance, radius-free
 -- and day-free -- while the bucket asks what happens to the buses within a
--- walk. 339 of the 972 removed stops sit in a bucket that gains service, so
+-- walk. 675 of the 1,308 removed stops sit in a bucket other than "loses all
+-- service", so
 -- the two must be stored apart -- the map then draws the cross alone at a
 -- removed stop, but that is the drawing's choice and not this table's. `replacement_walk_m` is the walk to
 -- the nearest stop the plan does serve, routed on the pedestrian network

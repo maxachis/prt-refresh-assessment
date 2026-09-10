@@ -140,8 +140,8 @@ const NEW_PLACE_SIZE = 5;
  * WHAT IT COSTS, recorded because it is easy to forget: the cross is not the
  * `gone` bucket and never was. On a weekday at 400 m every one of the 633
  * "loses all service" locations is also a removed stop, so that row now reads
- * 0 there and the 972 crosses carry the whole story; the two part company on
- * weekends, when 145 of Saturday's 436 stranded locations are stops that
+ * 0 there and the 1,308 crosses carry the whole story; the two part company on
+ * weekends, when 149 of Saturday's 443 stranded locations are stops that
  * survive with nothing left to catch. The published 633 lives on `/findings`
  * and in `data/coverage_change.csv`, which is where a quotable figure belongs.
  *
@@ -214,7 +214,7 @@ const selected = new Set<string>();
  *
  * Named here rather than spelled out in `main` because a removed stop is now
  * drawn by two of them and a dot by one, and a view switch that hid only the
- * dots would leave 972 crosses hanging over the Streets or One-seat map.
+ * dots would leave 1,308 crosses hanging over the Streets or One-seat map.
  */
 export const CHANGE_LAYERS = [LAYER, REMOVED_SEL_LAYER, REMOVED_LAYER];
 
@@ -365,7 +365,7 @@ export function dotsUnder(
   const box: [[number, number], [number, number]] = [
     [x - radiusPx, y - radiusPx], [x + radiusPx, y + radiusPx]];
   // Both layers: a removed stop is drawn only as a cross, so asking the dot
-  // layer alone would make the 972 crosses unpaintable -- and a scope that
+  // layer alone would make the 1,308 crosses unpaintable -- and a scope that
   // silently cannot hold the stops a reader is most likely to be selecting
   // would be worse than no brush.
   const layers = [LAYER, REMOVED_LAYER].filter((id) => map.getLayer(id));
@@ -725,7 +725,7 @@ function applyFilter(map: maplibregl.Map, day: Day) {
   // layer entirely rather than drawn underneath one.
   map.setFilter(LAYER, ['all', ['!', REMOVED_STOP], visible] as any);
   // And the cross answers only to its own switch. It is in no bucket now, so
-  // hiding "more service" must not take the 95 removed stops whose radius
+  // hiding "more service" must not take the 192 removed stops whose radius
   // gains service with it -- the key would then be hiding a row it is still
   // counting.
   const crosses: any = ['all', REMOVED_STOP, !hidden.has(REMOVED_KEY)];
@@ -764,7 +764,7 @@ export function dotLabel(props: any, day: Day, buckets: { key: string; label: st
  * When the walk and the straight line are far enough apart to print both.
  *
  * The countywide median walk is 1.22x its own straight line, so at any low
- * threshold most of the 972 removals would carry a second number saying
+ * threshold most of the 1,308 removals would carry a second number saying
  * nothing. Above this one the gap is itself the finding, and it answers a
  * question the reader is already asking: Mt Troy Rd + Beckert reports a 651 m
  * walk while the map shows a surviving stop 301 m away, because the ones on
@@ -799,7 +799,7 @@ const REPLACEMENT_SEARCH_M = 800;
  * walk it — with the straight line beside it where the ground puts the two
  * far apart, see STRAIGHT_LINE_NOTE_RATIO. Where the search found nothing
  * within `REPLACEMENT_SEARCH_M` this says so in words instead of printing a
- * number it doesn't have: 534 of the 972 removals are in that position, and
+ * number it doesn't have: 536 of the 1,308 removals are in that position, and
  * they are the withdrawals proper.
  */
 export function removedLine(props: any): string {
