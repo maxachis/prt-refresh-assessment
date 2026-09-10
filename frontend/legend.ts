@@ -176,14 +176,24 @@ export function surfaceKey(opts: {
   population?: PopulationLayer | null;
   /** Whether a painted selection has narrowed the counts above this key. */
   scoped?: boolean;
+  /**
+   * Whether the key above this one already names the layer. With the dots on
+   * screen it does not — the head line is counting them — so the ramp says
+   * which layer it belongs to; in the Surface view the head says "Surface"
+   * and repeating it here is the box saying one word twice.
+   */
+  named?: boolean;
 }) {
-  const { layer, day, bounds, unit, population, scoped = false } = opts;
+  const {
+    layer, day, bounds, unit, population, scoped = false, named = false,
+  } = opts;
   const gradient = RAMP.map(([stop, color]) =>
     `${color} ${((stop + 2) / 4 * 100).toFixed(1)}%`).join(', ');
 
   return `
     <div class="lg-ramp">
-      <div class="lg-lab">Surface — buses per day, proposed vs today</div>
+      <div class="lg-lab">${named ? 'Buses' : 'Surface — buses'} per day,
+        proposed vs today</div>
       <div class="lg-bar" style="background:linear-gradient(90deg, ${gradient})"></div>
       <div class="lg-ends"><span>¼ or less</span><span>same</span><span>4× or more</span></div>
       <div class="lg-steps">
@@ -620,11 +630,23 @@ export interface LegendOptions {
    * ridership record is still named rather than added as a zero.
    */
   selection?: ReadonlySet<string> | null;
+  /**
+   * Whether the dots are on the map. False in the Surface view, where the
+   * key drops to the ramp alone.
+   *
+   * A key is a reading of what is drawn. With the dots off, seven bucket
+   * counts, the two stop marks and the footnotes explaining them described
+   * marks nobody could see, and offered a bucket filter with nothing to
+   * filter -- while making the box tall enough to run off the top of the
+   * window on a laptop screen.
+   */
+  dots?: boolean;
 }
 
 export function renderLegend(el: HTMLElement, opts: LegendOptions) {
   const {
     layer, day, bounds, weight, surface, unit = 'area', population, selection,
+    dots = true,
   } = opts;
   const keys = layer.buckets.map((b) => b.key);
   const dayIndex = layer.days.indexOf(day);
@@ -681,7 +703,20 @@ export function renderLegend(el: HTMLElement, opts: LegendOptions) {
       : `<b>${locations.toLocaleString()}</b>
          locations in view`;
 
-  el.innerHTML = `
+  // With the dots off there is nothing here to count, so the head names the
+  // layer instead. The day and the radius stay: the surface is measured per
+  // day type and per walk radius exactly as the dots are.
+  const surfaceOnly = !dots && !!surface;
+
+  el.innerHTML = surfaceOnly ? `
+    <div class="lg-head">
+      <b>Surface</b>
+      <span class="muted">· ${DAY_WORD[day]} · ${layer.radius} m walk</span>
+    </div>
+    ${surfaceKey({
+      layer: surface!, day, bounds, unit, population, scoped: !!painted,
+      named: true,
+    })}` : `
     <div class="lg-head">
       ${head}
       <span class="muted">· ${DAY_WORD[day]} · ${layer.radius} m walk</span>

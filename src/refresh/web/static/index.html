@@ -72,9 +72,15 @@
     #app.side-collapsed #side-toggle { right:7px; }
     .side-links { display:flex; gap:14px; margin-top:8px; }
     /* The legend: key, in-view summary and filter in one block. */
+    /* Bottom-anchored, so a key that outgrows the window grows off the TOP of
+       it -- past the map's own controls and out of reach. The Both view is the
+       tall one: two whole keys, one above the other. So the box stops short of
+       the day controls (which end 104px down) and scrolls inside itself
+       instead. */
     #legend-box { position:absolute; left:12px; bottom:24px; z-index:2;
       background:rgba(20,23,29,.93); border:1px solid var(--line);
       border-radius:10px; padding:10px 10px 8px; width:250px;
+      max-height:calc(100vh - 140px); overflow-y:auto;
       backdrop-filter:blur(3px); }
     /* The marks a click puts on the map, keyed under whichever layer key is
        up. It borrows the panel key's `.legend` styles so the two can never

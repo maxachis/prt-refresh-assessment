@@ -438,6 +438,57 @@ describe('the day inside the absolute labels', () => {
   });
 });
 
+// The Surface view draws no dots, so a key listing seven bucket counts, the
+// two stop marks and three footnotes about dots was describing marks that are
+// not on screen -- and it made the box tall enough to run off the top of the
+// window, which is how Max found it on 2026-09-10.
+describe('the key when only the surface is drawn', () => {
+  const opts = { layer: LAYER, day: 'weekday' as const, bounds: BOX,
+                 weight: 'locations' as const, surface: SURFACE,
+                 unit: 'area' as const, dots: false };
+
+  it('drops the dot buckets, the marks and their footnotes', () => {
+    const el = stub();
+    renderLegend(el, opts);
+    expect(el.innerHTML).not.toContain('data-bucket');
+    expect(el.innerHTML).not.toContain('lg-marks');
+    expect(el.innerHTML).not.toContain('data-weight');
+    expect(prose(el)).not.toContain('Dots mark today\'s stops');
+  });
+
+  it('keeps the surface key itself, switch and figures', () => {
+    const el = stub();
+    renderLegend(el, opts);
+    expect(el.innerHTML).toContain('lg-ramp');
+    expect(el.innerHTML).toContain('data-surface-unit="area"');
+    expect(prose(el)).toContain('km');
+  });
+
+  it('heads it with what is drawn, not with a count of dots', () => {
+    const el = stub();
+    renderLegend(el, opts);
+    expect(prose(el)).not.toContain('locations in view');
+    expect(prose(el)).toContain('a weekday');
+    expect(prose(el)).toContain('400 m walk');
+  });
+
+  it('names the layer once, not in the head and the ramp both', () => {
+    const el = stub();
+    expect(prose(el).match(/Surface/g)).toBeNull();
+    renderLegend(el, opts);
+    expect(prose(el).match(/Surface/g)).toHaveLength(1);
+    expect(prose(el)).toContain('Buses per day, proposed vs today');
+  });
+
+  it('still shows all of it where the dots are drawn too', () => {
+    const el = stub();
+    renderLegend(el, { ...opts, dots: true });
+    expect(el.innerHTML).toContain('data-bucket');
+    expect(el.innerHTML).toContain('lg-ramp');
+    expect(prose(el)).toContain('locations in view');
+  });
+});
+
 describe('the surface key\'s ground/people switch', () => {
   const opts = { layer: LAYER, day: 'weekday' as const, bounds: BOX,
                  weight: 'locations' as const, surface: SURFACE };
@@ -569,6 +620,6 @@ describe('the surface figures under a painted selection', () => {
   it('keeps the ramp, which is a key and still true of what is painted', () => {
     const el = stub();
     renderLegend(el, { ...opts, unit: 'area' });
-    expect(el.innerHTML).toContain('buses per day, proposed vs today');
+    expect(prose(el)).toContain('buses per day, proposed vs today');
   });
 });

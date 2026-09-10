@@ -818,7 +818,7 @@ function renderLegendBody() {
   // legend nor the one-seat legend has one, so the button is hidden rather
   // than left clickable and silently inert.
   $('legend-reset').classList.toggle('hidden',
-    corridorOn() || oneSeatOn() || journeyOn() || placesOn());
+    corridorOn() || oneSeatOn() || journeyOn() || placesOn() || !dotsOn());
   if (journeyOn()) {
     $('legend').innerHTML = journeyKeyHTML(journeyData());
     return;
@@ -856,6 +856,7 @@ function renderLegendBody() {
       east: b.getEast(), north: b.getNorth(),
     },
     weight,
+    dots: dotsOn(),
     surface: surfaceOn() ? surfaceData() : null,
     unit: surfaceUnit,
     population: populationData(),
