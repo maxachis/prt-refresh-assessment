@@ -64,7 +64,7 @@ describe('the stops the plan puts where none stands today', () => {
     // opens said nothing at all, so the reader who went looking for detail
     // found the service change and no mention of the stop.
     const html = serviceBodyHTML(withNewPlaces([true, true, false]), 'weekday');
-    expect(html).toContain('Stops the plan adds where none stands within 150 m');
+    expect(html).toContain('Stops the plan adds');
     expect(html).toContain('2 of 3');
   });
 
@@ -72,14 +72,14 @@ describe('the stops the plan puts where none stands today', () => {
     // A zero here would answer a question the reader did not ask, on the
     // commonest kind of corner there is.
     const html = serviceBodyHTML(withNewPlaces([false, false]), 'weekday');
-    expect(html).not.toContain('Stops the plan adds where none stands within 150 m');
+    expect(html).not.toContain('Stops the plan adds');
   });
 
   it('never asks the question of the stops that run today', () => {
     // One-sided by construction, like boardings: a stop running today stands
     // where a stop stands today.
     const html = serviceBodyHTML(PLACE, 'weekday');
-    expect(html).not.toContain('Stops the plan adds where none stands within 150 m');
+    expect(html).not.toContain('Stops the plan adds');
   });
 });
 

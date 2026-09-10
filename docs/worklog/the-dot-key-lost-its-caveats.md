@@ -3,9 +3,10 @@
 The Stop-by-stop key carried three paragraphs under its rows — what the counts
 measure, why a street the plan adds stops to can have no dot, and what a removed
 stop does not mean. Max had them taken out on 2026-09-10.
-Fixed, awaiting close: the misreading the middle one was written for now has a
-layer instead of a paragraph — the plan's own stops are drawn as poles — and
-the other two are gone with no replacement.
+Fixed, awaiting close: the misreading the middle one was written for cannot
+happen any more — the added-stop mark counts poles rather than locations, so
+there is no street the plan adds a stop to with no mark on it — and the other
+two are gone with no replacement.
 
 > Max's instruction, 2026-09-10: "can you remove the copy for the legend at
 > stop-by-stop", quoting all three paragraphs.
@@ -50,18 +51,25 @@ zeros.
   the map, and `/findings` carries the removal split with all 293 clusters
   ranked.
 - `frontend/change.ts`'s `REMOVED_STOP` docstring and `query.is_new_place` hold
-  the reasoning for the 150 m rule and the cross.
+  the reasoning for the two distances and the cross.
 - Nothing states any of it **on the map, at the moment the reader is looking at
   the mark**, which is what these three did.
 
 ## What replaced the middle one, the same day
 
-Max chose a layer over a sentence: since 2026-09-10 the Stop-by-stop and Both
-views draw every stop the plan runs as a small orange ring from street zoom up
-(`frontend/planstops.ts`), so the 496 poles with no dot of their own are on the
-map whether or not a pin is beside them. It carries no count, for the reason
-the key's other rows do carry one: those count locations, this would count
-poles, and two units in one column invite being added together.
+A layer first, then the rule itself. Max's initial choice was a switchable
+layer drawing every stop the plan runs as a small orange ring; on seeing it he
+asked what "every stop the plan runs" was doing beside "the plan adds a stop
+here", and settled the underlying question instead: *location as we have
+defined it is not relevant to the stop-by-stop view.* The layer came back out
+the same day.
+
+So the mark itself changed unit. "The plan adds a stop here" is now a claim
+about a POLE — an id new to the plan, on a kerb no pole runs on today
+(`query.STOP_SAME_POLE_M`, 25 m, convention 3's renumbering carve-out) — rather
+than about a location with no stop within 150 m. All 481 of the plan's added
+stops draw a mark of their own, at every zoom, with no pin down; the 496 poles
+that had no dot are on the map, and there is no switch to find.
 
 That leaves the first and third paragraphs gone with nothing in their place —
 what the counts measure, which the Locations/Riders switch above them mostly

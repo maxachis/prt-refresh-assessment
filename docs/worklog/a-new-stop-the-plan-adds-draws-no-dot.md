@@ -5,11 +5,12 @@ their own kerb, because a proposed stop earns a dot only where nothing stops
 within 400 m today. Three readers took that bare ground as the plan's new
 service missing from the data.
 
-Fixed, awaiting close. The threshold that decides whether a proposed stop is
-its own place to measure is now 150 m rather than the walk radius, so a dot
-appears at the stop; and since it has no service today to compare against, it
-is drawn hollow and keyed as "the plan adds a stop here" rather than painted in
-a service bucket's colour. Four drawings were tried on 2026-09-08 — a separate
+Fixed, awaiting close. The mark is no longer decided by a distance at all: it
+asks whether the plan adds a POLE, so all 481 of the plan's added stops draw a
+hollow dot keyed as "the plan adds a stop here", with no pin down and at every
+zoom. The 150 m half-measure below narrowed the problem from 400 stops to 496
+poles and did not close it; see **Two more narrowings, and then the unit
+changed** at the bottom. Four drawings were tried on 2026-09-08 — a separate
 blue rings layer, a ring on the coloured dot, a two-row key splitting new
 service from new pole, and the hollow dot — and the first three are described
 below because each failed for a reason worth keeping.
@@ -317,3 +318,46 @@ outright. Nothing on the map distinguishes an inference from an observation,
 and nothing needs to for the access question it answers; anyone using this to
 make a claim about individual poles should know which rung they are standing
 on.
+
+## Two more narrowings, and then the unit changed
+
+Moving the threshold from 400 m to 150 m on 2026-09-08 took the invisible
+stops from 400 to 496 poles (a different denominator: poles rather than the
+521 added ids). It did not stop the reports. Max hit the same bare ground
+three times on the morning of 2026-09-10 — Northview Heights, Millvale,
+Homewood North — each time seeing the plan's stops appear only while a pin was
+down, because until then the only place a proposed pole was drawn without a
+dot of its own was inside a click's walk radius.
+
+The first fix tried was another layer: every stop the plan runs, as a small
+orange ring from street zoom up, switchable from the key. Max asked the
+question that ended it — how is "every stop the plan runs" different from "the
+plan adds a stop here"? — and then settled the underlying one.
+
+> Max, 2026-09-10: "treat 'Stops added' as location-agnostic. Every stop on the
+> map should be displayed, and those that are added should be labeled as 'the
+> plan adds a stop here' and always displayed, regardless of pin. Get rid of
+> 'Every stop the plan runs', which is confusing. Location as we've defined it
+> is not relevant to the stop-by-stop view."
+
+So `query.is_new_place` became a question about a pole: the plan's own stop id
+first, then `STOP_SAME_POLE_M` (25 m) as convention 3's mirror and nothing
+more — PRT renumbers 54 kerbs in place among the 535 ids new to the plan, 9 of
+them within 10 m, and drawing those as additions would credit the plan with a
+stop it is not adding. 481 added stops, and the point universe went from 6,542
+locations to 6,765. No published figure moved: they filter on `published = 1`
+and the weekday buckets at 400 m read 633/298/1420/1583/2113/237 either way.
+
+Two consequences worth keeping. `is_removed_stop` deliberately **stopped
+being the mirror** — it still asks at 150 m, and the asymmetry is what keeps 58
+corners, three of them Downtown PRTX stations, from drawing a cross and an
+added-stop mark at once. And overlapping ground is now routinely counted
+twice by the in-view key, where at 400 m it could not be by construction;
+that was accepted rather than solved.
+
+The shape of the mistake, across all three narrowings: the map's unit of
+analysis was inherited from the coverage question (a location, conventions 1
+and 2) and applied to a view whose subject is the stop itself. Each move of
+the threshold treated a symptom of that mismatch. The one line to flip if the
+carve-out is ever unwanted is `query.STOP_SAME_POLE_M`; at 0 it would draw all
+535.

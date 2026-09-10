@@ -333,48 +333,58 @@ Three decisions worth keeping:
    them. See below — it is the one control here that changes what the numbers
    mean rather than which question is asked.
 
-### Which places get a dot of their own
+### Which stops get a dot of their own
 
-A dot is a location, not a pole, so the map has to decide when a stop the plan
-adds is a *new place to measure* and when it is a second pole at a place
-already on screen. `query.UNIVERSE_DEDUP_M` is that threshold, and it is
-**150 m** — convention 4's strict same-corner test.
+A dot was a location, not a pole, until 2026-09-10, and that is what the map
+got wrong three times in a row. `query.UNIVERSE_DEDUP_M` — 150 m, convention
+4's strict same-corner test — decided whether a stop the plan adds was a *new
+place to measure* or a second pole at a place already on screen. It folded 496
+of the plan's 5,413 poles into a neighbouring dot: their gain landed in that
+dot's colour and their own kerb stayed bare. PPT reported it on Penn Avenue, a
+PRT consultant on the four stops route 34 gains on McMonagle Avenue, and Max
+hit it at Northview Heights, Millvale and Homewood in one morning.
 
-Until 2026-09-08 it was 400 m, silently, because the rule had been written with
-the access radius and the two had never been argued apart. Access asks how far
-a rider will walk; identity asks whether a pole is its own place. At 400 m,
-400 of the 521 stops the plan adds were folded into a neighbouring location, so
-a street gaining its first ever stop could carry no mark at all. Three readers
-reported that as the plan's gain missing from the data — PPT on Penn Avenue,
-then a PRT consultant on the four stops route 34 gains on McMonagle Avenue,
-which are 29 to 393 m from the stops on Banksville Road, against the pair on
-Forsythe Road 685 m out which did draw dots.
+**Max's ruling: location is not this view's unit.** "Every stop on the map
+should be displayed, and those that are added should be labeled as 'the plan
+adds a stop here' and always displayed, regardless of pin." So the question
+`query.is_new_place` asks is about a POLE, and it is asked in two steps:
 
-At 150 m the point set is 6,542 locations: the 6,284 `coverage_change.csv`
-publishes plus 258 the proposed network serves with no pole of their own today.
-Four things follow.
+1. **PRT's own stop id.** Keeping an id is the agency saying "this is that
+   stop", which outranks any distance. 20918 (Churchill Rd + Holland) moved
+   152 m and 18627 (Hwy Rt 286 + Royal Oak Dr, now Old Frankstown Rd) moved
+   178 m; both are relocations, not additions.
+2. **`query.STOP_SAME_POLE_M`, 25 m** — and this is convention 3's mirror and
+   nothing more. A vanished id is not a lost bus; an appearing id is not a new
+   bus. PRT renumbers 54 kerbs in place among the 535 ids new to the plan, 9 of
+   them within 10 m, and drawing those as additions would credit the plan with
+   a stop it is not adding.
+
+That leaves **481** stops the plan adds, and the point set is **6,765**
+locations: the 6,284 `coverage_change.csv` publishes plus those 481. Four
+things follow.
 
 - **No published figure moves.** Published counts filter on `published = 1` and
   every point this governs is `published = 0`. The weekday buckets at 400 m
   read 633 gone, 298 halved, 1420 less, 1583 same, 2113 more, 237 doubled
   before and after.
-- **PRT's own stop id outranks the distance.** A pole PRT moved down the block
-  keeps its id, and 150 m is only a guess about when two coordinates are the
-  same corner — so where they disagree the id wins (`query.is_new_place`). Two
-  stops disagree, both relocations: 20918 (Churchill Rd + Holland) at 152 m and
-  18627 (Hwy Rt 286 + Royal Oak Dr, now Old Frankstown Rd) at 178 m. Drawn as
-  new places they would say the plan adds a stop where it moves one.
+- **It is no longer the mirror of `is_removed_stop`, on purpose.** A stop the
+  plan takes away is still only crossed when the plan serves nothing within
+  `UNIVERSE_DEDUP_M` of it. Symmetric thresholds would put 58 corners in the
+  position of drawing a red cross and an added-stop mark at once — three of
+  them Downtown PRTX stations whose replacement stands two metres off — and
+  `tests/test_query.py` pins the pair apart.
 - **An unpublished point is not a gain.** It says the plan puts a stop where no
   stop stands. What happens to the buses there is a different question, and at
-  400 m on a weekday 137 of the 258 would land in `more`, `same`, `less` or
-  `halved` rather than `new`, 14 of them where the plan is thinning service.
-  Reading the set as the plan's gains would be wrong, and
+  400 m on a weekday 297 of the 481 land in `more`, `same`, `less` or `halved`
+  rather than `new`, 66 of them where the plan is thinning service. Reading the
+  set as the plan's gains would be wrong, and
   `tests/test_query.py::test_new_coverage_points_are_not_all_a_gain` pins it.
-- **Overlapping ground can now be counted twice.** At 400 m a new-coverage
-  point could not fall inside a published point's circle; at 150 m it can, so
-  the in-view key may count the same ground under two identities. That cost was
-  weighed against the invisibility and accepted — Max, 2026-09-08. It is the
-  reason the threshold is a named constant with the trade written beside it.
+- **Overlapping ground is counted twice.** At 400 m a new-coverage point could
+  not fall inside a published point's circle; at 25 m a great many do, so the
+  in-view key may count the same ground under two identities. That cost was
+  weighed against the invisibility and accepted — Max, 2026-09-08 and again on
+  2026-09-10. It is why the threshold is a named constant with the trade
+  written beside it.
 
 **And the map says which dots those are: they are drawn hollow.** A filled dot
 is a stop that stands today; an unfilled one, ink outline and no centre, is a
@@ -396,8 +406,7 @@ out of `countIn`, out of `sumRidersIn`, counted in its own row.
 The cost is stated rather than hidden: those dots no longer show what happens
 to the buses within a walk of them, including the 14 weekday places the plan is
 thinning. Streets and the answer panel still carry that, and the panel prints
-"Stops the plan adds where none stands within 150 m" for the poles inside one
-walk radius.
+"Stops the plan adds" for the poles inside one walk radius.
 
 **Hollow rather than an eighth colour, because the palette is full.** That was
 the intent and it does not survive measurement. Searching the colours inside
@@ -418,45 +427,20 @@ nested inside the `new` bucket's "new service" — two categories both called
 new. "No stop within 150 m today" was accurate and still collided with the
 colour beside it, which is what forced the colour out rather than the words.
 
-The identity radius is fixed at 150 m whatever walk radius is asked for. The
-point set has to describe the same places at 400 m and 150 m or the two stop
-being comparable; selecting at whatever radius was asked for would fill the
-strict view with new-service dots that are the smaller circle's artefact. See
+The distance is fixed whatever walk radius is asked for. The point set has to
+describe the same places at 400 m and 150 m or the two stop being comparable;
+selecting at whatever radius was asked for would fill the strict view with
+new-service dots that are the smaller circle's artefact. See
 `docs/worklog/a-new-stop-the-plan-adds-draws-no-dot.md`.
-
-### The plan's own stops, as poles rather than as locations
-
-The dot layer answers a question about locations, so it cannot answer one about
-poles, and 496 of the plan's 5,413 stops fall in the gap: a stop the plan adds
-within 150 m of one that runs today is not a location of its own, so its gain
-lands in the colour of the neighbouring dot and its own kerb stays bare. That
-reads as an omission. PPT and PRT each reported it as the plan's stops missing
-from the data, and Max hit it three times in one morning at Northview Heights,
-Millvale and Homewood before it got a layer.
-
-Since 2026-09-10 the Stop-by-stop and Both views draw **every stop the plan
-runs** as a small orange ring — `frontend/planstops.ts`, off `/api/stops/all`,
-switched from the key's own row and carried in a link as `plan=0`/`plan=1`.
-Three rules keep it from being read as a measure.
-
-- **It is a ring, never a filled dot**, in the same orange the pin's marks use
-  for a proposed stop, so a reader meets one mark rather than two.
-- **It counts nothing.** No row carries a number for it. The rows above count
-  locations; this would count poles, and two units in one column invite being
-  added together (conventions 1 and 2).
-- **It waits for street zoom** (`planstops.MIN_ZOOM`, z14). 5,413 rings over
-  the county is a smear, and "does the plan put a stop on this street" is a
-  street-level question. The key says "zoom in" while the map is too far out,
-  because a switch that changes nothing on screen reads as a broken one.
 
 ### The stop the plan takes away: a red cross
 
 The mirror of the hollow ring, and the second half of what makes the view
 stop-by-stop rather than a field of walk-radius colour. A dot wearing a red X
 is a stop the plan removes: the id is retired and no proposed stop stands
-within 150 m of it — `query.is_removed_stop`, the exact mirror of
-`is_new_place`, same order of tests and the same `UNIVERSE_DEDUP_M`. So a kerb
-PRT renumbers can never draw a cross and a ring at once, and
+within 150 m of it — `query.is_removed_stop`, the same shape as `is_new_place`
+but a wider distance since 2026-09-10. The asymmetry is what keeps a kerb PRT
+renumbers from drawing a cross and an added-stop mark at once, and
 `tests/test_query.py` pins the three Downtown PRTX stations that would
 otherwise have stacked both marks 2–3 m apart.
 

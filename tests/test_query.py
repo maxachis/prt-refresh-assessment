@@ -322,13 +322,14 @@ def test_change_points_are_the_same_set_at_both_radii(con):
 def test_unpublished_points_have_no_stop_of_their_own_today(con):
     """What an unpublished point claims, stated as the rule that builds it.
 
-    It claims the plan puts a stop where no stop stands within
-    UNIVERSE_DEDUP_M -- an identity test. It does NOT claim the ground is
-    newly served: until 2026-09-08 the two were the same assertion, because
-    the identity radius was the access radius, and this test asserted
-    `cur_trips == 0`. It cannot any more, and that is the point of the change
-    rather than a regression in it. A point 200 m from a busy stop is a real
-    new pole on ground that already has a bus, and the bucket says so.
+    It claims the plan puts a stop on a kerb no stop stands on -- no current
+    pole within `STOP_SAME_POLE_M`, convention 3's renumbering carve-out. It
+    does NOT claim the ground is newly served: until 2026-09-08 the two were
+    the same assertion, because the distance was the access radius, and this
+    test asserted `cur_trips == 0`. It cannot any more, and that is the point
+    of the change rather than a regression in it. A point 30 m from a busy
+    stop is a real new pole on ground that already has a bus, and the bucket
+    says so.
     """
     rows = con.execute(
         "SELECT lat, lon FROM change WHERE published = 0 AND radius = ? "
@@ -336,7 +337,7 @@ def test_unpublished_points_have_no_stop_of_their_own_today(con):
     assert rows, "no new-coverage points at all -- change_points() found none"
     for r in rows:
         assert not query.stops_within(con, r["lat"], r["lon"],
-                                      query.UNIVERSE_DEDUP_M, "current")
+                                      query.STOP_SAME_POLE_M, "current")
 
 
 def test_a_stop_prt_kept_the_id_of_is_never_a_new_place(con):
@@ -662,18 +663,21 @@ def test_change_layer_carries_the_point_id(con):
 def test_the_identity_radius_is_not_the_access_radius(con):
     """Two different questions, and they stopped sharing a number on 2026-09-08.
 
-    Access asks how far a rider will walk; identity asks whether a proposed
-    pole is its own place to measure. The identity radius is the strict
-    same-corner distance, and it must stay independent of the walk radius the
-    caller asks for -- a point set that moved with the radius would stop
-    describing the same places at 400 m and 150 m.
+    Access asks how far a rider will walk; the mark asks whether the plan is
+    adding a stop here. Whatever distance settles the second, it must stay
+    independent of the walk radius the caller asks for -- a point set that
+    moved with the radius would stop describing the same places at 400 m and
+    150 m.
 
-    The direction of the inequality is the fix itself: widening identity back
-    to the access radius drops points, and those are the 139 stops that drew
-    no mark at all.
+    Since 2026-09-10 the distance is `STOP_SAME_POLE_M`, 25 m, and it is no
+    longer an identity radius at all: it is convention 3's mirror, the
+    renumbered-kerb carve-out, because Max ruled that location is not the
+    stop-by-stop view's unit. `UNIVERSE_DEDUP_M` survives as the distance
+    `is_removed_stop` asks at, and the two must not be re-merged -- see that
+    function's docstring for the 58 corners that would draw two marks.
     """
-    assert query.UNIVERSE_DEDUP_M == 150
-    assert query.UNIVERSE_DEDUP_M != query.PRIMARY_RADIUS
+    assert query.STOP_SAME_POLE_M == 25
+    assert query.STOP_SAME_POLE_M != query.PRIMARY_RADIUS
 
     ids = {p[0] for p in query.change_points(con)}
     at_400 = {p[0] for p in query.change_points(con, dedup=query.PRIMARY_RADIUS)}
@@ -688,11 +692,12 @@ def test_the_identity_radius_is_not_the_access_radius(con):
 
 
 def test_the_panel_says_which_proposed_stops_stand_where_none_stands_today(con):
-    """The ring is on the map; the panel that explains a dot has to know it too.
+    """The mark is on the map; the panel that explains a dot has to know it too.
 
-    Same rule and same constant as the point universe -- no current stop within
-    `UNIVERSE_DEDUP_M` -- so the panel cannot say a stop is new while the map
-    draws it as an infill of an existing one, or the reverse.
+    Same rule and same constant as the point universe -- the plan's own id,
+    then no current pole within `STOP_SAME_POLE_M` -- so the panel cannot say a
+    stop is new while the map draws it as an infill of an existing one, or the
+    reverse.
     """
     # Millvale's Grant Avenue: today's buses pass on East Ohio Street and
     # Evergreen Avenue, and the plan runs them up Grant itself.
@@ -705,37 +710,12 @@ def test_the_panel_says_which_proposed_stops_stand_where_none_stands_today(con):
 
     for s in proposed:
         near = query.stops_within(
-            con, s["lat"], s["lon"], query.UNIVERSE_DEDUP_M, "current")
+            con, s["lat"], s["lon"], query.STOP_SAME_POLE_M, "current")
         assert s["new_place"] is (not near)
 
     # One-sided, like boardings: a stop that runs today stands where a stop
     # stands today, so the question is not asked of that side.
     assert all("new_place" not in s for s in at["current"]["stops"])
-
-
-def test_every_stop_the_plan_runs_can_be_drawn_without_a_pin(con):
-    """The map needs the plan's poles as a layer, not only around a click.
-
-    The dot layer draws one dot per LOCATION, so a stop the plan adds within
-    150 m of one that exists today earns no dot: its gain lands in the colour
-    of the neighbouring dot and its own kerb stays bare. Two readers took that
-    for the plan's stops missing from the data. Answering it needs the poles
-    themselves, which is a different question from the dots' and gets its own
-    query.
-    """
-    stops = query.plan_stops(con)
-    assert len(stops) == 5413, "every stop in the proposed feed, not a subset"
-
-    by_id = {s[2]: s for s in stops}
-    # Homewood Avenue: the plan adds a pole at Idlewild, 48 m from the one it
-    # keeps at Frankstown FS -- one of the stops with no dot of its own.
-    lat, lon, sid, name = by_id["20045"]
-    assert name == "HOMEWOOD AVE + IDLEWILD"
-    assert (round(lat, 4), round(lon, 4)) == (40.4581, -79.8960)
-
-    # Today's side is the same question asked of the other feed, and the two
-    # must not be muddled: the count differs.
-    assert len(query.plan_stops(con, "current")) == 6284
 
 
 def test_the_panel_says_how_far_the_plan_moves_a_pole_it_keeps(con):

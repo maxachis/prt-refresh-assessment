@@ -225,50 +225,6 @@ describe('renderLegend', () => {
   // does not mean -- came out on Max's instruction on 2026-09-10: the key is
   // a key, and three paragraphs under it were not being read.
   // docs/worklog/the-dot-key-lost-its-caveats.md carries what they said.
-  // The plan's poles are a layer of their own, and the key is where a reader
-  // meets the mark. It carries no number: a pole count beside a location
-  // count invites adding them, and they are different units.
-  it('keys the plan\'s stops as a switch with no count', () => {
-    const el = stub();
-    renderLegend(el, { layer: LAYER, day: 'weekday', bounds: BOX,
-                       weight: 'locations', planStops: true, zoom: 15 });
-    expect(el.innerHTML).toContain('data-planstops');
-    expect(el.innerHTML).toMatch(/data-planstops[^>]*aria-pressed="true"/);
-    expect(prose(el)).toContain('every stop the plan runs');
-    expect(el.innerHTML).not.toMatch(/data-planstops[\s\S]*?lg-n">[\d,]+</);
-  });
-
-  it('shows the switch off when the layer is', () => {
-    const el = stub();
-    renderLegend(el, { layer: LAYER, day: 'weekday', bounds: BOX,
-                       weight: 'locations', planStops: false, zoom: 15 });
-    expect(el.innerHTML).toMatch(/data-planstops[^>]*aria-pressed="false"/);
-  });
-
-  // The layer only paints from street zoom, so switching it on over the whole
-  // county changes nothing on screen -- which reads as a broken switch.
-  it('says to zoom in when the map is too far out for the layer', () => {
-    const el = stub();
-    renderLegend(el, { layer: LAYER, day: 'weekday', bounds: BOX,
-                       weight: 'locations', planStops: true, zoom: 12 });
-    expect(prose(el)).toContain('zoom in');
-  });
-
-  it('says nothing about zoom once the layer paints', () => {
-    const el = stub();
-    renderLegend(el, { layer: LAYER, day: 'weekday', bounds: BOX,
-                       weight: 'locations', planStops: true, zoom: 16 });
-    expect(prose(el)).not.toContain('zoom in');
-  });
-
-  it('leaves the switch out of the Surface key, which draws no stops', () => {
-    const el = stub();
-    renderLegend(el, { layer: LAYER, day: 'weekday', bounds: BOX,
-                       weight: 'locations', surface: SURFACE, dots: false,
-                       planStops: true, zoom: 16 });
-    expect(el.innerHTML).not.toContain('data-planstops');
-  });
-
   it('carries no explanatory paragraphs under the rows', () => {
     const el = stub();
     renderLegend(el, {

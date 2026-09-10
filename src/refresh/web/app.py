@@ -308,18 +308,6 @@ def create_app(db_path: str | Path = "data/refresh.db") -> FastAPI:
                  "metres": round(s[4])}
                 for s in query.stops_within(con, lat, lon, radius, side)]
 
-    @app.get("/api/stops/all")
-    def api_all_stops(
-        side: str = Query("proposed", pattern="^(current|proposed)$"),
-    ):
-        """Every pole one feed runs, for the map's plan-stops layer.
-
-        Unlike `/api/stops` this takes no point: the layer is drawn across the
-        whole map, not inside one walk radius. See `query.plan_stops` for why
-        the poles are a separate question from the dots.
-        """
-        return query.plan_stops(con, side)
-
     @app.get("/api/routes")
     def api_routes(side: str = Query("current", pattern="^(current|proposed)$")):
         return query.routes(con, side)

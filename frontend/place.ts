@@ -56,9 +56,9 @@ export function renderEmpty(el: HTMLElement) {
          by what the plan does to the buses within a short walk. Each dot says
          one thing: either the plan takes this stop away — a red cross, on
          every day of the week — or the stop stays and the colour tells you
-         what the buses near it do. A hollow ring is a place the plan puts a
-         stop where none stands today. To see what a crossed-out stop leaves
-         behind, read the dots around it. Its key counts
+         what the buses near it do. A hollow ring is a stop the plan adds,
+         drawn wherever the plan adds it. To see what a crossed-out stop
+         leaves behind, read the dots around it. Its key counts
          those places, or — on the Riders setting — the boardings PRT records
          at them, which is the same map read as who is affected rather than
          where. Boardings exist only where a bus stops today, so that reading
@@ -378,10 +378,12 @@ export function serviceSummaryText(p: PlaceResult, d: Day): string {
 function newPlacesFact(stops: StopRef[]): string {
   const n = stops.filter((s) => s.new_place).length;
   if (!n) return '';
-  // The threshold rides in the label, not in a trailing clause: "8 of 10
-  // within 150 m of them" parses just as easily as "8 of the 10 are within
-  // 150 m", which is the opposite of what it says.
-  return `<dt>Stops the plan adds where none stands within 150 m</dt>
+  // No distance in the label since 2026-09-10. The question is about a pole,
+  // not a location: a stop the plan adds is one the plan adds, wherever it
+  // stands relative to the kerb up the block. The only carve-out left is a
+  // renumbered kerb (`query.STOP_SAME_POLE_M`), which is convention 3 rather
+  // than a threshold a reader has to hold in their head.
+  return `<dt>Stops the plan adds</dt>
     <dd>${n} of ${stops.length}</dd>`;
 }
 

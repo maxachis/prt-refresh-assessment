@@ -121,6 +121,24 @@ PRIMARY_RADIUS = 400
 # buckets at 400 m read 633/298/1420/1583/2113/237 either way.
 UNIVERSE_DEDUP_M = 150
 
+# How close a pole that runs today has to be before a stop the plan gives a new
+# id to is that same kerb renumbered rather than a stop the plan adds.
+#
+# THIS IS NOT THE IDENTITY RADIUS ABOVE, and since 2026-09-10 the two answer
+# different questions on purpose. `UNIVERSE_DEDUP_M` asks whether a pole is its
+# own LOCATION -- whether the service around it is worth measuring separately --
+# which is the right question for the walk-access readings the dots carry and
+# the wrong one for the marks. Max's ruling: "location as we've defined it is
+# not relevant to the stop-by-stop view", so a stop the plan adds is drawn
+# wherever the plan adds it, beside the stop it stands near.
+#
+# What survives of the distance test is only convention 3's mirror: a stop id
+# that vanishes is not a lost bus, and an id that appears is not a new bus.
+# PRT renumbers kerbs in place, and 54 of the 535 ids new to the plan stand
+# within 25 m of a pole that runs today -- 9 of them within 10 m. Drawing those
+# as stops the plan adds would credit the plan with a stop it is not adding.
+STOP_SAME_POLE_M = 25.0
+
 # How far the plan has to move a pole it keeps before the map says so.
 #
 # Not an identity threshold -- identity is settled above, and by the stop id
@@ -380,16 +398,33 @@ def stop_boardings(con, stop_ids, day: str):
 
 
 def is_new_place(con, stop_id: str, lat: float, lon: float,
-                 dedup: float = UNIVERSE_DEDUP_M) -> bool:
+                 dedup: float = STOP_SAME_POLE_M) -> bool:
     """Does the plan put a stop here where none stands today?
+
+    A question about a POLE, not about a location, and until 2026-09-10 it was
+    asked as though it were about a location: any stop within 150 m made the
+    plan's new pole an infill of its neighbour, so it earned no mark and its
+    gain landed in the colour of the dot up the block. 496 of the plan's 5,413
+    poles were invisible that way, and three readers -- PPT, a PRT consultant
+    and Max -- each reported the bare ground as the plan's stops missing from
+    the data. Max settled it: the stop-by-stop view draws stops, so a stop the
+    plan adds is drawn wherever the plan adds it.
 
     Two rules, in this order, and the order is the point. PRT keeping a stop's
     id is the agency saying "this is that stop", which outranks any distance
     threshold: 20918 (Churchill Rd + Holland) moved 152 m and 18627 (Hwy Rt 286
     + Royal Oak Dr, now Old Frankstown Rd) moved 178 m, and both are poles
     relocated down the block rather than stops the plan adds. Failing that, the
-    question is whether any stop stands within `UNIVERSE_DEDUP_M` -- an
-    identity test, deliberately not the walk radius (see that constant).
+    question is whether a pole already stands on this kerb -- `STOP_SAME_POLE_M`,
+    which is convention 3's mirror and nothing more: PRT renumbers a kerb in
+    place 54 times, and those are not stops the plan adds.
+
+    NO LONGER THE MIRROR OF `is_removed_stop`, which still asks at 150 m, and
+    the asymmetry is deliberate. A stop the plan takes away is only crossed
+    when the plan serves nothing within 150 m of it, so a pole the plan
+    renumbers or shifts down the block keeps its dot rather than being crossed
+    -- which means no corner can show a cross and an added stop at once, the
+    collision the old mirror existed to prevent.
 
     One predicate because the map's point set and the answer panel's flag both
     ask it. Two implementations of one threshold would let the panel call a
@@ -406,12 +441,15 @@ def is_removed_stop(con, stop_id: str, lat: float, lon: float,
                     dedup: float = UNIVERSE_DEDUP_M) -> bool:
     """Does the plan take this stop away, or only reissue its number?
 
-    The exact mirror of `is_new_place`, in the same order and on the same
-    constant, and it has to stay one. Where the two thresholds diverge a
-    renumbered kerb draws a red X and a hollow ring at once -- "the plan takes
-    this stop away" and "the plan adds a stop here" -- and 58 corners are in
-    exactly that position, three of them Downtown PRTX stations whose
-    replacement stands two metres off. `tests/test_query.py` pins the pair.
+    The same shape as `is_new_place` -- the id first, then a distance -- but
+    NOT the same distance, and since 2026-09-10 not the mirror it used to be.
+    This one still asks at `UNIVERSE_DEDUP_M`; the other asks at 25 m. The
+    asymmetry is what keeps a renumbered kerb from drawing a red X and a
+    hollow ring at once -- "the plan takes this stop away" and "the plan adds
+    a stop here" on the same corner. Widening this one to 25 m instead, or
+    narrowing that one back to 150 m, would put 58 corners in exactly that
+    position, three of them Downtown PRTX stations whose replacement stands
+    two metres off. `tests/test_query.py` pins the pair.
 
     WHY THIS IS NOT THE SAME QUESTION AS THE COLOUR UNDER IT. `bucket()` asks
     what happens to the buses within a walk of here; this asks whether the
@@ -437,27 +475,6 @@ def is_removed_stop(con, stop_id: str, lat: float, lon: float,
                    "AND stop_id = ? LIMIT 1", (stop_id,)).fetchone():
         return False
     return not stops_within(con, lat, lon, dedup, "proposed")
-
-
-def plan_stops(con, side: str = "proposed"):
-    """Every pole one feed runs, for the map to draw without a pin down.
-
-    A different unit from the dots, and that is the point. The dot layer is
-    one dot per LOCATION (`change_points`): a stop the plan adds within
-    `UNIVERSE_DEDUP_M` of one that runs today is not its own location, so its
-    gain lands in the colour of the neighbouring dot and its own kerb stays
-    bare. 496 of the plan's 5,413 poles are in that position, and twice a
-    reader has taken the bare ground for the plan's stops missing from the
-    data. This answers the pole question directly, so the map can draw it
-    beside the dots rather than only inside a click's walk radius.
-
-    Rows are [lat, lon, stop_id, name] rather than dicts: the whole feed goes
-    over the wire at once, and the names are already most of its weight.
-    """
-    return [[r["lat"], r["lon"], r["stop_id"], r["name"]]
-            for r in con.execute(
-                "SELECT lat, lon, stop_id, name FROM stops WHERE side = ? "
-                "ORDER BY stop_id", (side,))]
 
 
 def moved_pole(con, stop_id: str, lat: float, lon: float,
@@ -682,7 +699,7 @@ def bucket(cur: float, prop: float) -> str:
 
 
 def change_points(con, radius: float = PRIMARY_RADIUS, *,
-                  dedup: float = UNIVERSE_DEDUP_M):
+                  dedup: float = STOP_SAME_POLE_M):
     """The locations the citywide layer paints: (point_id, lat, lon, published).
 
     Two sets, and the distinction is carried through to the client rather than
@@ -694,27 +711,27 @@ def change_points(con, radius: float = PRIMARY_RADIUS, *,
     boardings are unknown rather than zero). Counts over this set are the
     published counts, which is the point of keeping it identifiable.
 
-    The rest are places the proposed network serves with no stop of their own
-    today, `UNIVERSE_DEDUP_M` deciding what "of their own" means. That
-    denominator cannot see them -- it can only measure change where a bus stops
+    The rest are the 481 poles the plan adds -- an id new to the plan, standing
+    on a kerb no pole runs on today, `STOP_SAME_POLE_M` deciding what counts as
+    the same kerb. That denominator cannot see them -- it can only measure change where a bus stops
     now -- so on the published set alone every genuinely new piece of coverage
     is invisible, and a map that can only draw losses in the places the plan
     adds service is not an honest one.
 
     An unpublished point is NOT a claim that the ground is newly served. It is
     a claim that the plan puts a stop somewhere no stop stands, and what
-    actually changes there is a separate question: at 400 m on a weekday 137 of
-    the 258 would fall in "more", "same", "less" or "halved" rather than "new",
-    and 14 of them are on corridors the plan is thinning. Reading the set as a
+    actually changes there is a separate question: at 400 m on a weekday 297 of
+    the 481 would fall in "more", "same", "less" or "halved" rather than "new",
+    and 66 of them are on corridors the plan is thinning. Reading the set as a
     gain would be wrong. Since 2026-09-08 the map does not paint them in a
     bucket's colour at all -- it draws them hollow -- because a dot reading
     "doubled or better" AND "the plan adds a stop here" reads as a
     contradiction rather than as two answers; the bucket is still computed and
     still in this table, and the answer panel still reports it.
 
-    Note they are selected at UNIVERSE_DEDUP_M whatever radius is asked for.
+    Note they are selected at STOP_SAME_POLE_M whatever radius is asked for.
     The point set has to be the same at 400 m and 150 m or the two radii stop
-    describing the same places, and a fixed identity radius is what keeps them
+    describing the same places, and a fixed distance is what keeps them
     comparable -- selecting at whatever radius was asked for would fill the
     strict view with new-service dots that are the smaller circle's artefact
     rather than the plan's doing.
@@ -732,7 +749,7 @@ def change_points(con, radius: float = PRIMARY_RADIUS, *,
 
 
 def compute_change(con, radius: float = PRIMARY_RADIUS, *,
-                   dedup: float = UNIVERSE_DEDUP_M):
+                   dedup: float = STOP_SAME_POLE_M):
     """Rows for the `change` table: every point, every day type, at one radius.
 
     This is the same measurement `place()` makes when a reader clicks, run

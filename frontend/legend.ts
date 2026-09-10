@@ -34,7 +34,6 @@ import {
   STATUS_STYLE, STATUS_ORDER, countInBounds as countOneSeatInBounds,
   destinationLabel, ANY_DAY,
 } from './oneseat';
-import { MIN_ZOOM as PLAN_STOPS_MIN_ZOOM } from './planstops';
 
 const DAY_WORD: Record<Day, string> = {
   weekday: 'a weekday',
@@ -453,8 +452,8 @@ function riderFoot(unmeasured: number, newPlaces: number) {
  * adds. It survives every colour deficiency because it is not a colour.
  *
  * WHAT THE ROW GIVES UP. These dots no longer report what happens to the
- * buses within a walk of them, and for 137 of the weekday 258 at 400 m that
- * was a real reading: 14 sit where the plan is ALSO thinning service, Mt Royal
+ * buses within a walk of them, and for 297 of the weekday 481 at 400 m that
+ * was a real reading: 66 sit where the plan is ALSO thinning service, Mt Royal
  * Blvd opposite Ebonhurst Manor going from 42 buses within a quarter mile to
  * 10. The trade is that the reading was never legible while it contradicted
  * the mark beside it. Streets and the answer panel still carry it.
@@ -469,9 +468,15 @@ function riderFoot(unmeasured: number, newPlaces: number) {
  * The row is dropped when the scope holds none, and unlike the bucket rows
  * above it does not stay at zero: a reader cannot tell "does not happen here"
  * from "cannot happen here" for a category that has no counterfactual, and an
- * empty row would invite the first reading. At the 150 m walk setting these
- * are also every dot in the `new` bucket, because there "no bus nearby" and
- * "no pole nearby" are the same sentence.
+ * empty row would invite the first reading.
+ *
+ * EVERY STOP THE PLAN ADDS IS ON THIS ROW, at every zoom, with no pin down.
+ * Until 2026-09-10 the mark was a claim about a LOCATION -- no stop within
+ * 150 m -- which left 496 of the plan's poles with no mark of their own, and
+ * three readers reported the bare kerb as the plan's stops missing from the
+ * data. Max settled it: location is not this view's unit, so the row now
+ * counts poles the plan adds (`query.STOP_SAME_POLE_M`), 481 of them, and the
+ * only stop it still refuses to count is a kerb PRT renumbered in place.
  */
 function newPlaceRow(n: number) {
   if (!n) return '';
@@ -530,30 +535,6 @@ function removedRow(n: number, cell: string) {
  * The heading appears only when at least one of the two marks is in scope, and
  * each row drops out on its own when its own count is zero.
  */
-/**
- * The switch for the plan's own stops, drawn as poles beside the dots.
- *
- * A key row, because that is where a reader meets an unfamiliar mark, and a
- * switch, because 5,413 rings is a lot of ink to have no way out of. It
- * carries NO COUNT, unlike every other row here: those count locations, this
- * would count poles, and two units in one column invite being added together.
- *
- * The zoom hint is not decoration. The layer paints from `planstops.MIN_ZOOM`,
- * so switching it on over the whole county changes nothing on screen — a
- * reader who tries it there has been shown a broken switch and has no way to
- * know otherwise.
- */
-function planStopsRow(on: boolean, zoom: number | undefined) {
-  const tooFar = zoom != null && zoom < PLAN_STOPS_MIN_ZOOM;
-  return `
-    <button class="lg-row ${on ? '' : 'off'}" data-planstops
-            aria-pressed="${on}">
-      <i class="lg-plan"></i>
-      <span class="lg-lab">every stop the plan runs</span>
-      ${on && tooFar ? '<span class="lg-n muted">zoom in</span>' : ''}
-    </button>`;
-}
-
 function marksBlock(newPlaces: number, removed: number, removedCell: string) {
   if (!newPlaces && !removed) return '';
   return `
@@ -596,16 +577,12 @@ export interface LegendOptions {
    * window on a laptop screen.
    */
   dots?: boolean;
-  /** Whether the plan's own stops are drawn over the dots. */
-  planStops?: boolean;
-  /** The map's zoom, for the plan-stops row's "zoom in" hint. */
-  zoom?: number;
 }
 
 export function renderLegend(el: HTMLElement, opts: LegendOptions) {
   const {
     layer, day, bounds, weight, surface, unit = 'area', population, selection,
-    dots = true, planStops = false, zoom,
+    dots = true,
   } = opts;
   const keys = layer.buckets.map((b) => b.key);
   const dayIndex = layer.days.indexOf(day);
@@ -693,7 +670,6 @@ export function renderLegend(el: HTMLElement, opts: LegendOptions) {
         <span class="lg-n">${cell(b.key)}</span>
       </button>`).join('')}
     ${marksBlock(newPlaces, removed, removedCell)}
-    ${planStopsRow(planStops, zoom)}
     ${surface ? surfaceKey({
       layer: surface, day, bounds, unit, population, scoped: !!painted,
     }) : ''}
