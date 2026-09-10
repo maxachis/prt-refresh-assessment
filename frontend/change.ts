@@ -32,8 +32,8 @@
  *    invisible, so the day control governs this layer and not just the panel.
  */
 import {
-  ChangeLayer, ChangePoint, Day, DAYS, BUCKET, CUR, NAME, PROP, PUBLISHED,
-  REMOVED,
+  ChangeLayer, ChangePoint, Day, DAYS, BUCKET, NAME, PUBLISHED, REMOVED,
+  STOP_CUR, STOP_PROP,
   field, riders, pointId,
 } from './types';
 import { fetchJSONOnce } from './utils';
@@ -560,8 +560,9 @@ export function toGeoJSON(layer: ChangeLayer) {
           nearestStraight: layer.replacement?.[pointId(p)]?.[1] ?? null,
           ...Object.fromEntries(DAYS.flatMap((_d, i) => [
             [`b${i}`, keys[field(p, BUCKET(i))]],
-            [`c${i}`, p[CUR(i)]],
-            [`p${i}`, p[PROP(i)]],
+            // The pole's own trips, not the walk radius's — see types.ts.
+            [`sc${i}`, p[STOP_CUR(i)]],
+            [`sp${i}`, p[STOP_PROP(i)]],
           ])),
         },
       })),
@@ -763,7 +764,14 @@ function poleLine(props: any): string {
 }
 
 /**
- * Hover text for one dot. Trips both sides, never a bare delta.
+ * Hover text for one dot: the pole, then its own buses, then the ground nearby.
+ *
+ * Trips both sides, never a bare delta — and since 2026-09-10 they are the
+ * trips at THIS POLE. Stop-by-stop is the view about stops; the walk radius is
+ * what the Surface view and the answer panel are for, and printing its counts
+ * here told a reader hovering a downtown dot that 1,591 buses served it on a
+ * weekday. What the radius still says under the cursor is the bucket, one line
+ * down, scoped by the word "nearby".
  *
  * `pole: false` suppresses the pole heading, and exists for one caller: the
  * marks a pin drops name the pole themselves and print this beneath their own
@@ -774,25 +782,28 @@ export function dotLabel(props: any, day: Day,
                          { pole = true }: { pole?: boolean } = {}) {
   const i = DAYS.indexOf(day);
   const key = props[`b${i}`];
-  // A new place is not in a bucket on screen, so it does not report one here
-  // either -- the tooltip was the last place the old contradiction survived.
-  // The trips still follow, because they are true and they are the walk
-  // radius's answer, which the second line says out loud.
   // Neither a new place nor a removed stop is drawn in a bucket, so neither
-  // reports one here: the tooltip was the last place the old contradiction
-  // survived. What both still report is the walk radius's own answer, which
-  // is true of the ground either way -- and at a removed stop the removal is
-  // the headline, so `removedLine` supplies the first line by itself.
+  // reports one here: the tooltip was the last place that contradiction
+  // survived. Both still report their pole's own buses, which is true of the
+  // kerb either way -- at a removed stop that reads "37 -> 0 at this stop",
+  // under the removal sentence `removedLine` supplies.
   const gone = props.removed === 1;
+  // `nearby` is the whole of what is left of the walk radius in this tooltip,
+  // and it is not decoration. The colour is the radius's answer and the number
+  // above it is the pole's, and the two point opposite ways on 1,277 of the
+  // 6,284 dots — a pole losing trips on a corridor the plan is strengthening,
+  // which is two true sentences about one corner (`is_removed_stop` says the
+  // same of its cross). Unscoped, the label reads as the map contradicting
+  // itself. A pole the plan adds is exempt: its label is a sentence about the
+  // pole, so the scope word would attach to the wrong noun.
   const label = props.published === 0
     ? 'the plan adds a stop here'
-    : buckets.find((b) => b.key === key)?.label ?? key;
-  const cur = props[`c${i}`], prop = props[`p${i}`];
+    : `${buckets.find((b) => b.key === key)?.label ?? key} nearby`;
+  const cur = props[`sc${i}`], prop = props[`sp${i}`];
   const dayWord = day === 'weekday' ? 'weekday' : day;
-  const within = props.published === 0 || gone ? ' within a walk' : '';
-  return `${pole ? poleLine(props) : ''}` +
-    `${gone ? '' : `<b>${label}</b><br>`}${removedLine(props)}` +
-    `${cur} → ${prop} buses per ${dayWord}${within}<br>` +
+  return `${pole ? poleLine(props) : ''}${removedLine(props)}` +
+    `${cur} → ${prop} buses per ${dayWord} at this stop<br>` +
+    `${gone ? '' : `<b>${label}</b><br>`}` +
     `<span style="opacity:.6">click for the full comparison</span>`;
 }
 

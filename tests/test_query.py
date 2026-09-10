@@ -298,6 +298,96 @@ def test_change_layer_packs_every_point_and_day(con):
     assert len(layer["fields"]) == width
 
 
+def test_a_dot_ships_the_trips_at_its_own_pole_not_the_ones_within_a_walk(con):
+    """Stop-by-stop's hover answers for the pole, and the wire has to carry it.
+
+    The packed row used to carry the walk radius's own trip counts, which were
+    read by nothing but that tooltip -- so a reader hovering a dot in the
+    Central Business District was told 1,591 buses a weekday, which is every
+    bus within 400 m of downtown and not remotely a stop. Max ruled on
+    2026-09-10 that the view's own unit is the pole: "when someone hovers over
+    a stop, they expect to get information about that stop only, not about the
+    wider location, which is served by the Surface view."
+
+    The radius trips are not replaced by anything smaller -- they leave the
+    wire entirely, and the colour still means what it always meant, because the
+    bucket is computed server-side and shipped as an index.
+    """
+    layer = query.change_layer(con, query.PRIMARY_RADIUS)
+    assert layer["fields"][query.STOP_CUR_AT(0)] == "weekday_stop_cur"
+    assert layer["fields"][query.STOP_PROP_AT(0)] == "weekday_stop_prop"
+    assert not any(f.endswith(("_cur", "_prop")) and "stop" not in f
+                   for f in layer["fields"])
+
+    today = {r["stop_id"]: r["n"] for r in con.execute(
+        "SELECT stop_id, SUM(n) AS n FROM departures "
+        "WHERE side = 'current' AND day = 'weekday' GROUP BY stop_id")}
+    by_id = {p[query.ID_AT]: p for p in layer["points"]}
+
+    # The dot beside the click that started this: 167 buses a weekday at the
+    # pole, against the 1,591 within 400 m of it that the tooltip used to
+    # print. Both are true; only one of them is about a stop.
+    downtown = query.stops_within(con, 40.44531, -79.99173, 60, "current")
+    assert len(downtown) == 1
+    at_pole = by_id[f"c:{downtown[0][0]}"][query.STOP_CUR_AT(0)]
+    assert at_pole == today[downtown[0][0]]
+    within_walk = query.side_at_place(
+        con, "current", 40.44531, -79.99173, 400)["days"]["weekday"]["trips"]
+    assert at_pole < within_walk / 5
+
+    # The busiest pole in the county is Fifth Ave + Atwood, which really does
+    # see about a thousand buses a weekday -- roughly one a minute through the
+    # day. A pole may be large; it may not be a district.
+    busiest = max(today, key=today.get)
+    assert by_id[f"c:{busiest}"][query.STOP_CUR_AT(0)] == today[busiest]
+
+    for point_id, p in list(by_id.items())[:200]:
+        if point_id.startswith("c:"):
+            assert p[query.STOP_CUR_AT(0)] == today.get(point_id[2:], 0)
+        else:
+            # A pole the plan adds stands where nothing stops today.
+            assert p[query.STOP_CUR_AT(0)] == 0
+
+
+def test_a_renumbered_pole_keeps_the_buses_the_plan_runs_at_its_kerb(con):
+    """Convention 3, at the unit the tooltip now prints.
+
+    A stop id that vanishes is not a lost bus -- PRT reissues numbers -- so the
+    plan's side of a pole is read at whatever stop the plan runs on that kerb,
+    by the same 25 m identity test the removal cross uses (`is_removed_stop`).
+    Joining on the stop id alone would print "37 -> 0 buses at this stop" at
+    every renumbered kerb in the county, which is the false sentence that
+    convention exists to stop.
+    """
+    layer = query.change_layer(con, query.PRIMARY_RADIUS)
+    plan = {r["stop_id"]: r["n"] for r in con.execute(
+        "SELECT stop_id, SUM(n) AS n FROM departures "
+        "WHERE side = 'proposed' AND day = 'weekday' GROUP BY stop_id")}
+    prop_ids = {r["stop_id"] for r in con.execute(
+        "SELECT stop_id FROM stops WHERE side = 'proposed'")}
+
+    renumbered = removed = 0
+    for p in layer["points"]:
+        point_id = p[query.ID_AT]
+        if not point_id.startswith("c:"):
+            continue
+        stop_id = point_id[2:]
+        if stop_id in prop_ids:
+            assert p[query.STOP_PROP_AT(0)] == plan.get(stop_id, 0)
+            continue
+        near = query.stops_within(con, p[query.LAT_AT], p[query.LON_AT],
+                                  query.STOP_SAME_POLE_M, "proposed")
+        if near:
+            renumbered += 1
+            assert p[query.STOP_PROP_AT(0)] == max(plan.get(s[0], 0)
+                                                   for s in near)
+        else:
+            removed += 1
+            assert p[query.STOP_PROP_AT(0)] == 0
+    assert renumbered > 50, renumbered
+    assert removed > 100, removed
+
+
 def test_change_layer_bucket_indices_resolve_to_the_stored_bucket(con):
     """The wire format is indices into `buckets`; an off-by-one would recolour
     the whole map without changing a single number."""
@@ -671,8 +761,9 @@ def test_every_dot_carries_the_name_of_the_pole_it_is_drawn_at(con):
 
     It is a fixed field rather than a parallel array because the row is the
     format's own unit: a second list aligned by position would be one
-    reordering away from naming every dot after its neighbour. The names take
-    the layer from 155 KB gzipped to 220 KB.
+    reordering away from naming every dot after its neighbour. The names cost
+    65 KB gzipped, 15 of which came back when the radius trip counts left the
+    row: 205 KB against 155 KB before either change.
     """
     layer = query.change_layer(con, query.PRIMARY_RADIUS)
     assert layer["fields"][query.NAME_AT] == "name"

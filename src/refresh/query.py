@@ -794,19 +794,74 @@ def compute_change(con, radius: float = PRIMARY_RADIUS, *,
 #
 # `name` is fixed, and a column rather than a lookup table, because the row is
 # the format's own unit: a parallel array aligned by position is one reordering
-# away from naming every dot after its neighbour. It costs 65 KB gzipped --
-# the layer goes from 155 KB to 220 KB -- and it buys the map a single answer
+# away from naming every dot after its neighbour. It costs 65 KB gzipped, of
+# which 15 came back when the radius trip counts left the row -- the layer is
+# 205 KB against 155 KB before either change -- and it buys a single answer
 # for one kerb rather than two: before it
 # shipped, hovering a dot named the place and hovering the same pixel with a
 # pin down named the pole, so the map said different things about one kerb
 # depending on whether the reader had clicked.
+#
+# The two trip counts are the POLE's, not the walk radius's, and that is the
+# whole of what this view answers under the cursor. The radius counts used to
+# ride here and were read by nothing but the dot's tooltip, where they said
+# things like "1,591 buses per weekday" at a downtown dot -- every bus within
+# 400 m of the Central Business District, which is not a stop by any reading.
+# They left the wire entirely on 2026-09-10 rather than moving to a second
+# line: the colour still carries the radius's answer, and it does that through
+# `bucket`, computed here and shipped as an index.
 POINT_STRIDE = 4
 FIXED_FIELDS = 6
 LAT_AT, LON_AT, PUBLISHED_AT, ID_AT, REMOVED_AT, NAME_AT = 0, 1, 2, 3, 4, 5
-def CUR_AT(day: int) -> int: return FIXED_FIELDS + POINT_STRIDE * day
-def PROP_AT(day: int) -> int: return FIXED_FIELDS + 1 + POINT_STRIDE * day
+def STOP_CUR_AT(day: int) -> int: return FIXED_FIELDS + POINT_STRIDE * day
+def STOP_PROP_AT(day: int) -> int: return FIXED_FIELDS + 1 + POINT_STRIDE * day
 def BUCKET_AT(day: int) -> int: return FIXED_FIELDS + 2 + POINT_STRIDE * day
 def RIDERS_AT(day: int) -> int: return FIXED_FIELDS + 3 + POINT_STRIDE * day
+
+
+def pole_departures(con, dedup: float = STOP_SAME_POLE_M):
+    """Buses calling at each point's own pole, both networks, by day type.
+
+    The unit Stop-by-stop is named for, and the one the rest of this module
+    deliberately avoids: convention 2 says stop-level output is an
+    intermediate, not a finding, which is why the dot's COLOUR is still the
+    walk radius's answer and this number is only ever printed under the
+    cursor, about the pole the cursor is on.
+
+    Today's side is the stop id's own departures. The plan's side is read at
+    whatever pole the plan runs on this kerb -- the id first, then the same
+    25 m as `is_removed_stop`, whose docstring carries the reasoning. Joining
+    on the id alone would report "37 -> 0 buses" at every kerb PRT renumbers,
+    which is exactly the false sentence convention 3 exists to prevent, and the
+    map would then contradict its own removal cross: a pole with no cross,
+    reading zero.
+
+    Where two proposed poles fall inside those 25 m it takes the larger rather
+    than the sum, for `cluster_trips`'s reason one unit down: they are one kerb
+    described twice, and adding them would invent service.
+    """
+    totals: dict[tuple[str, str, str], int] = {}
+    for r in con.execute(
+            "SELECT side, stop_id, day, SUM(n) AS n FROM departures "
+            "GROUP BY side, stop_id, day"):
+        totals[(r["side"], r["stop_id"], r["day"])] = r["n"]
+    prop_ids = {r["stop_id"] for r in
+                con.execute("SELECT stop_id FROM stops WHERE side = 'proposed'")}
+
+    out: dict[str, dict[str, tuple[int, int]]] = {}
+    for point_id, lat, lon, _published in change_points(con, dedup=dedup):
+        stop_id = point_id.split(":", 1)[1]
+        if stop_id in prop_ids:
+            plan_ids = [stop_id]
+        else:
+            plan_ids = [s[0] for s in
+                        stops_within(con, lat, lon, dedup, "proposed")]
+        out[point_id] = {
+            day: (totals.get(("current", stop_id, day), 0),
+                  max((totals.get(("proposed", i, day), 0) for i in plan_ids),
+                      default=0))
+            for day in DAYS}
+    return out
 
 
 def point_boardings(con) -> dict[str, dict[str, float | None]]:
@@ -849,8 +904,10 @@ def change_layer(con, radius: float = PRIMARY_RADIUS):
     memory instead of refetching -- 152 locations keep their weekday buses and
     lose the weekend entirely, and that comparison should cost nothing.
 
-    Each row is [lat, lon, published, id, removed, name, then per day: cur,
-    prop, bucket index, boardings]. Boardings are `null`, never 0, at a point the
+    Each row is [lat, lon, published, id, removed, name, then per day: the
+    trips at this pole today and under the plan, the bucket index, and the
+    boardings]. The two trip counts are the pole's own (`pole_departures`),
+    not the walk radius's -- the radius's answer travels as the bucket. Boardings are `null`, never 0, at a point the
     proposed network serves and today's does not -- see `point_boardings`. The
     id is `change_points`'s own -- `c:<stop_id>` or `p:<stop_id>` -- and it
     ships so that a selection made on the map can be named in a link.
@@ -872,6 +929,7 @@ def change_layer(con, radius: float = PRIMARY_RADIUS):
              r["name"] for r in
              con.execute("SELECT side, stop_id, name FROM stops")}
     boardings = point_boardings(con)
+    poles = pole_departures(con)
     idx = {k: i for i, k in enumerate(BUCKET_KEYS)}
     packed: dict[str, list] = {}
     for r in rows:
@@ -885,8 +943,9 @@ def change_layer(con, radius: float = PRIMARY_RADIUS):
                             named.get(r["point_id"], ""),
                             *([0] * (POINT_STRIDE * len(DAYS)))])
         day = DAYS.index(r["day"])
-        p[CUR_AT(day):RIDERS_AT(day) + 1] = [
-            r["cur_trips"], r["prop_trips"], idx[r["bucket"]],
+        at_pole = poles.get(r["point_id"], {}).get(r["day"], (0, 0))
+        p[STOP_CUR_AT(day):RIDERS_AT(day) + 1] = [
+            *at_pole, idx[r["bucket"]],
             boardings.get(r["point_id"], {}).get(r["day"])]
 
     return {
@@ -895,7 +954,7 @@ def change_layer(con, radius: float = PRIMARY_RADIUS):
         "buckets": [{"key": k, "label": lab} for k, lab in BUCKETS],
         "fields": ["lat", "lon", "published", "id", "removed", "name",
                    *[f"{d}_{f}" for d in DAYS
-                     for f in ("cur", "prop", "bucket", "riders")]],
+                     for f in ("stop_cur", "stop_prop", "bucket", "riders")]],
         # The distance to a replacement, for the 772 dots it says anything
         # about, as [walk, straight line]. A sparse map rather than two more
         # packed columns: it is meaningful only where `removed` is 1 and a

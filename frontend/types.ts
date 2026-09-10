@@ -151,8 +151,21 @@ export type ChangePoint = (number | string | null)[];
 export const POINT_STRIDE = 4;
 /** Mirrored from `query.FIXED_FIELDS`: lat, lon, published, id, removed, name. */
 export const FIXED_FIELDS = 6;
-export const CUR = (i: number) => FIXED_FIELDS + POINT_STRIDE * i;
-export const PROP = (i: number) => FIXED_FIELDS + 1 + POINT_STRIDE * i;
+/**
+ * Buses calling at THIS POLE on day `i`, today and under the plan.
+ *
+ * The pole, never the walk radius — mirrored from `query.pole_departures`.
+ * Stop-by-stop is a view about stops, and the radius counts that used to sit
+ * here read "1,591 → 2,178 buses per weekday" at a downtown dot, which is
+ * every bus within 400 m of the Central Business District. The radius's own
+ * answer has not gone anywhere: it is the dot's colour, and it arrives as
+ * `BUCKET`.
+ *
+ * The plan's side is read at whatever pole the plan runs on this kerb, so a
+ * kerb PRT renumbers does not report zero (convention 3).
+ */
+export const STOP_CUR = (i: number) => FIXED_FIELDS + POINT_STRIDE * i;
+export const STOP_PROP = (i: number) => FIXED_FIELDS + 1 + POINT_STRIDE * i;
 export const BUCKET = (i: number) => FIXED_FIELDS + 2 + POINT_STRIDE * i;
 export const RIDERS = (i: number) => FIXED_FIELDS + 3 + POINT_STRIDE * i;
 export const PUBLISHED = 2;
@@ -173,9 +186,10 @@ export const REMOVED = 4;
  * fact about the dot and not an approximation of one. It travels as a column
  * rather than a lookup keyed by id because the row is the format's unit, and
  * an aligned-by-position second list is one reordering away from naming every
- * dot after its neighbour. The cost is 65 KB gzipped — the layer goes from
- * 155 KB to 220 KB — paid so that the map gives one answer about a kerb
- * whether or not a pin happens to be down over it.
+ * dot after its neighbour. The cost is 65 KB gzipped, 15 of which came back
+ * when the radius trip counts left the row: the layer is 205 KB against
+ * 155 KB before either change, paid so that the map gives one answer about a
+ * kerb whether or not a pin happens to be down over it.
  */
 export const NAME = 5;
 

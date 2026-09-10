@@ -126,8 +126,8 @@ uv sync --extra web && npm install   # one-time
 npm run build                        # frontend/*.ts -> static/app.js
 uv run refresh serve                 # http://127.0.0.1:8000
 
-uv run pytest                        # 392 tests, incl. served == published
-npx vitest run && npx tsc --noEmit   # 543 frontend tests
+uv run pytest                        # 394 tests, incl. served == published
+npx vitest run && npx tsc --noEmit   # 546 frontend tests
 ```
 
 **Hosting** is `deploy/` — a Hetzner VM behind Caddy, live at
@@ -240,6 +240,18 @@ changes published findings.
 2. **Aggregate above the stop id.** Adjacent stop ids split a route set at
    corridor locations, manufacturing losses that do not exist. Stop-level output
    is an intermediate, not a finding.
+
+   **One screen prints a stop-level number anyway, and it is not an exception
+   to this.** The map's Stop-by-stop hover says "3 → 17 buses per weekday at
+   this stop" about the pole under the cursor (`query.pole_departures`),
+   because that view is named for stops and a reader hovering one expects the
+   stop. Nothing is *counted* at that unit: the dot's colour, every figure in
+   the key, and everything `docs/answers/` publishes remain the location's, at
+   a walk radius. The two disagree in direction on a fifth of the dots, which
+   is why the tooltip scopes the colour's label with the word "nearby" — see
+   [`docs/worklog/the-dot-hover-reported-a-district-not-a-stop.md`](docs/worklog/the-dot-hover-reported-a-district-not-a-stop.md).
+   The plan's side of a pole is read at whatever stop the plan runs on that
+   kerb, per convention 3, never by joining on the id.
 3. **A vanished stop id is not a lost bus.** Stops get renumbered, consolidated,
    and nudged across intersections; anything flagged as losing service is
    checked against the nearest stop the proposal actually serves.

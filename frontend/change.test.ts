@@ -4,7 +4,7 @@ import {
   selectionScope, withinBrush, removedLine, dotLabel, toGeoJSON,
 } from './change';
 import {
-  BUCKET, CUR, ID, NAME, PROP, PUBLISHED, REMOVED, RIDERS,
+  BUCKET, ID, NAME, PUBLISHED, REMOVED, RIDERS, STOP_CUR, STOP_PROP,
   ChangePoint, ChangeLayer,
 } from './types';
 
@@ -12,7 +12,8 @@ import {
 // whole map and miscounts the legend without changing a single number on the
 // server. These pin the offsets against a hand-built row.
 //
-//   [lat, lon, published, id, removed, name, wCur, wProp, wBucket, wRiders, ...]
+//   [lat, lon, published, id, removed, name, wStopCur, wStopProp, wBucket,
+//    wRiders, ...] -- the two trip counts are the pole's own, not the walk's
 const KEYS = ['gone', 'halved', 'less', 'same', 'more', 'doubled', 'new', 'none'];
 
 let nextId = 0;
@@ -47,11 +48,11 @@ describe('ChangePoint offsets', () => {
     expect(p[ID]).toBe('c:1');
     expect(p[REMOVED]).toBe(1);
     expect(p[NAME]).toBe('Fifth Ave at Bellefield');
-    expect([CUR(0), PROP(0), BUCKET(0), RIDERS(0)].map((i) => p[i]))
+    expect([STOP_CUR(0), STOP_PROP(0), BUCKET(0), RIDERS(0)].map((i) => p[i]))
       .toEqual([40, 20, 1, 99]);
-    expect([CUR(1), PROP(1), BUCKET(1), RIDERS(1)].map((i) => p[i]))
+    expect([STOP_CUR(1), STOP_PROP(1), BUCKET(1), RIDERS(1)].map((i) => p[i]))
       .toEqual([30, 15, 5, 50]);
-    expect([CUR(2), PROP(2), BUCKET(2), RIDERS(2)].map((i) => p[i]))
+    expect([STOP_CUR(2), STOP_PROP(2), BUCKET(2), RIDERS(2)].map((i) => p[i]))
       .toEqual([20, 0, 0, 25]);
   });
 });
@@ -266,27 +267,28 @@ describe('dotLabel at a removed stop', () => {
     // drawn in one, so the tooltip cannot report one either -- that was the
     // last place the two channels contradicted each other.
     const p = { published: 1, removed: 1, replacement: 378, nearestStraight: 340,
-                b0: 'doubled', c0: 40, p0: 80 };
+                b0: 'doubled', sc0: 40, sp0: 0 };
     const html = dotLabel(p, 'weekday', BUCKETS);
     expect(html).toContain('Stop removed');
     expect(html).not.toContain('doubled');
   });
 
-  it('still reports the buses within a walk, which is a different question', () => {
+  it('still counts the buses at the pole, which the cross does not say', () => {
     const p = { published: 1, removed: 1, replacement: 378, nearestStraight: 340,
-                b0: 'doubled', c0: 40, p0: 80 };
-    expect(dotLabel(p, 'weekday', BUCKETS)).toContain('40 → 80 buses per weekday');
+                b0: 'doubled', sc0: 40, sp0: 0 };
+    expect(dotLabel(p, 'weekday', BUCKETS))
+      .toContain('40 → 0 buses per weekday at this stop');
   });
 
   it('names the bucket at a stop that stays', () => {
-    const p = { published: 1, removed: 0, b0: 'doubled', c0: 40, p0: 80 };
+    const p = { published: 1, removed: 0, b0: 'doubled', sc0: 40, sp0: 80 };
     expect(dotLabel(p, 'weekday', BUCKETS)).toContain('doubled');
   });
 });
 
 describe('a dot answers for the pole with no pin down', () => {
   const BUCKETS = KEYS.map((k) => ({ key: k, label: k }));
-  const pole = { published: 1, removed: 0, b0: 'doubled', c0: 40, p0: 80,
+  const pole = { published: 1, removed: 0, b0: 'doubled', sc0: 40, sp0: 80,
                  id: 'c:1043', name: 'Forbes Ave at Craig St', moved: null };
 
   it('names the pole and its stop id above the service reading', () => {
@@ -336,6 +338,39 @@ describe('the drawn dot carries what the tooltip needs', () => {
     const feats = toGeoJSON(layer(pts, { 'c:1043': 84 })).features;
     expect(feats[0].properties.moved).toBe(84);
     expect(feats[1].properties.moved).toBeNull();
+  });
+});
+
+describe('a dot in Stop-by-stop answers for its own pole', () => {
+  const BUCKETS = KEYS.map((k) => ({ key: k, label: k === 'more' ? 'more service' : k }));
+  const pole = { published: 1, removed: 0, b0: 'more', sc0: 3, sp0: 17,
+                 id: 'c:1043', name: 'Babcock Blvd at Thompson', moved: null };
+
+  it('counts the buses at this stop, not the ones within a walk', () => {
+    // The hover used to print the 400 m reading, which downtown was 1,591
+    // buses a weekday -- a district, not a stop. Max: "when someone hovers
+    // over a stop, they expect to get information about that stop only".
+    const html = dotLabel(pole, 'weekday', BUCKETS);
+    expect(html).toContain('3 → 17 buses per weekday at this stop');
+    expect(html).not.toContain('within a walk');
+  });
+
+  it('says the bucket is about the ground nearby, not about the pole', () => {
+    // The colour is still the walk radius's answer, and on 1,277 of 6,284
+    // dots it points the opposite way to the pole's own trips. Without the
+    // scope on the label, those read as a broken map rather than as two true
+    // sentences about one corner.
+    expect(dotLabel(pole, 'weekday', BUCKETS)).toContain('more service nearby');
+  });
+
+  it('does not call a pole the plan adds "nearby"', () => {
+    // Its label is a sentence about the pole itself, so the scope word would
+    // attach to the wrong noun.
+    const added = { ...pole, published: 0, sc0: 0, sp0: 30 };
+    const html = dotLabel(added, 'weekday', BUCKETS);
+    expect(html).toContain('the plan adds a stop here');
+    expect(html).not.toContain('nearby');
+    expect(html).toContain('0 → 30 buses per weekday at this stop');
   });
 });
 
