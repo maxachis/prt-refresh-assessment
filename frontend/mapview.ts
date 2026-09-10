@@ -8,8 +8,32 @@
  */
 import { StopRef } from './types';
 
-const NOW = '#4aa3ff';
-const PROP = '#ffa23a';
+/**
+ * The mark for a stop today, in ink rather than the app's "today" blue.
+ *
+ * These marks are painted over the Stop-by-stop dots, and in blue they were
+ * being read as dots: a worst-case ΔE of 16.4 from the `new service` bucket
+ * and 11.0 from `doubled or better`, so clicking a location scattered what
+ * looked like new-service dots across the map. Max reported that on
+ * 2026-09-09. Ink clears every bucket by 39.7 or more, and
+ * `cvd.test.ts` holds it there.
+ *
+ * Blue still means today everywhere the map does not draw: the panel's trip
+ * chart, its route lists, and the Travel-time view. The convention is intact
+ * where nothing can be mistaken for a bucket, and dropped where something can.
+ */
+export const NOW = '#15181e';
+/**
+ * And a stop the plan proposes, unchanged.
+ *
+ * This one has the same defect at a smaller size -- worst-case ΔE 16.7 from
+ * "halved or worse", which is also an orange -- and it is deliberately not
+ * fixed here: Max chose the ink-for-today change, and moving both marks at
+ * once would leave nothing on screen that keeps the today/proposed pairing
+ * legible. Filed at
+ * `docs/worklog/the-pin-marks-borrow-the-dot-palette.md`.
+ */
+export const PROP = '#ffa23a';
 
 /**
  * Circle geometry for the walk radius, since MapLibre has no metre-radius fill.
@@ -76,7 +100,9 @@ export function initMapLayers(map: maplibregl.Map) {
     id: 'stops-now-c', type: 'circle', source: 'stops-now',
     paint: {
       'circle-radius': 4, 'circle-color': NOW,
-      'circle-stroke-width': 1, 'circle-stroke-color': '#0d2036',
+      // A near-white casing, not a dark one: the mark is ink now, and in the
+      // Both view it lands on surface cells dark enough to swallow it.
+      'circle-stroke-width': 1, 'circle-stroke-color': 'rgba(255,255,255,.9)',
     },
   });
 

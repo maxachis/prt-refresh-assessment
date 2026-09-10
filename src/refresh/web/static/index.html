@@ -14,6 +14,12 @@
     :root {
       --bg:#0f1115; --panel:#171a21; --line:#262a33; --ink:#e8eaed; --muted:#98a0ac;
       --now:#4aa3ff; --prop:#ffa23a; --up:#4ec98a; --down:#ff6b6b;
+      /* The map's own mark for a stop today. Ink rather than --now, because
+         these marks are painted over the Stop-by-stop dots and in blue they
+         were read as the "new service" bucket -- see mapview.ts NOW. Blue
+         still means today in the panel, where nothing can be mistaken for a
+         dot. */
+      --now-mark:#15181e;
       /* A route both networks run. Achromatic on purpose -- it is the absence
          of a change, and any hue here would be read as one -- but lighter than
          the prose it sits among, which --muted is not. */
@@ -85,7 +91,8 @@
        of it, which is what the map is doing. */
     .legend .sw-both { background:var(--prop); position:relative; }
     .legend .sw-both::after { content:''; position:absolute;
-      inset:3px; border-radius:50%; background:var(--now); }
+      inset:3px; border-radius:50%; background:var(--now-mark);
+      box-shadow:0 0 0 1px rgba(255,255,255,.9); }
     #legend-box.collapsed #pin-key { display:none; }
     #legend-collapse { position:absolute; top:6px; right:6px; width:18px;
       height:18px; padding:0; line-height:1; cursor:pointer; background:none;
@@ -321,6 +328,12 @@
     .legend i { display:inline-block; width:10px; height:5px; border-radius:2px;
       margin-right:5px; vertical-align:middle; }
     .sw-now { background:var(--now); } .sw-prop { background:var(--prop); }
+    /* The pin key describes the map, so its "stop today" swatch is the mark
+       the map actually draws, not the panel's chart colour -- including the
+       white casing, without which an ink swatch is invisible on this panel
+       and the map's ink mark is invisible on a dark surface cell. */
+    #pin-key .sw-now { background:var(--now-mark);
+      box-shadow:0 0 0 1px rgba(255,255,255,.9); }
     .legend .sw-walk { background:none; border:1px dashed var(--walk); height:7px; }
     .legend .sw-pin { background:var(--pin); width:7px; height:7px;
       border-radius:50%; }

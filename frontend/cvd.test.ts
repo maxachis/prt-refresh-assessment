@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { simulate, deltaE, worstCaseDistance } from './cvd';
 import { STYLE } from './change';
+import { NOW } from './mapview';
 import { RAMP, GONE_COLOR, NEW_COLOR, DEAD_BAND_COLOR } from './surface';
 
 // The floor this file exists to enforce: docs/worklog/
@@ -105,4 +106,36 @@ describe('worstCaseDistance', () => {
     ];
     expect(worstCaseDistance(a, b)).toBeCloseTo(Math.min(...all), 5);
   });
+});
+
+/**
+ * The marks around the pin must not read as a bucket.
+ *
+ * When a reader clicks a location the map paints every stop inside the walk
+ * radius, and those marks land ON the coloured dots. Drawn in the app's
+ * "today" blue they were a worst-case ΔE 16.4 from the `new` bucket's blue and
+ * 11.0 from `doubled` -- so selecting a location sprinkled what looked like
+ * new-service dots across the map. Max reported exactly that reading on
+ * 2026-09-09, and the mark moved to ink.
+ *
+ * The floor is lower than the ramp's own: these marks are a different kind of
+ * thing from a bucket, they are labelled in their own key block, and they only
+ * have to be TELLABLE from the dots underneath rather than orderable against
+ * them.
+ */
+const PIN_MARK_FLOOR = 25;
+
+// Every bucket the key lists. `none` -- no bus either way -- is left out for
+// the same reason the legend never lists it: it is not an outcome of the plan,
+// it is drawn at 2 px as a bare presence marker, and its near-black is
+// unavoidably close to ink without ever being read as a finding.
+const KEYED_BUCKETS = Object.keys(STYLE).filter((k) => k !== 'none');
+
+describe('the pin marks stay out of the dot palette', () => {
+  for (const key of KEYED_BUCKETS) {
+    it(`"stop today" is tellable from ${key}`, () => {
+      expect(worstCaseDistance(NOW, STYLE[key].color))
+        .toBeGreaterThanOrEqual(PIN_MARK_FLOOR);
+    });
+  }
 });

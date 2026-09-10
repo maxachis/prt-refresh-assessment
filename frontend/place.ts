@@ -536,7 +536,7 @@ export function serviceBodyHTML(p: PlaceResult, d: Day, middle = ''): string {
       <span><i class="sw-walk"></i> the ${p.radius} m walk</span>
       <span><i class="sw-pin"></i> where you clicked</span>
     </div>
-    <div class="key-note">A stop both networks keep draws as a blue dot in an
+    <div class="key-note">A stop both networks keep draws as an ink dot in an
       orange ring. Two marks mean the plan nudged it across the intersection —
       renumbering, not a change in service.</div>
 
