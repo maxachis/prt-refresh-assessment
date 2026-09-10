@@ -3,6 +3,7 @@ import {
   canvasScale, drawsInSoftware, fadeMs, readMachine,
   DEFAULT_FADE_MS, MAX_SCALE, SOFTWARE_SCALE,
   basemapStyle, VECTOR_STYLE_URL, RASTER_TILES, RASTER_LABEL_TILES,
+  RASTER_MAX_ZOOM,
 } from './hardware';
 
 describe('drawsInSoftware', () => {
@@ -104,6 +105,16 @@ describe('which basemap a machine is given', () => {
       .toEqual(['basemap', 'basemap-labels']);
     expect(style.sources['basemap'].tiles).toEqual(RASTER_TILES);
     expect(style.sources['basemap-labels'].tiles).toEqual(RASTER_LABEL_TILES);
+  });
+
+  it('says where the tiles run out, so MapLibre never asks past them', () => {
+    const style = basemapStyle(machine('llvmpipe')) as any;
+    for (const src of Object.values(style.sources) as any[]) {
+      expect(src.maxzoom).toBe(RASTER_MAX_ZOOM);
+    }
+    // Past this the service answers with a placeholder image reading "Map data
+    // not yet available", which is a picture of grey, not a missing tile.
+    expect(RASTER_MAX_ZOOM).toBe(16);
   });
 
   it('names the tiles it borrows, on every raster source it builds', () => {

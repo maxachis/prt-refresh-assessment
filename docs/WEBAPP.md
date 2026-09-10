@@ -1152,6 +1152,11 @@ Raster labels cannot be restyled or held out from under a dot, and they are
 soft on a high-resolution screen; that is a real cost, and it is only paid by
 the readers whose alternative was a map that does not pan.
 
+Esri's canvas has ground through **zoom 16** and answers above it with a grey
+picture reading "Map data not yet available", so the sources declare where the
+tiles stop and MapLibre scales the last real one: zoomed past 16 the basemap is
+soft and every mark on it is still sharp.
+
 The tiles are **Esri's Light Gray Canvas**, not the CARTO Positron raster the
 measurement above was taken on: CARTO now stamps `API KEY REQUIRED` across
 every tile served without an account. Esri's are keyless, their land samples

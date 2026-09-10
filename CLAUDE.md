@@ -127,7 +127,7 @@ npm run build                        # frontend/*.ts -> static/app.js
 uv run refresh serve                 # http://127.0.0.1:8000
 
 uv run pytest                        # 390 tests, incl. served == published
-npx vitest run && npx tsc --noEmit   # 530 frontend tests
+npx vitest run && npx tsc --noEmit   # 531 frontend tests
 ```
 
 **Hosting** is `deploy/` — a Hetzner VM behind Caddy, live at

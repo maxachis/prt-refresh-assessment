@@ -226,6 +226,18 @@ scanning the whole plan has nothing to orient by. Two image layers is still two
 draws against 55, and both are beneath every mark this site adds, so a place
 name can never sit on top of a dot.
 
+**Esri's canvas stops at zoom 16, and it does not say so with a 404.** Above
+that the service answers with a picture of grey reading "Map data not yet
+available" -- which MapLibre cannot tell from a map, so it drew it. Max found
+it by zooming in. Verified tile by tile over Downtown on 2026-09-10: real
+ground through 16, the placeholder at 17, and the identical image at 18, 19 and
+20. The sources now declare `maxzoom: 16`, so MapLibre scales the level-16 tile
+rather than asking for one that does not exist: past 16 the ground goes soft
+and the marks stay sharp, because they are drawn from the data and not from the
+tiles. The general shape of the mistake is worth keeping -- **a tile service
+that answers 200 with an apology is indistinguishable from one that works**,
+and nothing but zooming in finds it.
+
 **One thing is still owed before this is deployed: whether using Esri's tiles
 here needs an ArcGIS account.** The tiles serve without a key and the
 attribution is drawn on the map, which is a condition of using them; that is

@@ -126,6 +126,20 @@ export const RASTER_LABEL_TILES = [
   + 'World_Light_Gray_Reference/MapServer/tile/{z}/{y}/{x}',
 ];
 
+/**
+ * The last zoom level Esri's canvas actually has, and it must be declared.
+ *
+ * Above 16 the service does not 404 -- it answers with a picture of grey
+ * reading "Map data not yet available", which MapLibre has no way to tell from
+ * a map. Verified tile by tile over Downtown Pittsburgh on 2026-09-10: real
+ * ground through 16, the placeholder from 17 up, and the same image at 18, 19
+ * and 20. Declaring it makes MapLibre scale the level-16 tile instead of
+ * asking for one that does not exist, so a reader zooming into a corner gets a
+ * soft basemap rather than a blank one. The marks stay sharp either way --
+ * they are drawn from the data, not from the tiles.
+ */
+export const RASTER_MAX_ZOOM = 16;
+
 /** A condition of using the tiles, and it rides on the map, not in a doc. */
 export const RASTER_ATTRIBUTION =
   'Tiles &copy; Esri &mdash; Esri, DeLorme, NAVTEQ, '
@@ -156,6 +170,7 @@ export function basemapStyle(m: Machine): string | object {
   if (!drawsInSoftware(m.renderer)) return VECTOR_STYLE_URL;
   const source = (tiles: string[]) => ({
     type: 'raster', tileSize: 256, attribution: RASTER_ATTRIBUTION, tiles,
+    maxzoom: RASTER_MAX_ZOOM,
   });
   return {
     version: 8,
