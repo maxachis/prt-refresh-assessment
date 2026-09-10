@@ -474,3 +474,26 @@ def test_the_panel_names_the_place_the_point_is_actually_in(client):
     assert p["population"]["lost"] > 3_000
 
 
+
+
+def test_place_carries_the_kerb_under_the_click(client):
+    """The panel's stop-scoped block arrives with the location's, not after it.
+
+    Two requests would let the panel headline one unit while the other was
+    still loading. The field is additive: `radius`, `current` and `proposed`
+    are the published walk-radius answer and are untouched.
+    """
+    p = client.get("/api/place", params=DOWNTOWN).json()
+    kerb = p["kerb"]
+    assert kerb["stop_id"] and kerb["names"]
+    assert kerb["dedup_m"] == 25
+    assert kerb["current"]["days"]["weekday"]["trips"] \
+        < p["current"]["days"]["weekday"]["trips"]
+
+
+def test_a_point_off_the_kerb_carries_no_stop_block(client):
+    """Null rather than a stop with no buses -- see `query.kerb_service`."""
+    park = client.get("/api/place",
+                      params={"lat": 40.4406, "lon": -79.9490}).json()
+    assert park["kerb"] is None
+    assert park["current"]["days"]["weekday"]["trips"] >= 0

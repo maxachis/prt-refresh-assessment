@@ -22,6 +22,17 @@ THE THREE RULES, and what each is protecting against:
    `departures_by_direction` picks, per (route, direction), the single stop
    carrying the most departures.
 
+   AT A KERB IT IS THE OTHER WAY ROUND, and that is not an exception to the
+   rule but the same rule at a smaller unit. Inside `STOP_SAME_POLE_M` a
+   repeated (route, direction) is two poles of one corner each holding their
+   own trips, not one corridor recorded twice, so `kerb_trips` and
+   `kerb_by_direction` sum where the location's pair maxes -- which is what
+   makes PRT's consolidation of two poles into one read as the loss it is.
+   `SCOPE_LOCATION` and `SCOPE_KERB` name the two, `days_of_service` takes
+   one, and the kerb scope is Stop-by-stop's alone: it colours the dots
+   (`kerb_departures`) and opens the answer panel (`kerb_service`), and it is
+   NOT a published figure. The published unit is the location.
+
 3. TIES BREAK ON THE LOWEST STOP ID. Stops are visited in sorted order, so the
    answer does not depend on set iteration order -- which Python randomises per
    process, and which moved ~20 borderline locations between runs of the
@@ -317,6 +328,64 @@ def cluster_trips(by_stop, stop_ids):
     return out
 
 
+# The two scopes this module measures service at, and the reason there are
+# two. A LOCATION is convention 4's quarter mile -- every pole a rider can walk
+# to -- and it is what `data/coverage_change.csv` publishes. A KERB is the
+# poles standing on one corner, `STOP_SAME_POLE_M` apart, and it is what
+# Stop-by-stop colours, hovers and (since the panel's kerb block) headlines.
+# They take DIFFERENT AGGREGATIONS and the difference is not a detail:
+# a cluster records the same route at several stops, so a location maxes; a
+# kerb's poles each hold their own trips, so a kerb sums. Named constants
+# rather than a flag argument, because "sum or max" is the whole content of
+# the choice and a boolean at the call site would not say which way round.
+SCOPE_LOCATION = "location"
+SCOPE_KERB = "kerb"
+
+
+def kerb_trips(by_stop, stop_ids):
+    """{period: trips} at one kerb, SUMMED over its poles.
+
+    Convention 2 at the kerb rather than at the location, and the mirror of
+    `cluster_trips` above. Inside 25 m a repeated (route, direction) is not
+    one route recorded twice: a trip calls at one pole, and on the sampled
+    multi-pole kerbs all 34 of the duplicated pairs carry different times at
+    each pole. Maxing there would drop real buses; summing is what makes a
+    consolidation of two poles into one read as the loss it is, and it is
+    exactly what `kerb_departures` counts for the dot's colour.
+    """
+    out = {k: 0.0 for k in PKEYS}
+    for sid in sorted(stop_ids):
+        for times in by_stop.get(sid, {}).values():
+            for t in times:
+                period = period_of(t)
+                if period:
+                    out[period] += 1
+    return out
+
+
+def kerb_by_direction(by_stop, stop_ids):
+    """{direction: sorted departure minutes} pooled over a kerb's poles.
+
+    `departures_by_direction`'s mirror, for `kerb_trips`'s reason: a rider
+    standing on this corner can board any of them, and no trip is counted at
+    two poles.
+    """
+    by_dir: dict[str, list[int]] = {}
+    for sid in sorted(stop_ids):
+        for (_route, direction), times in by_stop.get(sid, {}).items():
+            by_dir.setdefault(direction, []).extend(times)
+    return {d: sorted(t) for d, t in by_dir.items()}
+
+
+# Which pair of aggregations each scope takes. One table rather than a branch
+# at each of the two call sites, so a scope cannot pick its trip counter from
+# one unit and its headways from the other.
+_AGGREGATION = {
+    SCOPE_LOCATION: (cluster_trips, departures_by_direction),
+    SCOPE_KERB: (kerb_trips, kerb_by_direction),
+}
+
+
 def hourly(by_dir) -> bool:
     """Is the better direction hourly-or-better right across 6am-6pm?
 
@@ -508,16 +577,23 @@ def moved_pole(con, stop_id: str, lat: float, lon: float,
     return round(metres), row["lat"], row["lon"]
 
 
-def side_at_place(con, side: str, lat: float, lon: float, radius: float):
-    """Everything one network offers at one location, all three day types."""
-    stops = stops_within(con, lat, lon, radius, side)
+def days_of_service(con, side: str, stops, *, scope: str):
+    """One network's three day types over a given set of stops.
+
+    Shared by the location scope and the kerb scope so that the panel's two
+    blocks are the same measurement at two units rather than two
+    measurements: only `_AGGREGATION` differs between them, and everything
+    downstream of it -- the tier, the headways, the span, the routes --
+    is computed identically.
+    """
+    trips_of, directions_of = _AGGREGATION[scope]
     stop_ids = [s[0] for s in stops]
 
     days = {}
     for day in DAYS:
         by_stop = _departures(con, side, day, stop_ids)
-        per = cluster_trips(by_stop, stop_ids)
-        by_dir = departures_by_direction(by_stop, stop_ids)
+        per = trips_of(by_stop, stop_ids)
+        by_dir = directions_of(by_stop, stop_ids)
         routes = sorted({rt for sid in stop_ids
                          for rt, _d in by_stop.get(sid, {})})
         days[day] = {
@@ -534,45 +610,151 @@ def side_at_place(con, side: str, lat: float, lon: float, radius: float):
             "boardings": (stop_boardings(con, stop_ids, day)
                           if side == "current" else None),
         }
+    return days
 
-    # What becomes of each stop itself, beside what becomes of the service
-    # around it. Each side answers only the question that has content on it: a
-    # stop that runs today stands, by definition, where a stop stands today, so
-    # it cannot be one the plan adds; and a stop the plan runs cannot be one
-    # the plan removes. So `new_place` is asked of the proposed side and
-    # `removed` of the current one, and neither side carries the other's key --
-    # the same one-sidedness boardings have, for the same reason.
-    #
-    # `replacement_walk_m` is the walk to the nearest stop the plan serves,
-    # and `nearest_straight_m` the straight line to the nearest one there is,
-    # which on hilly ground is a different stop --
-    # routed on the pedestrian network by `build_webdb.py` and stored, because
-    # routing it per request would put a bounded graph search inside a click.
-    # It is only meaningful where `removed` is true, and it is None where the
-    # search found nothing inside its bound rather than 0 -- "no replacement
-    # within a walk" is not "a replacement at zero metres".
-    def out(s):
-        row = {"stop_id": s[0], "name": s[1], "lat": s[2], "lon": s[3],
-               "metres": round(s[4])}
-        if side == "proposed":
-            row["new_place"] = is_new_place(con, s[0], s[2], s[3])
-            moved = moved_pole(con, s[0], s[2], s[3])
-            if moved is not None:
-                row["moved_m"], row["moved_lat"], row["moved_lon"] = moved
-        else:
-            fate = con.execute(
-                "SELECT removed, replacement_walk_m, nearest_straight_m "
-                "FROM stop_place WHERE stop_id = ?", (s[0],)).fetchone()
-            row["removed"] = bool(fate["removed"]) if fate else False
-            for key in ("replacement_walk_m", "nearest_straight_m"):
-                row[key] = (round(fate[key])
-                            if fate and fate[key] is not None else None)
-        return row
 
+def stop_row(con, side: str, s):
+    """One stop, plus what becomes of it -- the panel's per-stop detail.
+
+    What becomes of each stop itself, beside what becomes of the service
+    around it. Each side answers only the question that has content on it: a
+    stop that runs today stands, by definition, where a stop stands today, so
+    it cannot be one the plan adds; and a stop the plan runs cannot be one
+    the plan removes. So `new_place` is asked of the proposed side and
+    `removed` of the current one, and neither side carries the other's key --
+    the same one-sidedness boardings have, for the same reason.
+
+    `replacement_walk_m` is the walk to the nearest stop the plan serves,
+    and `nearest_straight_m` the straight line to the nearest one there is,
+    which on hilly ground is a different stop --
+    routed on the pedestrian network by `build_webdb.py` and stored, because
+    routing it per request would put a bounded graph search inside a click.
+    It is only meaningful where `removed` is true, and it is None where the
+    search found nothing inside its bound rather than 0 -- "no replacement
+    within a walk" is not "a replacement at zero metres".
+    """
+    row = {"stop_id": s[0], "name": s[1], "lat": s[2], "lon": s[3],
+           "metres": round(s[4])}
+    if side == "proposed":
+        row["new_place"] = is_new_place(con, s[0], s[2], s[3])
+        moved = moved_pole(con, s[0], s[2], s[3])
+        if moved is not None:
+            row["moved_m"], row["moved_lat"], row["moved_lon"] = moved
+    else:
+        fate = con.execute(
+            "SELECT removed, replacement_walk_m, nearest_straight_m "
+            "FROM stop_place WHERE stop_id = ?", (s[0],)).fetchone()
+        row["removed"] = bool(fate["removed"]) if fate else False
+        for key in ("replacement_walk_m", "nearest_straight_m"):
+            row[key] = (round(fate[key])
+                        if fate and fate[key] is not None else None)
+    return row
+
+
+def side_at_place(con, side: str, lat: float, lon: float, radius: float):
+    """Everything one network offers at one LOCATION, all three day types.
+
+    Convention 4's walk radius, and the published unit: this is what
+    `data/coverage_change.csv` measures, what the `change` table stores and
+    what the answer panel's "Within a 400 m walk" block prints.
+    """
+    stops = stops_within(con, lat, lon, radius, side)
     return {
         "side": side,
-        "stops": [out(s) for s in stops],
-        "days": days,
+        "stops": [stop_row(con, side, s) for s in stops],
+        "days": days_of_service(con, side, stops, scope=SCOPE_LOCATION),
+    }
+
+
+def side_at_kerb(con, side: str, stops):
+    """Everything one network offers at one KERB, all three day types.
+
+    Same shape as `side_at_place` and deliberately so -- the panel renders
+    both blocks through one renderer -- but the stops are chosen by the
+    caller (`kerb_service`) and the aggregation sums where the location's
+    maxes.
+    """
+    return {
+        "side": side,
+        "stops": [stop_row(con, side, s) for s in stops],
+        "days": days_of_service(con, side, stops, scope=SCOPE_KERB),
+    }
+
+
+def _stop_at(con, side: str, stop_id: str, lat: float, lon: float):
+    """One named stop as a `stops_within` row, with its distance from a point.
+
+    For the one stop `kerb_service` has to reach by id rather than by
+    distance: a pole the plan keeps the id of but stands further away than
+    `STOP_SAME_POLE_M`.
+    """
+    row = con.execute(
+        "SELECT stop_id, name, lat, lon FROM stops WHERE side = ? "
+        "AND stop_id = ?", (side, stop_id)).fetchone()
+    if row is None:
+        return None
+    coslat = math.cos(math.radians(lat)) or 1e-9
+    dla = (row["lat"] - lat) * METERS_PER_DEGREE
+    dlo = (row["lon"] - lon) * METERS_PER_DEGREE * coslat
+    return (row["stop_id"], row["name"], row["lat"], row["lon"],
+            math.hypot(dla, dlo))
+
+
+def kerb_service(con, lat: float, lon: float,
+                 dedup: float = STOP_SAME_POLE_M):
+    """What the plan does to the buses at ONE STOP, or None if there is none.
+
+    The answer panel's half of the move Stop-by-stop made on 2026-09-10.
+    The dot's colour, its tooltip and the key all count the kerb
+    (`kerb_departures`), and until this the panel a click opened still
+    headlined the 400 m walk: 1,591 -> 2,178 at a downtown dot whose own kerb
+    carries 167, swinging by hundreds when the click moved a block. One
+    number on hover and a wildly different one on click, with no reason on
+    screen for the gap.
+
+    THE UNIT IS THE SAME KERB THE DOT IS, to the stop: today's poles within
+    `STOP_SAME_POLE_M` of the point, and the plan's read at whatever pole the
+    plan runs there -- the nearest of today's ids first, then the poles inside
+    the same 25 m. The id comes first for `kerb_departures`'s reason, which is
+    convention 3: a pole the plan stands 84 m down the block keeps its id and
+    its buses, and counting only what falls inside 25 m would print "loses all
+    service" at a stop the map draws a leader line to.
+
+    NULL WHERE NO POLE STANDS. A reader clicking the middle of a park is not
+    standing at a stop with no buses left; they are standing where no stop is,
+    and "0 -> 0 at this stop" would be a finding about a stop that does not
+    exist. The panel falls back to the walk radius alone there. Decided by
+    the 25 m on the ground and never by a screen hit, so an `at=` link
+    reproduces the same panel at any zoom.
+
+    NOT A PUBLISHED UNIT. `data/coverage_change.csv` and `docs/answers/`
+    publish the location -- the walk radius, which stayed exactly where it was
+    in the `change` table and still prints below this on the panel. Anything
+    quoting a figure from here has to say it is per stop, the way the map's
+    key does (convention 2).
+    """
+    here = stops_within(con, lat, lon, dedup, "current")
+    if not here:
+        return None
+    # Nearest, then lowest id: `stops_within` sorts by id, not by distance,
+    # and the dot a reader clicked is the pole under the cursor.
+    own = min(here, key=lambda s: (s[4], s[0]))[0]
+
+    there = list(stops_within(con, lat, lon, dedup, "proposed"))
+    if own not in {s[0] for s in there}:
+        kept = _stop_at(con, "proposed", own, lat, lon)
+        if kept is not None:
+            there.append(kept)
+
+    return {
+        "lat": lat, "lon": lon,
+        "dedup_m": round(dedup),
+        "stop_id": own,
+        # Every name PRT gives the poles on this kerb, deduplicated: a corner
+        # split into two ids is usually one name twice, and occasionally two.
+        "names": sorted({s[1] for s in here if s[1]}),
+        "current": side_at_kerb(con, "current", here),
+        "proposed": side_at_kerb(con, "proposed", there),
     }
 
 
@@ -600,6 +782,14 @@ def place(con, lat: float, lon: float, radius: float = PRIMARY_RADIUS,
         }
         for day in DAYS
     }
+    # The stop under the click, where there is one, beside the location around
+    # it. Additive: every existing key above keeps its meaning and its
+    # published value, and a client that does not know about this one shows
+    # exactly what it showed before. It rides along with the panel rather than
+    # behind its own request for the reason the one-seat verdicts do -- two
+    # round trips would let the panel headline a kerb while the walk radius
+    # under it was still loading, or the reverse.
+    out["kerb"] = kerb_service(con, lat, lon)
     out["place"] = nearest_place_label(con, lat, lon)
     # By containment, NOT by `out["place"]`'s nearest-stop label: the two name
     # a place differently on 14 of PRT's 187 labels ("Penn Hills township" vs

@@ -1090,7 +1090,12 @@ function renderPanel({ scrollToTop = false } = {}) {
       return;
     }
   }
-  render(lastPlace);
+  // Lead with the stop under the click wherever the dots are the map on
+  // screen, so the panel answers in the unit the reader just hovered. The walk
+  // radius stays below it, labelled, because that is the published unit. The
+  // views with no dots in them (`dotsOn` false) get the walk radius alone --
+  // there is no stop there for a click to have landed on.
+  render(lastPlace, { withKerb: dotsOn() });
 }
 
 function showJourney(on: boolean, leaving = false) {

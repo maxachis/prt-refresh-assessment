@@ -128,6 +128,14 @@ def create_app(db_path: str | Path = "data/refresh.db") -> FastAPI:
 
         This is the app's whole purpose; everything else is navigation.
 
+        Two units ride in one response and each says which it is. `current`,
+        `proposed`, `change` and `radius` are the LOCATION -- convention 4's
+        walk radius, the published unit `data/coverage_change.csv` carries.
+        `kerb` is the STOP under the point, the same unit Stop-by-stop
+        colours and hovers (`query.kerb_service`), and it is null where no
+        pole stands within `query.STOP_SAME_POLE_M`. A client showing both
+        must label each; a client that ignores `kerb` sees what it always saw.
+
         `dest_lat`/`dest_lon` add one dropped-pin one-seat verdict alongside
         the named destinations, so that a reader who has pointed the map at
         somewhere of their own gets the panel to answer for it too rather than
@@ -476,6 +484,18 @@ CAVEATS = [
         "text": "Trips at a location take the maximum across the stops in the "
                 "radius per route, direction and period — never the sum. "
                 "Adjacent stop ids on one corridor are one bus passing once.",
+    },
+    {
+        "id": "kerb",
+        "text": "\"At this stop\" is the kerb, not the walk: every pole of "
+                "either network within 25 m of the point, summed on both "
+                "sides, so a corner PRT splits into two stop ids reads as one "
+                "and a consolidation of two poles into one reads as the loss "
+                "it is. Inside 25 m the poles hold their own trips, which is "
+                "why this sums where a location takes the maximum. It is the "
+                "count the map's dots are coloured by, and it is not a "
+                "published figure -- the published unit is the walk radius "
+                "below it, which is what data/coverage_change.csv carries.",
     },
     {
         "id": "radius",

@@ -119,6 +119,41 @@ measurements, only one of which is what `data/oneseat_change.csv` publishes, and
 convention 13 requires anything quoting a one-seat number to say which; the
 legend says it for the map, and this says it for the panel, in the same words.
 
+### The panel answers in two units
+
+A click in Stop-by-stop (or the combined view) opens a panel with two blocks,
+each under its own heading. **At this stop** is the kerb the reader clicked —
+the same unit the dot's colour and its hover use, named for the poles PRT
+names, and computed by `query.kerb_service` to agree with `query.kerb_departures`
+exactly. **Within a 400 m walk** is the published location: convention 4's
+quarter mile, what `data/coverage_change.csv` carries and `docs/answers/`
+quotes. At the downtown dot that started this they read 167 → 179 and
+1,591 → 2,178, and the gap between them is the point of showing both.
+
+Until 2026-09-10 only the second was on screen. Stop-by-stop had moved to the
+kerb in its colour, its tooltip and its key, so a reader was shown one number
+on hover and a wildly different one on click, with no reason on screen for the
+difference and a figure that swung by hundreds when the click moved a block.
+
+Three rules keep the two apart. **Every number sits under the label of its own
+unit**: the headline, the period table, the wait and the routes exist in both
+blocks and each says which it is measuring, and the boardings row names its
+scope in the row label. **The area facts stay in the area block** — stops
+within the radius, the removals, the additions, the residents — because there
+is no such thing as a stop count at a stop. And the place head above both
+carries the radius **only when the radius is the panel's one scope**, since a
+"within 400 m" subtitle hung over a kerb headline is the same error one line
+further up.
+
+Which unit leads is the view's call and the server's together. `place.ts` is
+asked for the kerb block only where the dots are on screen (`main.dotsOn`) —
+Surface, Streets, one-seat, travel time and Places draw no stop for a click to
+have landed on, and are unchanged. The server decides whether there *is* a
+kerb, by the 25 m on the ground rather than by a screen hit, so an `at=` link
+opens the same panel at every zoom; `/api/place` returns `kerb: null` where no
+pole stands, and the panel falls back to the walk radius alone. The one-seat
+panel's collapsed service line stays radius-based.
+
 ### What the panel says, and what the drawer says instead
 
 An answer used to arrive with about 350 words of prose around twenty numbers:
@@ -134,8 +169,10 @@ number above it means something else. Provenance — the May 2025 vintage,
 unlinked trips, the ACS weighting, the file that reproduces the ranking —
 qualifies a number without changing what it says, so it is written once in the
 method drawer and reached from the figure by a `method` link, which opens the
-drawer scrolled to that entry and marks it. The whole panel is now under 220
-words, pinned by a test, because prose grows back one useful sentence at a time.
+drawer scrolled to that entry and marks it. The walk-radius block is under 230
+words, pinned by a test — 220 until each of its figures started naming the
+scope it was measured at — because prose grows back one useful sentence at a
+time. The kerb block above it is its own budget and repeats none of its prose.
 
 One thing deliberately did not move. PRT's own disclaimer — unofficial totals
 that may understate ridership by up to 30% — stays visible next to the number,
@@ -494,8 +531,9 @@ at that kerb — "306 → 731 buses per weekday at this stop" — and the dot's
 colour is `query.bucket()` on those same two numbers. Until 2026-09-10 both
 channels were the 400 m walk radius's, which at a downtown dot read
 1,591 → 2,178: every bus within a quarter mile of the Central Business
-District, and not a stop by any reading. That comparison is the answer panel's
-job and the Surface view's, and it stayed there.
+District, and not a stop by any reading. That comparison is the Surface view's
+job, and the answer panel's — which now prints both, in two labelled blocks;
+see "The panel answers in two units" above.
 
 **A kerb, not a raw pole**, and the difference decides 467 dots. The unit is
 every pole of each network within `query.STOP_SAME_POLE_M` (25 m) of the dot,

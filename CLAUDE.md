@@ -252,6 +252,12 @@ changes published findings.
    only", and then "why have coloration communicate something potentially
    different?"
 
+   Since 2026-09-10 the **answer panel opens with that same kerb** in the
+   dots views (`query.kerb_service`, pinned to agree with `kerb_departures`),
+   and keeps the walk radius below it under its own heading. Two units, one
+   screen, each labelled — the kerb block carries no radius-based row and the
+   radius block no per-stop one.
+
    What that buys and what it costs. Both of the dot's channels now answer one
    question, and the key names its unit ("stops in view", never "locations")
    with no walk radius over it. But **the key's counts are no longer the
@@ -259,7 +265,8 @@ changes published findings.
    bus against the published 0.8% at a *location* that loses all service within
    a quarter mile, and both are pinned, side by side, in
    `tests/test_query.py`. The walk radius stayed behind in the `change` table,
-   which is what the answer panel prints and what `docs/answers/` publishes, so
+   which is what the answer panel's second block prints and what
+   `docs/answers/` publishes, so
    nothing above the stop id moved. Anything quoting a figure off this key has
    to say it is per stop; see
    [`docs/worklog/the-dot-hover-reported-a-district-not-a-stop.md`](docs/worklog/the-dot-hover-reported-a-district-not-a-stop.md).

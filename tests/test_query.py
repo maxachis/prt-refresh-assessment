@@ -1082,3 +1082,103 @@ def test_the_removed_mark_is_independent_of_the_walk_radius(con):
           for r, lay in layers.items()}
     assert at[400] and at[400].keys() == at[150].keys()
     assert at[400] == at[150]
+
+
+# --------------------------------------------------------------------------
+# the kerb the panel now leads with
+# --------------------------------------------------------------------------
+
+def test_the_panel_can_answer_for_the_kerb_the_dot_was_drawn_at(con):
+    """The click and the hover must print the same two numbers.
+
+    Stop-by-stop moved to the kerb on 2026-09-10 in its colour, its tooltip
+    and its key, and the panel a click opened went on headlining the buses
+    within a 400 m walk: 1,591 -> 2,178 at a downtown dot whose own kerb
+    carries 167. `kerb_service` is the panel's half of that move, and it has
+    to agree with `kerb_departures` exactly -- it is the same unit reached
+    from a coordinate rather than from a point id.
+    """
+    kerbs = query.kerb_departures(con)
+    points = {p[0]: p for p in query.change_points(con)}
+    sample = [p for p in points.values() if p[3] == 1][:200]
+    assert sample
+
+    for point_id, lat, lon, _published in sample:
+        got = query.kerb_service(con, lat, lon)
+        assert got is not None, point_id
+        for day in query.DAYS:
+            want = kerbs[point_id][day]
+            here = (got["current"]["days"][day]["trips"],
+                    got["proposed"]["days"][day]["trips"])
+            assert here == want, f"{point_id} {day}: {here} != {want}"
+
+
+def test_the_kerb_answer_is_smaller_than_the_walk_it_sits_inside(con):
+    """The two blocks on the panel are different units, and say so.
+
+    At the dot beside the click that started this, the kerb carries a small
+    fraction of what stands within a quarter mile of it -- which is the whole
+    reason both are on screen with their own labels.
+    """
+    kerb = query.kerb_service(con, 40.44531, -79.99173)
+    walk = query.side_at_place(con, "current", 40.44531, -79.99173,
+                               query.PRIMARY_RADIUS)
+    assert kerb["current"]["days"]["weekday"]["trips"] * 5 < \
+        walk["days"]["weekday"]["trips"]
+
+
+def test_a_point_with_no_pole_on_it_has_no_kerb_to_report(con):
+    """Null, not an empty kerb.
+
+    A reader clicking the middle of a park is not standing at a stop that
+    lost every bus -- they are standing where no stop is. Zero trips "at this
+    stop" would be a finding about a stop that does not exist, so the panel
+    is told there is nothing to lead with and falls back to the walk radius.
+    """
+    lat, lon = 40.4406, -79.9490   # Schenley Park
+    assert query.stops_within(con, lat, lon, query.STOP_SAME_POLE_M,
+                              "current") == []
+    assert query.kerb_service(con, lat, lon) is None
+
+
+def test_the_kerb_pools_its_poles_where_the_location_maxes_its_cluster(con):
+    """Two poles on one corner are one kerb, and their buses add up.
+
+    `cluster_trips` takes the richest stop per (route, direction) because a
+    location's cluster records the same route at several stops. Inside 25 m
+    that is not what a duplicate means: a trip calls at one pole, and 34 of
+    the duplicated (route, direction) pairs on the sampled kerbs carry
+    different times at each. So the kerb sums, which is exactly what
+    `kerb_departures` does and what makes a consolidation read as one.
+    """
+    by_stop = {"a": {("61A", "in"): [400, 500]},
+               "b": {("61A", "in"): [430, 530]}}
+    assert sum(query.kerb_trips(by_stop, ["a", "b"]).values()) == 4
+    assert sum(query.cluster_trips(by_stop, ["a", "b"]).values()) == 2
+    assert query.kerb_by_direction(by_stop, ["a", "b"])["in"] == [400, 430,
+                                                                 500, 530]
+
+
+def test_the_kerbs_periods_add_up_to_its_headline(con):
+    """Nothing falls between the period table and the number above it."""
+    kerb = query.kerb_service(con, 40.44531, -79.99173)
+    for side in query.SIDES:
+        for day in query.DAYS:
+            got = kerb[side]["days"][day]
+            assert round(sum(got["periods"].values())) == got["trips"]
+
+
+def test_the_kerb_names_the_poles_prt_names(con):
+    """A headline that says "at this stop" has to say which stop."""
+    kerb = query.kerb_service(con, 40.44531, -79.99173)
+    assert kerb["names"] and all(n for n in kerb["names"])
+    assert kerb["stop_id"]
+    assert all(s["stop_id"] for s in kerb["current"]["stops"])
+
+
+def test_the_panel_carries_the_kerb_beside_the_walk_radius(con):
+    """Additive: the published location answer keeps its own place."""
+    p = query.place(con, 40.44531, -79.99173, query.PRIMARY_RADIUS)
+    assert p["kerb"]["current"]["days"]["weekday"]["trips"] \
+        != p["current"]["days"]["weekday"]["trips"]
+    assert p["radius"] == query.PRIMARY_RADIUS

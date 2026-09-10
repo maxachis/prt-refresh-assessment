@@ -3,6 +3,14 @@
  *
  * Presentation rules that are not cosmetic:
  *
+ *  - EVERY NUMBER SAYS WHICH UNIT IT IS MEASURED AT. Since 2026-09-10 the
+ *    panel can hold two: the kerb a reader clicked, which is what the dot's
+ *    colour and its hover count, and the 400 m walk around it, which is what
+ *    `docs/answers/` publishes. At a downtown corner those are 167 → 179 and
+ *    1,591 → 2,178, so an unlabelled headline is a misquote waiting to be
+ *    screenshotted. Each block wears its own scope, no block mixes rows from
+ *    the other's unit, and the place head carries the radius only when the
+ *    radius is the panel's one scope.
  *  - GAINS READ AS LOUDLY AS LOSSES. The repo's standing instruction is that
  *    overstating losses would discredit the real ones, and the honest headline
  *    for this plan is a near service-neutral redesign. So the delta gets a
@@ -24,8 +32,21 @@
 import { esc, clock, duration, signed, pct } from './utils';
 import {
   PKEYS, PERIOD_LABEL, Day, PlaceResult, DayService, OneSeatVerdict, OneSeatDay,
-  Boardings, PlacePopulation, StopRef,
+  Boardings, PlacePopulation, StopRef, KerbResult,
 } from './types';
+
+/**
+ * How a block of numbers says which unit it is measured at.
+ *
+ * Every figure on this panel belongs to one of two scopes and none of them
+ * may appear without its own — the kerb and the walk radius differ by an
+ * order of magnitude at a downtown corner (167 buses against 1,591), and an
+ * unlabelled number is the one that gets screenshotted. The words are here
+ * rather than at the call sites so the same phrase reaches the headline, the
+ * boardings row and the block heading.
+ */
+const AT_THIS_STOP = 'at this stop';
+const withinWalk = (radius: number) => `within ${radius} m`;
 
 let day: Day = 'weekday';
 
@@ -430,7 +451,7 @@ function removedStopsFact(stops: StopRef[]): string {
     <dd>${gone.length} of ${stops.length}<div class="muted">${note}</div></dd>`;
 }
 
-function boardingsFact(b: Boardings | null, d: Day): string {
+function boardingsFact(b: Boardings | null, d: Day, scope: string): string {
   if (!b) return '';
   const stops = b.measured + b.unmeasured;
   const gap = b.unmeasured
@@ -441,7 +462,7 @@ function boardingsFact(b: Boardings | null, d: Day): string {
     ? '<span class="muted">not counted here</span>'
     : `${Math.round(b.total).toLocaleString()}
        <span class="muted">on an average ${dayWord(d)}, today only</span>`;
-  return `<dt>Boardings</dt><dd>${value}${gap}</dd>`;
+  return `<dt>Boardings ${esc(scope)}</dt><dd>${value}${gap}</dd>`;
 }
 
 /** What that figure does and does not say. Ships with it or not at all. */
@@ -493,24 +514,17 @@ function residentsBlock(pop: PlacePopulation | null): string {
 }
 
 /**
- * Everything this app knows about the service at a point, minus the heading.
+ * The two trip counts and the delta between them, under the scope they were
+ * measured at.
  *
- * Split out of `render` so the one-seat panel can carry the same numbers under
- * its own question without a second copy of them drifting from this one.
+ * The scope is a required argument rather than a default, because this is the
+ * biggest type on the panel and there are now two of it on screen: an
+ * unscoped headline is exactly the number a reader carries away wrong.
  */
-export function serviceBodyHTML(p: PlaceResult, d: Day, middle = ''): string {
-  const before = p.current.days[d];
-  const after = p.proposed.days[d];
+function headlineHTML(before: DayService, after: DayService,
+                      d: Day, scope: string): string {
   const delta = after.trips - before.trips;
   const dcls = delta > 0 ? 'up' : delta < 0 ? 'down' : 'flat';
-  const bm = bestMedian(before), am = bestMedian(after);
-  // The one thing about the first and last bus that can be graded: a longer
-  // day is more service, where a later first bus and a later last bus pull in
-  // opposite directions and so cannot be. It is the distance between the two
-  // ends, not the hours a bus is useful -- the period table above is where a
-  // midday hole shows up.
-  const bs = span(before), as = span(after);
-
   return `
     <div class="headline">
       <div class="hl-side">
@@ -527,14 +541,125 @@ export function serviceBodyHTML(p: PlaceResult, d: Day, middle = ''): string {
         <div class="muted">${pct(before.trips, after.trips)}</div>
       </div>
     </div>
-    <div class="sub">buses per ${dayWord(d)}, both directions</div>
+    <div class="sub">buses per ${dayWord(d)} ${esc(scope)}, both directions</div>`;
+}
 
-    <div class="tiers">${tierBadge(before.hourly, after.hourly)}</div>
-
+/** The seven periods the headline above sums over. Scope-free by itself. */
+function periodTableHTML(before: DayService, after: DayService): string {
+  return `
     <table class="periods">
       <thead><tr><th></th><th></th><th class="n">now</th><th class="n">prop.</th><th class="n">Δ</th></tr></thead>
       <tbody>${periodRows(before, after)}</tbody>
-    </table>
+    </table>`;
+}
+
+/**
+ * The rows of the facts list that describe service rather than geography.
+ *
+ * Shared by both scopes: the first bus, the length of the day and the typical
+ * wait mean the same thing at a kerb and at a walk radius, where the stop
+ * counts, the removals and the residents below them are answers about an
+ * area and stay in the block that has one.
+ */
+function serviceFactsRows(before: DayService, after: DayService): string {
+  const bm = bestMedian(before), am = bestMedian(after);
+  // The one thing about the first and last bus that can be graded: a longer
+  // day is more service, where a later first bus and a later last bus pull in
+  // opposite directions and so cannot be. It is the distance between the two
+  // ends, not the hours a bus is useful -- the period table above is where a
+  // midday hole shows up.
+  const bs = span(before), as = span(after);
+  return `
+      <dt>First and last</dt>
+      ${compare(spanLine(before), spanLine(after))}
+      <dt>Hours between</dt>
+      ${compare(duration(bs), duration(as), grade(bs, as, 'more'))}
+      <dt>Typical wait</dt>
+      ${compare(bm == null ? '—' : `${bm} min`, am == null ? '—' : `${am} min`,
+                grade(bm, am, 'less'))}`;
+}
+
+/** Both networks' route lists, under a heading that says at what scope. */
+function routesBlockHTML(before: DayService, after: DayService,
+                         heading: string): string {
+  return `
+    <div class="routes">
+      <h3>${esc(heading)}</h3>
+      ${routePair(before.routes, after.routes)}
+      <p class="note"><span class="k-now">Blue</span> runs here only today,
+         <span class="k-prop">orange</span> only under the plan,
+         <span class="k-shared">grey</span> both. Renumbering is not
+         replacement: the 61A–D become the
+         60X/61X/62X.${methodLink('location-not-route')}</p>
+    </div>`;
+}
+
+/**
+ * What the plan does to the buses at the one stop a reader clicked.
+ *
+ * The panel's half of the move Stop-by-stop made on 2026-09-10. The dots'
+ * colour, their tooltip and the key all count the kerb; this block was still
+ * missing, so a click printed the 400 m walk — 1,591 → 2,178 at a downtown
+ * dot whose own kerb carries 167 — and swung by hundreds when the click moved
+ * a block. Two units, one screen, and nothing saying which was which.
+ *
+ * EVERY FIGURE HERE IS SCOPED TO THE STOP, and the block carries no
+ * radius-based row at all. The stop counts, the removals, the additions and
+ * the residents are answers about an area; they stay below, under the walk
+ * radius's own heading. That separation is the whole point of showing both:
+ * the gap between the two headlines is legible only if each says what it is.
+ *
+ * It is NOT a published figure, and says so. `data/coverage_change.csv` and
+ * `docs/answers/` publish the location — convention 2 — and this block would
+ * misquote them by an order of magnitude if it were read as theirs.
+ */
+export function kerbBlockHTML(k: KerbResult, d: Day): string {
+  const before = k.current.days[d];
+  const after = k.proposed.days[d];
+  const poles = k.names.length ? k.names.join(' · ') : `stop ${k.stop_id}`;
+  return `
+    <section class="scope kerb-scope">
+      <h3 class="scope-head">At this stop</h3>
+      <div class="scope-sub">${esc(poles)}
+        <span class="muted">· PRT stop ${esc(k.stop_id)}</span></div>
+      ${headlineHTML(before, after, d, AT_THIS_STOP)}
+      <div class="tiers">${tierBadge(before.hourly, after.hourly)}</div>
+      ${periodTableHTML(before, after)}
+      <dl class="facts">
+        ${serviceFactsRows(before, after)}
+        ${boardingsFact(before.boardings, d, AT_THIS_STOP)}
+      </dl>
+      ${boardingsNote(before.boardings)}
+      ${routesBlockHTML(before, after, 'Routes calling at this stop')}
+      <p class="note">This kerb only — every pole within ${k.dedup_m} m of it,
+        on both networks, so a corner PRT splits into two stop ids reads as
+        one. It is the same count the dot's colour and its hover use, and it
+        is <b>not the published measure</b>: what
+        <code>docs/answers/</code> publishes is the walk radius
+        below.${methodLink('kerb')}</p>
+    </section>`;
+}
+
+/**
+ * Everything this app knows about the service at a point, minus the heading.
+ *
+ * Split out of `render` so the one-seat panel can carry the same numbers under
+ * its own question without a second copy of them drifting from this one.
+ *
+ * The walk radius throughout — convention 4's quarter mile, the published
+ * unit. Its scope is now stated on the headline rather than only in the place
+ * head above it, because the kerb block can sit between the two.
+ */
+export function serviceBodyHTML(p: PlaceResult, d: Day, middle = ''): string {
+  const before = p.current.days[d];
+  const after = p.proposed.days[d];
+
+  return `
+    ${headlineHTML(before, after, d, withinWalk(p.radius))}
+
+    <div class="tiers">${tierBadge(before.hourly, after.hourly)}</div>
+
+    ${periodTableHTML(before, after)}
     <div class="legend">
       <span><i class="sw-now"></i> today</span>
       <span><i class="sw-prop"></i> proposed</span>
@@ -546,18 +671,12 @@ export function serviceBodyHTML(p: PlaceResult, d: Day, middle = ''): string {
       today. Two marks with no line are a renumbering.</div>
 
     <dl class="facts">
-      <dt>First and last</dt>
-      ${compare(spanLine(before), spanLine(after))}
-      <dt>Hours between</dt>
-      ${compare(duration(bs), duration(as), grade(bs, as, 'more'))}
-      <dt>Typical wait</dt>
-      ${compare(bm == null ? '—' : `${bm} min`, am == null ? '—' : `${am} min`,
-                grade(bm, am, 'less'))}
+      ${serviceFactsRows(before, after)}
       <dt>Stops within ${p.radius} m</dt>
       ${compare(String(p.current.stops.length), String(p.proposed.stops.length))}
       ${removedStopsFact(p.current.stops)}
       ${newPlacesFact(p.proposed.stops)}
-      ${boardingsFact(before.boardings, d)}
+      ${boardingsFact(before.boardings, d, withinWalk(p.radius))}
     </dl>
     ${boardingsNote(before.boardings)}
 
@@ -565,26 +684,49 @@ export function serviceBodyHTML(p: PlaceResult, d: Day, middle = ''): string {
 
     ${residentsBlock(p.population)}
 
-    <div class="routes">
-      <h3>Routes serving this spot</h3>
-      ${routePair(before.routes, after.routes)}
-      <p class="note"><span class="k-now">Blue</span> runs here only today,
-         <span class="k-prop">orange</span> only under the plan,
-         <span class="k-shared">grey</span> both. Renumbering is not
-         replacement: the 61A–D become the
-         60X/61X/62X.${methodLink('location-not-route')}</p>
-    </div>`;
+    ${routesBlockHTML(before, after, 'Routes serving this spot')}`;
 }
 
-export function render(p: PlaceResult) {
-  const el = document.getElementById('panel')!;
+/**
+ * Whether the panel leads with the stop under the click.
+ *
+ * True only in the views that actually draw a stop for a reader to have
+ * clicked — Stop-by-stop and the combined view. Surface, Streets, one-seat,
+ * travel time and Places ask questions with no kerb in them, and a stop
+ * headline there would answer something the map on screen is not showing.
+ * The other half of the test is the server's: `kerb` is null where no pole
+ * stands within 25 m, decided on the ground rather than by a screen hit, so
+ * an `at=` link opens the same panel at every zoom.
+ */
+export interface PanelScope { withKerb?: boolean }
 
-  el.innerHTML = `
+/**
+ * The whole panel for a clicked point, as HTML.
+ *
+ * Separate from `render` so the block order can be tested without a DOM,
+ * which is how everything else in this module is checked.
+ */
+export function panelHTML(p: PlaceResult, d: Day,
+                          { withKerb = false }: PanelScope = {}): string {
+  const kerb = withKerb ? p.kerb ?? null : null;
+  // The place head carries the radius only when it is the panel's one scope.
+  // Hung over a kerb headline it would label the wrong number -- the trap
+  // this whole change is about, one line further up.
+  const where = kerb
+    ? `${p.lat.toFixed(5)}, ${p.lon.toFixed(5)}`
+    : `${p.lat.toFixed(5)}, ${p.lon.toFixed(5)} · within ${p.radius} m`;
+  return `
     <div class="place-head">
       <h2>${esc(placeLabel(p))}</h2>
-      <div class="muted">
-        ${p.lat.toFixed(5)}, ${p.lon.toFixed(5)} · within ${p.radius} m
-      </div>
+      <div class="muted">${where}</div>
     </div>
-    ${serviceBodyHTML(p, day, oneSeatBlock(p.oneseat ?? [], p.oneseat_day ?? 'any'))}`;
+    ${kerb ? kerbBlockHTML(kerb, d) : ''}
+    ${kerb ? `<h3 class="scope-head">Within a ${p.radius} m walk</h3>
+      <div class="scope-sub">The published unit: every stop a rider can walk
+        to, on both networks, measured in the same circle.</div>` : ''}
+    ${serviceBodyHTML(p, d, oneSeatBlock(p.oneseat ?? [], p.oneseat_day ?? 'any'))}`;
+}
+
+export function render(p: PlaceResult, scope: PanelScope = {}) {
+  document.getElementById('panel')!.innerHTML = panelHTML(p, day, scope);
 }

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { placeLabel, serviceBodyHTML } from './place';
+import { placeLabel, serviceBodyHTML, panelHTML, kerbBlockHTML } from './place';
 import { DayService, PlaceResult, SideResult } from './types';
 
 function service(over: Partial<DayService> = {}): DayService {
@@ -215,9 +215,12 @@ describe('the panel points at its own method', () => {
   });
 
   it('keeps the panel short enough to take in at a glance', () => {
+    // 230 rather than 220 since 2026-09-10: every figure in this block now
+    // names the scope it was measured at ("within 400 m"), which is six words
+    // and the reason the panel can carry a second block above it at all.
     const words = serviceBodyHTML(PLACE, 'weekday')
       .replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().split(' ').length;
-    expect(words).toBeLessThan(220);
+    expect(words).toBeLessThan(230);
   });
 });
 
@@ -266,7 +269,7 @@ describe('the before-and-after rows line up in columns', () => {
 
   it('leaves a figure with no proposed half out of the columns', () => {
     const html = serviceBodyHTML(PLACE, 'weekday');
-    const boardings = html.split('<dt>Boardings</dt>')[1];
+    const boardings = html.split('<dt>Boardings within 400 m</dt>')[1];
     expect(boardings.slice(0, 30)).not.toContain('cmp');
   });
 });
@@ -403,5 +406,82 @@ describe('the length of the service day', () => {
   it('says nothing about a day with no bus in it', () => {
     expect(withSpan([281, 1679], [null as any, null as any]))
       .toContain('<span class="cmp-b">—</span>');
+  });
+});
+
+
+// The panel's second unit. Stop-by-stop's dots, their colour and its key all
+// count the kerb; the panel a click opened went on headlining the 400 m walk,
+// so a reader saw 167 buses on hover and 1,591 on click with nothing on
+// screen to say why. Both are now on the panel, each under its own label.
+const KERB: NonNullable<PlaceResult['kerb']> = {
+  stop_id: '8156',
+  names: ['FORBES AVE AT CRAIG ST'],
+  dedup_m: 25,
+  lat: 40.4,
+  lon: -80.01,
+  current: { ...side('current', 167), stops: [] },
+  proposed: { ...side('proposed', 143), stops: [] },
+};
+
+const AT_A_STOP: PlaceResult = { ...PLACE, kerb: KERB };
+
+describe('the stop a reader clicked, beside the walk around it', () => {
+  it('leads with the kerb where the dots are the map on screen', () => {
+    const html = panelHTML(AT_A_STOP, 'weekday', { withKerb: true });
+    expect(html).toContain('At this stop');
+    expect(html.indexOf('At this stop'))
+      .toBeLessThan(html.indexOf('Within a 400 m walk'));
+    // Both numbers, each in its own block, so the gap between them is on
+    // screen rather than being a thing the reader hits by clicking twice.
+    expect(html).toContain('167');
+    expect(html).toContain('84');
+  });
+
+  it('names the pole PRT names, so "at this stop" says which', () => {
+    const html = panelHTML(AT_A_STOP, 'weekday', { withKerb: true });
+    expect(html).toContain('FORBES AVE AT CRAIG ST');
+  });
+
+  it('labels every number in the kerb block per stop, never per radius', () => {
+    const block = kerbBlockHTML(KERB, 'weekday');
+    expect(block).toMatch(/at this stop/i);
+    expect(block).not.toContain('400 m');
+    // Radius facts stay in the radius block: a count of stops within a walk,
+    // the removals and additions inside it, and the place's residents are all
+    // answers to a question this block is not asking.
+    expect(block).not.toMatch(/Stops within/i);
+    expect(block).not.toMatch(/residents/i);
+    expect(block).not.toContain('sw-walk');
+  });
+
+  it('says the kerb is not the published unit', () => {
+    // Convention 2: the published figures are the location's, and a screenshot
+    // of this block captioned with a published sentence would misquote it by
+    // an order of magnitude.
+    expect(kerbBlockHTML(KERB, 'weekday')).toMatch(/published/i);
+  });
+
+  it('scopes the walk block\'s own headline rather than the whole panel', () => {
+    const html = panelHTML(AT_A_STOP, 'weekday', { withKerb: true });
+    // The place head must not hang "within 400 m" over a kerb headline.
+    const head = html.split('At this stop')[0];
+    expect(head).not.toContain('within 400 m');
+    expect(html).toMatch(/buses per weekday within 400 m/);
+  });
+
+  it('shows the walk radius alone in the views that ask a walk question', () => {
+    // Surface, one-seat, travel time, Places and Streets are unchanged: none
+    // of them draws a stop for a reader to have clicked.
+    const html = panelHTML(AT_A_STOP, 'weekday', { withKerb: false });
+    expect(html).not.toContain('At this stop');
+    expect(html).not.toContain('Within a 400 m walk');
+    expect(html).toContain('within 400 m');
+  });
+
+  it('falls back to the walk radius where no pole stands under the click', () => {
+    const html = panelHTML(PLACE, 'weekday', { withKerb: true });
+    expect(html).not.toContain('At this stop');
+    expect(html).not.toContain('Within a 400 m walk');
   });
 });

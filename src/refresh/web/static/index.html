@@ -305,6 +305,16 @@
     .sub { color:var(--muted); font-size:12px; margin-top:2px; }
 
     .place-head h2 { margin:0 0 2px; font-size:18px; }
+
+    /* The panel can hold two units at once -- the kerb a reader clicked and
+       the walk radius around it, which differ by an order of magnitude at a
+       downtown corner -- so each block wears its own scope as a heading. An
+       unlabelled headline is the number that gets screenshotted wrong. */
+    .scope-head { font-size:12px; text-transform:uppercase; letter-spacing:.06em;
+      color:var(--muted); margin:20px 0 2px; font-weight:600; }
+    .scope-sub { color:var(--muted); font-size:12px; }
+    .kerb-scope { padding-bottom:4px; border-bottom:1px solid var(--line); }
+    .kerb-scope .scope-head { margin-top:14px; }
     .headline { display:flex; align-items:center; gap:12px; padding:12px 0 2px; }
     .hl-side { text-align:center; }
     .hl-label { font-size:10px; text-transform:uppercase; letter-spacing:.07em;

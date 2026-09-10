@@ -2,9 +2,10 @@
 
 Hovering a dot in Stop-by-stop printed the buses within a 400 m walk — 1,591
 per weekday at a downtown dot, which is most of PRT's network and not a stop.
-Fixed 2026-09-10, awaiting close — the tooltip, the dot's colour and the key
-are all the **kerb's** own buses now, and the walk radius left this view
-entirely for the answer panel and the Surface view.
+Fixed 2026-09-10, awaiting close — the tooltip, the dot's colour, the key and
+now the answer panel's opening block are all the **kerb's** own buses, and the
+walk radius appears only where it is labelled as itself: the Surface view, and
+the panel's second block.
 
 ## What was observed
 
@@ -121,11 +122,32 @@ than a bucket label ("the plan adds a stop here"), which is unchanged.
 Cost: 0.45 s per radius to sum the kerbs, paid once per radius because
 `/api/change` is cached by `cached_layer`. No change to the wire size.
 
-## What was deliberately left alone
+## The answer panel followed, and now carries both units
 
 The **answer panel** — the thing Max was actually looking at when he asked —
-still reads "within 400 m", and still prints 1,591 → 2,178 there. It answers
-"what changes here?" for a clicked point, it is shared with the Surface view,
-and it says its scope on its face. Max chose to leave it (2026-09-10). Making
-it lead with the pole when the click lands on a dot is the open option, and it
-needs the panel to know how it was opened.
+was left alone in the first pass and taken up in the second, the same day. It
+had gone on headlining the 400 m walk while the dot beside it had moved to the
+kerb, so a reader saw 167 buses on hover and 1,591 → 2,178 on click, with
+nothing on screen to say why and a figure that swung by hundreds when the click
+moved a block.
+
+It now opens with **At this stop** — the same kerb, named for the poles PRT
+names — and keeps the walk radius below it under **Within a 400 m walk**, which
+is still the published unit and still the `change` table's. `query.kerb_service`
+is the server half and is pinned to agree with `kerb_departures` exactly over
+200 sampled dots, so the colour, the hover and the click cannot say three
+things about one stop.
+
+Three rules keep the units apart, and they are the reason both can share a
+screen: every number sits under the label of its own unit, the area facts
+(stops within the radius, removals, additions, residents) stay in the area
+block because a stop has no stop count, and the place head carries "within
+400 m" only when the radius is the panel's one scope. The kerb block appears
+only where dots are drawn — Surface, Streets, one-seat, travel time and Places
+are unchanged — and the server decides whether there is a kerb by the 25 m on
+the ground rather than by a screen hit, so an `at=` link reproduces the same
+panel at any zoom. A click with no pole under it falls back to the walk radius
+alone. `docs/WEBAPP.md`, "The panel answers in two units", carries the detail.
+
+Left alone: the one-seat panel's collapsed service line, which is still the
+radius's.

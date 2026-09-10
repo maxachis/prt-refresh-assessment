@@ -319,6 +319,29 @@ export interface PlacePopulation {
   measured: boolean;
 }
 
+/**
+ * The stop under the click — the same unit Stop-by-stop colours and hovers.
+ *
+ * `current` and `proposed` have the shape of a `SideResult` measured at one
+ * kerb instead of one walk radius: today's poles within `dedup_m` of the
+ * point, and the plan's read at whatever pole the plan runs there. It is NOT
+ * the published unit — `data/coverage_change.csv` publishes the walk radius,
+ * which is what `PlaceResult.current` still carries — so anything quoting a
+ * figure from here has to say it is per stop.
+ */
+export interface KerbResult {
+  /** The pole the reader clicked: nearest of today's ids on this kerb. */
+  stop_id: string;
+  /** Every name PRT gives the poles on this kerb, deduplicated. */
+  names: string[];
+  /** How far apart two poles may stand and still be one kerb — 25 m. */
+  dedup_m: number;
+  lat: number;
+  lon: number;
+  current: SideResult;
+  proposed: SideResult;
+}
+
 export interface PlaceResult {
   lat: number;
   lon: number;
@@ -334,6 +357,11 @@ export interface PlaceResult {
    * where the answer is that nobody here loses or gains every bus.
    */
   population: PlacePopulation | null;
+  /**
+   * The stop under the click, or null where no pole stands within 25 m of
+   * it. Additive to everything above, which stays the walk radius's answer.
+   */
+  kerb?: KerbResult | null;
   /** Empty when the database predates the one-seat layer. */
   oneseat: OneSeatVerdict[];
   /** Which day the verdicts above answered for; 'any' is the published one. */
