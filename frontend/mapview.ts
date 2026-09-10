@@ -100,16 +100,18 @@ export function movedLeaders(stops: StopRef[]) {
 /**
  * What a mark around the pin says when the reader hovers it.
  *
- * Both distances name what they are measured from. Unlabelled they read as one
- * number: a stop's plain "2 m" is how far it is from where the reader clicked,
- * and Max read it as how far the plan had moved the pole.
+ * One distance only, and it is the one the map cannot draw. How far the stop
+ * is from the pin used to print here as a bare "2 m"; the reader can see that
+ * gap, with the walk radius drawn around it, and beside "moved 21 m" the two
+ * numbers read as one -- Max took the distance from the pin for the distance
+ * the plan had shifted the pole. How far a pole moved is the one fact with no
+ * picture of its own, since today's pole and the plan's are two marks.
  */
 export function stopPopupHtml(p: any) {
   const side = p.side === 'current' ? 'today' : 'proposed';
   const moved = p.moved_m != null
     ? `<br>moved ${p.moved_m} m from where it stands today` : '';
-  return `<b>${p.name}</b><br>${side} · stop ${p.stop_id}`
-    + ` · ${p.metres} m from the pin${moved}`;
+  return `<b>${p.name}</b><br>${side} · stop ${p.stop_id}${moved}`;
 }
 
 function stopFeatures(stops: StopRef[], side: string) {
