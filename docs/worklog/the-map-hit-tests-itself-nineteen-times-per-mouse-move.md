@@ -137,7 +137,41 @@ A third lever was rejected rather than deferred: **thinning the dots at low
 zoom**. The key counts the rows, not what survived a filter, so a map drawing
 half the dots would print a number no reader could check against what they can
 see. Max's ruling that every stop is displayed regardless of pin points the
-same way.
+same way. **It would also have bought nothing** — see the measurement below.
+
+## The number of dots on screen does not measurably cost anything
+
+> Max, 2026-09-10: "Now does the number of dots rendered on the screen have an
+> impact on performance?"
+
+Measured rather than reasoned about, on the llvmpipe browser, holding the
+camera, basemap and viewport constant (1400x850, device pixel ratio 1) and
+comparing a mouse drag with every dot drawn against the identical drag with all
+nine keyed rows switched off, which filters the dots out and changes nothing
+else. Frame times in milliseconds, median and 75th percentile:
+
+| Scope | Dots drawn | Dots off |
+|---|---|---|
+| Zoom 12, 2,967 locations in view | 33/167, 150/176, 117/167 | 132/150, 33/185, 138/185 |
+| Zoom 9.5, 6,765 locations in view | 33/200, 117/170 | 113/138, 47/216 |
+
+The two arms are indistinguishable: each spans roughly 33-150 ms whichever way
+round it is run, and the arm order was alternated so drift cannot masquerade as
+an effect. **Dropping every dot on screen does not speed the map up.** What
+costs is the number of *pixels* the CPU has to fill -- the basemap's own raster
+work dominates -- which is why capping the canvas halved the frame time and
+removing 6,765 dots does not move it.
+
+Two caveats. This is a software rasteriser; a GPU has different bottlenecks, and
+nothing here predicts one. And it says the dots are lost in the noise, not that
+they are free.
+
+> An earlier single run of this comparison read 200 ms against 250 ms and looked
+> like a difference. The "dots off" arm had not actually taken -- the key
+> re-renders itself on every toggle, so a captured list of its buttons goes
+> stale after the first click and 8 of the 9 rows were never switched off. Any
+> A/B against this key has to re-query the button between clicks and assert the
+> off-count before trusting the arm.
 
 What none of this establishes is what the site feels like to a visitor with a
 GPU. Nobody in this session can measure that; it needs a real phone pointed at
