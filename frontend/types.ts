@@ -152,14 +152,18 @@ export const POINT_STRIDE = 4;
 /** Mirrored from `query.FIXED_FIELDS`: lat, lon, published, id, removed, name. */
 export const FIXED_FIELDS = 6;
 /**
- * Buses calling at THIS POLE on day `i`, today and under the plan.
+ * Buses calling at THIS KERB on day `i`, today and under the plan.
  *
- * The pole, never the walk radius — mirrored from `query.pole_departures`.
+ * The kerb, never the walk radius — mirrored from `query.kerb_departures`:
+ * every pole of each network within 25 m of the dot, summed on both sides.
  * Stop-by-stop is a view about stops, and the radius counts that used to sit
  * here read "1,591 → 2,178 buses per weekday" at a downtown dot, which is
- * every bus within 400 m of the Central Business District. The radius's own
- * answer has not gone anywhere: it is the dot's colour, and it arrives as
- * `BUCKET`.
+ * every bus within 400 m of the Central Business District.
+ *
+ * `BUCKET` is `query.bucket()` on these same two numbers, so the dot's colour
+ * and its tooltip cannot disagree about one stop. The walk radius's own
+ * answer stayed in the `change` table, where the answer panel and
+ * `docs/answers/` read it.
  *
  * The plan's side is read at whatever pole the plan runs on this kerb, so a
  * kerb PRT renumbers does not report zero (convention 3).
@@ -174,8 +178,8 @@ export const ID = 3;
  * 1 where the plan runs no stop at this kerb — `query.is_removed_stop`.
  *
  * Fixed rather than per-day because it is a fact about the stop, not about
- * the service near it: it does not move with the day switch or with the walk
- * radius, and the colour beside it moves with both.
+ * the service at it: it does not move with the day switch, where the colour
+ * beside it does.
  */
 export const REMOVED = 4;
 

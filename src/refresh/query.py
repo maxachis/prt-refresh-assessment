@@ -802,14 +802,14 @@ def compute_change(con, radius: float = PRIMARY_RADIUS, *,
 # pin down named the pole, so the map said different things about one kerb
 # depending on whether the reader had clicked.
 #
-# The two trip counts are the POLE's, not the walk radius's, and that is the
-# whole of what this view answers under the cursor. The radius counts used to
-# ride here and were read by nothing but the dot's tooltip, where they said
-# things like "1,591 buses per weekday" at a downtown dot -- every bus within
-# 400 m of the Central Business District, which is not a stop by any reading.
-# They left the wire entirely on 2026-09-10 rather than moving to a second
-# line: the colour still carries the radius's answer, and it does that through
-# `bucket`, computed here and shipped as an index.
+# The two trip counts are the KERB's, and so is the bucket beside them. The
+# radius counts used to ride here and were read by nothing but the dot's
+# tooltip, where they said things like "1,591 buses per weekday" at a downtown
+# dot -- every bus within 400 m of the Central Business District, which is not
+# a stop by any reading. Max ruled on 2026-09-10 that the colour follow the
+# tooltip rather than the other way about, since the walk radius is the Surface
+# view's whole subject: two channels on one dot answering two questions is a
+# thing a reader has to reconcile, and 20% of them disagreed in direction.
 POINT_STRIDE = 4
 FIXED_FIELDS = 6
 LAT_AT, LON_AT, PUBLISHED_AT, ID_AT, REMOVED_AT, NAME_AT = 0, 1, 2, 3, 4, 5
@@ -819,47 +819,51 @@ def BUCKET_AT(day: int) -> int: return FIXED_FIELDS + 2 + POINT_STRIDE * day
 def RIDERS_AT(day: int) -> int: return FIXED_FIELDS + 3 + POINT_STRIDE * day
 
 
-def pole_departures(con, dedup: float = STOP_SAME_POLE_M):
-    """Buses calling at each point's own pole, both networks, by day type.
+def kerb_departures(con, dedup: float = STOP_SAME_POLE_M):
+    """Buses calling at each point's own kerb, both networks, by day type.
 
-    The unit Stop-by-stop is named for, and the one the rest of this module
-    deliberately avoids: convention 2 says stop-level output is an
-    intermediate, not a finding, which is why the dot's COLOUR is still the
-    walk radius's answer and this number is only ever printed under the
-    cursor, about the pole the cursor is on.
+    The unit Stop-by-stop is named for, and since 2026-09-10 the unit of both
+    of its channels: the tooltip prints these two numbers and the dot's colour
+    is `bucket()` run on them, so the two cannot say different things about one
+    stop. The walk radius is the Surface view's question, and the `change`
+    table still holds it for the panel and the published answers.
 
-    Today's side is the stop id's own departures. The plan's side is read at
-    whatever pole the plan runs on this kerb -- the id first, then the same
-    25 m as `is_removed_stop`, whose docstring carries the reasoning. Joining
-    on the id alone would report "37 -> 0 buses" at every kerb PRT renumbers,
-    which is exactly the false sentence convention 3 exists to prevent, and the
-    map would then contradict its own removal cross: a pole with no cross,
-    reading zero.
+    It is the KERB, not the pole, and the difference is convention 2 rather
+    than fussiness. PRT splits one corner into two stop ids and the plan puts
+    them back together: counted per pole, two poles of 15 weekday trips
+    becoming one pole of 22 read as "15 -> 22, more service" twice over, and
+    208 kerbs are consolidated that way. Summed over the same 25 m on both
+    sides, that corner reads 30 -> 22, which is what a rider standing on it
+    gets. 25 m because it is the distance `is_removed_stop` and `is_new_place`
+    already share -- one identity distance for the whole view.
 
-    Where two proposed poles fall inside those 25 m it takes the larger rather
-    than the sum, for `cluster_trips`'s reason one unit down: they are one kerb
-    described twice, and adding them would invent service.
+    THE STOP ID COMES FIRST, and the 25 m is a floor on identity rather than a
+    ceiling. A pole the plan stands 84 m down the block keeps its id, keeps its
+    cross-free dot, and has a dashed leader drawn to where it goes; counting
+    only what falls inside 25 m would paint it "loses all service" while the
+    map draws a line to the stop that serves it.
     """
     totals: dict[tuple[str, str, str], int] = {}
     for r in con.execute(
             "SELECT side, stop_id, day, SUM(n) AS n FROM departures "
             "GROUP BY side, stop_id, day"):
         totals[(r["side"], r["stop_id"], r["day"])] = r["n"]
-    prop_ids = {r["stop_id"] for r in
-                con.execute("SELECT stop_id FROM stops WHERE side = 'proposed'")}
+    ids = {side: {r["stop_id"] for r in con.execute(
+        "SELECT stop_id FROM stops WHERE side = ?", (side,))}
+        for side in ("current", "proposed")}
 
     out: dict[str, dict[str, tuple[int, int]]] = {}
     for point_id, lat, lon, _published in change_points(con, dedup=dedup):
         stop_id = point_id.split(":", 1)[1]
-        if stop_id in prop_ids:
-            plan_ids = [stop_id]
-        else:
-            plan_ids = [s[0] for s in
-                        stops_within(con, lat, lon, dedup, "proposed")]
+        here = {}
+        for side in ("current", "proposed"):
+            at = {s[0] for s in stops_within(con, lat, lon, dedup, side)}
+            if stop_id in ids[side]:
+                at.add(stop_id)
+            here[side] = at
         out[point_id] = {
-            day: (totals.get(("current", stop_id, day), 0),
-                  max((totals.get(("proposed", i, day), 0) for i in plan_ids),
-                      default=0))
+            day: tuple(sum(totals.get((side, i, day), 0) for i in here[side])
+                       for side in ("current", "proposed"))
             for day in DAYS}
     return out
 
@@ -905,9 +909,12 @@ def change_layer(con, radius: float = PRIMARY_RADIUS):
     lose the weekend entirely, and that comparison should cost nothing.
 
     Each row is [lat, lon, published, id, removed, name, then per day: the
-    trips at this pole today and under the plan, the bucket index, and the
-    boardings]. The two trip counts are the pole's own (`pole_departures`),
-    not the walk radius's -- the radius's answer travels as the bucket. Boardings are `null`, never 0, at a point the
+    trips at this kerb today and under the plan, the bucket index, and the
+    boardings]. All three of those are the KERB's (`kerb_departures`), colour
+    included, so the dot's two channels cannot disagree about one stop. The
+    walk radius stays in the `change` table, which is what the panel measures
+    and what `docs/answers/` publishes -- the key's counts are therefore no
+    longer the published ones, and are counting stops rather than locations. Boardings are `null`, never 0, at a point the
     proposed network serves and today's does not -- see `point_boardings`. The
     id is `change_points`'s own -- `c:<stop_id>` or `p:<stop_id>` -- and it
     ships so that a selection made on the map can be named in a link.
@@ -929,7 +936,7 @@ def change_layer(con, radius: float = PRIMARY_RADIUS):
              r["name"] for r in
              con.execute("SELECT side, stop_id, name FROM stops")}
     boardings = point_boardings(con)
-    poles = pole_departures(con)
+    kerbs = kerb_departures(con)
     idx = {k: i for i, k in enumerate(BUCKET_KEYS)}
     packed: dict[str, list] = {}
     for r in rows:
@@ -943,9 +950,15 @@ def change_layer(con, radius: float = PRIMARY_RADIUS):
                             named.get(r["point_id"], ""),
                             *([0] * (POINT_STRIDE * len(DAYS)))])
         day = DAYS.index(r["day"])
-        at_pole = poles.get(r["point_id"], {}).get(r["day"], (0, 0))
+        # The colour is `bucket()` on the two numbers beside it, NOT the
+        # `change` table's `r["bucket"]`. That column is the walk radius's
+        # answer -- what `data/coverage_change.csv` publishes and what the
+        # panel prints -- and it stayed behind on purpose when this view moved
+        # to the kerb. Reading it here would put the radius back into the
+        # colour under a tooltip that had stopped speaking about it.
+        at_kerb = kerbs.get(r["point_id"], {}).get(r["day"], (0, 0))
         p[STOP_CUR_AT(day):RIDERS_AT(day) + 1] = [
-            *at_pole, idx[r["bucket"]],
+            *at_kerb, idx[bucket(*at_kerb)],
             boardings.get(r["point_id"], {}).get(r["day"])]
 
     return {

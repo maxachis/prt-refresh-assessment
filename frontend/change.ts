@@ -764,14 +764,19 @@ function poleLine(props: any): string {
 }
 
 /**
- * Hover text for one dot: the pole, then its own buses, then the ground nearby.
+ * Hover text for one dot: the pole, then the buses at its own kerb.
  *
  * Trips both sides, never a bare delta — and since 2026-09-10 they are the
- * trips at THIS POLE. Stop-by-stop is the view about stops; the walk radius is
+ * trips at THIS KERB. Stop-by-stop is the view about stops; the walk radius is
  * what the Surface view and the answer panel are for, and printing its counts
  * here told a reader hovering a downtown dot that 1,591 buses served it on a
- * weekday. What the radius still says under the cursor is the bucket, one line
- * down, scoped by the word "nearby".
+ * weekday.
+ *
+ * The bucket line beneath is now the SAME measurement in words -- the colour
+ * is `query.bucket()` on the two numbers printed above it. It ran scoped
+ * "nearby" for half a day, while the number was the pole's and the colour was
+ * the radius's; Max ruled that a view whose two channels answer different
+ * questions is the defect, not the missing scope word.
  *
  * `pole: false` suppresses the pole heading, and exists for one caller: the
  * marks a pin drops name the pole themselves and print this beneath their own
@@ -788,17 +793,14 @@ export function dotLabel(props: any, day: Day,
   // kerb either way -- at a removed stop that reads "37 -> 0 at this stop",
   // under the removal sentence `removedLine` supplies.
   const gone = props.removed === 1;
-  // `nearby` is the whole of what is left of the walk radius in this tooltip,
-  // and it is not decoration. The colour is the radius's answer and the number
-  // above it is the pole's, and the two point opposite ways on 1,277 of the
-  // 6,284 dots — a pole losing trips on a corridor the plan is strengthening,
-  // which is two true sentences about one corner (`is_removed_stop` says the
-  // same of its cross). Unscoped, the label reads as the map contradicting
-  // itself. A pole the plan adds is exempt: its label is a sentence about the
-  // pole, so the scope word would attach to the wrong noun.
+  // Unscoped, because there is nothing left to scope it against: the bucket
+  // index the dot was drawn with is `query.bucket()` applied to the very two
+  // numbers on the line above. Do not reintroduce "nearby" or any other
+  // radius word here without moving the colour back to the radius too —
+  // matching the words to the colour is the whole point of this pair.
   const label = props.published === 0
     ? 'the plan adds a stop here'
-    : `${buckets.find((b) => b.key === key)?.label ?? key} nearby`;
+    : (buckets.find((b) => b.key === key)?.label ?? key);
   const cur = props[`sc${i}`], prop = props[`sp${i}`];
   const dayWord = day === 'weekday' ? 'weekday' : day;
   return `${pole ? poleLine(props) : ''}${removedLine(props)}` +

@@ -372,13 +372,13 @@ export function pinKeyHTML(radius: number) {
 /**
  * The head line's subject, which is also what the toggle switches.
  *
- * "3 locations in view" and "525 weekday boardings in view" are the same dots
+ * "3 stops in view" and "525 weekday boardings in view" are the same dots
  * counted two ways, and the wording has to make which one is on screen
  * impossible to miss — a reader who screenshots the wrong one has quoted a
  * different finding than they think.
  */
 const WEIGHT_LABEL: Record<Weight, string> = {
-  locations: 'Locations',
+  locations: 'Stops',
   riders: 'Riders',
 };
 
@@ -399,10 +399,10 @@ const WEIGHT_LABEL: Record<Weight, string> = {
  */
 function riderFoot(unmeasured: number, newPlaces: number) {
   const n = newPlaces.toLocaleString();
-  const places = `${n} location${newPlaces === 1 ? '' : 's'} in view`;
+  const places = `${n} stop${newPlaces === 1 ? '' : 's'} in view`;
   const gain = newPlaces === 1 ? 'gains' : 'gain';
   const gains = newPlaces
-    ? `<b>${places}</b> ${gain} a stop where none stands today: no boardings to `
+    ? `<b>${places}</b> ${gain} a kerb where none stands today: no boardings to `
       + 'weigh. This counts what is at risk, never what is gained.'
     : 'Boardings exist only where a bus stops today, so this counts what is at '
       + 'risk, never what is gained.';
@@ -462,7 +462,7 @@ function riderFoot(unmeasured: number, newPlaces: number) {
  * stayed on screen, so hiding it would have hidden a fact about a visible dot;
  * these ARE dots, in no bucket, so they answer to their own toggle
  * (`change.NEW_PLACE_KEY`) exactly as every colour does. They also join the
- * head line's total, because they are locations in view that no coloured row
+ * head line's total, because they are stops in view that no coloured row
  * counts.
  *
  * The row is dropped when the scope holds none, and unlike the bucket rows
@@ -600,7 +600,7 @@ export function renderLegend(el: HTMLElement, opts: LegendOptions) {
     ? sumRidersIn(layer.points, dayIndex, keys, scope)
     : null;
 
-  // An em dash, not a 0: a bucket whose locations in view all lack a ridership
+  // An em dash, not a 0: a bucket whose stops in view all lack a ridership
   // record has nothing to report, which is not the same as reporting nothing.
   const cell = (key: string) => (tally
     ? (tally.measured[key] ? Math.round(tally.riders[key]).toLocaleString() : '—')
@@ -629,6 +629,13 @@ export function renderLegend(el: HTMLElement, opts: LegendOptions) {
   // (convention 15).
   const locations = shown.reduce((n, b) => n + counts[b.key], 0)
     + newPlaces + removed;
+  // "stops", not "locations". Every dot here is one kerb of PRT's, bucketed by
+  // the buses at that kerb (`query.kerb_departures`); a LOCATION is what the
+  // walk radius makes of a cluster of them, and it is the published unit
+  // `data/coverage_change.csv` and the answer panel still count in. The two
+  // differ by more than a word — 6,284 stops against 6,048 locations at
+  // 400 m, and 8.9% of boardings at a stop that loses every bus against 0.8%
+  // at a location that does — so the key has to name which one it is showing.
   const head = tally
     ? `<b>${Math.round(shown.reduce((n, b) => n + tally.riders[b.key], 0)
         + tally.removedRiders)
@@ -637,7 +644,13 @@ export function renderLegend(el: HTMLElement, opts: LegendOptions) {
       ? `<b>${locations.toLocaleString()}</b>
          of ${painted.size.toLocaleString()} selected stops`
       : `<b>${locations.toLocaleString()}</b>
-         locations in view`;
+         stops in view`;
+
+  // The walk radius is named only while the surface is drawn, and named as
+  // the surface's. The dots stopped being measured at a radius on 2026-09-10:
+  // a bare "· 400 m walk" over a stop count would hand a reader a scope that
+  // no longer applies to the number beside it.
+  const walkNote = surface ? ` · surface: ${layer.radius} m walk` : '';
 
   // With the dots off there is nothing here to count, so the head names the
   // layer instead. The day and the radius stay: the surface is measured per
@@ -655,7 +668,7 @@ export function renderLegend(el: HTMLElement, opts: LegendOptions) {
     })}` : `
     <div class="lg-head">
       ${head}
-      <span class="muted">· ${DAY_WORD[day]} · ${layer.radius} m walk</span>
+      <span class="muted">· ${DAY_WORD[day]}${walkNote}</span>
     </div>
     <div class="seg lg-weight" role="group" aria-label="Count the dots by">
       ${(Object.keys(WEIGHT_LABEL) as Weight[]).map((w) => `

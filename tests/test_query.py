@@ -298,20 +298,20 @@ def test_change_layer_packs_every_point_and_day(con):
     assert len(layer["fields"]) == width
 
 
-def test_a_dot_ships_the_trips_at_its_own_pole_not_the_ones_within_a_walk(con):
-    """Stop-by-stop's hover answers for the pole, and the wire has to carry it.
+def test_a_dot_counts_the_buses_at_its_own_kerb_not_the_ones_within_a_walk(con):
+    """Stop-by-stop answers for the stop, in both of its channels.
 
-    The packed row used to carry the walk radius's own trip counts, which were
-    read by nothing but that tooltip -- so a reader hovering a dot in the
-    Central Business District was told 1,591 buses a weekday, which is every
-    bus within 400 m of downtown and not remotely a stop. Max ruled on
-    2026-09-10 that the view's own unit is the pole: "when someone hovers over
-    a stop, they expect to get information about that stop only, not about the
-    wider location, which is served by the Surface view."
+    The packed row used to carry the walk radius's trip counts, read by nothing
+    but the dot's tooltip -- so a reader hovering a downtown dot was told 1,591
+    buses a weekday, which is every bus within 400 m of the Central Business
+    District. Max ruled on 2026-09-10 that this view answers for the stop:
+    "coloration leverages the misleading location scope ... if hover already
+    shows that change in service at the stop level only, why have coloration
+    communicate something potentially different?"
 
-    The radius trips are not replaced by anything smaller -- they leave the
-    wire entirely, and the colour still means what it always meant, because the
-    bucket is computed server-side and shipped as an index.
+    So the trips are the kerb's, the COLOUR is the same kerb's, and the walk
+    radius is the Surface view's question. The radius counts left the wire
+    entirely; the `change` table keeps them, still pinned to the published CSV.
     """
     layer = query.change_layer(con, query.PRIMARY_RADIUS)
     assert layer["fields"][query.STOP_CUR_AT(0)] == "weekday_stop_cur"
@@ -324,81 +324,116 @@ def test_a_dot_ships_the_trips_at_its_own_pole_not_the_ones_within_a_walk(con):
         "WHERE side = 'current' AND day = 'weekday' GROUP BY stop_id")}
     by_id = {p[query.ID_AT]: p for p in layer["points"]}
 
-    # The dot beside the click that started this: 167 buses a weekday at the
-    # pole, against the 1,591 within 400 m of it that the tooltip used to
-    # print. Both are true; only one of them is about a stop.
+    # The dot beside the click that started this: its own kerb, against the
+    # 1,591 buses within 400 m of it that the tooltip used to print.
     downtown = query.stops_within(con, 40.44531, -79.99173, 60, "current")
     assert len(downtown) == 1
-    at_pole = by_id[f"c:{downtown[0][0]}"][query.STOP_CUR_AT(0)]
-    assert at_pole == today[downtown[0][0]]
+    at_kerb = by_id[f"c:{downtown[0][0]}"][query.STOP_CUR_AT(0)]
     within_walk = query.side_at_place(
         con, "current", 40.44531, -79.99173, 400)["days"]["weekday"]["trips"]
-    assert at_pole < within_walk / 5
+    assert at_kerb < within_walk / 5
 
-    # The busiest pole in the county is Fifth Ave + Atwood, which really does
-    # see about a thousand buses a weekday -- roughly one a minute through the
-    # day. A pole may be large; it may not be a district.
-    busiest = max(today, key=today.get)
-    assert by_id[f"c:{busiest}"][query.STOP_CUR_AT(0)] == today[busiest]
-
-    for point_id, p in list(by_id.items())[:200]:
+    for point_id, p in list(by_id.items())[:150]:
+        near = {s[0] for s in query.stops_within(
+            con, p[query.LAT_AT], p[query.LON_AT], query.STOP_SAME_POLE_M,
+            "current")}
         if point_id.startswith("c:"):
-            assert p[query.STOP_CUR_AT(0)] == today.get(point_id[2:], 0)
+            near.add(point_id[2:])
         else:
             # A pole the plan adds stands where nothing stops today.
-            assert p[query.STOP_CUR_AT(0)] == 0
+            assert not near
+        assert p[query.STOP_CUR_AT(0)] == sum(today.get(i, 0) for i in near)
 
 
-def test_a_renumbered_pole_keeps_the_buses_the_plan_runs_at_its_kerb(con):
-    """Convention 3, at the unit the tooltip now prints.
+def test_a_kerb_the_plan_consolidates_does_not_read_as_a_gain(con):
+    """Convention 2, at the unit the map now colours by.
 
-    A stop id that vanishes is not a lost bus -- PRT reissues numbers -- so the
-    plan's side of a pole is read at whatever stop the plan runs on that kerb,
-    by the same 25 m identity test the removal cross uses (`is_removed_stop`).
-    Joining on the stop id alone would print "37 -> 0 buses at this stop" at
-    every renumbered kerb in the county, which is the false sentence that
-    convention exists to stop.
+    PRT splits one corner into two stop ids and the plan puts them back
+    together. Counted per pole, each of the two reads its own share against the
+    consolidated total and the corner paints as a gain: at c:10246 two poles of
+    15 weekday trips become one of 22, which per pole is "15 -> 22, more
+    service", twice over, and per kerb is 30 -> 22. 112 dots read a gain that
+    way where their kerb holds flat or loses, across 208 consolidating kerbs.
+
+    Both sides are therefore summed over the same 25 m -- the distance the
+    removal cross and the added-stop ring already share.
     """
     layer = query.change_layer(con, query.PRIMARY_RADIUS)
-    plan = {r["stop_id"]: r["n"] for r in con.execute(
-        "SELECT stop_id, SUM(n) AS n FROM departures "
-        "WHERE side = 'proposed' AND day = 'weekday' GROUP BY stop_id")}
-    prop_ids = {r["stop_id"] for r in con.execute(
-        "SELECT stop_id FROM stops WHERE side = 'proposed'")}
+    by_id = {p[query.ID_AT]: p for p in layer["points"]}
+    p = by_id["c:10246"]
+    assert (p[query.STOP_CUR_AT(0)], p[query.STOP_PROP_AT(0)]) == (30, 22)
+    assert layer["buckets"][p[query.BUCKET_AT(0)]]["key"] == "less"
 
-    renumbered = removed = 0
-    for p in layer["points"]:
-        point_id = p[query.ID_AT]
-        if not point_id.startswith("c:"):
+
+def test_a_pole_the_plan_moves_keeps_its_buses(con):
+    """The 25 m is a floor on identity, never a ceiling: the id comes first.
+
+    A pole the plan stands 84 m down the block keeps its stop id, keeps its
+    cross-free dot, and has a dashed leader drawn to where it goes. Summing
+    only what falls inside 25 m would read it as losing every bus -- a dot
+    painted "loses all service" with no cross on it and a line pointing at the
+    stop that serves it. `is_removed_stop`'s rule, at this unit.
+    """
+    layer = query.change_layer(con, query.PRIMARY_RADIUS)
+    by_id = {p[query.ID_AT]: p for p in layer["points"]}
+    moved = layer["moved"]
+    assert moved, "no moved poles at all"
+
+    for point_id, metres in moved.items():
+        if metres <= query.STOP_SAME_POLE_M:
             continue
-        stop_id = point_id[2:]
-        if stop_id in prop_ids:
-            assert p[query.STOP_PROP_AT(0)] == plan.get(stop_id, 0)
-            continue
-        near = query.stops_within(con, p[query.LAT_AT], p[query.LON_AT],
-                                  query.STOP_SAME_POLE_M, "proposed")
-        if near:
-            renumbered += 1
-            assert p[query.STOP_PROP_AT(0)] == max(plan.get(s[0], 0)
-                                                   for s in near)
-        else:
-            removed += 1
-            assert p[query.STOP_PROP_AT(0)] == 0
-    assert renumbered > 50, renumbered
-    assert removed > 100, removed
+        stop_id = point_id.split(":", 1)[1]
+        runs = con.execute(
+            "SELECT SUM(n) AS n FROM departures WHERE side = 'proposed' "
+            "AND stop_id = ? AND day = 'weekday'", (stop_id,)).fetchone()["n"]
+        if runs:
+            assert by_id[point_id][query.STOP_PROP_AT(0)] >= runs, point_id
 
 
-def test_change_layer_bucket_indices_resolve_to_the_stored_bucket(con):
-    """The wire format is indices into `buckets`; an off-by-one would recolour
-    the whole map without changing a single number."""
+def test_the_colour_is_the_kerbs_own_answer_not_the_walk_radiuss(con):
+    """The wire's bucket is computed from the two numbers beside it.
+
+    An off-by-one in these indices recolours the whole map without changing a
+    number on the server, so the index is checked against `bucket()` run on the
+    row's own trips -- which is also the assertion that the colour and the
+    tooltip cannot drift apart, since they now read the same two fields.
+    """
     layer = query.change_layer(con, query.PRIMARY_RADIUS)
     keys = [b["key"] for b in layer["buckets"]]
-    rows = {(round(r["lat"], 6), round(r["lon"], 6)): r["bucket"]
-            for r in con.execute(
-                "SELECT lat, lon, bucket FROM change WHERE radius = ? "
-                "AND day = 'weekday'", (query.PRIMARY_RADIUS,))}
-    for p in layer["points"][:400]:
-        assert keys[p[query.BUCKET_AT(0)]] == rows[(p[0], p[1])]
+    for p in layer["points"]:
+        assert keys[p[query.BUCKET_AT(0)]] == query.bucket(
+            p[query.STOP_CUR_AT(0)], p[query.STOP_PROP_AT(0)])
+
+
+def test_the_published_location_buckets_are_untouched_by_the_map(con):
+    """What the map draws stopped being what `docs/answers/` publishes.
+
+    The `change` table is still the walk radius's answer at both radii, still
+    row-for-row the CSV's (the test above this one), and still what
+    `point_boardings` and the published shares are computed over. The layer no
+    longer ships it: a reader counting dots in the key is counting stops, not
+    the locations `data/coverage_change.csv` measures, and the two differ by
+    more than rounding -- 1,363 stops lose every weekday bus at their own kerb
+    against 633 locations that lose all service within 400 m.
+
+    Anything quoting one at the other is the mistake this test exists to name.
+    """
+    layer = query.change_layer(con, query.PRIMARY_RADIUS)
+    keys = [b["key"] for b in layer["buckets"]]
+    stored = {r["point_id"]: r["bucket"] for r in con.execute(
+        "SELECT point_id, bucket FROM change WHERE radius = ? AND day = 'weekday'",
+        (query.PRIMARY_RADIUS,))}
+
+    drawn = sum(1 for p in layer["points"]
+                if keys[p[query.BUCKET_AT(0)]] == "gone")
+    published = sum(1 for b in stored.values() if b == "gone")
+    assert published == 633
+    assert drawn > published * 2
+
+    differ = sum(1 for p in layer["points"]
+                 if p[query.ID_AT] in stored
+                 and keys[p[query.BUCKET_AT(0)]] != stored[p[query.ID_AT]])
+    assert differ > 1000, differ
 
 
 def test_change_points_are_the_same_set_at_both_radii(con):
@@ -502,20 +537,50 @@ def test_change_layer_carries_each_days_own_boardings(con):
 
 
 def test_boardings_reproduce_the_published_shares(con):
-    """The numbers the weighted legend will be quoted on.
+    """The numbers the plan's defenders quote, at the published unit.
 
-    A weekday location that loses all service carries 580 of the system's
-    73,408 daily boardings -- 0.8%. That figure is the strongest thing the
-    plan's defenders can say and it is drawn from PRT's own usage extract, so
-    it has to be pinned the way the bucket counts are: if it moves, either the
-    usage join broke or the buckets did.
+    A weekday LOCATION that loses all service carries 580 of the system's
+    73,408 daily boardings -- 0.8%. That figure is the strongest thing anyone
+    can say for the plan and it is drawn from PRT's own usage extract, so it is
+    pinned the way the bucket counts are: if it moves, either the usage join
+    broke or the buckets did.
+
+    Read off the `change` table rather than the map layer, and that is the
+    point of this test's existence beside the next one. The layer stopped
+    carrying this unit when Stop-by-stop moved to the kerb; nothing else did.
+    """
+    boardings = query.point_boardings(con)
+    total = gone = 0.0
+    for r in con.execute("SELECT point_id, bucket FROM change "
+                         "WHERE radius = ? AND day = 'weekday'",
+                         (query.PRIMARY_RADIUS,)):
+        riders = boardings.get(r["point_id"], {}).get("weekday")
+        if riders is None:
+            continue
+        total += riders
+        if r["bucket"] == "gone":
+            gone += riders
+    assert round(total) == 73408
+    assert round(gone) == 580
+
+
+def test_the_map_weighs_a_different_and_much_larger_share(con):
+    """And the map's own Riders reading is now an order of magnitude bigger.
+
+    6,515 of the same 73,408 boardings -- 8.9% -- are at a stop whose own kerb
+    loses every weekday bus, against the 0.8% at a location that loses all
+    service within a 400 m walk. Both are true and they are not each other:
+    the gap is precisely the riders who can walk to another stop.
+
+    This is convention 10's "never quote one alone" landing inside a single
+    legend, and it is why the key has to name its unit. A screenshot of 8.9%
+    captioned with the published sentence would be a serious misquote, and so
+    would the reverse.
     """
     layer = query.change_layer(con, query.PRIMARY_RADIUS)
     day = query.DAYS.index("weekday")
     keys = [b["key"] for b in layer["buckets"]]
-
-    total = 0.0
-    gone = 0.0
+    total = gone = 0.0
     for p in layer["points"]:
         riders = p[query.RIDERS_AT(day)]
         if riders is None:
@@ -524,7 +589,7 @@ def test_boardings_reproduce_the_published_shares(con):
         if keys[p[query.BUCKET_AT(day)]] == "gone":
             gone += riders
     assert round(total) == 73408
-    assert round(gone) == 580
+    assert round(gone) == 6515
 
 
 # --------------------------------------------------------------------------

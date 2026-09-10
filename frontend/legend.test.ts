@@ -66,10 +66,14 @@ describe('renderLegend', () => {
     const el = stub();
     renderLegend(el, { layer: LAYER, day: 'weekday', bounds: BOX, weight: 'locations' });
     expect(el.innerHTML).toContain('a weekday');
-    expect(el.innerHTML).toContain('400 m');
+    // No walk radius over a count of stops: the dots are bucketed at their
+    // own kerb, so a "400 m walk" in this head would name a scope that does
+    // not apply to the number beside it. It comes back only with the surface,
+    // labelled as the surface's -- see the surface-key suite.
+    expect(el.innerHTML).not.toContain('400 m');
     // 2 gone + 1 doubled in view; the fifth point is outside the box, and
     // `none` is not an outcome so it is not in the total.
-    expect(el.innerHTML).toMatch(/<b>3<\/b>\s*locations in view/);
+    expect(el.innerHTML).toMatch(/<b>3<\/b>\s*stops in view/);
   });
 
   it('never lists "no service either way" as an outcome of the plan', () => {
@@ -198,14 +202,14 @@ describe('renderLegend', () => {
     expect(el.innerHTML).toMatch(/lg-cross[\s\S]*?<span class="lg-n">1<\/span>/);
   });
 
-  it('counts the removed stops into the locations in view', () => {
+  it('counts the removed stops into the stops in view', () => {
     // They are dots on screen and no coloured row holds them now, so a total
     // built from the coloured rows alone would be short by every cross.
     const el = stub();
     renderLegend(el, {
       layer: { ...LAYER, points: [...LAYER.points, REMOVED_STOP] },
       day: 'weekday', bounds: BOX, weight: 'locations' });
-    expect(el.innerHTML).toMatch(/<b>4<\/b>\s*locations in view/);
+    expect(el.innerHTML).toMatch(/<b>4<\/b>\s*stops in view/);
   });
 
   it('weighs the crosses by boardings when the key counts riders', () => {
@@ -252,13 +256,13 @@ describe('renderLegend', () => {
     expect(el.innerHTML).not.toContain('lg-cross');
   });
 
-  it('counts the added stops into the locations in view', () => {
+  it('counts the added stops into the stops in view', () => {
     // No coloured row counts them any more, so a total built from those alone
     // would be smaller than the dots on screen.
     const el = stub();
     renderLegend(el, { layer: { ...LAYER, points: [...LAYER.points, NEW_POINT] },
                        day: 'weekday', bounds: BOX, weight: 'locations' });
-    expect(el.innerHTML).toMatch(/<b>4<\/b>\s*locations in view/);
+    expect(el.innerHTML).toMatch(/<b>4<\/b>\s*stops in view/);
   });
 
   it('drops the row when nothing in view is a place the plan adds a stop to', () => {
@@ -304,7 +308,7 @@ describe('renderLegend weighted by ridership', () => {
     renderLegend(el, {
       ...opts, layer: { ...LAYER, points: [...LAYER.points, NEW_POINT] } });
     expect(el.innerHTML).toMatch(/data-bucket="new"[\s\S]*?>—</);
-    expect(el.innerHTML).toMatch(/1 location in view/);
+    expect(el.innerHTML).toMatch(/1 stop in view/);
   });
 
   it('carries the ridership caveats wherever the number is', () => {
@@ -461,7 +465,7 @@ describe('the key when only the surface is drawn', () => {
   it('heads it with what is drawn, not with a count of dots', () => {
     const el = stub();
     renderLegend(el, opts);
-    expect(prose(el)).not.toContain('locations in view');
+    expect(prose(el)).not.toContain('stops in view');
     expect(prose(el)).toContain('a weekday');
     expect(prose(el)).toContain('400 m walk');
   });
@@ -479,7 +483,9 @@ describe('the key when only the surface is drawn', () => {
     renderLegend(el, { ...opts, dots: true });
     expect(el.innerHTML).toContain('data-bucket');
     expect(el.innerHTML).toContain('lg-ramp');
-    expect(prose(el)).toContain('locations in view');
+    expect(prose(el)).toContain('stops in view');
+    // And the radius is the surface's here, said so, because both are drawn.
+    expect(prose(el)).toContain('surface: 400 m walk');
   });
 });
 
@@ -585,7 +591,7 @@ describe('renderLegend with a painted selection', () => {
     const el = stub();
     renderLegend(el, { layer: LAYER, day: 'weekday', bounds: BOX,
                        weight: 'locations', selection: new Set() });
-    expect(el.innerHTML).toMatch(/<b>3<\/b>\s*locations in view/);
+    expect(el.innerHTML).toMatch(/<b>3<\/b>\s*stops in view/);
   });
 });
 

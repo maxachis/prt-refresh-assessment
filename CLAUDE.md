@@ -126,7 +126,7 @@ uv sync --extra web && npm install   # one-time
 npm run build                        # frontend/*.ts -> static/app.js
 uv run refresh serve                 # http://127.0.0.1:8000
 
-uv run pytest                        # 394 tests, incl. served == published
+uv run pytest                        # 397 tests, incl. served == published
 npx vitest run && npx tsc --noEmit   # 546 frontend tests
 ```
 
@@ -241,17 +241,30 @@ changes published findings.
    corridor locations, manufacturing losses that do not exist. Stop-level output
    is an intermediate, not a finding.
 
-   **One screen prints a stop-level number anyway, and it is not an exception
-   to this.** The map's Stop-by-stop hover says "3 → 17 buses per weekday at
-   this stop" about the pole under the cursor (`query.pole_departures`),
-   because that view is named for stops and a reader hovering one expects the
-   stop. Nothing is *counted* at that unit: the dot's colour, every figure in
-   the key, and everything `docs/answers/` publishes remain the location's, at
-   a walk radius. The two disagree in direction on a fifth of the dots, which
-   is why the tooltip scopes the colour's label with the word "nearby" — see
+   **One whole view is measured at the stop anyway, and it is not an exception
+   to this.** The map's Stop-by-stop hover, its dot colours and its key are all
+   the **kerb's** own trips since 2026-09-10 (`query.kerb_departures`): every
+   pole of each network within `STOP_SAME_POLE_M` of the dot, summed on both
+   sides, so a corner PRT splits into two ids is one reading and a
+   consolidation of two poles into one cannot read as a gain. That view is
+   named for stops and a reader hovering one expects the stop — Max: "when
+   someone hovers over a stop, they expect to get information about that stop
+   only", and then "why have coloration communicate something potentially
+   different?"
+
+   What that buys and what it costs. Both of the dot's channels now answer one
+   question, and the key names its unit ("stops in view", never "locations")
+   with no walk radius over it. But **the key's counts are no longer the
+   published ones** — 8.9% of weekday boardings are at a kerb that loses every
+   bus against the published 0.8% at a *location* that loses all service within
+   a quarter mile, and both are pinned, side by side, in
+   `tests/test_query.py`. The walk radius stayed behind in the `change` table,
+   which is what the answer panel prints and what `docs/answers/` publishes, so
+   nothing above the stop id moved. Anything quoting a figure off this key has
+   to say it is per stop; see
    [`docs/worklog/the-dot-hover-reported-a-district-not-a-stop.md`](docs/worklog/the-dot-hover-reported-a-district-not-a-stop.md).
-   The plan's side of a pole is read at whatever stop the plan runs on that
-   kerb, per convention 3, never by joining on the id.
+   The plan's side of a kerb is read at whatever stop the plan runs there, per
+   convention 3, never by joining on the id.
 3. **A vanished stop id is not a lost bus.** Stops get renumbered, consolidated,
    and nudged across intersections; anything flagged as losing service is
    checked against the nearest stop the proposal actually serves.
@@ -498,6 +511,19 @@ changes published findings.
     less ground, the street view 22% less pavement, and this says 99.2% of
     boardings untouched. All four are true and each one alone is a talking
     point.
+
+    **The map's own Riders reading is a different, much larger share, and the
+    two must never be swapped.** Since Stop-by-stop moved to the kerb
+    (convention 2), the same boardings sit in the same buckets under a
+    different question, and the weekday "loses all service" row now weighs
+    **6,515 of the 73,408, 8.9%** — the riders at a stop whose own kerb loses
+    every bus, where the published 0.8% is the riders at a location that loses
+    all service within a quarter mile. The gap between them is exactly the
+    riders who can walk to another stop. Both are pinned in `tests/test_query.py`
+    (`…published_shares` off the `change` table, `test_the_map_weighs_a_different_and_much_larger_share`
+    off the layer). A screenshot of the map's figure captioned with the
+    published sentence is a serious misquote, and so is the reverse; the key
+    says "stops in view" for that reason.
 
     **Ranked, the removals have no head — and the ranking is by cluster, not
     by stop.** `analyze_removed_ridership.py` orders the locations that lose

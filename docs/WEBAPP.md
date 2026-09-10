@@ -488,21 +488,41 @@ drawn under it, because a symbol layer has no stroke to thicken. And the hover
 binds to both layers: the removal sentence, with the walk to the nearest
 surviving stop, lives in that tooltip.
 
-**A dot's hover answers for the pole, and only for the pole.** Stop-by-stop is
-the view about stops, so its tooltip counts the buses calling at that kerb —
-"3 → 17 buses per weekday at this stop" — reading the plan's side at whatever
-pole the plan runs on that kerb, by the same 25 m test as the removal cross, so
-a renumbered stop does not report zero. Until 2026-09-10 it printed the 400 m
-walk radius's counts instead, which at a downtown dot read 1,591 → 2,178: every
-bus within a quarter mile of the Central Business District, and not a stop by
-any reading. That comparison is the answer panel's job and the Surface view's.
+**The whole view answers for the kerb — hover, colour and key alike.**
+Stop-by-stop is the view about stops, so its tooltip counts the buses calling
+at that kerb — "306 → 731 buses per weekday at this stop" — and the dot's
+colour is `query.bucket()` on those same two numbers. Until 2026-09-10 both
+channels were the 400 m walk radius's, which at a downtown dot read
+1,591 → 2,178: every bus within a quarter mile of the Central Business
+District, and not a stop by any reading. That comparison is the answer panel's
+job and the Surface view's, and it stayed there.
 
-What the radius still says under the cursor is the **colour**, and the tooltip
-now scopes it in one word: "more service **nearby**". The scope is not
-decoration — the pole's own trips move opposite to the colour on 1,277 of the
-6,284 dots, which is one corner described by two true sentences (PRT thinning
-poles on a corridor it is strengthening), and unscoped it reads as the map
-contradicting itself.
+**A kerb, not a raw pole**, and the difference decides 467 dots. The unit is
+every pole of each network within `query.STOP_SAME_POLE_M` (25 m) of the dot,
+summed on both sides, with the dot's own stop id counted first so a pole the
+plan stands 84 m away does not read as losing all its service. Count the raw
+pole instead and the 208 kerbs where the plan consolidates two poles into one
+paint as gains: at c:10246 two poles of 15 weekday buses become one of 22, so
+per pole that is "15 → 22, more service" twice and per kerb it is 30 → 22,
+less. The plan's side is read at whatever pole the plan runs there, by the same
+25 m test as the removal cross, so a renumbered stop does not report zero.
+
+**The key's figures are therefore not the published ones, and it says so.**
+The head counts "stops in view", never locations, and carries no walk radius
+over that number — the radius is named only when the surface is drawn, and
+named as the surface's. Under Riders the weekday "loses all service" row weighs
+6,515 boardings, 8.9% of the system's 73,408, against the published 0.8% at a
+*location* that loses all service within a quarter mile: the gap is precisely
+the riders who can walk to another stop. Both figures are pinned in
+`tests/test_query.py`. Quoting one with the other's sentence is a serious
+misquote in either direction.
+
+For half a day between the two changes the tooltip printed the pole's numbers
+under the radius's colour and scoped the label "more service **nearby**". Max
+ruled that out: "if hover already shows that change in service at the stop
+level only, why have coloration communicate something potentially different?"
+The scope word is gone because the thing it was protecting a reader from is
+gone.
 
 **A dot names the pole it is drawn at, whether or not a pin is down.** The
 layer carries one point per stop id, so a dot *is* a pole rather than a
@@ -517,7 +537,8 @@ it names; the metres travel as a sparse map, since the plan leaves 6,540 of the
 6,765 poles where they stand. It costs 65 KB gzipped, 15 of which came back
 when the radius trip counts left the row: the layer is 205 KB against 155 KB
 before either change, which is the largest single price paid for anything in
-this view.
+this view. The kerb sums cost 0.45 s per radius on the server, paid once
+because `/api/change` is cached per radius by `cached_layer`.
 
 **How far the replacement is, is a walk, not a straight line.**
 `build_webdb.write_stop_fates` routes from every removed stop over the

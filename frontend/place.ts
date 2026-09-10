@@ -52,21 +52,24 @@ export function renderEmpty(el: HTMLElement) {
       <p>The map draws the whole city at once, one of five ways depending on
          the view chosen in the toolbar on the map. Pan and zoom to read a
          neighbourhood.</p>
-      <p><b>Stop-by-stop</b> draws one dot per place a bus stops today, coloured
-         by what the plan does to the buses within a short walk. Each dot says
-         one thing: either the plan takes this stop away — a red cross, on
-         every day of the week — or the stop stays and the colour tells you
-         what the buses near it do. A hollow ring is a stop the plan adds,
-         drawn wherever the plan adds it. To see what a crossed-out stop
-         leaves behind, read the dots around it. Its key counts
-         those places, or — on the Riders setting — the boardings PRT records
-         at them, which is the same map read as who is affected rather than
-         where. Boardings exist only where a bus stops today, so that reading
-         can weigh what is at risk and never what is gained.
-         <b>Surface</b> measures that same walk-access comparison at every
-         point on a 100 m grid, so it can also show ground the plan adds a bus
-         to — but it is extent, not people: a hillside counts like a city
-         block.</p>
+      <p><b>Stop-by-stop</b> draws one dot per stop a bus calls at today,
+         coloured by what the plan does to the buses at that stop — its own
+         kerb, not the neighbourhood around it. Each dot says one thing:
+         either the plan takes this stop away — a red cross, on every day of
+         the week — or the stop stays and the colour tells you whether it
+         gains or loses buses. A hollow ring is a stop the plan adds, drawn
+         wherever the plan adds it. To see what a crossed-out stop leaves
+         behind, read the dots around it. Its key counts those stops, or — on
+         the Riders setting — the boardings PRT records at them, which is the
+         same map read as who is affected rather than where. Boardings exist
+         only where a bus stops today, so that reading can weigh what is at
+         risk and never what is gained.
+         <b>Surface</b> asks the other half: not what happens at one kerb but
+         what a rider can reach on foot, comparing the buses within a short
+         walk at every point on a 100 m grid, so it can also show ground the
+         plan adds a bus to — but it is extent, not people: a hillside counts
+         like a city block. A stop can lose its buses while the ground around
+         it keeps them, and the two views are how you tell.</p>
       <p><b>Streets</b> takes no walk radius at all: it colours the street
          itself by whether any bus runs on it today, under the plan, or both.
          Route numbers never enter that call — a street is served or it isn't,

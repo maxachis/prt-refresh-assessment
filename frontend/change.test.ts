@@ -355,15 +355,19 @@ describe('a dot in Stop-by-stop answers for its own pole', () => {
     expect(html).not.toContain('within a walk');
   });
 
-  it('says the bucket is about the ground nearby, not about the pole', () => {
-    // The colour is still the walk radius's answer, and on 1,277 of 6,284
-    // dots it points the opposite way to the pole's own trips. Without the
-    // scope on the label, those read as a broken map rather than as two true
-    // sentences about one corner.
-    expect(dotLabel(pole, 'weekday', BUCKETS)).toContain('more service nearby');
+  it('names the bucket without scoping it to anything but this stop', () => {
+    // The label and the colour are now one measurement: `query.bucket()` on
+    // the two numbers the line above prints. The word "nearby" shipped for
+    // half a day while the colour was still the walk radius's answer, and it
+    // is the thing Max asked to remove -- "if hover already shows that change
+    // in service at the stop level only, why have coloration communicate
+    // something potentially different?"
+    const html = dotLabel(pole, 'weekday', BUCKETS);
+    expect(html).toContain('more service');
+    expect(html).not.toContain('nearby');
   });
 
-  it('does not call a pole the plan adds "nearby"', () => {
+  it('does not dress a pole the plan adds as a bucket', () => {
     // Its label is a sentence about the pole itself, so the scope word would
     // attach to the wrong noun.
     const added = { ...pole, published: 0, sc0: 0, sp0: 30 };
