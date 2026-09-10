@@ -66,10 +66,24 @@ hit-testing is what makes Max's map struggle.
 > product of the VM I'm working on."
 > Stated by Max; not verifiable from the repo.
 
-The one measurement nobody in this session can take is whether Max's browser
-has a GPU at all. `chrome://gpu` reporting "WebGL: Software only" rather than
-"Hardware accelerated" would explain a struggling map completely and would make
-every app-side change marginal.
+**Max's browser has no GPU at all**, which is the answer to the original
+complaint. `chrome://gpu` on his VM, 2026-09-10, reports every line off:
+Canvas, compositing, rasterisation, video decode and OpenGL all "software only,
+hardware acceleration disabled", and Vulkan, Skia Graphite, WebGPU and **WebGL**
+"disabled". Every pixel of the map -- and of the browser window around it -- is
+drawn by the CPU there. A vector map reprojecting thousands of features per
+frame is the workload that collapses first under that, so the frame rate he
+reports is explained by the environment rather than by anything in this entry.
+(One loose end: WebGL disabled outright should stop MapLibre creating a context
+at all, so the browser he views the map in may not be the one that report came
+from.)
+
+> Stated by Max; from his machine, and not reproducible here.
+
+That does not retire the 19 queries. It does mean nobody should tune this map
+against measurements taken on that VM, and that the app-side lever with real
+leverage for a CPU-only renderer is the *fill* -- canvas pixel ratio, symbol
+fade, world copies, stroke work -- rather than the hit-testing above.
 
 ## Approaches considered
 
