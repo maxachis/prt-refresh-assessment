@@ -620,9 +620,11 @@ map.on('load', () => {
   refreshStateLine();
   refreshSelectControls();
   refreshEmbedLink();
-  if (!applyOpening(opening)) {
-    void loadChangeLayer(map, radius, activeDay()).then(refreshLegend);
-  }
+  applyOpening(opening);
+  // Unconditional, and it must stay that way: see `applyOpening`. Anything
+  // that made this conditional again would have to know which control presses
+  // fetch, which is the thing that was got wrong.
+  void loadChangeLayer(map, radius, activeDay()).then(refreshLegend);
   void loadMeta();
   void loadDestinations();
 });
@@ -671,16 +673,23 @@ function press(control: string, value: string): boolean {
  * the values asked for, instead of once at the defaults and again a moment
  * later.
  *
- * Returns whether the citywide change layer has already been fetched as a
- * side effect -- the radius and the day are the two controls that reload it,
- * and the caller's own opening fetch would otherwise duplicate theirs.
+ * It returns nothing, and that is the fix for a bug this function had until
+ * 2026-09-10. It used to report whether opening the link had already fetched
+ * the citywide dot layer, so the caller could skip its own opening fetch --
+ * but what it actually reported was whether the button EXISTED, which is all
+ * `press` can know. The day button exists and fetches nothing: its handler
+ * recolours a layer already in hand. So every link carrying `day=` -- which is
+ * every link the app writes, since `toSearch` always sets it -- opened on a
+ * bare basemap with an empty key, and stayed there until the reader touched a
+ * switch. Nothing errored; the fetch simply never happened.
+ *
+ * The caller now always fetches. That costs nothing to duplicate, because
+ * `/api/change?radius=N` goes through `fetchJSONOnce`, so a radius press and
+ * the opening fetch share one request rather than making two.
  */
-function applyOpening(s: Partial<UrlState>): boolean {
-  let loadedChangeLayer = false;
-  if (s.radius !== undefined) {
-    loadedChangeLayer = press(CONTROL.radius, String(s.radius)) || loadedChangeLayer;
-  }
-  if (s.day) loadedChangeLayer = press(CONTROL.day, s.day) || loadedChangeLayer;
+function applyOpening(s: Partial<UrlState>): void {
+  if (s.radius !== undefined) press(CONTROL.radius, String(s.radius));
+  if (s.day) press(CONTROL.day, s.day);
   if (s.oneSeatRestricted !== undefined) {
     press(CONTROL.oneSeatDay, s.oneSeatRestricted ? 'selected' : 'any');
   }
@@ -713,7 +722,6 @@ function applyOpening(s: Partial<UrlState>): boolean {
   // Same reasoning as `s.at`: it answers a question the view above has to be
   // Places for it to mean anything, so it is pressed last too.
   if (s.place) void goToPlace(s.place);
-  return loadedChangeLayer;
 }
 
 /**

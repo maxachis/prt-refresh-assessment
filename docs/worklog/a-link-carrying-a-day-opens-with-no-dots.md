@@ -3,8 +3,8 @@
 Any URL carrying `day=` — which is every link the app writes for itself —
 opens with the change layer never fetched, so the map draws a bare basemap and
 the key is empty until the reader touches the radius or the day switch.
-Open, not fixed; found in passing 2026-09-10 while screenshotting an unrelated
-change, and present on `main` before it.
+Fixed 2026-09-10, awaiting close — the opening fetch is unconditional now;
+Max called it while the finding was still on screen.
 
 ## What was observed
 
@@ -59,15 +59,38 @@ It was invisible here for the ordinary reason: nobody reloads the page they are
 already using, and the first interaction with the radius or day switch repairs
 it.
 
-## Not fixed, and why
+## How it was fixed
 
-Found while verifying a change to the dot hover; the primary goal was that, so
-this is filed rather than pursued. The fix is small and in one place — either
-have the day press report honestly (it fetches nothing, so it should not count
-as a fetch), or make the caller's opening fetch unconditional and let the
-radius press stop claiming one too, which removes the coupling rather than
-correcting it. The second is worth the extra thought: the return value is a
-cache of "has the fetch happened" that only one of its two contributors can
-actually answer.
+Max chose it off the report the same afternoon, and it took the second of the
+two options considered: `applyOpening` no longer returns anything, and the
+opening fetch always runs. That removes the coupling rather than correcting it
+— the return value was a cache of "has the fetch happened" that only one of its
+two contributors could actually answer, and the other one was answering anyway.
 
-Whether the deployed site is affected has not been checked.
+Duplication is free, which is what makes the simple version viable:
+`/api/change?radius=N` goes through `fetchJSONOnce`, so a radius press and the
+opening fetch share one promise. Verified — `?radius=150&day=sunday` opens with
+exactly one request, for the 150 m layer.
+
+The same six-URL matrix after the change:
+
+| Opening URL | `/api/change` fetched? |
+|---|---|
+| `/?day=weekday` | yes, once |
+| `/?day=saturday` | yes, once — and the key reads "a Saturday" |
+| `/?view=dots&day=weekday&map=…` | yes, once |
+| `/?radius=150&day=sunday` | yes, once, at 150 m |
+| `/?at=40.4406,-79.9959&day=weekday` | yes, once |
+| `/` | yes, once |
+
+**No unit test covers this**, and that is the unsatisfying part. `applyOpening`
+lives in `main.ts`, which builds a MapLibre map at import time and is reachable
+from no vitest file; the evidence above is a browser check run before and after,
+not something CI will repeat. The property the fix leans on *is* pinned —
+`utils.test.ts` holds `fetchJSONOnce` to one request per URL — but nothing stops
+a future change from making the opening fetch conditional again except the
+comment at the call site saying why it must not be. Making `main.ts`'s opening
+sequence testable is a larger piece of work than this bug justified.
+
+Whether the deployed site was affected was never checked; the fix ships with
+whatever goes out next.
