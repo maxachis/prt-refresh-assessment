@@ -594,3 +594,9 @@ either half would discredit the other.
   decision owed. One file per item, opening with a two-line lede; see
   `docs/worklog/README.md`. This is not the place for anything found and fixed
   in the same change.
+
+## Mistakes
+
+- **[convention]**: `query.stops_within` returns rows sorted by **stop id**, not
+  by distance (convention 3's determinism rule). `rows[0]` → `min(rows, key=lambda r: r[4])`
+  when you want the nearest.

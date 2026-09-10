@@ -24,13 +24,22 @@ not:
 | **1670 GRANT ST + DAVIS** | **no** | no | about the same, 203 → 213 | KENDALL AVE + DAVIS, 95 m |
 | **1672 GRANT ST + LINCOLN** | **no** | no | about the same, 205 → 213 | LINCOLN AVE + BRYANT AVE FS, 74 m |
 
-1670 and 1672 are ids the plan retires. They are not crossed, because the cross
-means *no bus near here any more* (`query.is_removed_stop`) and the plan serves
-a stop 95 m and 74 m away. Their colour is the walk radius's answer, which is
-unchanged. So three separate statements are each true — the colour, the absent
-cross, the absent ring — and the third one is the only one carrying the fact
-the reader is looking at, with nothing on screen saying so. Their hover text is
-word-for-word what 1671's says.
+Both are genuinely retired: the ids are absent from the proposed feed and no
+pole stands on either kerb. They are not crossed, because the cross means *no
+bus near here any more* (`query.is_removed_stop`) and the plan serves a stop
+95 m and 74 m away; their colour is the walk radius's answer, which has not
+moved. So three separate statements are each true — the colour, the absent
+cross, the absent ring — and the third is the only one carrying the fact the
+reader is looking at, with nothing on screen saying so. Their hover text is
+word-for-word what 1671's is.
+
+What makes them unlike the 972 crossed stops is that **the route is not going
+anywhere**. The 19L (Emsworth Limited, becoming the Emsworth Flyer) is the only
+route calling at either — six PM-peak outbound departures on a weekday — and it
+still runs Grant Street in the plan, calling at GRANT ST + JEFFERSON, GRANT ST
++ WASHINGTON FS and GRANT ST + LAUREL, and gaining a trip countywide (13
+weekday trips today, 14 proposed). PRT is thinning the poles on a corridor it
+keeps: a rider at Davis walks 99 m up Grant to Washington for the same bus.
 
 ## How many are in this position
 
@@ -38,14 +47,23 @@ Countywide, of the 1,406 ids that run today and are absent from the plan:
 
 - **972** draw a cross — nothing proposed within `UNIVERSE_DEDUP_M`.
 - **434** draw nothing — the quiet drops. By distance to the nearest stop the
-  plan serves: 53 within 5–25 m, 61 at 25–50 m, 116 at 50–100 m, 204 at
-  100–150 m. None is under 5 m.
+  plan serves: 4 under 5 m, 94 at 5–25 m, 89 at 25–50 m, 115 at 50–100 m, 132
+  at 100–150 m.
 
-The 53 inside 25 m are kerbs PRT renumbered, and they already read as two marks
+The 98 inside 25 m are kerbs PRT renumbered, and they already read as two marks
 a few metres apart — the pin key's "two marks with no line are a renumbering"
-covers them. **The 381 beyond 25 m are the exposure**: far enough that the
+covers them. **The 336 beyond 25 m are the exposure**: far enough that the
 missing ring is plainly a gap rather than a pair, close enough that no cross
 appears.
+
+> Those bands were first written as 53 / 61 / 116 / 204 with none under 5 m,
+> which overstated every distance. `query.stops_within` returns its rows sorted
+> by **stop id**, not by distance — convention 3's determinism rule, documented
+> in the function — and the first pass read `rows[0]` as the nearest. The
+> counts above it never depended on the order and did not move. The general
+> lesson is the one worth keeping: in this repo a list of stops is ordered for
+> reproducibility, never for proximity, so anything calling a stop "nearest"
+> has to sort for itself.
 
 ## Why this is not simply a bug
 
