@@ -253,12 +253,12 @@ const CLASS_NOTE: Record<string, string> = {
   no_origin_coverage:
     'No bus stops within a walk of this point on one or both networks, so '
     + 'there is no trip to time from here. That is a coverage answer rather '
-    + 'than a travel-time one — the Locations and Surface views are where it '
+    + 'than a travel-time one — the Stop-by-stop and Surface views are where it '
     + 'is measured.',
   no_dest_coverage:
     'No bus stops within a walk of the destination on one or both networks, '
     + 'so there is nothing to arrive at. That is a coverage answer rather than '
-    + 'a travel-time one — the Locations and Surface views are where it is '
+    + 'a travel-time one — the Stop-by-stop and Surface views are where it is '
     + 'measured.',
   no_journey:
     'Both ends have buses, but no trip connects them inside this window on '

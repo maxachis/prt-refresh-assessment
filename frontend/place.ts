@@ -52,8 +52,13 @@ export function renderEmpty(el: HTMLElement) {
       <p>The map draws the whole city at once, one of five ways depending on
          the view chosen in the toolbar on the map. Pan and zoom to read a
          neighbourhood.</p>
-      <p><b>Locations</b> draws one dot per place a bus stops today, coloured
-         by what the plan does to the buses within a short walk. Its key counts
+      <p><b>Stop-by-stop</b> draws one dot per place a bus stops today, coloured
+         by what the plan does to the buses within a short walk. Each dot says
+         one thing: either the plan takes this stop away — a red cross, on
+         every day of the week — or the stop stays and the colour tells you
+         what the buses near it do. A hollow ring is a place the plan puts a
+         stop where none stands today. To see what a crossed-out stop leaves
+         behind, read the dots around it. Its key counts
          those places, or — on the Riders setting — the boardings PRT records
          at them, which is the same map read as who is affected rather than
          where. Boardings exist only where a bus stops today, so that reading
@@ -380,6 +385,46 @@ function newPlacesFact(stops: StopRef[]): string {
     <dd>${n} of ${stops.length}</dd>`;
 }
 
+/**
+ * How many of today's stops here the plan takes away, and how far the walk to
+ * a replacement is.
+ *
+ * The panel's half of the map's red cross, and the mirror of the ring above.
+ * It answers the question a reader standing at a crossed-out dot actually has,
+ * which the coloured headline cannot: the colour describes every bus within
+ * the walk radius, and a stop can be removed at a corner where the radius
+ * gains service.
+ *
+ * The distances are walks over the pedestrian network, not straight lines, and
+ * a stop with nothing inside an 800 m walk is named as such rather than given
+ * a number -- it is the case that matters most and the one a truncated figure
+ * would hide. Where the stops removed here disagree about that, the panel
+ * prints the range rather than picking one.
+ *
+ * Absent, not zero, where nothing qualifies: at most corners the plan removes
+ * no stop, and a "0" there answers a question the reader has not asked.
+ */
+function removedStopsFact(stops: StopRef[]): string {
+  const gone = stops.filter((s) => s.removed);
+  if (!gone.length) return '';
+  const walks = gone.map((s) => s.replacement_walk_m)
+    .filter((m): m is number => m != null);
+  const stranded = gone.length - walks.length;
+  const near = walks.length
+    ? (walks.length === 1 || Math.min(...walks) === Math.max(...walks)
+        ? `nearest stop a ${Math.round(walks[0]).toLocaleString()} m walk`
+        : `nearest stop a ${Math.round(Math.min(...walks)).toLocaleString()}–`
+          + `${Math.round(Math.max(...walks)).toLocaleString()} m walk`)
+    : '';
+  const none = stranded
+    ? `${walks.length ? `${stranded} with ` : ''}no other stop within an`
+      + ' 800 m walk'
+    : '';
+  const note = [near, none].filter(Boolean).join('; ');
+  return `<dt>Stops the plan removes</dt>
+    <dd>${gone.length} of ${stops.length}<div class="muted">${note}</div></dd>`;
+}
+
 function boardingsFact(b: Boardings | null, d: Day): string {
   if (!b) return '';
   const stops = b.measured + b.unmeasured;
@@ -505,6 +550,7 @@ export function serviceBodyHTML(p: PlaceResult, d: Day, middle = ''): string {
                 grade(bm, am, 'less'))}
       <dt>Stops within ${p.radius} m</dt>
       ${compare(String(p.current.stops.length), String(p.proposed.stops.length))}
+      ${removedStopsFact(p.current.stops)}
       ${newPlacesFact(p.proposed.stops)}
       ${boardingsFact(before.boardings, d)}
     </dl>

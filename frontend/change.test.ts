@@ -1,22 +1,25 @@
 import { describe, it, expect } from 'vitest';
 import {
-  countIn, countNewPlacesIn, sumRidersIn, STYLE, viewportScope, selectionScope,
-  withinBrush,
+  countIn, countNewPlacesIn, countRemovedIn, sumRidersIn, STYLE, viewportScope,
+  selectionScope, withinBrush, removedLine, dotLabel,
 } from './change';
-import { BUCKET, CUR, ID, PROP, PUBLISHED, RIDERS, ChangePoint } from './types';
+import {
+  BUCKET, CUR, ID, PROP, PUBLISHED, REMOVED, RIDERS, ChangePoint,
+} from './types';
 
 // The wire format is positional, so an off-by-one in the offsets recolours the
 // whole map and miscounts the legend without changing a single number on the
 // server. These pin the offsets against a hand-built row.
 //
-//   [lat, lon, published, id, wCur, wProp, wBucket, wRiders, sCur, ...]
+//   [lat, lon, published, id, removed, wCur, wProp, wBucket, wRiders, ...]
 const KEYS = ['gone', 'halved', 'less', 'same', 'more', 'doubled', 'new', 'none'];
 
 let nextId = 0;
 
 function row(lat: number, lon: number, weekdayBucket: number,
-             riders: number | null = 10, id = `c:${++nextId}`): ChangePoint {
-  return [lat, lon, 1, id,
+             riders: number | null = 10, id = `c:${++nextId}`,
+             removed = 0): ChangePoint {
+  return [lat, lon, 1, id, removed,
           40, 20, weekdayBucket, riders, 30, 15, 1, riders, 20, 10, 1, riders];
 }
 
@@ -28,7 +31,7 @@ function row(lat: number, lon: number, weekdayBucket: number,
  */
 function addedPlace(lat: number, lon: number, weekdayBucket: number,
                     id = `p:${++nextId}`): ChangePoint {
-  return [lat, lon, 0, id,
+  return [lat, lon, 0, id, 0,
           0, 20, weekdayBucket, null, 0, 15, 1, null, 0, 10, 1, null];
 }
 
@@ -37,10 +40,11 @@ const BOX_SCOPE = (b: { w: number; s: number; e: number; n: number }) =>
 
 describe('ChangePoint offsets', () => {
   it('reads each day type from its own slot', () => {
-    const p = [40.44, -79.99, 1, 'c:1',
+    const p = [40.44, -79.99, 1, 'c:1', 1,
                40, 20, 1, 99, 30, 15, 5, 50, 20, 0, 0, 25];
     expect(p[PUBLISHED]).toBe(1);
     expect(p[ID]).toBe('c:1');
+    expect(p[REMOVED]).toBe(1);
     expect([CUR(0), PROP(0), BUCKET(0), RIDERS(0)].map((i) => p[i]))
       .toEqual([40, 20, 1, 99]);
     expect([CUR(1), PROP(1), BUCKET(1), RIDERS(1)].map((i) => p[i]))
@@ -82,6 +86,18 @@ describe('countIn', () => {
     const c = countIn(pts, 0, KEYS, BOX_SCOPE({ w: -80.1, s: 40.3, e: -79.9, n: 40.5 }));
     expect(c.gone).toBe(1);
     expect(c.doubled).toBe(0);
+  });
+
+  it('leaves out the stops the plan removes', () => {
+    // Max, 2026-09-09: a dot is a cross OR a colour, never both. A removed
+    // stop is drawn as a cross and counted on the cross's row, so counting it
+    // in a bucket as well would put the same dot in the key twice -- and on a
+    // weekday at 400 m every one of the 633 "loses all service" locations is
+    // a removed stop, so the double-count is not a rounding matter.
+    const kept = row(40.44, -79.99, 0, 10, 'c:keeps', 0);
+    const gone = row(40.45, -79.98, 0, 10, 'c:goes', 1);
+    const c = countIn([kept, gone], 0, KEYS, BOX_SCOPE(BOX));
+    expect(c.gone).toBe(1);
   });
 
   it('returns a zero for every bucket, so the legend never omits a row', () => {
@@ -161,6 +177,29 @@ describe('sumRidersIn', () => {
     expect(sat.riders.halved).toBe(525);
     expect(sat.riders.gone).toBe(0);
   });
+
+  // The dots leave the buckets when they leave the colour, but the boardings
+  // at them are the most at-risk riders on the map. Dropped from the key
+  // entirely, the Riders head line would silently shed them.
+  it('carries the boardings at removed stops on their own, not in a bucket', () => {
+    const pts = [
+      row(40.44, -79.99, 0, 100, 'c:keeps', 0),
+      row(40.45, -79.98, 0, 60, 'c:goes', 1),
+      row(40.45, -79.97, 5, null, 'c:goes-unmeasured', 1),
+    ];
+    const t = sumRidersIn(pts, 0, KEYS, BOX_SCOPE(BOX));
+    expect(t.riders.gone).toBe(100);
+    expect(t.removedRiders).toBe(60);
+    expect(t.removedMeasured).toBe(1);
+  });
+
+  it('keeps a removed stop with no record out of the removed total too', () => {
+    const pts = [row(40.45, -79.97, 0, null, 'c:goes', 1)];
+    const t = sumRidersIn(pts, 0, KEYS, BOX_SCOPE(BOX));
+    expect(t.removedRiders).toBe(0);
+    expect(t.removedMeasured).toBe(0);
+    expect(t.unmeasured).toBe(1);
+  });
 });
 
 describe('selectionScope', () => {
@@ -188,6 +227,122 @@ describe('selectionScope', () => {
   it('counts nothing when nothing is picked', () => {
     const c = countIn(pts, 0, KEYS, selectionScope(new Set()));
     expect(Object.values(c).every((n) => n === 0)).toBe(true);
+  });
+});
+
+/**
+ * The mark, which is a different question from the colour.
+ *
+ * These pin the split the whole Stop-by-stop view rests on: a stop the plan
+ * removes can sit in any service bucket, including one that gains, so the
+ * count of crosses must never be derived from the count of "loses all
+ * service" dots and vice versa.
+ */
+describe('countRemovedIn', () => {
+  const BOX = { w: -80.1, s: 40.3, e: -79.9, n: 40.5 };
+  const pts = [
+    row(40.44, -79.99, 0, 10, 'c:a', 1),   // removed, and loses all service
+    row(40.45, -79.98, 5, 10, 'c:b', 1),   // removed, and the buses doubled
+    row(40.44, -79.97, 0, 10, 'c:c', 0),   // loses all service, stop stays
+    row(41.90, -79.99, 0, 10, 'c:d', 1),   // removed, north of the box
+  ];
+
+  it('counts the crosses in view, whatever colour they wear', () => {
+    expect(countRemovedIn(pts, BOX_SCOPE(BOX))).toBe(2);
+  });
+
+  it('counts what the reader painted rather than what is on screen', () => {
+    expect(countRemovedIn(pts, selectionScope(new Set(['c:a', 'c:d'])))).toBe(2);
+  });
+});
+
+describe('dotLabel at a removed stop', () => {
+  const BUCKETS = KEYS.map((k) => ({ key: k, label: k }));
+
+  it('leads with the removal and never names a service bucket', () => {
+    // The colour rows describe the stops that stay. A removed dot is not
+    // drawn in one, so the tooltip cannot report one either -- that was the
+    // last place the two channels contradicted each other.
+    const p = { published: 1, removed: 1, replacement: 378, nearestStraight: 340,
+                b0: 'doubled', c0: 40, p0: 80 };
+    const html = dotLabel(p, 'weekday', BUCKETS);
+    expect(html).toContain('Stop removed');
+    expect(html).not.toContain('doubled');
+  });
+
+  it('still reports the buses within a walk, which is a different question', () => {
+    const p = { published: 1, removed: 1, replacement: 378, nearestStraight: 340,
+                b0: 'doubled', c0: 40, p0: 80 };
+    expect(dotLabel(p, 'weekday', BUCKETS)).toContain('40 → 80 buses per weekday');
+  });
+
+  it('names the bucket at a stop that stays', () => {
+    const p = { published: 1, removed: 0, b0: 'doubled', c0: 40, p0: 80 };
+    expect(dotLabel(p, 'weekday', BUCKETS)).toContain('doubled');
+  });
+});
+
+describe('removedLine', () => {
+  it('says nothing at a stop the plan keeps', () => {
+    expect(removedLine({ removed: 0, replacement: null })).toBe('');
+  });
+
+  it('names the walk to the nearest surviving stop', () => {
+    expect(removedLine({ removed: 1, replacement: 378, nearestStraight: 340 }))
+      .toContain('nearest stop is a 378 m walk');
+  });
+
+  it('says so plainly when nothing survives within the search', () => {
+    expect(removedLine({ removed: 1, replacement: null }))
+      .toContain('no other stop within a 800 m walk');
+  });
+
+  // Mt Troy Rd + Beckert is the case that asked for this: the walk to any
+  // surviving stop is 651 m, while the map shows Lowrie St stops 301 m away
+  // that are 863 m on foot, because Mt Troy Road switchbacks around the head
+  // of a ravine. Without the second number the walk reads as an error to
+  // anyone looking at the map.
+  //
+  // The comparison is against the nearest stop AS THE CROW FLIES. Measured
+  // instead against the straight line to the stop the walk found (501 m) the
+  // ratio is 1.30 and this hover -- the one that prompted the whole change --
+  // would print nothing.
+  it('adds the straight line where the ground puts the walk far past it', () => {
+    const html = removedLine(
+      { removed: 1, replacement: 651, nearestStraight: 301 });
+    expect(html).toContain('651 m walk');
+    expect(html).toContain('the nearest in a straight line is 301 m');
+  });
+
+  it('leaves the straight line off where the two nearly agree', () => {
+    // The countywide median walk is 1.22x its own straight line, so printing
+    // both everywhere would put a second number on most of the 972 removals to
+    // say nothing a reader needs.
+    expect(removedLine({ removed: 1, replacement: 220, nearestStraight: 180 }))
+      .not.toContain('straight line');
+  });
+
+  it('leaves it off when there is no straight line to compare', () => {
+    expect(removedLine({ removed: 1, replacement: 400, nearestStraight: null }))
+      .not.toContain('straight line');
+  });
+
+  // Mt Troy Rd + Homestead is worse than Beckert, not better: nothing at all
+  // is reachable inside the 800 m search, while a stop stands 513 m off on the
+  // map. Saying only "no other stop within a 800 m walk" there reads as flatly
+  // false to whoever is looking at it.
+  it('adds the straight line when nothing is reachable on foot at all', () => {
+    const html = removedLine(
+      { removed: 1, replacement: null, nearestStraight: 513 });
+    expect(html).toContain('no other stop within a 800 m walk');
+    expect(html).toContain('the nearest in a straight line is 513 m');
+  });
+
+  it('leaves it off when even the straight line is most of the search', () => {
+    // 700 m away straight is not a number that explains an unreachable walk;
+    // it says the same thing the sentence already said.
+    expect(removedLine({ removed: 1, replacement: null, nearestStraight: 700 }))
+      .not.toContain('straight line');
   });
 });
 

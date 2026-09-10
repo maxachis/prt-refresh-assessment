@@ -34,6 +34,29 @@ export interface StopRef {
    * content there. Same one-sidedness as boardings, for a different reason.
    */
   new_place?: boolean;
+  /**
+   * Whether the plan takes this stop away — retires the id and puts no
+   * proposed stop within 150 m of it. Today's stops only, and the mirror of
+   * `new_place`: a proposed stop is not something the plan can remove.
+   *
+   * Not a restatement of the "loses all service" colour. That colour is a
+   * claim about the buses within the whole walk radius; this is a claim about
+   * one pole, and the two disagree at 339 of the 972 removed stops.
+   */
+  removed?: boolean;
+  /**
+   * How far the nearest stop the plan does keep is, as a walk over the
+   * pedestrian network rather than as the crow flies. Present only on a
+   * removed stop, and `null` there when nothing survives within an 800 m
+   * walk — which is 534 of the 972.
+   */
+  replacement_walk_m?: number | null;
+  /**
+   * How far the nearest surviving stop is as the crow flies — on hilly ground
+   * a different stop from the one the walk found, and the one a reader can see
+   * on the map. Present even where the walk is `null`.
+   */
+  nearest_straight_m?: number | null;
 }
 
 /**
@@ -73,7 +96,8 @@ export interface SideResult {
  * One row of the citywide layer, columnar to keep ~5,900 locations under a few
  * hundred kilobytes on the wire:
  *
- *   [lat, lon, published, id, wCur, wProp, wBucket, wRiders, sCur, ..., uRiders]
+ *   [lat, lon, published, id, removed, wCur, wProp, wBucket, wRiders, sCur,
+ *    ..., uRiders]
  *
  * `id` is the server's own name for the location -- `c:<stop_id>` where a bus
  * stops today, `p:<stop_id>` where only the proposed network stops -- and it
@@ -82,6 +106,14 @@ export interface SideResult {
  * and a row index could not stand in for them, since the order is the
  * server's and a rebuild that reordered it would silently reselect different
  * stops in a link somebody had already sent.
+ *
+ * `removed` is the stop's own fate rather than the walk radius's: 1 where the
+ * plan takes this pole away and leaves no proposed stop within 150 m, 0
+ * everywhere else. It rides beside the buckets rather than among them because
+ * it answers a different question -- the colour is what happens to the buses
+ * within a walk, this is what happens to the stop the reader is standing at,
+ * and 339 of the 972 removed stops sit in a bucket other than "loses all
+ * service", 122 of them in one that gains.
  *
  * All three day types travel together so switching between them repaints from
  * memory rather than refetching — 152 locations keep their weekday buses and
@@ -102,12 +134,22 @@ export type ChangePoint = (number | string | null)[];
  * offsets are pinned by frontend/change.test.ts as well as by the API tests.
  */
 export const POINT_STRIDE = 4;
-export const CUR = (i: number) => 4 + POINT_STRIDE * i;
-export const PROP = (i: number) => 5 + POINT_STRIDE * i;
-export const BUCKET = (i: number) => 6 + POINT_STRIDE * i;
-export const RIDERS = (i: number) => 7 + POINT_STRIDE * i;
+/** Mirrored from `query.FIXED_FIELDS`: lat, lon, published, id, removed. */
+export const FIXED_FIELDS = 5;
+export const CUR = (i: number) => FIXED_FIELDS + POINT_STRIDE * i;
+export const PROP = (i: number) => FIXED_FIELDS + 1 + POINT_STRIDE * i;
+export const BUCKET = (i: number) => FIXED_FIELDS + 2 + POINT_STRIDE * i;
+export const RIDERS = (i: number) => FIXED_FIELDS + 3 + POINT_STRIDE * i;
 export const PUBLISHED = 2;
 export const ID = 3;
+/**
+ * 1 where the plan runs no stop at this kerb — `query.is_removed_stop`.
+ *
+ * Fixed rather than per-day because it is a fact about the stop, not about
+ * the service near it: it does not move with the day switch or with the walk
+ * radius, and the colour beside it moves with both.
+ */
+export const REMOVED = 4;
 
 /** The server's name for this location; see ChangePoint. */
 export const pointId = (p: ChangePoint): string => p[ID] as string;
@@ -134,6 +176,19 @@ export interface ChangeLayer {
   days: Day[];
   buckets: { key: string; label: string }[];
   fields: string[];
+  /**
+   * `[metres on foot, metres in a straight line]` to a surviving stop, by
+   * point id, for the stops the plan removes. Absent where the bounded search
+   * found no walk — which the hover says in words, because there is no
+   * distance to print.
+   *
+   * The two name DIFFERENT STOPS wherever the ground is in the way, and that
+   * is the point of carrying both: at Mt Troy Rd + Beckert the walk to any
+   * surviving stop is 651 m, while the Lowrie St stops the map shows 301 m
+   * away are 863 m on foot around a ravine. Printing only the walk reads as an
+   * error to anyone looking at the map.
+   */
+  replacement: Record<string, [number, number]>;
   points: ChangePoint[];
 }
 

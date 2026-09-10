@@ -102,7 +102,7 @@ export interface UrlState {
   place: string | null;
   /** Which of the Places choropleth's two readings is on the map. */
   placeFill: PlaceFill;
-  /** The dots painted on the Locations view, by id; empty when none are. */
+  /** The dots painted on the Stop-by-stop view, by id; empty when none are. */
   selection: string[];
   /** Whether the stops the plan adds are drawn over the dots. */
 }

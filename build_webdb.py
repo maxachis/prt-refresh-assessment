@@ -286,6 +286,18 @@ CREATE TABLE place_block_group (
 -- Place labels and boardings, carried over from coverage_change.csv so the app
 -- inherits its handling of caveat 10 (stop ids that name different stops in
 -- the usage extract and the GTFS) rather than re-deriving it.
+--
+-- It also carries each stop's own fate, which is a different question from the
+-- change bucket the map colours it by: `removed` is `query.is_removed_stop` --
+-- the plan runs no stop at this kerb, at one identity distance, radius-free
+-- and day-free -- while the bucket asks what happens to the buses within a
+-- walk. 339 of the 972 removed stops sit in a bucket that gains service, so
+-- the two must be stored apart -- the map then draws the cross alone at a
+-- removed stop, but that is the drawing's choice and not this table's. `replacement_walk_m` is the walk to
+-- the nearest stop the plan does serve, routed on the pedestrian network
+-- rather than drawn straight, because that number is a claim about walking and
+-- the identity test is not; NULL means the bounded search found nothing, which
+-- is not the same as zero.
 CREATE TABLE stop_place (
     stop_id            TEXT PRIMARY KEY,
     muni               TEXT,
@@ -293,7 +305,17 @@ CREATE TABLE stop_place (
     id_name_mismatch   INTEGER NOT NULL DEFAULT 0,
     weekday_boardings  REAL,
     saturday_boardings REAL,
-    sunday_boardings   REAL
+    sunday_boardings   REAL,
+    removed            INTEGER NOT NULL DEFAULT 0,
+    replacement_walk_m REAL,
+    -- The nearest proposed stop AS THE CROW FLIES, which is a different stop
+    -- from the one the walk found wherever the ground is in the way. It is
+    -- stored because it is what the reader can see: at Mt Troy Rd + Beckert
+    -- the map shows a surviving stop 301 m off and the walk to any stop is
+    -- 651 m, and a hover printing only the walk reads as an error. Present
+    -- even where `replacement_walk_m` is NULL -- "there is one 300 m away and
+    -- no way to walk to it" is the sharpest version of that finding.
+    nearest_straight_m REAL
 );
 
 -- The citywide change layer: what the map paints before anybody clicks.
@@ -637,6 +659,85 @@ def load_crosswalk():
             for r in csv.DictReader(open(path, encoding="utf-8"))]
 
 
+# How far the search for a replacement stop looks before reporting none.
+# Twice convention 4's quarter mile: past this the answer a rider needs is not
+# "how far" but "there isn't one", and an unbounded search would spend minutes
+# proving that about the stops stranded on walk-graph islands.
+REPLACEMENT_SEARCH_M = 800.0
+
+
+def write_stop_fates(con, network):
+    """Mark the stops the plan takes away, and how far the replacement is.
+
+    Two different measurements, deliberately, and the split is convention 14's.
+    WHETHER a stop is removed is `query.is_removed_stop` -- straight-line, at
+    the same identity distance that decides whether a stop is one the plan
+    adds, so a renumbered kerb can never draw both marks. HOW FAR the
+    replacement is, is routed on the pedestrian network, because that one is a
+    claim about walking: a river, a rail cut or a hillside between two stops
+    150 m apart is the difference between "your stop moved down the block" and
+    a walk nobody makes.
+
+    Candidates are pre-filtered by straight line at the same bound the walk
+    uses. A walk is never shorter than its own straight line, so this can drop
+    no stop the routed search would have found.
+    """
+    # The build's connection hands back plain tuples; every query.py helper
+    # reads its rows by name, the way `query.connect` opens them. Borrowed for
+    # this function and handed back, rather than changed for the whole build,
+    # which reads positionally everywhere else. The rows cannot be read from a
+    # second read-only connection instead: `stop_place` is written by this same
+    # transaction and is not committed yet.
+    prior = con.row_factory
+    con.row_factory = sqlite3.Row
+    try:
+        proposed = {r["stop_id"]: (r["lat"], r["lon"]) for r in con.execute(
+            "SELECT stop_id, lat, lon FROM stops WHERE side = 'proposed'")}
+
+        rows, stranded = [], 0
+        for s in con.execute("SELECT stop_id, lat, lon FROM stops "
+                             "WHERE side = 'current' ORDER BY stop_id"):
+            if not query.is_removed_stop(con, s["stop_id"], s["lat"], s["lon"]):
+                continue
+            here = (s["lat"], s["lon"])
+            near = {k: v for k, v in proposed.items()
+                    if walking.metres_between(here, v) <= REPLACEMENT_SEARCH_M}
+            reached = (network.reach(here, near, REPLACEMENT_SEARCH_M)
+                       if near else {})
+            # Two different questions, and on this terrain two different
+            # stops. The walk is the one a rider makes; the straight line is
+            # the one they can see on the map, and it is measured to whichever
+            # stop is nearest that way -- not to the stop the walk found. At
+            # Mt Troy Rd + Beckert the walk goes 651 m to Spring Garden while
+            # the Lowrie St stops 301 m off are 863 m on foot around a ravine,
+            # and it is the 301 m that a reader is holding against the number.
+            straight = min(walking.metres_between(here, v)
+                           for v in near.values()) if near else None
+            if reached:
+                rows.append((min(reached.values()), straight, s["stop_id"]))
+            else:
+                rows.append((None, straight, s["stop_id"]))
+                stranded += 1
+    finally:
+        con.row_factory = prior
+
+    con.executemany("UPDATE stop_place SET removed = 1, "
+                    "replacement_walk_m = ?, nearest_straight_m = ? "
+                    "WHERE stop_id = ?", rows)
+    written = con.execute("SELECT COUNT(*) FROM stop_place "
+                          "WHERE removed = 1").fetchone()[0]
+    if written != len(rows):
+        sys.exit(f"error: {len(rows)} stops the plan removes but {written} "
+                 f"rows in stop_place -- the two stop inventories disagree")
+    walked = [d for d, _, _ in rows if d is not None]
+    print(f"\nstop fates: {len(rows)} stops the plan removes, "
+          f"{stranded} with no stop within a {REPLACEMENT_SEARCH_M:.0f} m walk")
+    if walked:
+        walked.sort()
+        print(f"  median walk to the nearest stop the plan serves: "
+              f"{walked[len(walked) // 2]:.0f} m")
+
+
 def build(out_path):
     out_path = Path(out_path)
     if out_path.exists():
@@ -809,6 +910,8 @@ def build(out_path):
     nodes, segments, metres = network.summary()
     print(f"\nwalk network: {nodes:,} nodes, {segments:,} segments, "
           f"{metres / 1000:,.0f} km")
+
+    write_stop_fates(con, network)
 
     dest = load_destinations(reach_coords)
     con.executemany("INSERT INTO destination VALUES (?,?,?,?)", dest)

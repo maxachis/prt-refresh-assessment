@@ -391,6 +391,43 @@ def is_new_place(con, stop_id: str, lat: float, lon: float,
     return not stops_within(con, lat, lon, dedup, "current")
 
 
+def is_removed_stop(con, stop_id: str, lat: float, lon: float,
+                    dedup: float = UNIVERSE_DEDUP_M) -> bool:
+    """Does the plan take this stop away, or only reissue its number?
+
+    The exact mirror of `is_new_place`, in the same order and on the same
+    constant, and it has to stay one. Where the two thresholds diverge a
+    renumbered kerb draws a red X and a hollow ring at once -- "the plan takes
+    this stop away" and "the plan adds a stop here" -- and 58 corners are in
+    exactly that position, three of them Downtown PRTX stations whose
+    replacement stands two metres off. `tests/test_query.py` pins the pair.
+
+    WHY THIS IS NOT THE SAME QUESTION AS THE COLOUR UNDER IT. `bucket()` asks
+    what happens to the buses within a walk of here; this asks whether the
+    stop survives. On a weekday at 400 m, 339 of the 972 stops the plan removes
+    still have buses inside the radius -- 95 of them read "more service" and 27
+    "doubled or better". Both readings are true of a corner where PRT pulls the
+    pole on a corridor it is strengthening, and folding one into the other
+    would delete a sentence a rider needs.
+
+    Straight-line, deliberately, exactly as `UNIVERSE_DEDUP_M` says: this is an
+    identity test -- are these two coordinates the same kerb -- not a claim
+    about how far anybody will walk. The walk belongs to
+    `replacement_walk_m`, which is what the panel prints once the answer here
+    is yes, and which is measured on the pedestrian network because that one
+    IS a claim about walking. Convention 14 splits the transfer walk from the
+    access radius on the same grounds.
+
+    1,406 ids run today and are absent from the plan; 434 of them fail this
+    test because the plan serves a stop within `UNIVERSE_DEDUP_M`, leaving 972
+    removals. Reporting the 1,406 would overstate them by 31%.
+    """
+    if con.execute("SELECT 1 FROM stops WHERE side = 'proposed' "
+                   "AND stop_id = ? LIMIT 1", (stop_id,)).fetchone():
+        return False
+    return not stops_within(con, lat, lon, dedup, "proposed")
+
+
 def side_at_place(con, side: str, lat: float, lon: float, radius: float):
     """Everything one network offers at one location, all three day types."""
     stops = stops_within(con, lat, lon, radius, side)
@@ -418,16 +455,35 @@ def side_at_place(con, side: str, lat: float, lon: float, radius: float):
                           if side == "current" else None),
         }
 
-    # Which of these poles the plan puts where none stands today -- the dots
-    # the map draws hollow. Asked of the proposed side only, and one-sided for
-    # the same reason boardings are: a stop that runs today stands, by
-    # definition, where a stop stands today, so the question has no content
-    # there.
+    # What becomes of each stop itself, beside what becomes of the service
+    # around it. Each side answers only the question that has content on it: a
+    # stop that runs today stands, by definition, where a stop stands today, so
+    # it cannot be one the plan adds; and a stop the plan runs cannot be one
+    # the plan removes. So `new_place` is asked of the proposed side and
+    # `removed` of the current one, and neither side carries the other's key --
+    # the same one-sidedness boardings have, for the same reason.
+    #
+    # `replacement_walk_m` is the walk to the nearest stop the plan serves,
+    # and `nearest_straight_m` the straight line to the nearest one there is,
+    # which on hilly ground is a different stop --
+    # routed on the pedestrian network by `build_webdb.py` and stored, because
+    # routing it per request would put a bounded graph search inside a click.
+    # It is only meaningful where `removed` is true, and it is None where the
+    # search found nothing inside its bound rather than 0 -- "no replacement
+    # within a walk" is not "a replacement at zero metres".
     def out(s):
         row = {"stop_id": s[0], "name": s[1], "lat": s[2], "lon": s[3],
                "metres": round(s[4])}
         if side == "proposed":
             row["new_place"] = is_new_place(con, s[0], s[2], s[3])
+        else:
+            fate = con.execute(
+                "SELECT removed, replacement_walk_m, nearest_straight_m "
+                "FROM stop_place WHERE stop_id = ?", (s[0],)).fetchone()
+            row["removed"] = bool(fate["removed"]) if fate else False
+            for key in ("replacement_walk_m", "nearest_straight_m"):
+                row[key] = (round(fate[key])
+                            if fate and fate[key] is not None else None)
         return row
 
     return {
@@ -647,12 +703,18 @@ def compute_change(con, radius: float = PRIMARY_RADIUS, *,
 # say which, and a row index cannot do that job -- the order is the server's,
 # and a rebuild that reordered it would quietly reselect different stops in a
 # link somebody had already sent.
+#
+# `removed` is fixed rather than per-day for the same reason `published` is:
+# whether the plan takes a stop away is a fact about the stop, settled by
+# `is_removed_stop` at one identity distance, and it does not move with the day
+# switch or with the walk radius. The colour beside it does both.
 POINT_STRIDE = 4
-LAT_AT, LON_AT, PUBLISHED_AT, ID_AT = 0, 1, 2, 3
-def CUR_AT(day: int) -> int: return 4 + POINT_STRIDE * day
-def PROP_AT(day: int) -> int: return 5 + POINT_STRIDE * day
-def BUCKET_AT(day: int) -> int: return 6 + POINT_STRIDE * day
-def RIDERS_AT(day: int) -> int: return 7 + POINT_STRIDE * day
+FIXED_FIELDS = 5
+LAT_AT, LON_AT, PUBLISHED_AT, ID_AT, REMOVED_AT = 0, 1, 2, 3, 4
+def CUR_AT(day: int) -> int: return FIXED_FIELDS + POINT_STRIDE * day
+def PROP_AT(day: int) -> int: return FIXED_FIELDS + 1 + POINT_STRIDE * day
+def BUCKET_AT(day: int) -> int: return FIXED_FIELDS + 2 + POINT_STRIDE * day
+def RIDERS_AT(day: int) -> int: return FIXED_FIELDS + 3 + POINT_STRIDE * day
 
 
 def point_boardings(con) -> dict[str, dict[str, float | None]]:
@@ -695,17 +757,25 @@ def change_layer(con, radius: float = PRIMARY_RADIUS):
     memory instead of refetching -- 152 locations keep their weekday buses and
     lose the weekend entirely, and that comparison should cost nothing.
 
-    Each row is [lat, lon, published, id, then per day: cur, prop, bucket
-    index, boardings]. Boardings are `null`, never 0, at a point the proposed
-    network serves and today's does not -- see `point_boardings`. The id is
-    `change_points`'s own -- `c:<stop_id>` or `p:<stop_id>` -- and it ships so
-    that a selection made on the map can be named in a link.
+    Each row is [lat, lon, published, id, removed, then per day: cur, prop,
+    bucket index, boardings]. Boardings are `null`, never 0, at a point the
+    proposed network serves and today's does not -- see `point_boardings`. The
+    id is `change_points`'s own -- `c:<stop_id>` or `p:<stop_id>` -- and it
+    ships so that a selection made on the map can be named in a link.
+
+    `removed` comes off `stop_place`, not off the `change` table, and that is
+    deliberate: it is radius-free and day-free, so storing it per (radius, day)
+    row would be three copies of one fact that could disagree. It also keeps
+    `compute_change` and the published bucket counts it is pinned to entirely
+    out of this change.
     """
     rows = con.execute(
         "SELECT point_id, day, lat, lon, published, cur_trips, prop_trips, "
         "  bucket FROM change WHERE radius = ? ORDER BY point_id",
         (int(radius),)).fetchall()
 
+    removed = {f"c:{r['stop_id']}": r["removed"] for r in
+               con.execute("SELECT stop_id, removed FROM stop_place")}
     boardings = point_boardings(con)
     idx = {k: i for i, k in enumerate(BUCKET_KEYS)}
     packed: dict[str, list] = {}
@@ -713,6 +783,10 @@ def change_layer(con, radius: float = PRIMARY_RADIUS):
         p = packed.setdefault(
             r["point_id"], [round(r["lat"], 6), round(r["lon"], 6),
                             r["published"], r["point_id"],
+                            # A point the plan adds is not a stop that runs
+                            # today, so "does the plan remove it" has no
+                            # content there -- 0, never a missing key.
+                            removed.get(r["point_id"], 0),
                             *([0] * (POINT_STRIDE * len(DAYS)))])
         day = DAYS.index(r["day"])
         p[CUR_AT(day):RIDERS_AT(day) + 1] = [
@@ -723,9 +797,31 @@ def change_layer(con, radius: float = PRIMARY_RADIUS):
         "radius": int(radius),
         "days": list(DAYS),
         "buckets": [{"key": k, "label": lab} for k, lab in BUCKETS],
-        "fields": ["lat", "lon", "published", "id",
+        "fields": ["lat", "lon", "published", "id", "removed",
                    *[f"{d}_{f}" for d in DAYS
                      for f in ("cur", "prop", "bucket", "riders")]],
+        # The distance to a replacement, for the 972 dots it says anything
+        # about, as [walk, straight line] to the SAME stop. A sparse map rather
+        # than two more packed columns: it is meaningful only where `removed`
+        # is 1, and columns would ship 5,570 nulls to carry 972 numbers. A
+        # removed stop with no entry here found nothing inside
+        # `build_webdb.REPLACEMENT_SEARCH_M` -- the hover has to say that
+        # rather than print a distance it does not have.
+        #
+        # Both distances travel because on this terrain they name different
+        # stops, and the walk alone reads as a mistake to a reader who can see
+        # the map: at Mt Troy Rd + Beckert the walk to any surviving stop is
+        # 651 m while the Lowrie St stops the map shows 301 m away are 863 m on
+        # foot around a ravine. The second number is that 301 m -- the nearest
+        # stop as the crow flies, whichever stop that is.
+        "replacement": {
+            f"c:{r['stop_id']}": [round(r["replacement_walk_m"]),
+                                  None if r["nearest_straight_m"] is None
+                                  else round(r["nearest_straight_m"])]
+            for r in con.execute(
+                "SELECT stop_id, replacement_walk_m, nearest_straight_m "
+                "FROM stop_place "
+                "WHERE removed = 1 AND replacement_walk_m IS NOT NULL")},
         "points": list(packed.values()),
     }
 

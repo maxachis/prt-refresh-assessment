@@ -68,7 +68,7 @@ esbuild-bundled TypeScript, vendored MapLibre, pytest + vitest.
 
 ### Why the one-seat view has a panel of its own
 
-Locations and Surface share one panel because they are one measurement drawn
+Stop-by-stop and Surface share one panel because they are one measurement drawn
 two ways: a quantity of service, answered at a point. One-seat is a different
 unit (convention 13) — a connection, with no day type and no clock — and while
 it shared that panel the view had two markers of visibly unequal weight. The
@@ -378,7 +378,7 @@ Four things follow.
 
 **And the map says which dots those are: they are drawn hollow.** A filled dot
 is a stop that stands today; an unfilled one, ink outline and no centre, is a
-stop the plan adds. The Locations key carries it as a row of its own — **"the
+stop the plan adds. The Stop-by-stop key carries it as a row of its own — **"the
 plan adds a stop here"** — with the count in view and its own switch, and those
 dots join the head line's total.
 
@@ -423,6 +423,92 @@ point set has to describe the same places at 400 m and 150 m or the two stop
 being comparable; selecting at whatever radius was asked for would fill the
 strict view with new-service dots that are the smaller circle's artefact. See
 `docs/worklog/a-new-stop-the-plan-adds-draws-no-dot.md`.
+
+### The stop the plan takes away: a red cross
+
+The mirror of the hollow ring, and the second half of what makes the view
+stop-by-stop rather than a field of walk-radius colour. A dot wearing a red X
+is a stop the plan removes: the id is retired and no proposed stop stands
+within 150 m of it — `query.is_removed_stop`, the exact mirror of
+`is_new_place`, same order of tests and the same `UNIVERSE_DEDUP_M`. So a kerb
+PRT renumbers can never draw a cross and a ring at once, and
+`tests/test_query.py` pins the three Downtown PRTX stations that would
+otherwise have stacked both marks 2–3 m apart.
+
+**One dot says one thing.** Either the plan takes this stop away — a cross, on
+every day of the week — or the stop stays and the colour says what the buses
+within a walk of it do. A removed stop is drawn by its cross alone, is counted
+only on the cross's row, and appears in no service bucket. Max set that rule on
+2026-09-09.
+
+It replaces a design that carried both channels on one dot, colour for the
+service and a mark for the pole. That was defensible on a weekday — the two
+questions really are different, and 339 of the 972 removals sit in a bucket
+other than "loses all service" — but it produced dots a reader cannot resolve
+the moment the day switch moves. On a Saturday, 25 stops PRT retires stand
+where the plan puts a weekend bus that does not run today: crossed out and
+coloured "new service" at once. What a removed stop leaves behind is legible
+without the colour, because the neighbouring dots are on screen — a cross in a
+field of purple is a moved pole, a cross among crosses is an abandoned
+corridor.
+
+**What it costs, and where the lost number went.** On a weekday at 400 m every
+one of the 633 "loses all service" locations is also a removed stop, so that
+row reads 0 there and the crosses carry the whole story. The two part company
+on weekends: 145 of Saturday's 436 stranded locations are stops that survive
+with nothing left to catch, and they stay red. The published 633 is quoted on
+`/findings`, in `FINDINGS.md` and in `data/coverage_change.csv` — a figure to
+quote belongs in a published file rather than in a viewport-dependent key, and
+the key never showed the citywide number anyway.
+
+Three things follow in the drawing, each of which was a defect until it was
+fixed. The cross answers only its own switch in the key, since hiding "more
+service" must not take the 95 removed stops whose radius gains service with it.
+The brush paints from the cross layer as well as the dot layer
+(`change.CHANGE_HIT_LAYERS`), or the 972 stops a reader is most likely to
+select would be unpaintable, and the selection ring for a cross is a circle
+drawn under it, because a symbol layer has no stroke to thicken. And the hover
+binds to both layers: the removal sentence, with the walk to the nearest
+surviving stop, lives in that tooltip.
+
+**How far the replacement is, is a walk, not a straight line.**
+`build_webdb.write_stop_fates` routes from every removed stop over the
+pedestrian network (`refresh.walking`) to the nearest stop the plan keeps,
+bounded at 800 m, and stores the metres on `stop_place`. The hover line reads
+"Stop removed — nearest stop is a 189 m walk"; the panel prints "Stops the plan
+removes: 2 of 17" with the range of those walks under it. Where nothing
+survives inside 800 m the number is absent and says so, rather than being
+rounded up into a figure.
+
+**Where the ground makes the walk absurd, the hover prints the straight line
+too.** A walk more than 1.5× the distance to the nearest stop *as the crow
+flies* gains "; the nearest in a straight line is 301 m"
+(`change.STRAIGHT_LINE_NOTE_RATIO`, `stop_place.nearest_straight_m`). The case
+that asked for it is Mt Troy Rd + Beckert on Troy Hill: the walk to any
+surviving stop is 651 m, while the map plainly shows Lowrie St stops 301 m
+away, which are 863 m on foot because Mt Troy Road switchbacks round the head
+of a ravine. Without the second number the walk reads as an arithmetic error to
+anyone who knows the hill. The comparison is deliberately against **the nearest
+stop in a straight line, which is usually a different stop from the one the
+walk found** — measured against the walk-winner's own straight line the Troy
+Hill ratio is 1.30 and the hover that prompted the whole change would print
+nothing. Countywide the median walk is 1.22× its own straight line
+(convention 14), so most removals print one number, as they should: 94 of the
+438 removals with a walk carry the second one.
+
+A stop with **no** reachable replacement is measured the same way, against the
+800 m the search failed at — 43 of the 534 stranded stops stand within 533 m of
+a surviving stop as the crow flies and now say so. That is the sharpest form of
+the same confusion, not an exception to it: "no other stop within an 800 m
+walk" beside a stop plainly 513 m off on the map reads as flatly wrong.
+
+**And the key says what the mark does not mean.** Countywide, of the 972 stops
+the plan removes, 245 have another stop within a 400 m walk and 193 more within
+800 m; 534 have none. Left without that line the mark reads as 972 corners
+losing their bus, which is not what it measures — and the 534 that *are* that
+only read as alarming when the other 438 are counted beside them. That the two
+distances differ from `data/stop_service_change.csv`'s straight-line column is
+filed at `docs/worklog/two-distances-to-the-replacement-stop.md`.
 
 ### Locations or riders: the legend's second denominator
 

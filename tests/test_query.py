@@ -292,8 +292,8 @@ def test_change_layer_packs_every_point_and_day(con):
                     (query.PRIMARY_RADIUS,)).fetchone()[0]
     assert len(layer["points"]) == n
     assert [b["key"] for b in layer["buckets"]] == list(query.BUCKET_KEYS)
-    # [lat, lon, published, id] + 4 fields x 3 day types
-    width = 4 + query.POINT_STRIDE * len(query.DAYS)
+    # [lat, lon, published, id, removed] + 4 fields x 3 day types
+    width = query.FIXED_FIELDS + query.POINT_STRIDE * len(query.DAYS)
     assert all(len(p) == width for p in layer["points"])
     assert len(layer["fields"]) == width
 
@@ -711,3 +711,94 @@ def test_the_panel_says_which_proposed_stops_stand_where_none_stands_today(con):
     # One-sided, like boardings: a stop that runs today stands where a stop
     # stands today, so the question is not asked of that side.
     assert all("new_place" not in s for s in at["current"]["stops"])
+
+
+# --------------------------------------------------------------------------
+# the stop's own fate, beside what happens to the service around it
+# --------------------------------------------------------------------------
+#
+# Two questions at one dot, and they are not the same question. The colour is
+# `bucket()` -- what happens to the buses within a walk of here -- and the mark
+# is this: does the stop itself survive. They disagree constantly and both
+# readings are true. On a weekday at 400 m, 339 of the stops the plan removes
+# still have buses within the radius: 117 read "less service", 95 "more" and 27
+# "doubled or better". A stop can be taken away on a corridor that gains
+# service, and only saying one of those would mislead.
+
+
+def test_a_renumbered_stop_is_not_drawn_as_removed(con):
+    """The plan reissuing an id at the same kerb is not a stop going away.
+
+    1,406 ids that run today are absent from the plan, and 434 of them have a
+    stop the plan serves within `UNIVERSE_DEDUP_M` -- the same corner under a
+    new number. Counting those as removals would overstate the removals by 31%
+    and would put a red X on three of Downtown's busiest kerbs. The PRTX
+    stations are the sharpest case: PRT renumbers them wholesale, and the
+    replacement stands a couple of metres away.
+    """
+    for old, new in (("23101", "8681"),      # Ross Street PRTX Station
+                     ("23102", "20684"),     # Market Square PRTX Station
+                     ("23112", "20287")):    # East Busway + Penn Station
+        row = con.execute("SELECT lat, lon FROM stops WHERE side = 'current' "
+                          "AND stop_id = ?", (old,)).fetchone()
+        assert row, f"{old} is not in the current feed -- fixture changed"
+        assert not con.execute("SELECT 1 FROM stops WHERE side = 'proposed' "
+                               "AND stop_id = ?", (old,)).fetchone()
+        assert con.execute("SELECT 1 FROM stops WHERE side = 'proposed' "
+                           "AND stop_id = ?", (new,)).fetchone()
+        assert query.is_removed_stop(con, old, row["lat"], row["lon"]) is False
+
+
+def test_a_stop_prt_kept_the_id_of_is_never_removed(con):
+    """The mirror of `is_new_place`'s first rule, and it must stay a mirror.
+
+    PRT keeping an id is the agency saying "this is that stop", and it outranks
+    the distance guess in BOTH directions: 18627 (Hwy Rt 286 + Royal Oak Dr)
+    comes back 178 m away named for a different cross street, and 20918
+    (Churchill Rd + Holland) 152 m away. Neither is a stop the plan adds, and
+    neither is a stop the plan takes away.
+    """
+    shared = [r for r in con.execute(
+        "SELECT s.stop_id, s.lat, s.lon FROM stops s WHERE s.side = 'current' "
+        "AND s.stop_id IN (SELECT stop_id FROM stops WHERE side = 'proposed')")]
+    assert shared, "no ids in common -- the fixture cannot test this"
+    for r in shared:
+        assert query.is_removed_stop(con, r["stop_id"], r["lat"], r["lon"]) is False
+
+
+def test_no_corner_is_both_removed_and_added(con):
+    """One threshold decides both marks, so a corner can never carry both.
+
+    This is the whole reason `is_removed_stop` mirrors `is_new_place` instead
+    of being written independently. If the two ever took different constants, a
+    renumbering would draw a red X and a hollow ring on top of each other --
+    "the plan takes this stop away" and "the plan adds a stop here", at one
+    kerb, both in the key. 58 renumberings are matched by an id the plan adds
+    at that spot and are exactly the corners this would happen at.
+    """
+    removed = [r for r in con.execute(
+        "SELECT stop_id, lat, lon FROM stops WHERE side = 'current'")
+        if query.is_removed_stop(con, r["stop_id"], r["lat"], r["lon"])]
+    assert removed, "no removals at all -- the fixture cannot test this"
+
+    new_places = {p[0][2:] for p in query.change_points(con) if p[3] == 0}
+    for r in removed:
+        near = {s[0] for s in query.stops_within(
+            con, r["lat"], r["lon"], query.UNIVERSE_DEDUP_M, "proposed")}
+        assert not (near & new_places), (
+            f"{r['stop_id']} would draw removed and added at one corner")
+
+
+def test_the_removed_mark_is_independent_of_the_walk_radius(con):
+    """A stop's identity does not depend on how far a reader will walk.
+
+    The colour under the mark moves with the radius toggle -- that is what the
+    toggle is for -- but the mark must not, or the same kerb would be "removed"
+    at 150 m and not at 400 m, which is a statement about the reader rather
+    than about the plan.
+    """
+    layers = {r: query.change_layer(con, radius=r) for r in (400, 150)}
+    at = {r: {p[query.ID_AT]: p[query.REMOVED_AT] for p in lay["points"]}
+          for r, lay in layers.items()}
+    assert at[400] and at[400].keys() == at[150].keys()
+    assert at[400] == at[150]

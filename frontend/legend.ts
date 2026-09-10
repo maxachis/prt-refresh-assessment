@@ -22,8 +22,8 @@ import {
   Weight, SurfaceUnit, PopulationLayer,
 } from './types';
 import {
-  STYLE, countIn, countNewPlacesIn, NEW_PLACE_KEY, sumRidersIn, isHidden,
-  viewportScope, selectionScope,
+  STYLE, countIn, countNewPlacesIn, NEW_PLACE_KEY, countRemovedIn, REMOVED_KEY,
+  sumRidersIn, isHidden, viewportScope, selectionScope,
 } from './change';
 import {
   RAMP, GONE_COLOR, NEW_COLOR, summariseInBounds,
@@ -227,7 +227,7 @@ export function renderCorridorLegend(el: HTMLElement, layer: CorridorLayer) {
     <div class="lg-foot">A street either has a bus on it or it doesn't, so
       there is no walk radius here. A street can lose its only bus while the
       block beside it keeps one: for what a rider can still reach on foot, see
-      Locations or Surface.</div>`;
+      Stop-by-stop or Surface.</div>`;
 }
 
 /**
@@ -417,9 +417,38 @@ function riderFoot(unmeasured: number, newPlaces: number) {
  */
 function infillFoot() {
   return `<div class="lg-foot">Dots mark today's stops, plus the places the plan
-    puts a stop where none stands within 150 m. A stop added right beside an
-    existing one changes a dot's colour rather than adding one; Streets colours
-    the pavement itself, and shows the rest.</div>`;
+    puts a stop where none stands within 150 m. A stop the plan takes away is
+    drawn as a cross instead of a colour — for what the buses near it do, read
+    the dots around it. A stop added right beside an existing one changes a
+    dot's colour rather than adding one; Streets colours the pavement itself,
+    and shows the rest.</div>`;
+}
+
+/**
+ * What a removed stop does and does not mean, printed under the mark's row.
+ *
+ * The row above says how many stops in view the plan takes away. Left at that,
+ * the natural reading is that each one is a corner losing its bus, and the
+ * numbers say otherwise: of the 972 stops the plan removes countywide, 245
+ * have another stop inside a 400 m walk and 193 more inside 800 m. The 534
+ * with nothing inside 800 m are the ones worth the alarm, and they only read
+ * as alarming if the other 438 are not counted alongside them.
+ *
+ * Countywide rather than in view, and it says so, because the split is a fact
+ * about the plan rather than about the reader's viewport. The panel prints the
+ * walk to the replacement for the stops beside a click, which is where the
+ * in-view version of this question gets answered.
+ *
+ * The distances are walks over the pedestrian network (`refresh.walking`), not
+ * straight lines -- the river and the hillsides make those two different
+ * numbers here, and it is the walk a rider actually makes.
+ */
+function removedFoot(n: number) {
+  if (!n) return '';
+  return `<div class="lg-foot">A removed stop is not the same as a corner
+    losing its bus: countywide, of the 972 stops the plan removes, 245 have
+    another stop within a 400 m walk and 193 more within 800 m. The remaining
+    534 have none.</div>`;
 }
 
 /**
@@ -488,6 +517,61 @@ function newPlaceRow(n: number) {
     </button>`;
 }
 
+/**
+ * The stops the plan takes away — a mark, under the marks heading.
+ *
+ * SEPARATED FROM THE COLOUR ROWS ON PURPOSE, and since 2026-09-09 the
+ * separation is exclusive: these dots are counted HERE AND NOWHERE ELSE. A
+ * stop the plan removes is drawn as a cross instead of a coloured dot, so the
+ * rows above describe the stops that stay and this row describes the stops
+ * that go. The column adds up, which is the whole reason Max asked for it —
+ * the two channels on one dot produced stops that were crossed out and
+ * coloured "new service" on the same Saturday.
+ *
+ * The heading survives that change because the mark is still not an outcome:
+ * "the plan removes this stop" is a fact about the pole, and what the buses
+ * nearby do is on screen in the dots around it rather than in this row.
+ *
+ * It DOES follow the Riders switch, unlike before. With these dots out of the
+ * buckets, a key counting boardings would otherwise drop the riders at every
+ * stop PRT is removing — the most at-risk figure the view has — from both the
+ * rows and the head total.
+ */
+function removedRow(n: number, cell: string) {
+  if (!n) return '';
+  const off = isHidden(REMOVED_KEY);
+  return `
+    <button class="lg-row ${off ? 'off' : ''}" data-bucket="${REMOVED_KEY}"
+            aria-pressed="${!off}">
+      <i class="lg-cross"></i>
+      <span class="lg-lab">the plan removes this stop</span>
+      <span class="lg-n">${cell}</span>
+    </button>`;
+}
+
+/**
+ * The two marks, under one heading: what becomes of the stop itself.
+ *
+ * They belong together because they are the same question with two answers --
+ * the plan puts a pole here, the plan takes this one away -- and that question
+ * is not the one the coloured rows above answer. Split across the key, the ring
+ * read as an eighth outcome and the cross as a seventh; under one heading, the
+ * key says plainly that it counts in two channels: colour for the buses within
+ * a walk, mark for the pole. Max asked for this on 2026-09-09.
+ *
+ * The heading appears only when at least one of the two marks is in scope, and
+ * each row drops out on its own when its own count is zero.
+ */
+function marksBlock(newPlaces: number, removed: number, removedCell: string) {
+  if (!newPlaces && !removed) return '';
+  return `
+    <div class="lg-marks">
+      <div class="lg-marks-head">and what happens to the stop itself</div>
+      ${newPlaceRow(newPlaces)}
+      ${removedRow(removed, removedCell)}
+    </div>`;
+}
+
 export interface LegendOptions {
   layer: ChangeLayer;
   day: Day;
@@ -526,6 +610,7 @@ export function renderLegend(el: HTMLElement, opts: LegendOptions) {
 
   const counts = countIn(layer.points, dayIndex, keys, scope);
   const newPlaces = countNewPlacesIn(layer.points, scope);
+  const removed = countRemovedIn(layer.points, scope);
   const tally = weight === 'riders'
     ? sumRidersIn(layer.points, dayIndex, keys, scope)
     : null;
@@ -535,6 +620,12 @@ export function renderLegend(el: HTMLElement, opts: LegendOptions) {
   const cell = (key: string) => (tally
     ? (tally.measured[key] ? Math.round(tally.riders[key]).toLocaleString() : '—')
     : counts[key].toLocaleString());
+  // The same rule for the cross's row: an em dash where the usage extract has
+  // no figure for any removed stop in scope, never a 0.
+  const removedCell = tally
+    ? (tally.removedMeasured
+        ? Math.round(tally.removedRiders).toLocaleString() : '—')
+    : removed.toLocaleString();
 
   // Not "weekday boardings": the muted suffix beside it already names the day
   // type, and the head line is the one that gets screenshotted, so saying it
@@ -545,13 +636,17 @@ export function renderLegend(el: HTMLElement, opts: LegendOptions) {
   const where = painted
     ? `at ${painted.size.toLocaleString()} selected stop${painted.size === 1 ? '' : 's'}`
     : 'in view';
-  // Every dot in scope, coloured or hollow. The added places are no longer in
-  // a bucket, so a total built from the coloured rows alone would undercount
-  // what is on screen -- and the boardings total deliberately does not gain
-  // them, because nobody has boarded where no bus stops (convention 15).
-  const locations = shown.reduce((n, b) => n + counts[b.key], 0) + newPlaces;
+  // Every dot in scope: coloured, hollow or crossed. Neither the added places
+  // nor the removed stops are in a bucket, so a total built from the coloured
+  // rows alone would undercount what is on screen. The boardings total gains
+  // the removed stops and never the added places -- riders at a stop PRT is
+  // taking away are observed, riders at a stop nobody has boarded cannot be
+  // (convention 15).
+  const locations = shown.reduce((n, b) => n + counts[b.key], 0)
+    + newPlaces + removed;
   const head = tally
-    ? `<b>${Math.round(shown.reduce((n, b) => n + tally.riders[b.key], 0))
+    ? `<b>${Math.round(shown.reduce((n, b) => n + tally.riders[b.key], 0)
+        + tally.removedRiders)
         .toLocaleString()}</b> daily boardings ${where}`
     : painted
       ? `<b>${locations.toLocaleString()}</b>
@@ -576,7 +671,7 @@ export function renderLegend(el: HTMLElement, opts: LegendOptions) {
         <span class="lg-lab">${esc(b.label)}</span>
         <span class="lg-n">${cell(b.key)}</span>
       </button>`).join('')}
-    ${newPlaceRow(newPlaces)}
+    ${marksBlock(newPlaces, removed, removedCell)}
     ${surface ? surfaceKey({
       layer: surface, day, bounds, unit, population, scoped: !!painted,
     }) : ''}
@@ -584,6 +679,7 @@ export function renderLegend(el: HTMLElement, opts: LegendOptions) {
     <div class="lg-foot">Buses per day within the walk radius, both
       directions — counting locations, not riders.</div>`}
     ${infillFoot()}
+    ${removedFoot(removed)}
     ${painted ? `
     <div class="lg-foot">The stops you painted, not everything on screen —
       hand-picked, so quote it as a sample. The link in your address bar

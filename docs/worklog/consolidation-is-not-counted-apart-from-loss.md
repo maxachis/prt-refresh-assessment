@@ -4,12 +4,19 @@
 repo publishes no split between the ones whose service moves to a pole down the
 street and the ones whose service goes away — only a caveat that the gap between
 the 400 m and 150 m radii "is stop consolidation, not service loss."
-**Where it stands:** open, decision owed — measured on 2026-09-01, and the
-views audited against it the same day: every radius-based layer is structurally
-immune, and the exposure is `stop_service_change.csv`'s `status` column, whose
-150 m verdict three answer documents quote. That column now carries a caveat in
+**Where it stands:** partly answered on 2026-09-09 — the map now counts the
+split and draws it; the published CSV and the answer documents still do not.
+Measured on 2026-09-01. The audit of
+that date claimed every radius-based layer was structurally immune; that is
+true at 400 m and **false at the map's strict 150 m setting, corrected
+2026-09-09** after a reader in Uptown reported it. There are two exposures, not
+one: the app's 150 m walk setting, which tells a reader "−100%" and "no
+service" at 341 weekday locations that still have buses within a 400 m walk;
+and `stop_service_change.csv`'s `status` column, whose 150 m verdict three
+answer documents quote. That column now carries a caveat in
 [`STOP-LOST-SERVICE.md`](../answers/STOP-LOST-SERVICE.md); whether it should
-carry a walked distance and a 400 m verdict of its own is Max's call.
+carry a walked distance and a 400 m verdict of its own is Max's call, and so is
+whether the 150 m setting should say what the 400 m one would.
 
 > Raised by Max as a question to investigate.
 
@@ -101,23 +108,63 @@ locations.
 
 ## What the existing views do with it — audited 2026-09-01
 
-**Every layer that answers at a point is immune by construction, and the
-immunity is convention 1 doing its job.** The map's Locations dots, the
-magnitude surface, the People reading, `coverage_change.csv`,
-`coverage_area*.csv`, the frequency tiers, the equity weightings and the panel
-all apply the same walk radius to both networks and cluster the stops inside
-it, so a stop consolidated onto a pole 120 m away is inside the same circle and
-the location reads unchanged. `analyze_corridor_change.py` never reads a stop at
-all — it resamples route shapes — so a stop inventory cannot move it. The
-one-seat index and the journey router pick candidate stops by radius on each
-side independently, so neither can see a renumbering.
+**The immunity is the radius, so it is only ever as wide as the radius — which
+the original wording of this section missed.** Applying one circle to both
+networks absorbs a consolidation *that lands inside the circle*, and nothing
+more; at 400 m that covers almost all of them, and at 150 m it does not. The
+first version of this paragraph said "every layer that answers at a point is
+immune by construction" and named the panel among them. That reads the
+convention as a property of the method rather than of the number the method was
+given, and it is the shape of the mistake worth keeping: an invariant stated
+without the parameter it depends on.
+
+Corrected, at 400 m: the map's Locations dots, the magnitude surface, the
+People reading, `coverage_change.csv`, `coverage_area*.csv`, the frequency
+tiers, the equity weightings and the panel all apply the same walk radius to
+both networks and cluster the stops inside it, so a stop consolidated onto a
+pole 120 m away is inside the same circle and the location reads unchanged.
+`analyze_corridor_change.py` never reads a stop at all — it resamples route
+shapes — so a stop inventory cannot move it. The one-seat index and the journey
+router pick candidate stops by radius on each side independently, so neither
+can see a renumbering.
+
+**At 150 m the same layers report consolidation as withdrawal, in the app's own
+voice — measured 2026-09-09.** On a weekday, 974 locations fall in the `gone`
+bucket at 150 m against 633 at 400 m. Of those 974, 341 are not `gone` at
+400 m: 118 read `less`, 51 `same`, 95 `more` and 27 `doubled` once the circle is
+the published quarter mile. The median walk-line distance from those 341 to the
+nearest stop the proposal serves is 227 m — a pole moved down the block. The
+panel gives that reader an unqualified sentence: at FIFTH AVE + GIST ST
+(40.438346, −79.979360), 150 m, weekday, it prints **489 → 0, −100.0%**, "drops
+below hourly", first-and-last "no service", and — because `oneseat_named` takes
+the same radius — "loses its one-seat ride" to Downtown. At 400 m the same
+point reads 612 → 871, +259. The plan moves that stop 170 m up Fifth Avenue to
+WYANDOTTE ST, where the panel reads 490 → 694.
+
+Convention 4 already anticipates this: it says radius sensitivity is *reported,
+not chosen*, and that where the two radii disagree both numbers are printed.
+The pipeline does that. The app hands the reader a radius toggle and then
+prints one of the two numbers as a finished sentence, which is the one place
+the convention is not carried through. Reproduce:
+
+```
+python3 - <<'PY'
+import sqlite3, sys; sys.path.insert(0, 'src')
+from refresh import query
+con = sqlite3.connect('data/refresh.db'); con.row_factory = sqlite3.Row
+at400 = {r[1]: r[10] for r in query.compute_change(con, radius=400) if r[2] == 'weekday'}
+gone = [r for r in query.compute_change(con, radius=150)
+        if r[2] == 'weekday' and r[10] == 'gone']
+print(len(gone), sum(1 for r in gone if at400.get(r[1]) != 'gone'))
+PY
+```
 
 The panel goes further and refuses to grade the one row that would tempt a
 reader: `frontend/place.ts` prints the stop count before and after with no
 better/worse colouring, on the stated grounds that a vanished id is consolidation
 more often than a lost bus, and `frontend/place.test.ts` pins it.
 
-**The exposure is the stop-id file and the documents that quote it.** Of the 880
+**The other exposure is the stop-id file and the documents that quote it.** Of the 880
 rows `data/stop_service_change.csv` flags `loses_all_service`, 217 — carrying 661
 of its 1,200 weekday boardings, 55% — have a stop the proposal serves within a
 400 m walk. The column is a 150 m verdict under an unqualified name, and it is
@@ -150,6 +197,45 @@ unstated share is largest at Mount Lebanon, where 16 of 41 (39%) are within a
 400 m walk of a replacement, and at Scott, 13 of 51 (25%) — so "Mount Lebanon
 98 → 68" is a sentence carrying a consolidation fraction it does not name. Worth
 a clause, not a retraction.
+
+## What shipped on 2026-09-09
+
+The map's dots view, renamed **Stop-by-stop**, now answers the stop's own
+question separately from the service question. A stop the plan takes away is
+drawn as a red cross and a place the plan adds a stop to as a hollow ring, both
+decided by `query.is_removed_stop` and `is_new_place` — exact mirrors on the
+same 150 m identity constant, so a renumbered kerb cannot draw both.
+
+**A dot is a cross or a colour, never both** (Max, 2026-09-09). The first cut
+carried the mark *over* the coloured dot, on the argument that the two
+questions differ; they do, but the result was unresolvable dots the moment the
+day switch moved — 25 stops PRT retires are coloured "new service" on a
+Saturday, because the plan puts a weekend bus where none runs today. A removed
+stop is now in no bucket, and what it leaves behind is read off the
+neighbouring dots instead. The cost is recorded where it will be missed: on a
+weekday at 400 m all 633 "loses all service" locations are removed stops, so
+that key row reads 0 there and the published 633 lives only in the published
+files.
+
+That gives the split a number on screen for the first time: 972 stops removed
+countywide, of which 245 have another stop within a 400 m walk, 193 more within
+800 m, and 534 none. Those walks are routed on the pedestrian network by
+`build_webdb.write_stop_fates` and stored on `stop_place`, so the panel and the
+hover can print "nearest stop is a 189 m walk" at the corner where the reader is
+standing. The key prints the countywide split under the mark's row, because a
+count of crosses alone reads as 972 corners losing their bus.
+
+What this does **not** settle, and why the entry stays open:
+
+- `data/stop_service_change.csv`'s `status` column still calls a consolidation
+  at 150 m a total service loss, and three answer documents quote it. Only
+  [`STOP-LOST-SERVICE.md`](../answers/STOP-LOST-SERVICE.md) carries the caveat.
+- Its `metres_to_nearest_proposed_stop` is still a straight line where the map
+  now says walk — filed separately at
+  [`two-distances-to-the-replacement-stop.md`](two-distances-to-the-replacement-stop.md).
+- Whether the 150 m radius should say what the 400 m one would is still Max's
+  call. The mark helps a reader who looks at the dot; it does not change the
+  number the bucket reports.
 
 ## What was checked and found clean
 

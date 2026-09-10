@@ -6,7 +6,7 @@ import {
   initChangeLayer, loadChangeLayer, setChangeDay, toggleBucket, resetBuckets,
   dotsUnder, addToSelection, toggleSelected, clearSelection, setSelection,
   selection, selectionIds, selectionSize,
-  layerData, dotLabel,
+  layerData, dotLabel, showChangeLayers, CHANGE_HIT_LAYERS, CHANGE_BASE_LAYER,
 } from './change';
 import {
   renderLegend, renderCorridorLegend, renderOneSeatLegend, pinKeyHTML,
@@ -130,7 +130,7 @@ let pinMode = false;
 // Whether the one-seat view is restricted to the toolbar's day type. Off by
 // default and deliberately its own control rather than the day buttons: the
 // day-free answer is the published one, and a reader who switched to Saturday
-// for the Locations view must not find the one-seat counts quietly off the
+// for the Stop-by-stop view must not find the one-seat counts quietly off the
 // figures `data/oneseat_change.csv` carries.
 let oneSeatRestricted = false;
 
@@ -215,11 +215,11 @@ map.addControl(new maplibregl.NavigationControl(), 'top-right');
 map.on('load', () => {
   initMapLayers(map);
   initChangeLayer(map);      // after initMapLayers: it inserts beneath 'walk-fill'
-  initSurfaceLayer(map, 'change-dots');   // under the dots, so 'Both' reads
-  initCorridorLayer(map, 'change-dots');  // same slot; corridors and dots/surface are mutually exclusive
+  initSurfaceLayer(map, CHANGE_BASE_LAYER);   // under the dots, so 'Both' reads
+  initCorridorLayer(map, CHANGE_BASE_LAYER);  // same slot; corridors and dots/surface are mutually exclusive
   initOneSeatLayer(map, 'walk-fill');     // the dots' own slot; the two never show together
   initJourneyLayer(map);                  // on top: two drawn trips, over everything
-  initPlacesLayer(map, 'change-dots');    // same slot as corridors; mutually exclusive with dots/surface too
+  initPlacesLayer(map, CHANGE_BASE_LAYER);    // same slot as corridors; mutually exclusive with dots/surface too
   // Above the dots and below the click marks: a ring buried under a dot it is
   // meant to sit beside would be no more visible than the bare kerb this
   // layer exists to fill.
@@ -247,7 +247,7 @@ map.on('load', () => {
     // opens is measured at the same point the dot was coloured from. Clicking
     // a dot and getting a different answer to the one it is painted with is
     // the single worst thing this layer could do.
-    const layers = ['change-dots', 'oneseat-dots'].filter((l) =>
+    const layers = [...CHANGE_HIT_LAYERS, 'oneseat-dots'].filter((l) =>
       map.getLayoutProperty(l, 'visibility') !== 'none');
     const hit = map.queryRenderedFeatures(e.point, { layers })[0];
     const c = hit ? (hit.geometry as any).coordinates : [e.lngLat.lng, e.lngLat.lat];
@@ -264,18 +264,24 @@ map.on('load', () => {
   map.on('mouseleave', BOUNDARY_LAYER, () => { map.getCanvas().style.cursor = ''; });
 
   const popup = new maplibregl.Popup({ closeButton: false, offset: 8 });
-  map.on('mouseenter', 'change-dots', () => { map.getCanvas().style.cursor = 'pointer'; });
-  map.on('mouseleave', 'change-dots', () => {
-    map.getCanvas().style.cursor = '';
-    popup.remove();
-  });
-  map.on('mousemove', 'change-dots', (e: any) => {
-    const f = e.features?.[0];
-    const d = layerData();
-    if (!f || !d) return;
-    popup.setLngLat((f.geometry as any).coordinates)
-      .setHTML(dotLabel(f.properties, activeDay(), d.buckets)).addTo(map);
-  });
+  // Both marks answer the pointer. A removed stop is drawn as a cross and not
+  // as a dot, so binding the dot layer alone would leave the 972 stops the
+  // plan takes away with no hover at all -- and the removal sentence, with
+  // the walk to the nearest surviving stop, lives in that hover.
+  for (const id of CHANGE_HIT_LAYERS) {
+    map.on('mouseenter', id, () => { map.getCanvas().style.cursor = 'pointer'; });
+    map.on('mouseleave', id, () => {
+      map.getCanvas().style.cursor = '';
+      popup.remove();
+    });
+    map.on('mousemove', id, (e: any) => {
+      const f = e.features?.[0];
+      const d = layerData();
+      if (!f || !d) return;
+      popup.setLngLat((f.geometry as any).coordinates)
+        .setHTML(dotLabel(f.properties, activeDay(), d.buckets)).addTo(map);
+    });
+  }
 
   map.on('mouseenter', 'oneseat-dots', () => { map.getCanvas().style.cursor = 'pointer'; });
   map.on('mouseleave', 'oneseat-dots', () => {
@@ -339,8 +345,8 @@ map.on('load', () => {
   segment(CONTROL.day, (b) => {
     const day = b.dataset.day as Day;
     setDay(day);
-    // The panel carries the day type too -- as its headline in the Locations
-    // and Surface views, and as the collapsed service summary under a one-seat
+    // The panel carries the day type too -- as its headline in the
+    // Stop-by-stop and Surface views, and as the collapsed service summary under a one-seat
     // verdict -- so it is redrawn from the answer already in hand.
     if (view !== 'journey') renderPanel();
     setChangeDay(map, day);
@@ -387,8 +393,11 @@ map.on('load', () => {
   segment(CONTROL.view, (b) => {
     const previous = view;
     view = b.dataset.view!;
-    map.setLayoutProperty('change-dots', 'visibility',
-      view === 'dots' || view === 'both' ? 'visible' : 'none');
+    // A hover popup outlives the layer it came from otherwise: the pointer
+    // never leaves the canvas on a toolbar click, so no mouseleave fires and
+    // a "Stop removed" tooltip sits over the Streets map.
+    popup.remove();
+    showChangeLayers(map, view === 'dots' || view === 'both');
     void showSurface(view === 'surface' || view === 'both');
     void showCorridors(view === 'corridors');
     void showOneSeat(view === 'oneseat');
@@ -1044,7 +1053,7 @@ function showJourney(on: boolean, leaving = false) {
   refreshLegend();
   if (!on) {
     // The panel belongs to the view that filled it. Leaving a timed trip on
-    // screen under the Locations map would leave two different questions
+    // screen under the Stop-by-stop map would leave two different questions
     // answered side by side, with only the heading to say which is which.
     if (leaving) {
       if (last) void load(last.lat, last.lon);

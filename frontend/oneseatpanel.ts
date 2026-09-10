@@ -2,7 +2,7 @@
  * The one-seat view's own panel — "can a rider get from here to there without
  * changing bus?", answered as the whole screen rather than as a row.
  *
- * Why this exists as a separate panel at all. The Locations and Surface views
+ * Why this exists as a separate panel at all. The Stop-by-stop and Surface views
  * share one report because they are the same measurement drawn two ways: a
  * quantity of service, answered at a point. The one-seat question is a
  * different unit (convention 13) — a connection, with no day type and no
@@ -28,7 +28,7 @@
  *  - SERVICE HERE IS COLLAPSED, NOT DROPPED. "Loses the Oakland ride, and the
  *    corridor drops from 84 buses to 71" is one thought. The summary line
  *    carries the trip counts so the fact is on screen closed; opening it gives
- *    the full report the Locations view leads with.
+ *    the full report the Stop-by-stop view leads with.
  *  - THE OTHER DESTINATIONS ARE A CONTROL. They are how a reader discovers
  *    there are others, and switching costs a click here rather than a hunt in
  *    the toolbar on the map.

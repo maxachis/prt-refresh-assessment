@@ -35,22 +35,27 @@ const LAYER: ChangeLayer = {
     { key: 'none', label: 'no service either way' },
   ],
   fields: [],
+  replacement: {},
   points: [
-    //  lat     lon    pub  id       weekday          saturday        sunday
-    [40.44, -79.99, 1, 'c:1', 40, 0, 0, 100, 30, 0, 0, 60, 20, 0, 0, 40],   // gone
-    [40.45, -79.98, 1, 'c:2', 40, 0, 0, 25, 30, 0, 0, 15, 20, 0, 0, 10],    // gone
-    [40.44, -79.97, 1, 'c:3', 10, 40, 5, 400, 8, 30, 5, 200, 5, 20, 5, 90], // doubled
-    [40.44, -79.96, 1, 'c:4', 10, 10, 7, 0, 0, 0, 7, 0, 0, 0, 7, 0],        // none
-    [41.90, -79.99, 1, 'c:5', 40, 0, 0, 900, 30, 0, 0, 500, 20, 0, 0, 300], // out of view
+    //  lat     lon    pub  id     rm    weekday          saturday        sunday
+    [40.44, -79.99, 1, 'c:1', 0, 40, 0, 0, 100, 30, 0, 0, 60, 20, 0, 0, 40],   // gone
+    [40.45, -79.98, 1, 'c:2', 0, 40, 0, 0, 25, 30, 0, 0, 15, 20, 0, 0, 10],    // gone
+    [40.44, -79.97, 1, 'c:3', 0, 10, 40, 5, 400, 8, 30, 5, 200, 5, 20, 5, 90], // doubled
+    [40.44, -79.96, 1, 'c:4', 0, 10, 10, 7, 0, 0, 0, 7, 0, 0, 0, 7, 0],        // none
+    [41.90, -79.99, 1, 'c:5', 0, 40, 0, 0, 900, 30, 0, 0, 500, 20, 0, 0, 300], // out of view
   ],
 };
 
+/** A stop the plan takes away, at a corner whose buses nonetheless double. */
+const REMOVED_STOP = [40.44, -79.945, 1, 'c:7', 1,
+                      10, 40, 5, 12, 8, 30, 5, 6, 5, 20, 5, 3];
+
 /** A location the plan adds a bus to: served proposed, nothing there today. */
-const NEW_POINT = [40.44, -79.95, 0, 'p:9', 0, 30, 6, null, 0, 20, 6, null,
+const NEW_POINT = [40.44, -79.95, 0, 'p:9', 0, 0, 30, 6, null, 0, 20, 6, null,
                    0, 10, 6, null];
 
 /** A pole the plan adds where buses already ran: hollow, and not `new`. */
-const NEW_STOP = [40.44, -79.955, 0, 'p:8', 40, 90, 5, null, 30, 70, 5, null,
+const NEW_STOP = [40.44, -79.955, 0, 'p:8', 0, 40, 90, 5, null, 30, 70, 5, null,
                   20, 50, 5, null];
 
 const BOX = { west: -80.1, south: 40.3, east: -79.9, north: 40.5 };
@@ -144,7 +149,7 @@ describe('renderLegend', () => {
   it('counts the added stops in the same scope as every other row', () => {
     // One added place in view, one outside it. A key line whose count came
     // from the whole city would sit under a head line that says "in view".
-    const far = [41.9, -79.99, 0, 'p:99', 0, 30, 6, null, 0, 20, 6, null,
+    const far = [41.9, -79.99, 0, 'p:99', 0, 0, 30, 6, null, 0, 20, 6, null,
                  0, 10, 6, null];
     const el = stub();
     renderLegend(el, {
@@ -163,6 +168,94 @@ describe('renderLegend', () => {
                        day: 'weekday', bounds: BOX, weight: 'locations' });
     expect(el.innerHTML).toMatch(/data-bucket="doubled"[\s\S]*?<span class="lg-n">1</);
     expect(el.innerHTML).toMatch(/lg-hollow[\s\S]*?<span class="lg-n">1<\/span>/);
+  });
+
+  it('puts both marks under one heading, not two', () => {
+    // The ring and the cross are the same question with two answers -- the
+    // plan puts a pole here, the plan takes this one away -- and split across
+    // the key each read as an extra outcome beside the colours. Max asked for
+    // the single heading on 2026-09-09.
+    const el = stub();
+    renderLegend(el, {
+      layer: { ...LAYER, points: [...LAYER.points, NEW_POINT, REMOVED_STOP] },
+      day: 'weekday', bounds: BOX, weight: 'locations' });
+    expect(el.innerHTML.match(/lg-marks-head/g)).toHaveLength(1);
+    expect(el.innerHTML).toMatch(
+      /lg-marks-head[\s\S]*?lg-hollow[\s\S]*?lg-cross/);
+  });
+
+  it('opens the marks heading for an added stop with no removal beside it', () => {
+    const el = stub();
+    renderLegend(el, { layer: { ...LAYER, points: [...LAYER.points, NEW_POINT] },
+                       day: 'weekday', bounds: BOX, weight: 'locations' });
+    expect(prose(el)).toContain('and what happens to the stop itself');
+    expect(el.innerHTML).not.toContain('lg-cross');
+  });
+
+  it('keys the removed stops under their own heading, not as a bucket', () => {
+    // The mark and the colour answer different questions, and the heading is
+    // what stops a reader adding this row to the coloured rows above it.
+    // REMOVED_STOP is one of them and its buses double.
+    const el = stub();
+    renderLegend(el, {
+      layer: { ...LAYER, points: [...LAYER.points, REMOVED_STOP] },
+      day: 'weekday', bounds: BOX, weight: 'locations' });
+    expect(el.innerHTML).toContain('lg-cross');
+    expect(prose(el)).toContain('and what happens to the stop itself');
+    expect(prose(el)).toContain('the plan removes this stop');
+  });
+
+  it('keeps a removed stop out of the service buckets', () => {
+    // Max, 2026-09-09: a dot is a cross or a colour, never both. REMOVED_STOP
+    // is a stop the plan takes away at a corner whose buses double, so the
+    // `doubled` row keeps only c:3 and the cross carries this dot alone.
+    // Counted in both, the key lists the same dot twice.
+    const el = stub();
+    renderLegend(el, {
+      layer: { ...LAYER, points: [...LAYER.points, REMOVED_STOP] },
+      day: 'weekday', bounds: BOX, weight: 'locations' });
+    expect(el.innerHTML).toMatch(/data-bucket="doubled"[\s\S]*?<span class="lg-n">1</);
+    expect(el.innerHTML).toMatch(/lg-cross[\s\S]*?<span class="lg-n">1<\/span>/);
+  });
+
+  it('counts the removed stops into the locations in view', () => {
+    // They are dots on screen and no coloured row holds them now, so a total
+    // built from the coloured rows alone would be short by every cross.
+    const el = stub();
+    renderLegend(el, {
+      layer: { ...LAYER, points: [...LAYER.points, REMOVED_STOP] },
+      day: 'weekday', bounds: BOX, weight: 'locations' });
+    expect(el.innerHTML).toMatch(/<b>4<\/b>\s*locations in view/);
+  });
+
+  it('weighs the crosses by boardings when the key counts riders', () => {
+    // The riders at a stop PRT is removing are the most at-risk on the map.
+    // Out of the buckets and with nowhere else to go, they would vanish from
+    // the head total the moment the reader switched to Riders.
+    const el = stub();
+    renderLegend(el, {
+      layer: { ...LAYER, points: [...LAYER.points, REMOVED_STOP] },
+      day: 'weekday', bounds: BOX, weight: 'riders' });
+    expect(el.innerHTML).toMatch(/lg-cross[\s\S]*?<span class="lg-n">12<\/span>/);
+    // 100 + 25 + 400 in the buckets, and 12 at the stop being removed.
+    expect(el.innerHTML).toMatch(/<b>537<\/b>\s*daily boardings in view/);
+  });
+
+  it('says what a removed stop does not mean', () => {
+    const el = stub();
+    renderLegend(el, {
+      layer: { ...LAYER, points: [...LAYER.points, REMOVED_STOP] },
+      day: 'weekday', bounds: BOX, weight: 'locations' });
+    expect(prose(el)).toContain(
+      'A removed stop is not the same as a corner losing its bus');
+  });
+
+  it('says nothing about removed stops when none is in view', () => {
+    const el = stub();
+    renderLegend(el, { layer: LAYER, day: 'weekday', bounds: BOX,
+                       weight: 'locations' });
+    expect(el.innerHTML).not.toContain('lg-cross');
+    expect(prose(el)).not.toContain('A removed stop is not the same');
   });
 
   it('counts the added stops into the locations in view', () => {

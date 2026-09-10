@@ -11,17 +11,17 @@ const BASE = {
 
 describe('questionLine', () => {
   it('names the view, the day and the walk radius', () => {
-    expect(questionLine(BASE)).toBe('Locations · a weekday · 400 m walk');
+    expect(questionLine(BASE)).toBe('Stop-by-stop · a weekday · 400 m walk');
   });
 
   it('carries the chosen day and radius', () => {
     expect(questionLine({ ...BASE, day: 'saturday', radius: 150 }))
-      .toBe('Locations · a Saturday · 150 m walk');
+      .toBe('Stop-by-stop · a Saturday · 150 m walk');
   });
 
   it('names both layers when the surface is drawn over the dots', () => {
     expect(questionLine({ ...BASE, view: 'both' }))
-      .toBe('Locations + surface · a weekday · 400 m walk');
+      .toBe('Stop-by-stop + surface · a weekday · 400 m walk');
   });
 
   // The street view has no walk radius on the map, but the panel a click

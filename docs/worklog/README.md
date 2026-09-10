@@ -36,8 +36,10 @@ pass — a reader who stops halfway down must not be misinformed.
 | [The panel keeps the Places list after leaving the Places view](the-panel-keeps-the-places-list-after-leaving-places.md) | open, not fixed |
 | [The place number has no view of its own](the-place-number-has-no-view-of-its-own.md) | open, decision owed — raised by Max |
 | [Two scripts now name a place differently](two-scripts-now-name-a-place-differently.md) | open, deliberate and scoped — travel time still names by nearest stop |
+| [The panel's heading names the point by the lowest stop id](the-panel-names-the-point-by-the-lowest-stop-id.md) | open, not fixed — wrong neighbourhood on 18% of clicks, wrong municipality on 11%; raised by a reader |
+| [Two distances to the replacement stop](two-distances-to-the-replacement-stop.md) | open, decision owed — the map says walk, the published CSV says straight line |
 | [The service map has findings nothing publishes](the-service-map-has-findings-nothing-publishes.md) | open, decision owed — whether per-place bus service becomes a published answer |
-| [A deleted stop is not a lost bus, and nothing counts which is which](consolidation-is-not-counted-apart-from-loss.md) | open, decision owed — measured and the views audited against it; raised by Max |
+| [A deleted stop is not a lost bus, and nothing counts which is which](consolidation-is-not-counted-apart-from-loss.md) | open, partly answered — the map counts and draws the split from 2026-09-09 (Stop-by-stop's red cross); the published CSV and two answer documents still do not; raised by Max, corrected after a reader's report |
 | [A boardings figure the pipeline flags as wrong still gets counted](a-flagged-wrong-boardings-figure-still-gets-counted.md) | open, decision owed — 119 reused stop codes; flagged in the CSV, summed everywhere downstream |
 | [A renumbered stop falls out of the measured universe](a-renumbered-stop-falls-out-of-the-measured-universe.md) | fixed, awaiting close — 533 served stops were measured nowhere, 40 of them removals; raised by PPT |
 | [WordPress sandboxes an embed it does not trust, and MapLibre goes blank in it](wordpress-sandboxes-the-embed-and-maplibre-goes-blank.md) | **closed 2026-09-02 by Max** — oEmbed provider built, measured against WordPress, and removed; kept for the measurement |

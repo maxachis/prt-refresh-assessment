@@ -447,7 +447,7 @@ changes published findings.
     trip will take that long. Say so wherever a number is quoted.
 
 15. **Ridership is a weighting, not a sixth unit — and it can only weigh
-    what already exists.** The map's Locations view can count boardings
+    what already exists.** The map's Stop-by-stop view can count boardings
     instead of dots (`query.point_boardings`, `frontend/change.sumRidersInBounds`,
     and the Locations/Riders switch in the legend), and the panel prints the
     same figure for the stops inside one walk radius (`query.stop_boardings`),
@@ -549,7 +549,7 @@ changes published findings.
     further down.
 
 17. **A hand-painted selection is a scope, not a measure — and it is the one
-    scope on the map nobody else can reproduce.** The Locations key can be
+    scope on the map nobody else can reproduce.** The Stop-by-stop key can be
     narrowed from the viewport to a set of stops the reader paints with the
     brush (`change.selectionScope`, the `sel=` parameter). Nothing about the
     counting changes: same buckets, same boardings, same rule that a stop

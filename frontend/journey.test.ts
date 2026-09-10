@@ -294,7 +294,7 @@ describe('journeyPanelHTML', () => {
     r.radii.headline.change_min = null;
     const html = journeyPanelHTML(r, 'Oakland');
     expect(html.toLowerCase()).toContain('no bus');
-    expect(html).toContain('Locations');
+    expect(html).toContain('Stop-by-stop');
   });
 
   it('distinguishes a served pair the search could not connect', () => {

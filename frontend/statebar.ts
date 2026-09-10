@@ -34,9 +34,9 @@ export interface QuestionState {
 }
 
 const VIEW_LABEL: Record<string, string> = {
-  dots: 'Locations',
+  dots: 'Stop-by-stop',
   surface: 'Surface',
-  both: 'Locations + surface',
+  both: 'Stop-by-stop + surface',
   corridors: 'Streets',
   oneseat: 'One-seat ride',
   journey: 'Travel time',

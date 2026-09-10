@@ -32,8 +32,8 @@
  *    invisible, so the day control governs this layer and not just the panel.
  */
 import {
-  ChangeLayer, ChangePoint, Day, DAYS, BUCKET, CUR, PROP, PUBLISHED, field,
-  riders, pointId,
+  ChangeLayer, ChangePoint, Day, DAYS, BUCKET, CUR, PROP, PUBLISHED, REMOVED,
+  field, riders, pointId,
 } from './types';
 import { fetchJSON } from './utils';
 
@@ -119,6 +119,80 @@ const NEW_PLACE_INK = '#15181e';
 /** Between `doubled` (4.5) and `gone` (6): present, not shouting. */
 const NEW_PLACE_SIZE = 5;
 
+/**
+ * A stop the plan takes away, drawn as a cross INSTEAD of a coloured dot.
+ *
+ * ONE DOT SAYS ONE THING. Either the plan removes this stop -- a red cross,
+ * true on every day of the week -- or the stop stays and wears the colour of
+ * what happens to the buses within a walk of it. Max set that rule on
+ * 2026-09-09, after the two channels drawn together produced a stop that was
+ * crossed out and coloured "new service" on a Saturday: 25 stops PRT retires
+ * stand where the plan puts a weekend bus that is not there today, and a dot
+ * saying both at once is a dot a reader cannot resolve.
+ *
+ * The reason it can be one or the other is that the neighbouring dots are on
+ * screen. A removed stop with buses still around it sits in a field of
+ * coloured dots that say so; a removed stop in a corridor the plan abandons
+ * sits among crosses and empty ground. That reading was the argument for
+ * carrying both channels on one dot, and the map already makes it -- Max's
+ * call, and it is why nothing here re-derives "is there service nearby".
+ *
+ * WHAT IT COSTS, recorded because it is easy to forget: the cross is not the
+ * `gone` bucket and never was. On a weekday at 400 m every one of the 633
+ * "loses all service" locations is also a removed stop, so that row now reads
+ * 0 there and the 972 crosses carry the whole story; the two part company on
+ * weekends, when 145 of Saturday's 436 stranded locations are stops that
+ * survive with nothing left to catch. The published 633 lives on `/findings`
+ * and in `data/coverage_change.csv`, which is where a quotable figure belongs.
+ *
+ * WHY A DRAWN ICON rather than a glyph. `text-field: '✕'` depends on the
+ * basemap's glyph coverage for U+2715, which is not ours to guarantee; a
+ * canvas image is. It carries its own white casing so it reads on the
+ * basemap and on a surface cell underneath it in the Both view, and because a
+ * cross is a shape rather than a hue it survives every colour deficiency --
+ * the same argument the hollow fill makes for added stops.
+ */
+const REMOVED_STOP: any = ['==', ['get', 'removed'], 1];
+/** The pseudo-bucket the key toggles the mark by; never a `query.BUCKETS` key. */
+export const REMOVED_KEY = 'removedstop';
+const REMOVED_LAYER = 'change-removed';
+/** The selection ring under a painted cross; see `initChangeLayer`. */
+const REMOVED_SEL_LAYER = 'change-removed-selected';
+const REMOVED_ICON = 'removed-cross';
+/** The ramp's own red, so the map has one red and not two that nearly match. */
+const REMOVED_INK = '#e8232f';
+
+/**
+ * The cross, drawn once into an image the symbol layer then places.
+ *
+ * White underneath and red on top, both round-capped: the casing is what keeps
+ * it legible on a dark basemap and on the surface cells of the Both view.
+ */
+function crossIcon(scale = 2): ImageData {
+  const s = 16 * scale;
+  const canvas = document.createElement('canvas');
+  canvas.width = s;
+  canvas.height = s;
+  const g = canvas.getContext('2d')!;
+  const pad = s * 0.2;
+  g.lineCap = 'round';
+  for (const [width, ink] of [[s * 0.26, 'rgba(255,255,255,.95)'],
+                              [s * 0.14, REMOVED_INK]] as const) {
+    g.lineWidth = width;
+    g.strokeStyle = ink;
+    g.beginPath();
+    g.moveTo(pad, pad);
+    g.lineTo(s - pad, s - pad);
+    g.moveTo(s - pad, pad);
+    g.lineTo(pad, s - pad);
+    g.stroke();
+  }
+  // Solid through the middle. It punched a hole there while a coloured dot
+  // sat underneath and the colour was the other half of the reading; there is
+  // no dot under it now, so the hole would show the basemap through the mark.
+  return g.getImageData(0, 0, s, s);
+}
+
 let data: ChangeLayer | null = null;
 /** Buckets the reader has switched off by clicking the legend. */
 const hidden = new Set<string>();
@@ -134,6 +208,30 @@ const hidden = new Set<string>();
  * out in full.
  */
 const selected = new Set<string>();
+
+/**
+ * Every layer the Stop-by-stop view draws, in the order they were added.
+ *
+ * Named here rather than spelled out in `main` because a removed stop is now
+ * drawn by two of them and a dot by one, and a view switch that hid only the
+ * dots would leave 972 crosses hanging over the Streets or One-seat map.
+ */
+export const CHANGE_LAYERS = [LAYER, REMOVED_SEL_LAYER, REMOVED_LAYER];
+
+/** The layers a pointer can land on: a coloured dot, or a cross. */
+export const CHANGE_HIT_LAYERS = [LAYER, REMOVED_LAYER];
+
+/** The slot other layers insert beneath to sit under the dots. */
+export const CHANGE_BASE_LAYER = LAYER;
+
+/** Show or hide the whole view at once — see `CHANGE_LAYERS`. */
+export function showChangeLayers(map: maplibregl.Map, on: boolean) {
+  for (const id of CHANGE_LAYERS) {
+    if (map.getLayer(id)) {
+      map.setLayoutProperty(id, 'visibility', on ? 'visible' : 'none');
+    }
+  }
+}
 
 export function layerData(): ChangeLayer | null {
   return data;
@@ -266,7 +364,12 @@ export function dotsUnder(
 ): string[] {
   const box: [[number, number], [number, number]] = [
     [x - radiusPx, y - radiusPx], [x + radiusPx, y + radiusPx]];
-  const dots = map.queryRenderedFeatures(box as any, { layers: [LAYER] })
+  // Both layers: a removed stop is drawn only as a cross, so asking the dot
+  // layer alone would make the 972 crosses unpaintable -- and a scope that
+  // silently cannot hold the stops a reader is most likely to be selecting
+  // would be worse than no brush.
+  const layers = [LAYER, REMOVED_LAYER].filter((id) => map.getLayer(id));
+  const dots = map.queryRenderedFeatures(box as any, { layers })
     .filter((f) => f.id !== undefined)
     .map((f) => {
       const [lon, lat] = (f.geometry as any).coordinates;
@@ -295,7 +398,11 @@ export function countIn(
     // criteria and their citywide counts are measured over exactly this set,
     // so folding the plan's additions in would put a number under a published
     // label that no published file agrees with. `countNewPlacesIn` has them.
-    if (!scope(p) || field(p, PUBLISHED) === 0) continue;
+    //
+    // And stops that stay. A removed stop is drawn as a cross INSTEAD of a
+    // colour, so it is counted on the cross's row instead of in a bucket --
+    // see REMOVED_STOP for why the two channels stopped overlapping.
+    if (!scope(p) || field(p, PUBLISHED) === 0 || field(p, REMOVED) === 1) continue;
     const key = keys[field(p, BUCKET(dayIndex))];
     if (key !== undefined) out[key]++;
   }
@@ -320,6 +427,25 @@ export function countNewPlacesIn(points: ChangePoint[], scope: Scope): number {
   return n;
 }
 
+/**
+ * Stops the plan takes away, in scope — the red crosses.
+ *
+ * Counted apart from `countIn` for the opposite reason to new places: these
+ * dots ARE in a bucket, and they keep it. A removed stop's colour still says
+ * what happens to the buses within a walk of it, and on a weekday at 400 m
+ * that colour is "more service" at 95 of them and "doubled or better" at 27.
+ * Adding this to the bucket rows would double-count the dots; folding it into
+ * one of them would delete the other half of what the dot says.
+ *
+ * So this is a count of a MARK, not of an outcome, and the key has to put it
+ * under its own heading or a reader will add the column up.
+ */
+export function countRemovedIn(points: ChangePoint[], scope: Scope): number {
+  let n = 0;
+  for (const p of points) if (scope(p) && field(p, REMOVED) === 1) n++;
+  return n;
+}
+
 function inBounds(p: ChangePoint, west: number, south: number,
                   east: number, north: number): boolean {
   const lat = field(p, 0), lon = field(p, 1);
@@ -334,6 +460,16 @@ export interface RiderTally {
   measured: Record<string, number>;
   /** Stops in scope the usage extract has no figure for — see below. */
   unmeasured: number;
+  /**
+   * Boardings at the stops the plan removes, which are in no bucket.
+   *
+   * They leave the colour rows with the dots, and they are the most at-risk
+   * riders the view can show, so they travel here rather than being dropped:
+   * the key puts them on the cross's row and in its head total.
+   */
+  removedRiders: number;
+  /** How many removed stops that total is made of. */
+  removedMeasured: number;
 }
 
 /**
@@ -357,7 +493,10 @@ export interface RiderTally {
 export function sumRidersIn(
   points: ChangePoint[], dayIndex: number, keys: string[], scope: Scope,
 ): RiderTally {
-  const tally: RiderTally = { riders: {}, measured: {}, unmeasured: 0 };
+  const tally: RiderTally = {
+    riders: {}, measured: {}, unmeasured: 0,
+    removedRiders: 0, removedMeasured: 0,
+  };
   for (const k of keys) {
     tally.riders[k] = 0;
     tally.measured[k] = 0;
@@ -372,8 +511,17 @@ export function sumRidersIn(
     const key = keys[field(p, BUCKET(dayIndex))];
     if (key === undefined) continue;
     const n = riders(p, dayIndex);
+    // A removed stop is in no bucket, for the same reason it wears no colour.
+    // The missing-record rule is the one thing that does not change with it:
+    // no figure is still named rather than added as a zero.
+    const gone = field(p, REMOVED) === 1;
     if (n === null) {
       if (key !== 'none') tally.unmeasured++;
+      continue;
+    }
+    if (gone) {
+      tally.removedRiders += n;
+      tally.removedMeasured++;
       continue;
     }
     tally.riders[key] += n;
@@ -397,6 +545,14 @@ function toGeoJSON(layer: ChangeLayer) {
         properties: {
           id: pointId(p),
           published: p[2],
+          removed: p[REMOVED],
+          // `null`, never 0: no replacement inside the search bound is not a
+          // replacement at zero metres, and the hover says the two apart.
+          // Split into two flat properties because a MapLibre feature property
+          // holding an array cannot be read back by an expression, and the
+          // hover reads these off the rendered feature.
+          replacement: layer.replacement?.[pointId(p)]?.[0] ?? null,
+          nearestStraight: layer.replacement?.[pointId(p)]?.[1] ?? null,
           ...Object.fromEntries(DAYS.flatMap((_d, i) => [
             [`b${i}`, keys[field(p, BUCKET(i))]],
             [`c${i}`, p[CUR(i)]],
@@ -477,6 +633,51 @@ export function initChangeLayer(map: maplibregl.Map) {
         16, ['case', SELECTED, 3.2, NEW_PLACE, 2.2, 1.6]],
     },
   }, 'walk-fill');
+
+  // A painted cross has to show that it is in the count, and a symbol layer
+  // has no stroke to thicken -- an image icon takes neither `icon-color` nor
+  // a halo. So the selection ring for a removed stop is a circle drawn under
+  // the cross, and only ever when that stop is selected: convention 17 says
+  // the scope a reader paints must be visible on the thing they painted.
+  // Selection cannot be a FILTER here -- MapLibre reads feature state in paint
+  // expressions but not in filters -- so the layer holds every removed stop
+  // and draws a ring only on the selected ones, at width 0 otherwise.
+  map.addLayer({
+    id: REMOVED_SEL_LAYER, type: 'circle', source: SRC,
+    filter: REMOVED_STOP,
+    paint: {
+      'circle-color': 'rgba(0,0,0,0)',
+      'circle-stroke-color': SELECTED_HALO,
+      'circle-radius': ['interpolate', ['linear'], ['zoom'], 9, 3.5, 12, 6, 16, 10],
+      'circle-stroke-width': ['interpolate', ['linear'], ['zoom'],
+        9, ['case', SELECTED, 1.6, 0],
+        12, ['case', SELECTED, 2.4, 0],
+        16, ['case', SELECTED, 3.2, 0]],
+    },
+  }, 'walk-fill');
+
+  // The cross rides in its own layer, and it is the only thing drawn at a
+  // removed stop -- see REMOVED_STOP. Overlap is allowed: a suppressed cross
+  // would silently unmark a removed stop in exactly the dense corridors where
+  // the removals cluster, and "no cross" has to keep meaning "not removed".
+  if (!map.hasImage(REMOVED_ICON)) {
+    map.addImage(REMOVED_ICON, crossIcon(), { pixelRatio: 2 });
+  }
+  map.addLayer({
+    id: REMOVED_LAYER, type: 'symbol', source: SRC,
+    filter: REMOVED_STOP,
+    layout: {
+      'icon-image': REMOVED_ICON,
+      // Tracks the dots' own zoom growth, and stays a little wider than they
+      // are: an X exactly the size of the dot paints over the colour it is
+      // crossing, and the colour is the other half of what the mark says.
+      // Wider, the dot reads in the four quadrants between the arms.
+      'icon-size': ['interpolate', ['linear'], ['zoom'],
+        9, 0.34, 12, 0.55, 16, 1.0],
+      'icon-allow-overlap': true,
+      'icon-ignore-placement': true,
+    },
+  }, 'walk-fill');
 }
 
 export async function loadChangeLayer(map: maplibregl.Map, radius: number, day: Day) {
@@ -514,9 +715,21 @@ function applyFilter(map: maplibregl.Map, day: Day) {
   // New places answer to their own switch, not to a bucket's: they are no
   // longer drawn in a bucket's colour, so hiding `doubled` must not take the
   // 44 new places whose service happens to double with it.
-  map.setFilter(LAYER, ['case',
+  const visible: any = ['case',
     NEW_PLACE, !hidden.has(NEW_PLACE_KEY),
-    ['!', ['in', ['get', `b${i}`], ['literal', off]]]] as any);
+    ['!', ['in', ['get', `b${i}`], ['literal', off]]]];
+  // A removed stop is drawn by its cross alone, so it is kept out of the dot
+  // layer entirely rather than drawn underneath one.
+  map.setFilter(LAYER, ['all', ['!', REMOVED_STOP], visible] as any);
+  // And the cross answers only to its own switch. It is in no bucket now, so
+  // hiding "more service" must not take the 95 removed stops whose radius
+  // gains service with it -- the key would then be hiding a row it is still
+  // counting.
+  const crosses: any = ['all', REMOVED_STOP, !hidden.has(REMOVED_KEY)];
+  map.setFilter(REMOVED_LAYER, crosses);
+  // The selection ring rides with the mark it belongs to, or switching the
+  // crosses off would leave rings around stops that are no longer drawn.
+  map.setFilter(REMOVED_SEL_LAYER, crosses);
 }
 
 /** Hover text for one dot. Trips both sides, never a bare delta. */
@@ -527,12 +740,81 @@ export function dotLabel(props: any, day: Day, buckets: { key: string; label: st
   // either -- the tooltip was the last place the old contradiction survived.
   // The trips still follow, because they are true and they are the walk
   // radius's answer, which the second line says out loud.
+  // Neither a new place nor a removed stop is drawn in a bucket, so neither
+  // reports one here: the tooltip was the last place the old contradiction
+  // survived. What both still report is the walk radius's own answer, which
+  // is true of the ground either way -- and at a removed stop the removal is
+  // the headline, so `removedLine` supplies the first line by itself.
+  const gone = props.removed === 1;
   const label = props.published === 0
     ? 'the plan adds a stop here'
     : buckets.find((b) => b.key === key)?.label ?? key;
   const cur = props[`c${i}`], prop = props[`p${i}`];
   const dayWord = day === 'weekday' ? 'weekday' : day;
-  const within = props.published === 0 ? ' within a walk' : '';
-  return `<b>${label}</b><br>${cur} → ${prop} buses per ${dayWord}${within}<br>` +
+  const within = props.published === 0 || gone ? ' within a walk' : '';
+  return `${gone ? '' : `<b>${label}</b><br>`}${removedLine(props)}` +
+    `${cur} → ${prop} buses per ${dayWord}${within}<br>` +
     `<span style="opacity:.6">click for the full comparison</span>`;
+}
+
+/**
+ * When the walk and the straight line are far enough apart to print both.
+ *
+ * The countywide median walk is 1.22x its own straight line, so at any low
+ * threshold most of the 972 removals would carry a second number saying
+ * nothing. Above this one the gap is itself the finding, and it answers a
+ * question the reader is already asking: Mt Troy Rd + Beckert reports a 651 m
+ * walk while the map shows a surviving stop 301 m away, because the ones on
+ * Lowrie St are 863 m on foot around a ravine. Max set the threshold on
+ * 2026-09-09, after that hover read as a bug.
+ *
+ * Measured against the nearest stop AS THE CROW FLIES, not against the
+ * straight line to the stop the walk found — that pair is only 1.30x here and
+ * would have left this very hover unexplained.
+ */
+const STRAIGHT_LINE_NOTE_RATIO = 1.5;
+
+/**
+ * How far `build_webdb.write_stop_fates` searched, on foot and as the crow
+ * flies, before calling a removed stop stranded. Mirrored here because the
+ * hover both names the bound in words and measures the stranded case against
+ * it: a walk that failed is a walk longer than this.
+ */
+const REPLACEMENT_SEARCH_M = 800;
+
+/**
+ * What became of the stop itself, above what became of the service near it.
+ *
+ * This is the sentence the map owed a reader standing at a stop the plan
+ * consolidates. Before it existed, Fifth Avenue at Gist Street — where PRT
+ * moves the stop 170 m up the block to Wyandotte — reported "loses all
+ * service, 489 → 0" at the 150 m setting and nothing at all about the stop,
+ * and a reader who lives there quite reasonably read that as the buses
+ * leaving Uptown.
+ *
+ * The distance is a walk, not a straight line, because the reader is going to
+ * walk it — with the straight line beside it where the ground puts the two
+ * far apart, see STRAIGHT_LINE_NOTE_RATIO. Where the search found nothing
+ * within `REPLACEMENT_SEARCH_M` this says so in words instead of printing a
+ * number it doesn't have: 534 of the 972 removals are in that position, and
+ * they are the withdrawals proper.
+ */
+export function removedLine(props: any): string {
+  if (props.removed !== 1) return '';
+  const m = props.replacement, straight = props.nearestStraight;
+  // "the nearest ... is", not "it is": the two distances are to different
+  // stops here, and a parenthetical would be read as one stop measured twice.
+  // A stranded stop has no walk to compare, but it has a bound: whatever the
+  // walk is, it is longer than the search. That case is the sharpest version
+  // of the same confusion, not an exception to it.
+  const walked = m ?? REPLACEMENT_SEARCH_M;
+  const detour = straight != null
+      && walked > straight * STRAIGHT_LINE_NOTE_RATIO
+    ? `; the nearest in a straight line is ${
+        Math.round(straight).toLocaleString()} m`
+    : '';
+  const where = m == null
+    ? `no other stop within a ${REPLACEMENT_SEARCH_M} m walk${detour}`
+    : `nearest stop is a ${Math.round(m).toLocaleString()} m walk${detour}`;
+  return `<b style="color:${REMOVED_INK}">Stop removed</b> — ${where}<br>`;
 }

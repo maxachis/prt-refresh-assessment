@@ -125,6 +125,29 @@
        share becomes the whole mark. */
     #legend .lg-row i.lg-hollow { background:none;
       box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.85); }
+    /* The mark for a stop the plan removes. Same reasoning as the ring above --
+       copy the form, a red cross, not the white casing the map draws it with,
+       which exists to lift it off a coloured dot and has nothing to sit on
+       here. Drawn in CSS rather than as a glyph for the same reason the map
+       draws an image: no dependency on a font having U+2715.
+
+       The ring every other swatch wears is off here: it is what makes a filled
+       dot legible on both grounds, and around an X it draws a target -- a
+       second mark the map does not have. */
+    #legend .lg-row i.lg-cross { background:none; position:relative;
+      border-radius:0; box-shadow:none; }
+    #legend .lg-row i.lg-cross::before,
+    #legend .lg-row i.lg-cross::after {
+      content:''; position:absolute; left:50%; top:0; bottom:0; width:2.2px;
+      margin-left:-1.1px; background:#e8232f; border-radius:1px; }
+    #legend .lg-row i.lg-cross::before { transform:rotate(45deg); }
+    #legend .lg-row i.lg-cross::after  { transform:rotate(-45deg); }
+    /* The second question the key answers, set apart from the outcome rows so
+       the two are not added together -- see legend.removedRow. */
+    #legend .lg-marks { margin-top:7px; padding-top:5px;
+      border-top:1px solid var(--rule, rgba(255,255,255,.13)); }
+    #legend .lg-marks-head { font-size:10.5px; color:var(--muted);
+      text-transform:uppercase; letter-spacing:.04em; margin-bottom:2px; }
     /* Locations or riders: the same dots under two denominators, so the switch
        sits inside the key with the counts it changes rather than in the
        toolbar with the controls that change the question. */
@@ -739,7 +762,7 @@
            right edge with nothing to say it existed. This opens the lot as a
            sheet, and says which view is up while it is closed. -->
       <button id="controls-toggle" aria-expanded="false"
-              aria-controls="mapbar">Locations</button>
+              aria-controls="mapbar">Stop-by-stop</button>
       <div id="controls-scrim"></div>
       <div id="mapbar">
         <div class="controls">
@@ -749,7 +772,7 @@
             <button data-radius="150">150 m</button>
           </div>
         </div>
-        <!-- Locations vs surface vs streets. Locations and Surface both answer
+        <!-- Stop-by-stop vs surface vs streets. Both of those answer
              a walk-access question -- how much service can I reach on foot from
              here -- at a stop or on a lattice; the dots can only be drawn where
              a stop stands today, so they scatter and cannot show ground the plan
@@ -788,7 +811,7 @@
         <div class="controls">
           <span class="lbl">view</span>
           <div class="seg">
-            <button data-view="dots" class="active">Locations</button>
+            <button data-view="dots" class="active">Stop-by-stop</button>
             <button data-view="surface">Surface</button>
             <button data-view="both">Both</button>
             <button data-view="corridors">Streets</button>
