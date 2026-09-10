@@ -424,6 +424,31 @@ being comparable; selecting at whatever radius was asked for would fill the
 strict view with new-service dots that are the smaller circle's artefact. See
 `docs/worklog/a-new-stop-the-plan-adds-draws-no-dot.md`.
 
+### The plan's own stops, as poles rather than as locations
+
+The dot layer answers a question about locations, so it cannot answer one about
+poles, and 496 of the plan's 5,413 stops fall in the gap: a stop the plan adds
+within 150 m of one that runs today is not a location of its own, so its gain
+lands in the colour of the neighbouring dot and its own kerb stays bare. That
+reads as an omission. PPT and PRT each reported it as the plan's stops missing
+from the data, and Max hit it three times in one morning at Northview Heights,
+Millvale and Homewood before it got a layer.
+
+Since 2026-09-10 the Stop-by-stop and Both views draw **every stop the plan
+runs** as a small orange ring — `frontend/planstops.ts`, off `/api/stops/all`,
+switched from the key's own row and carried in a link as `plan=0`/`plan=1`.
+Three rules keep it from being read as a measure.
+
+- **It is a ring, never a filled dot**, in the same orange the pin's marks use
+  for a proposed stop, so a reader meets one mark rather than two.
+- **It counts nothing.** No row carries a number for it. The rows above count
+  locations; this would count poles, and two units in one column invite being
+  added together (conventions 1 and 2).
+- **It waits for street zoom** (`planstops.MIN_ZOOM`, z14). 5,413 rings over
+  the county is a smear, and "does the plan put a stop on this street" is a
+  street-level question. The key says "zoom in" while the map is too far out,
+  because a switch that changes nothing on screen reads as a broken one.
+
 ### The stop the plan takes away: a red cross
 
 The mirror of the hollow ring, and the second half of what makes the view

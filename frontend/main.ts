@@ -9,6 +9,9 @@ import {
   layerData, dotLabel, showChangeLayers, CHANGE_HIT_LAYERS, CHANGE_BASE_LAYER,
 } from './change';
 import {
+  initPlanStopsLayer, setPlanStopsVisible,
+} from './planstops';
+import {
   renderLegend, renderCorridorLegend, renderOneSeatLegend, pinKeyHTML,
 } from './legend';
 import {
@@ -146,6 +149,14 @@ let weight: Weight = 'locations';
 // toolbar button of its own, only the switch drawn inside the key itself.
 let surfaceUnit: SurfaceUnit = 'area';
 
+// Whether the plan's own stops are drawn as poles over the dots. On by
+// default: the gap it fills -- a stop the plan adds within 150 m of one that
+// exists today has no dot of its own -- is one that two readers have now
+// mistaken for missing data, and a reader who does not know that is missing
+// is not going to go looking for a switch. It travels in the URL either way,
+// unlike `weight` and `surfaceUnit`, because it changes what the map draws.
+let planStops = true;
+
 // Which order the Places list is ranked in. Lives here for the same reason
 // `weight` and `surfaceUnit` do: it changes how the list reads, not which
 // question the view is answering, and it has no toolbar button -- unlike the
@@ -223,6 +234,7 @@ map.on('load', () => {
   // Above the dots and below the click marks: a ring buried under a dot it is
   // meant to sit beside would be no more visible than the bare kerb this
   // layer exists to fill.
+  initPlanStopsLayer(map, 'walk-fill');
   renderPanel();
 
   map.on('click', (e: any) => {
@@ -398,6 +410,10 @@ map.on('load', () => {
     // a "Stop removed" tooltip sits over the Streets map.
     popup.remove();
     showChangeLayers(map, view === 'dots' || view === 'both');
+    // The plan's poles belong to the dots' question -- where does the plan put
+    // a stop -- so they come and go with them rather than standing over the
+    // Surface, Streets or one-seat views.
+    void setPlanStopsVisible(map, planStops && dotsOn());
     void showSurface(view === 'surface' || view === 'both');
     void showCorridors(view === 'corridors');
     void showOneSeat(view === 'oneseat');
@@ -484,6 +500,14 @@ map.on('load', () => {
     if (u) {
       surfaceUnit = u.dataset.surfaceUnit as SurfaceUnit;
       void showSurfaceUnit(surfaceUnit);
+      syncUrl();
+      return;
+    }
+    const plan = (e.target as HTMLElement).closest<HTMLElement>('[data-planstops]');
+    if (plan) {
+      planStops = !planStops;
+      void setPlanStopsVisible(map, planStops && dotsOn());
+      refreshLegend();
       syncUrl();
       return;
     }
@@ -587,6 +611,10 @@ map.on('load', () => {
   if (!applyOpening(opening)) {
     void loadChangeLayer(map, radius, activeDay()).then(refreshLegend);
   }
+  // After the opening state, which decides both halves of this: the view says
+  // whether the dots are drawn at all, and `plan=0` in the link says whether
+  // the reader turned the poles off.
+  void setPlanStopsVisible(map, planStops && dotsOn()).then(refreshLegend);
   void loadMeta();
   void loadDestinations();
 });
@@ -670,6 +698,9 @@ function applyOpening(s: Partial<UrlState>): boolean {
   // Before the view, and needing no fetch to have happened: the selection is
   // a set of ids, and the halo catches up with them when the dots arrive.
   if (s.selection) setSelection(map, s.selection);
+  // Before the view, which is what turns the layer on: pressing it after
+  // would paint the poles and then take them away again in the next frame.
+  if (s.planStops !== undefined) planStops = s.planStops;
   if (s.view) press(CONTROL.view, s.view);
   // Last, because it answers the question the controls above have just
   // finished describing.
@@ -701,6 +732,7 @@ function syncUrl() {
     place: selectedPlace,
     placeFill,
     selection: selectionIds(),
+    planStops,
   };
   const search = toSearch(state);
   // The mode is not part of the question, so it is not in what `toSearch`
@@ -857,6 +889,8 @@ function renderLegendBody() {
     },
     weight,
     dots: dotsOn(),
+    planStops,
+    zoom: map.getZoom(),
     surface: surfaceOn() ? surfaceData() : null,
     unit: surfaceUnit,
     population: populationData(),

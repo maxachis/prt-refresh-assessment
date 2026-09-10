@@ -34,6 +34,7 @@ import {
   STATUS_STYLE, STATUS_ORDER, countInBounds as countOneSeatInBounds,
   destinationLabel, ANY_DAY,
 } from './oneseat';
+import { MIN_ZOOM as PLAN_STOPS_MIN_ZOOM } from './planstops';
 
 const DAY_WORD: Record<Day, string> = {
   weekday: 'a weekday',
@@ -529,6 +530,30 @@ function removedRow(n: number, cell: string) {
  * The heading appears only when at least one of the two marks is in scope, and
  * each row drops out on its own when its own count is zero.
  */
+/**
+ * The switch for the plan's own stops, drawn as poles beside the dots.
+ *
+ * A key row, because that is where a reader meets an unfamiliar mark, and a
+ * switch, because 5,413 rings is a lot of ink to have no way out of. It
+ * carries NO COUNT, unlike every other row here: those count locations, this
+ * would count poles, and two units in one column invite being added together.
+ *
+ * The zoom hint is not decoration. The layer paints from `planstops.MIN_ZOOM`,
+ * so switching it on over the whole county changes nothing on screen — a
+ * reader who tries it there has been shown a broken switch and has no way to
+ * know otherwise.
+ */
+function planStopsRow(on: boolean, zoom: number | undefined) {
+  const tooFar = zoom != null && zoom < PLAN_STOPS_MIN_ZOOM;
+  return `
+    <button class="lg-row ${on ? '' : 'off'}" data-planstops
+            aria-pressed="${on}">
+      <i class="lg-plan"></i>
+      <span class="lg-lab">every stop the plan runs</span>
+      ${on && tooFar ? '<span class="lg-n muted">zoom in</span>' : ''}
+    </button>`;
+}
+
 function marksBlock(newPlaces: number, removed: number, removedCell: string) {
   if (!newPlaces && !removed) return '';
   return `
@@ -571,12 +596,16 @@ export interface LegendOptions {
    * window on a laptop screen.
    */
   dots?: boolean;
+  /** Whether the plan's own stops are drawn over the dots. */
+  planStops?: boolean;
+  /** The map's zoom, for the plan-stops row's "zoom in" hint. */
+  zoom?: number;
 }
 
 export function renderLegend(el: HTMLElement, opts: LegendOptions) {
   const {
     layer, day, bounds, weight, surface, unit = 'area', population, selection,
-    dots = true,
+    dots = true, planStops = false, zoom,
   } = opts;
   const keys = layer.buckets.map((b) => b.key);
   const dayIndex = layer.days.indexOf(day);
@@ -664,6 +693,7 @@ export function renderLegend(el: HTMLElement, opts: LegendOptions) {
         <span class="lg-n">${cell(b.key)}</span>
       </button>`).join('')}
     ${marksBlock(newPlaces, removed, removedCell)}
+    ${planStopsRow(planStops, zoom)}
     ${surface ? surfaceKey({
       layer: surface, day, bounds, unit, population, scoped: !!painted,
     }) : ''}

@@ -52,6 +52,7 @@ export const PARAM = {
   place: 'place',
   placeFill: 'placefill',
   selection: 'sel',
+  planStops: 'plan',
 } as const;
 
 /**
@@ -105,6 +106,7 @@ export interface UrlState {
   /** The dots painted on the Stop-by-stop view, by id; empty when none are. */
   selection: string[];
   /** Whether the stops the plan adds are drawn over the dots. */
+  planStops: boolean;
 }
 
 /** Is this page inside someone else's? */
@@ -154,6 +156,7 @@ export function toSearch(s: UrlState): string {
   // Written either way, unlike `weight` and `surfaceUnit`: those are second
   // readings of the same dots, while this decides what is drawn on the map at
   // all, which puts it with `view` and `day` rather than with them.
+  p.set(PARAM.planStops, s.planStops ? '1' : '0');
   return `?${p}`;
 }
 
@@ -206,6 +209,10 @@ export function parseUrlState(search: string): Partial<UrlState> {
     s.selection = sel.split(',').filter((id) => POINT_ID.test(id));
   }
 
+
+  const plan = p.get(PARAM.planStops);
+  if (plan === '1') s.planStops = true;
+  else if (plan === '0') s.planStops = false;
 
   const placeFill = p.get(PARAM.placeFill);
   if (placeFill === 'lost' || placeFill === 'gained' || placeFill === 'service') {

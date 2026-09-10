@@ -142,6 +142,11 @@
        share becomes the whole mark. */
     #legend .lg-row i.lg-hollow { background:none;
       box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.85); }
+    /* The plan's own stops, drawn as poles over the dots: the same orange
+       ring the map paints, and hollow for the same reason -- at a stop both
+       networks keep it sits around today's dot rather than hiding it. */
+    #legend .lg-row i.lg-plan { background:none;
+      box-shadow:inset 0 0 0 2px var(--prop); }
     /* The mark for a stop the plan removes. Same reasoning as the ring above --
        copy the form, a red cross, not the white casing the map draws it with,
        which exists to lift it off a coloured dot and has nothing to sit on

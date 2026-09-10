@@ -3,9 +3,9 @@
 The Stop-by-stop key carried three paragraphs under its rows — what the counts
 measure, why a street the plan adds stops to can have no dot, and what a removed
 stop does not mean. Max had them taken out on 2026-09-10.
-Open: the two misreadings the middle one was written for are unguarded again,
-and nothing else on the map answers them at the moment a reader has the
-question.
+Fixed, awaiting close: the misreading the middle one was written for now has a
+layer instead of a paragraph — the plan's own stops are drawn as poles — and
+the other two are gone with no replacement.
 
 > Max's instruction, 2026-09-10: "can you remove the copy for the legend at
 > stop-by-stop", quoting all three paragraphs.
@@ -54,10 +54,18 @@ zeros.
 - Nothing states any of it **on the map, at the moment the reader is looking at
   the mark**, which is what these three did.
 
-## What would settle it
+## What replaced the middle one, the same day
 
-Whether the infill reading needs a home on the map at all, and if so a cheaper
-one than a paragraph — the Streets view answers it (McMonagle Avenue has no dot
-and draws blue there), so a pointer to that view, or a note on the hover of a
-recoloured dot, would cost a line rather than a screenful. Filed rather than
-built: Max asked for the copy gone, not for a replacement.
+Max chose a layer over a sentence: since 2026-09-10 the Stop-by-stop and Both
+views draw every stop the plan runs as a small orange ring from street zoom up
+(`frontend/planstops.ts`), so the 496 poles with no dot of their own are on the
+map whether or not a pin is beside them. It carries no count, for the reason
+the key's other rows do carry one: those count locations, this would count
+poles, and two units in one column invite being added together.
+
+That leaves the first and third paragraphs gone with nothing in their place —
+what the counts measure, which the Locations/Riders switch above them mostly
+says, and what a removed stop does not mean, which nothing on the map says at
+all. The second is the one worth watching: read without it, the cross row is
+972 corners losing their buses, when 245 have another stop within a 400 m walk
+and 193 more within 800 m.

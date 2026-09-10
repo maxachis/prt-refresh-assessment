@@ -713,6 +713,31 @@ def test_the_panel_says_which_proposed_stops_stand_where_none_stands_today(con):
     assert all("new_place" not in s for s in at["current"]["stops"])
 
 
+def test_every_stop_the_plan_runs_can_be_drawn_without_a_pin(con):
+    """The map needs the plan's poles as a layer, not only around a click.
+
+    The dot layer draws one dot per LOCATION, so a stop the plan adds within
+    150 m of one that exists today earns no dot: its gain lands in the colour
+    of the neighbouring dot and its own kerb stays bare. Two readers took that
+    for the plan's stops missing from the data. Answering it needs the poles
+    themselves, which is a different question from the dots' and gets its own
+    query.
+    """
+    stops = query.plan_stops(con)
+    assert len(stops) == 5413, "every stop in the proposed feed, not a subset"
+
+    by_id = {s[2]: s for s in stops}
+    # Homewood Avenue: the plan adds a pole at Idlewild, 48 m from the one it
+    # keeps at Frankstown FS -- one of the stops with no dot of its own.
+    lat, lon, sid, name = by_id["20045"]
+    assert name == "HOMEWOOD AVE + IDLEWILD"
+    assert (round(lat, 4), round(lon, 4)) == (40.4581, -79.8960)
+
+    # Today's side is the same question asked of the other feed, and the two
+    # must not be muddled: the count differs.
+    assert len(query.plan_stops(con, "current")) == 6284
+
+
 def test_the_panel_says_how_far_the_plan_moves_a_pole_it_keeps(con):
     """A kept stop the plan nudges down the block draws as two marks.
 

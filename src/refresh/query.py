@@ -439,6 +439,27 @@ def is_removed_stop(con, stop_id: str, lat: float, lon: float,
     return not stops_within(con, lat, lon, dedup, "proposed")
 
 
+def plan_stops(con, side: str = "proposed"):
+    """Every pole one feed runs, for the map to draw without a pin down.
+
+    A different unit from the dots, and that is the point. The dot layer is
+    one dot per LOCATION (`change_points`): a stop the plan adds within
+    `UNIVERSE_DEDUP_M` of one that runs today is not its own location, so its
+    gain lands in the colour of the neighbouring dot and its own kerb stays
+    bare. 496 of the plan's 5,413 poles are in that position, and twice a
+    reader has taken the bare ground for the plan's stops missing from the
+    data. This answers the pole question directly, so the map can draw it
+    beside the dots rather than only inside a click's walk radius.
+
+    Rows are [lat, lon, stop_id, name] rather than dicts: the whole feed goes
+    over the wire at once, and the names are already most of its weight.
+    """
+    return [[r["lat"], r["lon"], r["stop_id"], r["name"]]
+            for r in con.execute(
+                "SELECT lat, lon, stop_id, name FROM stops WHERE side = ? "
+                "ORDER BY stop_id", (side,))]
+
+
 def moved_pole(con, stop_id: str, lat: float, lon: float,
                moved: float = STOP_MOVED_M):
     """Where this stop stands today, if the plan keeps it but moves it.

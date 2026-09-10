@@ -69,6 +69,20 @@ def test_place_rejects_an_unusable_radius(client, radius):
     assert r.status_code == 422
 
 
+def test_all_the_plan_stops_are_served_for_the_map_layer(client):
+    r = client.get("/api/stops/all", params={"side": "proposed"})
+    assert r.status_code == 200
+    stops = r.json()
+    assert len(stops) == 5413
+    lat, lon, sid, name = stops[0]
+    assert isinstance(sid, str) and isinstance(name, str)
+    assert 40 < lat < 41 and -81 < lon < -79
+
+
+def test_all_stops_rejects_an_unknown_side(client):
+    assert client.get("/api/stops/all", params={"side": "future"}).status_code == 422
+
+
 def test_routes_are_bus_only_on_both_sides(client):
     """Rail and the inclines are outside the Refresh."""
     for side in ("current", "proposed"):

@@ -14,6 +14,7 @@ const FULL: UrlState = {
   place: 'baldwin borough',
   placeFill: 'gained',
   selection: ['c:10005', 'p:2201'],
+  planStops: true,
 };
 
 describe('toSearch', () => {
@@ -32,6 +33,9 @@ describe('toSearch', () => {
   // Written either way: it decides what the map draws, so it belongs with
   // the controls above rather than with the two second readings below them.
   it('writes the added-stops switch in both positions', () => {
+    expect(new URLSearchParams(toSearch(FULL)).get('plan')).toBe('1');
+    expect(new URLSearchParams(toSearch({ ...FULL, planStops: false })).get('plan'))
+      .toBe('0');
   });
 
   it('leaves the place fill out of a link that is mapping the default, losses', () => {
@@ -131,6 +135,15 @@ describe('parseUrlState', () => {
 
   it('takes only the parameters that are there', () => {
     expect(parseUrlState('?view=surface')).toEqual({ view: 'surface' });
+  });
+});
+
+describe('the plan\'s stops in the link', () => {
+  it('reads both positions and ignores anything else', () => {
+    expect(parseUrlState('?plan=0').planStops).toBe(false);
+    expect(parseUrlState('?plan=1').planStops).toBe(true);
+    expect(parseUrlState('?plan=maybe').planStops).toBeUndefined();
+    expect(parseUrlState('?view=dots').planStops).toBeUndefined();
   });
 });
 
