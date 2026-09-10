@@ -95,55 +95,83 @@ export const DEFAULT_FADE_MS = 300;
 export const VECTOR_STYLE_URL = 'https://tiles.openfreemap.org/styles/positron';
 
 /**
- * The same map already drawn, as pictures: Esri's Light Gray Canvas.
+ * The same map already drawn, as pictures: OpenStreetMap's own tiles.
  *
- * NOT CARTO'S POSITRON RASTER, which is what the measurement was taken on.
- * CARTO now stamps "API KEY REQUIRED" across every tile served without an
- * account, so it cannot be used here as it stands. Esri's is the nearest
- * keyless light-grey basemap: land samples #efefef against Positron's
- * #fafaf8, near enough that the dot palette reads the same on it.
+ * THE THIRD SOURCE TRIED, AND THE ONLY ONE WHOSE TERMS ALLOW THIS. CARTO's
+ * Positron raster -- what the measurement below was taken on -- stamps
+ * "API KEY REQUIRED" across every tile served without an account. Esri's Light
+ * Gray Canvas serves keyless and looks the part, but Esri's own summary of the
+ * terms conditions every permitted use on having Esri software or an ArcGIS
+ * Online subscription ("If you do not have Esri software, you must purchase an
+ * ArcGIS Online subscription"), which this site has neither of.
  *
- * ITS TERMS ARE NOT SETTLED. The tiles serve without a key and the attribution
- * below is a condition of using them; whether this site's use needs an ArcGIS
- * account is a question for Max before anything is deployed.
+ * The OSM Foundation's tile usage policy permits a public website's basemap
+ * outright. What it requires is met here: attribution drawn on the map, no
+ * pre-fetching of tiles beyond what a reader is looking at, and no no-cache
+ * header. What it costs is the look -- OSM's standard style is a full-colour
+ * general-purpose map where Positron is a near-white canvas built to sit under
+ * data. See `contrast.ts`: the dot palette is balanced against #f2efe9, which
+ * is this style's land fill exactly, but its parks and its coloured roads are
+ * ground the palette was never tested on.
  */
 export const RASTER_TILES = [
-  'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/'
-  + 'World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}',
+  'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
 ];
 
 /**
- * The names, which Esri ships as a second transparent layer.
+ * No second layer here: OSM's style carries its own labels.
  *
- * Not decoration. The base alone carries almost no place labels at county
- * zooms -- Pittsburgh itself is unnamed on it -- and a reader scanning the
- * whole plan has nothing to orient by. Two image layers is still two draws
- * against the vector style's 55, and it is drawn beneath every mark this site
- * adds, so a label can never sit on top of a dot.
+ * Esri needed one -- its canvas leaves Pittsburgh unnamed at county zooms --
+ * and the shape is kept so that a source needing one can have it again.
  */
-export const RASTER_LABEL_TILES = [
-  'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/'
-  + 'World_Light_Gray_Reference/MapServer/tile/{z}/{y}/{x}',
-];
+export const RASTER_LABEL_TILES: string[] = [];
 
 /**
- * The last zoom level Esri's canvas actually has, and it must be declared.
+ * The last zoom level the tiles actually have, and it must be declared.
  *
- * Above 16 the service does not 404 -- it answers with a picture of grey
- * reading "Map data not yet available", which MapLibre has no way to tell from
- * a map. Verified tile by tile over Downtown Pittsburgh on 2026-09-10: real
- * ground through 16, the placeholder from 17 up, and the same image at 18, 19
- * and 20. Declaring it makes MapLibre scale the level-16 tile instead of
- * asking for one that does not exist, so a reader zooming into a corner gets a
- * soft basemap rather than a blank one. The marks stay sharp either way --
- * they are drawn from the data, not from the tiles.
+ * OSM's own go to 19. This matters because a tile service under this site's
+ * feet may answer past its coverage with a picture rather than a 404: Esri's
+ * canvas stops at 16 and returns a grey image reading "Map data not yet
+ * available", with a 200, which MapLibre cannot tell from a map and drew.
+ * Declaring where the tiles end makes MapLibre scale the last real one, so the
+ * ground goes soft rather than blank; the marks stay sharp either way, being
+ * drawn from the data and not from the tiles.
  */
-export const RASTER_MAX_ZOOM = 16;
+export const RASTER_MAX_ZOOM = 19;
 
 /** A condition of using the tiles, and it rides on the map, not in a doc. */
 export const RASTER_ATTRIBUTION =
-  'Tiles &copy; Esri &mdash; Esri, DeLorme, NAVTEQ, '
-  + '<a href="https://www.openstreetmap.org/copyright">&copy; OpenStreetMap</a> contributors';
+  '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
+
+/**
+ * Whether a tile source has been settled on. IT HAS NOT, SO NOBODY GETS THE
+ * RASTER BASEMAP YET.
+ *
+ * The measurement says a raster basemap is worth roughly an order of magnitude
+ * to a reader with no graphics chip. Three sources were tried and none can be
+ * used as it stands:
+ *
+ *   CARTO's Positron raster -- what the measurement was taken on -- stamps
+ *   "API KEY REQUIRED" diagonally across every tile served without an account.
+ *
+ *   Esri's Light Gray Canvas serves keyless and is the right look, but Esri's
+ *   own summary of the terms conditions every permitted use on having Esri
+ *   software or a subscription: "If you do not have Esri software, you must
+ *   purchase an ArcGIS Online subscription." It also forbids self-hosting its
+ *   content, which rules out the obvious workaround.
+ *
+ *   OpenStreetMap's own tiles are permitted for exactly this -- a public
+ *   website's basemap, with attribution and no pre-fetching -- and they are
+ *   the fastest of the three here. But they are a full-colour general-purpose
+ *   map: coloured motorways under red removal crosses, green parks under a
+ *   purple gain palette that `contrast.ts` never tested against them, and a
+ *   tile server slow enough that a pan shows gaps.
+ *
+ * So the switch stays off and every reader keeps the vector style, which is
+ * the slower map but the legible one. Flipping this to `true` is all that is
+ * needed once a source is chosen; the constants below say which.
+ */
+export const RASTER_BASEMAP_READY = false;
 
 /**
  * Which basemap to draw, decided by what is drawing it.
@@ -167,22 +195,23 @@ export const RASTER_ATTRIBUTION =
  * it goes slightly up and no floor is at risk.
  */
 export function basemapStyle(m: Machine): string | object {
-  if (!drawsInSoftware(m.renderer)) return VECTOR_STYLE_URL;
+  if (!RASTER_BASEMAP_READY || !drawsInSoftware(m.renderer)) return VECTOR_STYLE_URL;
+  return rasterBasemapStyle();
+}
+
+/** The raster style itself, kept whole so it can be tested while it is off. */
+export function rasterBasemapStyle(): object {
   const source = (tiles: string[]) => ({
     type: 'raster', tileSize: 256, attribution: RASTER_ATTRIBUTION, tiles,
     maxzoom: RASTER_MAX_ZOOM,
   });
-  return {
-    version: 8,
-    sources: {
-      basemap: source(RASTER_TILES),
-      'basemap-labels': source(RASTER_LABEL_TILES),
-    },
-    layers: [
-      { id: 'basemap', type: 'raster', source: 'basemap' },
-      { id: 'basemap-labels', type: 'raster', source: 'basemap-labels' },
-    ],
-  };
+  const sources: Record<string, object> = { basemap: source(RASTER_TILES) };
+  const layers = [{ id: 'basemap', type: 'raster', source: 'basemap' }];
+  if (RASTER_LABEL_TILES.length) {
+    sources['basemap-labels'] = source(RASTER_LABEL_TILES);
+    layers.push({ id: 'basemap-labels', type: 'raster', source: 'basemap-labels' });
+  }
+  return { version: 8, sources, layers };
 }
 
 /**

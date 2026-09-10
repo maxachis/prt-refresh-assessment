@@ -207,41 +207,47 @@ Nothing in this site inserts a layer relative to a basemap layer id -- every
 `addLayer` anchors to one of our own -- so a raster style is a drop-in for the
 drawing code.
 
-**Built on 2026-09-10, for software renderers only** — Max's call: "Let's try
-only CPU-only readers." `hardware.basemapStyle` hands MapLibre the vector style
-where something can draw it and a raster style where the processor would have
-to, the same test that already decides the pixel cap. The app's own countywide
-dot view now drags at **152 / 183 / 167 ms** per frame on this browser.
+**Built on 2026-09-10 for software renderers only** -- Max's call: "Let's try
+only CPU-only readers" -- and then **switched off**, because no tile service
+tried can be used as it stands. `hardware.basemapStyle` hands MapLibre the
+vector style where something can draw it and would hand a raster style where
+the processor would have to; `RASTER_BASEMAP_READY` is false, so today every
+reader gets the vector one. Flipping that constant is all that is needed once a
+source is chosen.
 
-**The tiles are not CARTO's**, though the measurement was. CARTO now stamps
-`API KEY REQUIRED` diagonally across every tile it serves without an account —
-it is on every screenshot taken of the first attempt. The keyless substitute is
-**Esri's Light Gray Canvas**, whose land samples `#efefef` against Positron's
-`#fafaf8` and the `#f2efe9` `contrast.ts` pins to: near enough that the dot
-palette reads the same, and no contrast floor moves.
+Measured on the app itself, countywide dot view, this browser: vector in the
+high hundreds of ms per frame, **Esri 152-183 ms**, **OSM 50-83 ms**.
 
-Esri ships its labels as a **second transparent layer**, and it is not
-optional: the base alone leaves Pittsburgh unnamed at county zooms, so a reader
-scanning the whole plan has nothing to orient by. Two image layers is still two
-draws against 55, and both are beneath every mark this site adds, so a place
-name can never sit on top of a dot.
+| Source | Keyless? | Terms | Look |
+|---|---|---|---|
+| CARTO Positron raster | no | -- | what was measured; every keyless tile is stamped `API KEY REQUIRED` |
+| Esri Light Gray Canvas | yes | **no**: "If you do not have Esri software, you must purchase an ArcGIS Online subscription", and self-hosting its content is forbidden outright | right look; needs a second layer for labels; ground only to zoom 16 |
+| OpenStreetMap standard | yes | **yes**: a public website's basemap is permitted, with attribution, no pre-fetching, no no-cache header | wrong look -- a full-colour general map under a palette tuned for a near-white canvas; tile server slow enough that a pan shows gaps |
 
-**Esri's canvas stops at zoom 16, and it does not say so with a 404.** Above
-that the service answers with a picture of grey reading "Map data not yet
-available" -- which MapLibre cannot tell from a map, so it drew it. Max found
-it by zooming in. Verified tile by tile over Downtown on 2026-09-10: real
-ground through 16, the placeholder at 17, and the identical image at 18, 19 and
-20. The sources now declare `maxzoom: 16`, so MapLibre scales the level-16 tile
-rather than asking for one that does not exist: past 16 the ground goes soft
-and the marks stay sharp, because they are drawn from the data and not from the
-tiles. The general shape of the mistake is worth keeping -- **a tile service
-that answers 200 with an apology is indistinguishable from one that works**,
-and nothing but zooming in finds it.
+> Esri's terms were read from the summary its own item page links
+> (`goto.arcgis.com/termsofuse/viewsummary`, last updated 2025-04-21). Every
+> permitted use on it is prefixed "IF YOU HAVE AN ARCGIS ONLINE SUBSCRIPTION",
+> and the conditions add: "Use with Esri software and comply with its terms of
+> use. If you do not have Esri software, you must purchase an ArcGIS Online
+> subscription." The same page forbids "Download, redistribute or self-host any
+> content hosted by Esri."
 
-**One thing is still owed before this is deployed: whether using Esri's tiles
-here needs an ArcGIS account.** The tiles serve without a key and the
-attribution is drawn on the map, which is a condition of using them; that is
-not the same as having read the terms.
+The general shape is worth keeping: **a free tile service is a licence question
+before it is a performance question**, and two of the three here look identical
+from the network -- 200, a PNG, no key asked for -- while meaning different
+things legally.
+
+**Esri's canvas also stops at zoom 16 without saying so.** Above it the service
+answers with a picture of grey reading "Map data not yet available" -- a 200,
+not a 404, which MapLibre cannot tell from a map and drew. Max found it by
+zooming in. The style declares where its tiles end so MapLibre scales the last
+real one instead: soft ground, sharp marks. **A tile service that answers 200
+with an apology is indistinguishable from one that works**, and nothing but
+zooming in finds it.
+
+**What is owed is a choice of tile source**, and it is the only thing between
+the measurement and a map that pans on Max's own machine. See the open
+questions below.
 
 ## What else has not been addressed
 
@@ -261,10 +267,15 @@ not the same as having read the terms.
 
 ## Open questions
 
-1. **Do Esri's terms cover this use?** Settled enough to ship a local look at;
-   not settled enough to deploy. If they do not, the alternative that owes
-   nobody is rendering Positron to raster on the deploy box and serving it from
-   there, which is real work and a new dependency in a repo that has none.
+1. **Which tile source, given all three tried are out?** Three ways forward.
+   *An account*: Stadia Maps' free tier is non-commercial only, 200,000 credits
+   a month, and its Alidade Smooth is a Positron-alike -- it needs Max to hold
+   the account and a domain-locked key in the deployed page. *Self-hosting*:
+   render an open style to raster for Allegheny County only and serve it off
+   the deploy box -- roughly 10,000 tiles to zoom 16, no third party and no
+   terms, but a rendering toolchain this repo does not have. *Neither*: leave
+   the vector style everywhere and accept that a reader without a graphics chip
+   gets a map that pans at about one frame a second.
 2. ~~Who gets the raster basemap~~ — settled by Max on 2026-09-10: software
    renderers only.
 3. **The 100 m surface is now the heaviest thing this site draws.** On the

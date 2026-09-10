@@ -3,7 +3,7 @@ import {
   canvasScale, drawsInSoftware, fadeMs, readMachine,
   DEFAULT_FADE_MS, MAX_SCALE, SOFTWARE_SCALE,
   basemapStyle, VECTOR_STYLE_URL, RASTER_TILES, RASTER_LABEL_TILES,
-  RASTER_MAX_ZOOM,
+  RASTER_MAX_ZOOM, RASTER_BASEMAP_READY, rasterBasemapStyle,
 } from './hardware';
 
 describe('drawsInSoftware', () => {
@@ -93,35 +93,46 @@ describe('which basemap a machine is given', () => {
     expect(basemapStyle(machine(null))).toBe(VECTOR_STYLE_URL);
   });
 
-  it('gives a CPU rasteriser a raster style instead', () => {
-    const style = basemapStyle(machine('llvmpipe, or similar')) as any;
-    expect(typeof style).toBe('object');
+  it('gives a CPU rasteriser the raster style, once a tile source is settled', () => {
+    const style = rasterBasemapStyle() as any;
     expect(style.layers.every((l: any) => l.type === 'raster')).toBe(true);
+    expect(basemapStyle(machine('llvmpipe, or similar')))
+      .toBe(RASTER_BASEMAP_READY ? style : VECTOR_STYLE_URL);
   });
 
-  it('draws the names above the ground, and both beneath every mark', () => {
-    const style = basemapStyle(machine('llvmpipe')) as any;
-    expect(style.layers.map((l: any) => l.source))
-      .toEqual(['basemap', 'basemap-labels']);
+  it('leaves every reader on the vector style while no source is settled', () => {
+    // Three tile services were measured and none may be used as it stands --
+    // see `RASTER_BASEMAP_READY`. Until one is chosen the slower map is the
+    // one that ships, because it is the legible one.
+    expect(RASTER_BASEMAP_READY).toBe(false);
+    expect(basemapStyle(machine('llvmpipe'))).toBe(VECTOR_STYLE_URL);
+  });
+
+  it('draws the ground, and the names with it where a source needs a second layer', () => {
+    const style = rasterBasemapStyle() as any;
     expect(style.sources['basemap'].tiles).toEqual(RASTER_TILES);
-    expect(style.sources['basemap-labels'].tiles).toEqual(RASTER_LABEL_TILES);
+    // Esri's canvas needed a second, transparent label layer; OSM's style
+    // carries its own. Either way every basemap layer is beneath every mark
+    // this site adds, because those are added to the map afterwards.
+    expect(style.layers.map((l: any) => l.source))
+      .toEqual(RASTER_LABEL_TILES.length ? ['basemap', 'basemap-labels'] : ['basemap']);
   });
 
   it('says where the tiles run out, so MapLibre never asks past them', () => {
-    const style = basemapStyle(machine('llvmpipe')) as any;
+    const style = rasterBasemapStyle() as any;
     for (const src of Object.values(style.sources) as any[]) {
       expect(src.maxzoom).toBe(RASTER_MAX_ZOOM);
     }
-    // Past this the service answers with a placeholder image reading "Map data
-    // not yet available", which is a picture of grey, not a missing tile.
-    expect(RASTER_MAX_ZOOM).toBe(16);
+    // Declared because a tile service may answer past its coverage with a
+    // picture rather than a 404 -- Esri's canvas returns a grey image reading
+    // "Map data not yet available", with a 200, which MapLibre drew as a map.
+    expect(RASTER_MAX_ZOOM).toBeGreaterThan(0);
   });
 
   it('names the tiles it borrows, on every raster source it builds', () => {
-    const style = basemapStyle(machine('SwiftShader')) as any;
+    const style = rasterBasemapStyle() as any;
     for (const src of Object.values(style.sources) as any[]) {
       expect(src.attribution).toMatch(/OpenStreetMap/);
-      expect(src.attribution).toMatch(/Esri/);
     }
   });
 });

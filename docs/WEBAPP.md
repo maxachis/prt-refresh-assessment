@@ -1135,34 +1135,31 @@ and 5.1 ms → 1.0 ms of main-thread JavaScript per pointer move at zoom 12**
 (p90 17.4 → 5.1 ms). It also collapses the two popups that could previously
 stand open at once, the pin marks having owned one of their own.
 
-**A different basemap where nothing can draw the usual one**
-(`hardware.basemapStyle`). This is the change that dwarfs the other two, and
-none of it is about this site's own drawing. The basemap is Positron, and as a
+**A different basemap where nothing can draw the usual one** — measured, built,
+and **switched off pending a tile source** (`hardware.basemapStyle`,
+`RASTER_BASEMAP_READY`). This is the change that dwarfs the other two, and none
+of it is about this site's own drawing. The basemap is Positron, and as a
 vector style it is 55 layers — 26 line, 19 symbol, 9 fill — re-tessellated and
 re-filled every frame. Measured on a bare map with none of this site's layers
 on it: hiding every vector layer took a drag from 564–868 ms per frame to
 **37–47 ms**; hiding all 19 label layers changed nothing, so it is not text.
 Against a raster basemap, arms alternated twice in one run, the same camera and
 drag: **952 / 1,500 / 1,300 / 441 ms vector against 115 / 52 / 109 / 39 ms
-raster**, two distributions that do not overlap. So a software renderer is now
-served the basemap as pictures — two image layers, ground and names, drawn
-beneath every mark this site adds — and everything with a graphics chip keeps
-the vector style, which costs it nothing and stays sharp at any resolution.
-Raster labels cannot be restyled or held out from under a dot, and they are
-soft on a high-resolution screen; that is a real cost, and it is only paid by
-the readers whose alternative was a map that does not pan.
+raster**, two distributions that do not overlap. Max's call was that only
+software renderers take the trade, a raster label being one that cannot be
+restyled, cannot be held out from under a dot, and is soft on a good screen.
 
-Esri's canvas has ground through **zoom 16** and answers above it with a grey
-picture reading "Map data not yet available", so the sources declare where the
-tiles stop and MapLibre scales the last real one: zoomed past 16 the basemap is
-soft and every mark on it is still sharp.
-
-The tiles are **Esri's Light Gray Canvas**, not the CARTO Positron raster the
-measurement above was taken on: CARTO now stamps `API KEY REQUIRED` across
-every tile served without an account. Esri's are keyless, their land samples
-`#efefef` against the `#f2efe9` `contrast.ts` pins the dot palette to, and
-their attribution rides on the map. **Whether this site's use of them needs an
-ArcGIS account is not settled** — see the worklog entry.
+**Three tile services were tried and none may be used as it stands.** CARTO's
+Positron raster — what the measurement was taken on — stamps `API KEY REQUIRED`
+across every tile served without an account. Esri's Light Gray Canvas is
+keyless and the right look, but Esri's own summary of the terms conditions
+every permitted use on having Esri software or a subscription, and separately
+forbids self-hosting its content. OpenStreetMap's own tiles are permitted for
+exactly this and were the fastest of the three, but they are a full-colour
+general-purpose map: coloured motorways under red removal crosses, green parks
+under a purple gain palette `contrast.ts` never tested against them, and a tile
+server slow enough that a pan shows gaps. So every reader keeps the vector
+style — the slower map, and the legible one — until a source is settled.
 
 **Not fewer features.** Thinning the dots at low zoom is the obvious third
 lever and it is the one that may not be pulled: the key counts the rows, not
