@@ -173,6 +173,69 @@ they are free.
 > A/B against this key has to re-query the button between clicks and assert the
 > off-count before trusting the arm.
 
+## The basemap is the frame, and a raster one is roughly ten times cheaper
+
+Measured 2026-09-10, after Max asked what else could be contributing. Every
+figure below is from a bare MapLibre map on this repo's llvmpipe browser --
+none of this site's own layers on it at all -- at the same camera, viewport and
+drag. **Absolute frame times are not comparable between runs** on this machine:
+the same bare vector map read 564 ms in one run and 1,113 ms in another, because
+several browser contexts were competing. Only the within-run comparisons below
+carry.
+
+The basemap is `https://tiles.openfreemap.org/styles/positron`, which is **55
+layers** -- 26 line, 19 symbol, 9 fill -- re-tessellated and re-filled every
+frame.
+
+- **Hiding every vector layer** took a drag from 564-868 ms per frame to
+  **37-47 ms** in the same run. Substantially the whole frame is the basemap.
+- **Hiding all 19 label layers changed nothing** (1,033-1,113 ms against
+  1,102-1,118 ms, warm). It is not glyph placement or text collision.
+- **A raster basemap against the vector one**, arms alternated twice in one run:
+  vector **952 / 1,500 / 1,300 / 441 ms** median, raster **115 / 52 / 109 /
+  39 ms**. The two distributions do not overlap. Call it an order of magnitude;
+  the spread is too wide to quote a ratio.
+
+The raster arm was CARTO's `light_all`, which is Positron -- the same design,
+which is why it was the one tried. Its land fill samples as `#fafaf8` against
+the `#f2efe9` that `contrast.ts` pins the dot palette against: lighter, so every
+mark's contrast against the ground goes *up* slightly, and no contrast floor is
+at risk.
+
+Nothing in this site inserts a layer relative to a basemap layer id -- every
+`addLayer` anchors to one of our own -- so a raster style is a drop-in for the
+drawing code.
+
+**Not done, and it is a decision rather than an implementation.** Serving
+someone else's raster tiles from a public site is a dependency with terms
+attached, and the tile source is Max's to choose. See the open questions at the
+bottom of this entry.
+
+## What else has not been addressed
+
+- **The canvas can go below one device pixel per CSS pixel.** `pixelRatio: 0.75`
+  on a software renderer is about 44% fewer fragments again, at a cost in
+  crispness. Untested.
+- **The surface view's 48,500 fill polygons have never been measured.** The dot
+  measurement above says our *dots* are free; the 100 m surface is a different
+  layer and the heaviest thing this site draws.
+- **The API sends no `Cache-Control`.** Every radius switch and every reload
+  re-fetches the change layer (155 KB gzipped, 526 KB parsed) and the surface
+  (1.3 MB). Not frame rate; it is still "the map feels slow".
+- **GeoJSON parse and tiling happen on the main thread at layer load** -- 5,900
+  dots, 48,500 cells. A stall on load and on each radius change.
+- **Pan inertia and eased zoom keep rendering after the gesture ends**, which at
+  one frame per second is a tail measured in seconds.
+
+## Open questions
+
+1. **Which raster tiles, if any.** CARTO's are what was measured and their terms
+   govern a public site's use of them; self-rendering the same style to raster
+   and serving it from the deploy box is the alternative that owes nobody.
+2. **Who gets the raster basemap.** Renderer-conditional, the way the pixel cap
+   already is, would leave a reader with a GPU the vector map and give a
+   CPU-only reader the fast one -- at the cost of two maps to keep looking alike.
+
 What none of this establishes is what the site feels like to a visitor with a
 GPU. Nobody in this session can measure that; it needs a real phone pointed at
 the local server.
