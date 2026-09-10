@@ -149,8 +149,8 @@ export type ChangePoint = (number | string | null)[];
  * offsets are pinned by frontend/change.test.ts as well as by the API tests.
  */
 export const POINT_STRIDE = 4;
-/** Mirrored from `query.FIXED_FIELDS`: lat, lon, published, id, removed. */
-export const FIXED_FIELDS = 5;
+/** Mirrored from `query.FIXED_FIELDS`: lat, lon, published, id, removed, name. */
+export const FIXED_FIELDS = 6;
 export const CUR = (i: number) => FIXED_FIELDS + POINT_STRIDE * i;
 export const PROP = (i: number) => FIXED_FIELDS + 1 + POINT_STRIDE * i;
 export const BUCKET = (i: number) => FIXED_FIELDS + 2 + POINT_STRIDE * i;
@@ -165,6 +165,19 @@ export const ID = 3;
  * radius, and the colour beside it moves with both.
  */
 export const REMOVED = 4;
+
+/**
+ * PRT's own name for the pole this dot is drawn at — "Forbes Ave at Craig St".
+ *
+ * A dot is a pole: the layer carries one point per stop id, so the name is a
+ * fact about the dot and not an approximation of one. It travels as a column
+ * rather than a lookup keyed by id because the row is the format's unit, and
+ * an aligned-by-position second list is one reordering away from naming every
+ * dot after its neighbour. The cost is 65 KB gzipped — the layer goes from
+ * 155 KB to 220 KB — paid so that the map gives one answer about a kerb
+ * whether or not a pin happens to be down over it.
+ */
+export const NAME = 5;
 
 /** The server's name for this location; see ChangePoint. */
 export const pointId = (p: ChangePoint): string => p[ID] as string;
@@ -204,6 +217,17 @@ export interface ChangeLayer {
    * error to anyone looking at the map.
    */
   replacement: Record<string, [number, number]>;
+  /**
+   * Metres from where a pole stands today to where the plan stands it, by
+   * point id, for the 225 poles the plan moves at all.
+   *
+   * Keyed on the published point (`c:…`) because a pole whose id the plan
+   * keeps is never a point of its own on the proposed side — the dot that
+   * carries the sentence is the one drawn on today's kerb, which is also the
+   * kerb the sentence is about. Sparse, like `replacement`: 225 numbers do
+   * not justify 6,540 nulls.
+   */
+  moved: Record<string, number>;
   points: ChangePoint[];
 }
 

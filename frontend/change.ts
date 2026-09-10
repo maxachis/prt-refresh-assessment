@@ -32,7 +32,8 @@
  *    invisible, so the day control governs this layer and not just the panel.
  */
 import {
-  ChangeLayer, ChangePoint, Day, DAYS, BUCKET, CUR, PROP, PUBLISHED, REMOVED,
+  ChangeLayer, ChangePoint, Day, DAYS, BUCKET, CUR, NAME, PROP, PUBLISHED,
+  REMOVED,
   field, riders, pointId,
 } from './types';
 import { fetchJSONOnce } from './utils';
@@ -530,7 +531,7 @@ export function sumRidersIn(
   return tally;
 }
 
-function toGeoJSON(layer: ChangeLayer) {
+export function toGeoJSON(layer: ChangeLayer) {
   const keys = layer.buckets.map((b) => b.key);
   return {
     type: 'FeatureCollection' as const,
@@ -546,6 +547,10 @@ function toGeoJSON(layer: ChangeLayer) {
           id: pointId(p),
           published: p[2],
           removed: p[REMOVED],
+          name: p[NAME],
+          // `null` where the plan leaves the pole where it stands, which is
+          // 6,540 of the 6,765 — see ChangeLayer.moved.
+          moved: layer.moved?.[pointId(p)] ?? null,
           // `null`, never 0: no replacement inside the search bound is not a
           // replacement at zero metres, and the hover says the two apart.
           // Split into two flat properties because a MapLibre feature property
@@ -735,8 +740,38 @@ function applyFilter(map: maplibregl.Map, day: Day) {
   map.setFilter(REMOVED_SEL_LAYER, crosses);
 }
 
-/** Hover text for one dot. Trips both sides, never a bare delta. */
-export function dotLabel(props: any, day: Day, buckets: { key: string; label: string }[]) {
+/**
+ * The pole a dot is drawn at: its name, its stop id, and where the plan
+ * stands it.
+ *
+ * A dot IS a pole — one point per stop id — so this is a fact about the dot
+ * rather than a summary of the ground under it, and it goes above the divider
+ * for that reason: the lines beneath answer for everything within a walk of
+ * here, which is a different question with a different answer.
+ *
+ * The move is phrased as something the plan does rather than as a distance
+ * the pole has travelled, because the dot is standing on today's kerb while
+ * it says it.
+ */
+function poleLine(props: any): string {
+  const stopId = String(props.id ?? '').split(':')[1] ?? '';
+  const moved = props.moved != null
+    ? `<br>the plan stands this pole ${props.moved} m away` : '';
+  return `<b>${props.name}</b><br>stop ${stopId}${moved}` +
+    `<div style="margin-top:6px;padding-top:6px;` +
+    `border-top:1px solid rgba(255,255,255,.18)"></div>`;
+}
+
+/**
+ * Hover text for one dot. Trips both sides, never a bare delta.
+ *
+ * `pole: false` suppresses the pole heading, and exists for one caller: the
+ * marks a pin drops name the pole themselves and print this beneath their own
+ * divider, so leaving it on would name the same stop twice in one tooltip.
+ */
+export function dotLabel(props: any, day: Day,
+                         buckets: { key: string; label: string }[],
+                         { pole = true }: { pole?: boolean } = {}) {
   const i = DAYS.indexOf(day);
   const key = props[`b${i}`];
   // A new place is not in a bucket on screen, so it does not report one here
@@ -755,7 +790,8 @@ export function dotLabel(props: any, day: Day, buckets: { key: string; label: st
   const cur = props[`c${i}`], prop = props[`p${i}`];
   const dayWord = day === 'weekday' ? 'weekday' : day;
   const within = props.published === 0 || gone ? ' within a walk' : '';
-  return `${gone ? '' : `<b>${label}</b><br>`}${removedLine(props)}` +
+  return `${pole ? poleLine(props) : ''}` +
+    `${gone ? '' : `<b>${label}</b><br>`}${removedLine(props)}` +
     `${cur} → ${prop} buses per ${dayWord}${within}<br>` +
     `<span style="opacity:.6">click for the full comparison</span>`;
 }

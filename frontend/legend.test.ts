@@ -36,26 +36,27 @@ const LAYER: ChangeLayer = {
   ],
   fields: [],
   replacement: {},
+  moved: {},
   points: [
-    //  lat     lon    pub  id     rm    weekday          saturday        sunday
-    [40.44, -79.99, 1, 'c:1', 0, 40, 0, 0, 100, 30, 0, 0, 60, 20, 0, 0, 40],   // gone
-    [40.45, -79.98, 1, 'c:2', 0, 40, 0, 0, 25, 30, 0, 0, 15, 20, 0, 0, 10],    // gone
-    [40.44, -79.97, 1, 'c:3', 0, 10, 40, 5, 400, 8, 30, 5, 200, 5, 20, 5, 90], // doubled
-    [40.44, -79.96, 1, 'c:4', 0, 10, 10, 7, 0, 0, 0, 7, 0, 0, 0, 7, 0],        // none
-    [41.90, -79.99, 1, 'c:5', 0, 40, 0, 0, 900, 30, 0, 0, 500, 20, 0, 0, 300], // out of view
+    //  lat     lon    pub  id     rm  name   weekday          saturday        sunday
+    [40.44, -79.99, 1, 'c:1', 0, 'a pole', 40, 0, 0, 100, 30, 0, 0, 60, 20, 0, 0, 40],   // gone
+    [40.45, -79.98, 1, 'c:2', 0, 'a pole', 40, 0, 0, 25, 30, 0, 0, 15, 20, 0, 0, 10],    // gone
+    [40.44, -79.97, 1, 'c:3', 0, 'a pole', 10, 40, 5, 400, 8, 30, 5, 200, 5, 20, 5, 90], // doubled
+    [40.44, -79.96, 1, 'c:4', 0, 'a pole', 10, 10, 7, 0, 0, 0, 7, 0, 0, 0, 7, 0],        // none
+    [41.90, -79.99, 1, 'c:5', 0, 'a pole', 40, 0, 0, 900, 30, 0, 0, 500, 20, 0, 0, 300], // out of view
   ],
 };
 
 /** A stop the plan takes away, at a corner whose buses nonetheless double. */
-const REMOVED_STOP = [40.44, -79.945, 1, 'c:7', 1,
+const REMOVED_STOP = [40.44, -79.945, 1, 'c:7', 1, 'a pole',
                       10, 40, 5, 12, 8, 30, 5, 6, 5, 20, 5, 3];
 
 /** A location the plan adds a bus to: served proposed, nothing there today. */
-const NEW_POINT = [40.44, -79.95, 0, 'p:9', 0, 0, 30, 6, null, 0, 20, 6, null,
+const NEW_POINT = [40.44, -79.95, 0, 'p:9', 0, 'a pole', 0, 30, 6, null, 0, 20, 6, null,
                    0, 10, 6, null];
 
 /** A pole the plan adds where buses already ran: hollow, and not `new`. */
-const NEW_STOP = [40.44, -79.955, 0, 'p:8', 0, 40, 90, 5, null, 30, 70, 5, null,
+const NEW_STOP = [40.44, -79.955, 0, 'p:8', 0, 'a pole', 40, 90, 5, null, 30, 70, 5, null,
                   20, 50, 5, null];
 
 const BOX = { west: -80.1, south: 40.3, east: -79.9, north: 40.5 };

@@ -660,6 +660,62 @@ def test_change_layer_carries_the_point_id(con):
     assert {p[query.ID_AT] for p in layer["points"]} == ids
 
 
+def test_every_dot_carries_the_name_of_the_pole_it_is_drawn_at(con):
+    """A dot is a pole, and until 2026-09-10 the map could not say which.
+
+    The name was reachable only by clicking, which drew the pin's marks -- so
+    the pole's name, its id and the metres the plan moved it were on screen
+    only while a pin was down, and the same pixel said different things
+    depending on whether one was. Max asked for the two readings to be the same
+    reading. That needs the name on the wire.
+
+    It is a fixed field rather than a parallel array because the row is the
+    format's own unit: a second list aligned by position would be one
+    reordering away from naming every dot after its neighbour. The names take
+    the layer from 155 KB gzipped to 220 KB.
+    """
+    layer = query.change_layer(con, query.PRIMARY_RADIUS)
+    assert layer["fields"][query.NAME_AT] == "name"
+
+    named = {p[query.ID_AT]: p[query.NAME_AT] for p in layer["points"]}
+    assert all(isinstance(n, str) and n for n in named.values())
+
+    for point_id, name in list(named.items())[:50]:
+        side, stop_id = point_id.split(":", 1)
+        row = con.execute(
+            "SELECT name FROM stops WHERE side = ? AND stop_id = ?",
+            ("current" if side == "c" else "proposed", stop_id)).fetchone()
+        assert name == row["name"]
+
+
+def test_a_pole_the_plan_shifts_says_so_without_a_pin(con):
+    """The dashed leader is drawn for 225 poles; the metres were pin-only.
+
+    Same rule as the leader itself (`moved_pole`): the stop id kept, and the
+    plan standing the pole more than `STOP_MOVED_M` from where it stands
+    today. Sparse, because 225 of 6,765 is not a column.
+
+    It is keyed on the published point, `c:<stop_id>`, and that is not a slip.
+    A pole whose id the plan keeps is never a point of its own on the proposed
+    side -- `is_new_place` rules the id out before it ever measures a distance
+    -- so the only dot that can carry the sentence is the one drawn where the
+    pole stands today. Which is also the honest place for it: the dot is
+    today's kerb, and what it now says is that the plan does not leave it
+    there.
+    """
+    layer = query.change_layer(con, query.PRIMARY_RADIUS)
+    moved = layer["moved"]
+    assert 200 < len(moved) < 260
+
+    for point_id, metres in list(moved.items())[:25]:
+        assert point_id.startswith("c:")
+        stop_id = point_id.split(":", 1)[1]
+        row = con.execute(
+            "SELECT lat, lon FROM stops WHERE side = 'proposed' AND stop_id = ?",
+            (stop_id,)).fetchone()
+        assert query.moved_pole(con, stop_id, row["lat"], row["lon"])[0] == metres
+
+
 def test_the_identity_radius_is_not_the_access_radius(con):
     """Two different questions, and they stopped sharing a number on 2026-09-08.
 

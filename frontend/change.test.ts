@@ -1,25 +1,26 @@
 import { describe, it, expect } from 'vitest';
 import {
   countIn, countNewPlacesIn, countRemovedIn, sumRidersIn, STYLE, viewportScope,
-  selectionScope, withinBrush, removedLine, dotLabel,
+  selectionScope, withinBrush, removedLine, dotLabel, toGeoJSON,
 } from './change';
 import {
-  BUCKET, CUR, ID, PROP, PUBLISHED, REMOVED, RIDERS, ChangePoint,
+  BUCKET, CUR, ID, NAME, PROP, PUBLISHED, REMOVED, RIDERS,
+  ChangePoint, ChangeLayer,
 } from './types';
 
 // The wire format is positional, so an off-by-one in the offsets recolours the
 // whole map and miscounts the legend without changing a single number on the
 // server. These pin the offsets against a hand-built row.
 //
-//   [lat, lon, published, id, removed, wCur, wProp, wBucket, wRiders, ...]
+//   [lat, lon, published, id, removed, name, wCur, wProp, wBucket, wRiders, ...]
 const KEYS = ['gone', 'halved', 'less', 'same', 'more', 'doubled', 'new', 'none'];
 
 let nextId = 0;
 
 function row(lat: number, lon: number, weekdayBucket: number,
              riders: number | null = 10, id = `c:${++nextId}`,
-             removed = 0): ChangePoint {
-  return [lat, lon, 1, id, removed,
+             removed = 0, name = 'Forbes Ave at Craig St'): ChangePoint {
+  return [lat, lon, 1, id, removed, name,
           40, 20, weekdayBucket, riders, 30, 15, 1, riders, 20, 10, 1, riders];
 }
 
@@ -31,7 +32,7 @@ function row(lat: number, lon: number, weekdayBucket: number,
  */
 function addedPlace(lat: number, lon: number, weekdayBucket: number,
                     id = `p:${++nextId}`): ChangePoint {
-  return [lat, lon, 0, id, 0,
+  return [lat, lon, 0, id, 0, 'Penn Ave at Butler St',
           0, 20, weekdayBucket, null, 0, 15, 1, null, 0, 10, 1, null];
 }
 
@@ -40,11 +41,12 @@ const BOX_SCOPE = (b: { w: number; s: number; e: number; n: number }) =>
 
 describe('ChangePoint offsets', () => {
   it('reads each day type from its own slot', () => {
-    const p = [40.44, -79.99, 1, 'c:1', 1,
+    const p = [40.44, -79.99, 1, 'c:1', 1, 'Fifth Ave at Bellefield',
                40, 20, 1, 99, 30, 15, 5, 50, 20, 0, 0, 25];
     expect(p[PUBLISHED]).toBe(1);
     expect(p[ID]).toBe('c:1');
     expect(p[REMOVED]).toBe(1);
+    expect(p[NAME]).toBe('Fifth Ave at Bellefield');
     expect([CUR(0), PROP(0), BUCKET(0), RIDERS(0)].map((i) => p[i]))
       .toEqual([40, 20, 1, 99]);
     expect([CUR(1), PROP(1), BUCKET(1), RIDERS(1)].map((i) => p[i]))
@@ -279,6 +281,61 @@ describe('dotLabel at a removed stop', () => {
   it('names the bucket at a stop that stays', () => {
     const p = { published: 1, removed: 0, b0: 'doubled', c0: 40, p0: 80 };
     expect(dotLabel(p, 'weekday', BUCKETS)).toContain('doubled');
+  });
+});
+
+describe('a dot answers for the pole with no pin down', () => {
+  const BUCKETS = KEYS.map((k) => ({ key: k, label: k }));
+  const pole = { published: 1, removed: 0, b0: 'doubled', c0: 40, p0: 80,
+                 id: 'c:1043', name: 'Forbes Ave at Craig St', moved: null };
+
+  it('names the pole and its stop id above the service reading', () => {
+    // A dot IS a pole -- one point per stop id -- and until now only a pin
+    // could say which one. The same pixel therefore said different things
+    // depending on whether the reader had clicked, which is the complaint
+    // this closes.
+    const html = dotLabel(pole, 'weekday', BUCKETS);
+    expect(html).toContain('Forbes Ave at Craig St');
+    expect(html).toContain('stop 1043');
+    expect(html.indexOf('Forbes')).toBeLessThan(html.indexOf('doubled'));
+  });
+
+  it('says when the plan stands the pole somewhere else', () => {
+    const html = dotLabel({ ...pole, moved: 84 }, 'weekday', BUCKETS);
+    expect(html).toContain('84 m');
+  });
+
+  it('says nothing about a move at the 6,540 poles the plan leaves alone', () => {
+    expect(dotLabel(pole, 'weekday', BUCKETS)).not.toContain(' m');
+  });
+
+  it('drops the pole line when a mark above it has already said all that', () => {
+    // The pin's marks print the pole themselves and then this beneath a
+    // divider; printing it in both halves would name the stop twice in one
+    // tooltip.
+    const html = dotLabel(pole, 'weekday', BUCKETS, { pole: false });
+    expect(html).not.toContain('Forbes Ave at Craig St');
+    expect(html).toContain('doubled');
+  });
+});
+
+describe('the drawn dot carries what the tooltip needs', () => {
+  const layer = (points: ChangePoint[], moved = {}): ChangeLayer => ({
+    radius: 400, days: ['weekday', 'saturday', 'sunday'],
+    buckets: KEYS.map((k) => ({ key: k, label: k })),
+    fields: [], replacement: {}, moved, points,
+  } as any);
+
+  it('puts the name off the packed row onto the feature', () => {
+    const f = toGeoJSON(layer([row(0, 0, 5, 10, 'c:1043')])).features[0];
+    expect(f.properties.name).toBe('Forbes Ave at Craig St');
+  });
+
+  it('puts the metres the plan moves the pole onto the feature, or null', () => {
+    const pts = [row(0, 0, 5, 10, 'c:1043'), row(1, 1, 5, 10, 'c:99')];
+    const feats = toGeoJSON(layer(pts, { 'c:1043': 84 })).features;
+    expect(feats[0].properties.moved).toBe(84);
+    expect(feats[1].properties.moved).toBeNull();
   });
 });
 

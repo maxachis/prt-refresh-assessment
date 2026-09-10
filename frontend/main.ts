@@ -302,7 +302,11 @@ map.on('load', () => {
     ...stopMarkHoverSpecs((beneath: any[]) => {
       const d = layerData();
       const dot = beneath.find((f) => CHANGE_HIT_LAYERS.includes(f.layer?.id));
-      return d && dot ? dotLabel(dot.properties, activeDay(), d.buckets) : null;
+      // The mark has already named the pole; the dot repeats itself if asked
+      // to name it again.
+      return d && dot
+        ? dotLabel(dot.properties, activeDay(), d.buckets, { pole: false })
+        : null;
     }),
     // A removed stop is drawn as a cross and not as a dot, so naming the dot
     // layer alone would leave the 1,308 stops the plan takes away with no

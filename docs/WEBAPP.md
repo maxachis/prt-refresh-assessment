@@ -488,6 +488,20 @@ drawn under it, because a symbol layer has no stroke to thicken. And the hover
 binds to both layers: the removal sentence, with the walk to the nearest
 surviving stop, lives in that tooltip.
 
+**A dot names the pole it is drawn at, whether or not a pin is down.** The
+layer carries one point per stop id, so a dot *is* a pole rather than a
+neighbourhood of one, and since 2026-09-10 its hover opens with PRT's own name
+for the stop, the stop id, and — for the 225 poles it applies to — "the plan
+stands this pole 34 m away", above a rule, with the walk radius's own reading
+beneath. That is the same information a pin's marks carry, in the same order,
+so the map gives one answer about a kerb instead of two chosen by whether the
+reader had clicked. The name travels as a sixth fixed field in the packed row
+rather than as a lookup keyed by id, so it cannot come unaligned from the point
+it names; the metres travel as a sparse map, since the plan leaves 6,540 of the
+6,765 poles where they stand. It costs 65 KB gzipped — the layer goes from
+155 KB to 220 KB — which is the largest single price paid for anything in this
+view.
+
 **How far the replacement is, is a walk, not a straight line.**
 `build_webdb.write_stop_fates` routes from every removed stop over the
 pedestrian network (`refresh.walking`) to the nearest stop the plan keeps,

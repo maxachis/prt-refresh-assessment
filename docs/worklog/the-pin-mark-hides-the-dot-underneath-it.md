@@ -4,7 +4,8 @@ Inside a dropped pin the hover answered about a **pole** — stop id, which
 network, whether it moved — and a pixel away, outside the pin, the same gesture
 answered about a **location** and its bucket, with nothing saying the second
 reading was still there underneath the first.
-Fixed 2026-09-10, awaiting close — a mark now answers both, pole first.
+Fixed 2026-09-10, awaiting close — every dot now answers both, pole first, pin
+or no pin.
 
 ## What was observed
 
@@ -85,3 +86,49 @@ Related: [`stop-marks-outlive-the-click-that-drew-them.md`](stop-marks-outlive-t
 is the same marks failing to be erased, which makes this reach further than the
 pin a reader is looking at — stale marks from an earlier click go on shadowing
 dots elsewhere on the map.
+
+
+## Then the other half: the pole reading was still pin-only
+
+> Max, 2026-09-10: "Let's have it so all of this information is available
+> regardless of whether a pole is down or not"
+
+The fix above made the two tooltips agree wherever they overlapped, but it
+made agreement conditional on a pin being down: with no pin, the pole half —
+the stop's name, its id, whether the plan stands it somewhere else — still had
+no way onto the screen except by clicking. Which is the same complaint one turn
+later: one kerb, two readings, chosen by a gesture that has nothing to do with
+the question.
+
+Naming a dot after a pole is honest and is not an approximation.
+`query.change_points` yields **one point per stop id** — 6,284 published poles
+and 481 the plan adds — so a dot *is* a pole, and the map simply had no name
+for it. What it lacked was the name on the wire: a packed point carried
+`[lat, lon, published, id, removed, …]` and nothing else identifying.
+
+So the layer gained a sixth fixed field, `name`, and a sparse `moved` map:
+
+- **A column, not a parallel array.** The row is the format's unit; a second
+  list aligned by position is one reordering away from naming every dot after
+  its neighbour. `FIXED_FIELDS` went 5 → 6 on both sides
+  (`query.NAME_AT`, `frontend/types.NAME`), which is the offset the tests on
+  both sides pin.
+- **`moved` is sparse, like `replacement`.** The plan stands 225 of the 6,765
+  poles somewhere else; 6,540 nulls is not a column. It is keyed on the
+  **published** point (`c:…`) and that is not a slip — a pole whose id the plan
+  keeps is never a point of its own on the proposed side, because
+  `is_new_place` rules the id out before it measures any distance. The dot that
+  can carry the sentence is the one drawn on today's kerb, which is also the
+  kerb the sentence is about, so it is phrased as something the plan does —
+  "the plan stands this pole 34 m away" — rather than as a distance the pole
+  has already travelled.
+- **The mark suppresses it.** `dotLabel(…, { pole: false })` is passed by the
+  one caller that has already printed the pole itself, so a tooltip inside a
+  pin does not name the stop twice.
+
+**The cost is 65 KB gzipped**, taking the change layer from 155 KB to 220 KB —
+a 42% larger response for every reader, paid so the map gives one answer about
+a kerb. That measurement is the thing to revisit if the layer ever needs to get
+smaller: the names are the largest single thing in it that is not a number, and
+a dictionary keyed by id was measured at 63 KB gzipped rather than 65, which is
+not enough of a saving to buy back the alignment risk.

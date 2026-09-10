@@ -791,9 +791,18 @@ def compute_change(con, radius: float = PRIMARY_RADIUS, *,
 # whether the plan takes a stop away is a fact about the stop, settled by
 # `is_removed_stop` at one identity distance, and it does not move with the day
 # switch or with the walk radius. The colour beside it does both.
+#
+# `name` is fixed, and a column rather than a lookup table, because the row is
+# the format's own unit: a parallel array aligned by position is one reordering
+# away from naming every dot after its neighbour. It costs 65 KB gzipped --
+# the layer goes from 155 KB to 220 KB -- and it buys the map a single answer
+# for one kerb rather than two: before it
+# shipped, hovering a dot named the place and hovering the same pixel with a
+# pin down named the pole, so the map said different things about one kerb
+# depending on whether the reader had clicked.
 POINT_STRIDE = 4
-FIXED_FIELDS = 5
-LAT_AT, LON_AT, PUBLISHED_AT, ID_AT, REMOVED_AT = 0, 1, 2, 3, 4
+FIXED_FIELDS = 6
+LAT_AT, LON_AT, PUBLISHED_AT, ID_AT, REMOVED_AT, NAME_AT = 0, 1, 2, 3, 4, 5
 def CUR_AT(day: int) -> int: return FIXED_FIELDS + POINT_STRIDE * day
 def PROP_AT(day: int) -> int: return FIXED_FIELDS + 1 + POINT_STRIDE * day
 def BUCKET_AT(day: int) -> int: return FIXED_FIELDS + 2 + POINT_STRIDE * day
@@ -840,8 +849,8 @@ def change_layer(con, radius: float = PRIMARY_RADIUS):
     memory instead of refetching -- 152 locations keep their weekday buses and
     lose the weekend entirely, and that comparison should cost nothing.
 
-    Each row is [lat, lon, published, id, removed, then per day: cur, prop,
-    bucket index, boardings]. Boardings are `null`, never 0, at a point the
+    Each row is [lat, lon, published, id, removed, name, then per day: cur,
+    prop, bucket index, boardings]. Boardings are `null`, never 0, at a point the
     proposed network serves and today's does not -- see `point_boardings`. The
     id is `change_points`'s own -- `c:<stop_id>` or `p:<stop_id>` -- and it
     ships so that a selection made on the map can be named in a link.
@@ -859,6 +868,9 @@ def change_layer(con, radius: float = PRIMARY_RADIUS):
 
     removed = {f"c:{r['stop_id']}": r["removed"] for r in
                con.execute("SELECT stop_id, removed FROM stop_place")}
+    named = {f"{'c' if r['side'] == 'current' else 'p'}:{r['stop_id']}":
+             r["name"] for r in
+             con.execute("SELECT side, stop_id, name FROM stops")}
     boardings = point_boardings(con)
     idx = {k: i for i, k in enumerate(BUCKET_KEYS)}
     packed: dict[str, list] = {}
@@ -870,6 +882,7 @@ def change_layer(con, radius: float = PRIMARY_RADIUS):
                             # today, so "does the plan remove it" has no
                             # content there -- 0, never a missing key.
                             removed.get(r["point_id"], 0),
+                            named.get(r["point_id"], ""),
                             *([0] * (POINT_STRIDE * len(DAYS)))])
         day = DAYS.index(r["day"])
         p[CUR_AT(day):RIDERS_AT(day) + 1] = [
@@ -880,7 +893,7 @@ def change_layer(con, radius: float = PRIMARY_RADIUS):
         "radius": int(radius),
         "days": list(DAYS),
         "buckets": [{"key": k, "label": lab} for k, lab in BUCKETS],
-        "fields": ["lat", "lon", "published", "id", "removed",
+        "fields": ["lat", "lon", "published", "id", "removed", "name",
                    *[f"{d}_{f}" for d in DAYS
                      for f in ("cur", "prop", "bucket", "riders")]],
         # The distance to a replacement, for the 772 dots it says anything
@@ -905,8 +918,34 @@ def change_layer(con, radius: float = PRIMARY_RADIUS):
                 "SELECT stop_id, replacement_walk_m, nearest_straight_m "
                 "FROM stop_place "
                 "WHERE removed = 1 AND replacement_walk_m IS NOT NULL")},
+        # How far the plan stands a pole from where it stands today, for the
+        # 225 it moves at all. Sparse for the same reason `replacement` is,
+        # and keyed on the published point because a pole whose id survives is
+        # never a point of its own on the proposed side.
+        "moved": moved_poles(con),
         "points": list(packed.values()),
     }
+
+
+def moved_poles(con, moved: float = STOP_MOVED_M) -> dict[str, int]:
+    """Every pole the plan keeps and stands somewhere else, in metres.
+
+    `moved_pole` asked one stop at a time, for the pin's dashed leader. This
+    asks the whole county at once so a dot can say it with no pin down, and it
+    asks it the same way -- by the stop id, which is the agency saying "this is
+    that stop", never by guessing which of two neighbouring ids became which.
+    """
+    today = {r["stop_id"]: r for r in con.execute(
+        "SELECT stop_id, lat, lon FROM stops WHERE side = 'current'")}
+    out = {}
+    for r in con.execute("SELECT stop_id, lat, lon FROM stops "
+                         "WHERE side = 'proposed'"):
+        if r["stop_id"] not in today:
+            continue
+        far = moved_pole(con, r["stop_id"], r["lat"], r["lon"], moved)
+        if far:
+            out[f"c:{r['stop_id']}"] = far[0]
+    return out
 
 
 # --------------------------------------------------------------------------
