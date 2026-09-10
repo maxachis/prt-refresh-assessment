@@ -35,6 +35,20 @@ export interface StopRef {
    */
   new_place?: boolean;
   /**
+   * How far the plan moves a pole it keeps, in whole metres, with the
+   * coordinates that pole stands at today — `moved_lat`/`moved_lon`, which is
+   * where the map anchors the leader line.
+   *
+   * Proposed stops only, and absent rather than 0 where the pole did not move:
+   * the plan keeping a stop exactly where it is has nothing to say. Decided by
+   * the stop id alone (`query.moved_pole`), so a renumbered kerb carries no
+   * distance even where a move is plainly what happened — no feed says which
+   * of two neighbouring ids became which.
+   */
+  moved_m?: number;
+  moved_lat?: number;
+  moved_lon?: number;
+  /**
    * Whether the plan takes this stop away — retires the id and puts no
    * proposed stop within 150 m of it. Today's stops only, and the mirror of
    * `new_place`: a proposed stop is not something the plan can remove.

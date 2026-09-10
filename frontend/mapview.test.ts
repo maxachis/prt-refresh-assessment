@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { circle } from './mapview';
+import { circle, movedLeaders, stopPopupHtml } from './mapview';
 
 // The server decides membership of a radius with the equirectangular metric in
 // refresh/query.py (METERS_PER_DEGREE = 111_320, longitude scaled by cos lat).
@@ -41,5 +41,45 @@ describe('circle', () => {
   it('honours the 150 m sensitivity radius too', () => {
     const ring = circle(LAT, LON, 150).geometry.coordinates[0];
     expect(metresFrom(LAT, LON, ring[0] as [number, number])).toBeCloseTo(150, 0);
+  });
+});
+
+// A stop the plan keeps but moves draws twice -- ink where the pole stands
+// today, an orange ring where the plan puts it -- and past a few metres those
+// two marks separate on screen. What joins them back up is a dashed leader and
+// a hover line that names the distance; without either, the ring reads as a
+// stop the plan is adding beside one it left alone.
+describe('a pole the plan moves', () => {
+  const MOVED = {
+    stop_id: '1772', name: 'MT PLEASANT RD + COLBY ST',
+    lat: 40.4831227, lon: -80.0040302, metres: 54, new_place: false,
+    moved_m: 21, moved_lat: 40.48325, moved_lon: -80.00386,
+  };
+  const STILL = {
+    stop_id: '1773', name: 'MT PLEASANT RD + NORTHVIEW HTS SCHOOL',
+    lat: 40.48189, lon: -80.00278, metres: 148, new_place: false,
+  };
+
+  it('draws a leader from today\'s pole to the proposed one', () => {
+    const lines = movedLeaders([MOVED, STILL]);
+    expect(lines).toHaveLength(1);
+    expect(lines[0].geometry.coordinates).toEqual([
+      [MOVED.moved_lon, MOVED.moved_lat], [MOVED.lon, MOVED.lat],
+    ]);
+  });
+
+  it('draws nothing for a pole the plan leaves alone', () => {
+    expect(movedLeaders([STILL])).toEqual([]);
+  });
+
+  it('says how far it moved, on the mark the reader hovers', () => {
+    expect(stopPopupHtml({ ...MOVED, side: 'proposed' }))
+      .toContain('moved 21 m from where it stands today');
+  });
+
+  it('says nothing about moving where nothing moved', () => {
+    const html = stopPopupHtml({ ...STILL, side: 'proposed' });
+    expect(html).toContain('proposed');
+    expect(html).not.toContain('moved');
   });
 });

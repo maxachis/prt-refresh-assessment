@@ -69,6 +69,23 @@ solid on the panel's own bars, which is why the ring style is scoped to
   views to fix one overlap, and the ramp's blue is the one that has been
   published in screenshots.
 
+## What the ring turned up
+
+Making the core carry the meaning exposed a second reading the filled disc had
+hidden. Max found it at Northview Heights the same day: two orange rings beside
+two ink dots, looking like stops the plan was adding next to stops it kept. They
+are the same two poles — 1772 and 1797 — which the plan keeps and moves 21 m and
+10 m. The marks are painted at their own coordinates, so past a few metres they
+stop composing into one mark. 329 of the 4,878 ids both feeds share move at all,
+225 by more than 5 m, the worst by 178 m.
+
+Answered rather than filed: a proposed stop now carries how far the plan moved
+it and where its own pole stands today (`query.moved_pole`, threshold
+`STOP_MOVED_M`), the map draws a dashed orange leader between the two marks, and
+the ring's hover says "moved 21 m from where it stands today". Decided by the
+stop id alone, so a renumbered corner gets no leader — no feed says which of two
+neighbouring ids became which, and a guessed pairing would invent a fact.
+
 ## What would settle it
 
 Max's eye on the map: whether an empty orange ring still reads as a stop rather

@@ -120,6 +120,17 @@ PRIMARY_RADIUS = 400
 # `published = 1` and every point this governs is `published = 0`; the weekday
 # buckets at 400 m read 633/298/1420/1583/2113/237 either way.
 UNIVERSE_DEDUP_M = 150
+
+# How far the plan has to move a pole it keeps before the map says so.
+#
+# Not an identity threshold -- identity is settled above, and by the stop id
+# first of all, so a pole that moved 178 m is still that pole. This is a
+# drawing threshold: today's mark and the plan's mark are painted at their own
+# coordinates, and past a few metres they stop composing into one mark and read
+# as two stops. 5 m is about where they separate at the zooms the map uses, and
+# below it the gap is GPS noise in one feed or the other rather than a move
+# anybody made. 329 of the 4,878 ids both feeds share clear it.
+STOP_MOVED_M = 5.0
 RADII = (400, 150)
 
 # --- the lattice the magnitude surface is drawn on ------------------------
@@ -428,6 +439,32 @@ def is_removed_stop(con, stop_id: str, lat: float, lon: float,
     return not stops_within(con, lat, lon, dedup, "proposed")
 
 
+def moved_pole(con, stop_id: str, lat: float, lon: float,
+               moved: float = STOP_MOVED_M):
+    """Where this stop stands today, if the plan keeps it but moves it.
+
+    Answered by the stop id alone, which is the agency saying "this is that
+    stop" -- the same rule `is_new_place` puts ahead of any distance. A pole
+    the plan renumbers is therefore not a move here even where one is plainly
+    what happened: nothing in either feed says which of two neighbouring ids
+    became which, and a leader line drawn between a guessed pair would invent
+    a fact the map cannot support.
+
+    Returns the distance rounded to whole metres and today's coordinates, or
+    None where the id is new to the plan or the pole did not really move.
+    """
+    row = con.execute("SELECT lat, lon FROM stops WHERE side = 'current' "
+                      "AND stop_id = ? LIMIT 1", (stop_id,)).fetchone()
+    if row is None:
+        return None
+    dla = (lat - row["lat"]) * METERS_PER_DEGREE
+    dlo = (lon - row["lon"]) * METERS_PER_DEGREE * math.cos(math.radians(lat))
+    metres = math.hypot(dla, dlo)
+    if metres < moved:
+        return None
+    return round(metres), row["lat"], row["lon"]
+
+
 def side_at_place(con, side: str, lat: float, lon: float, radius: float):
     """Everything one network offers at one location, all three day types."""
     stops = stops_within(con, lat, lon, radius, side)
@@ -476,6 +513,9 @@ def side_at_place(con, side: str, lat: float, lon: float, radius: float):
                "metres": round(s[4])}
         if side == "proposed":
             row["new_place"] = is_new_place(con, s[0], s[2], s[3])
+            moved = moved_pole(con, s[0], s[2], s[3])
+            if moved is not None:
+                row["moved_m"], row["moved_lat"], row["moved_lon"] = moved
         else:
             fate = con.execute(
                 "SELECT removed, replacement_walk_m, nearest_straight_m "

@@ -713,6 +713,43 @@ def test_the_panel_says_which_proposed_stops_stand_where_none_stands_today(con):
     assert all("new_place" not in s for s in at["current"]["stops"])
 
 
+def test_the_panel_says_how_far_the_plan_moves_a_pole_it_keeps(con):
+    """A kept stop the plan nudges down the block draws as two marks.
+
+    `is_new_place` already refuses to call it new, because the plan kept the
+    id. But the mark for today's pole and the mark for the proposed one are
+    painted at their own coordinates, so a 20 m nudge splits them apart on
+    screen and the reader is owed the reason. The distance ships with the
+    proposed stop, together with where its own pole stands today, so the map
+    can draw the leader between them.
+    """
+    # Northview Heights: the plan keeps 1772 and 1797 and moves both a few
+    # metres up Mt Pleasant Road.
+    at = query.place(con, 40.48314, -80.00339, 400)
+    moved = {s["stop_id"]: s for s in at["proposed"]["stops"]
+             if s.get("moved_m") is not None}
+
+    assert "1772" in moved, "the plan moved this pole"
+    assert moved["1772"]["moved_m"] == 21
+    assert not moved["1772"]["new_place"], "a moved pole is not a new place"
+
+    for s in moved.values():
+        today = query.stops_within(
+            con, s["moved_lat"], s["moved_lon"], 1.0, "current")
+        assert s["stop_id"] in {t[0] for t in today}, (
+            "the coordinates the leader points at are that stop's own pole")
+        assert s["moved_m"] >= query.STOP_MOVED_M
+
+    # One-sided in the same way `new_place` is: the question is what the plan
+    # did to a pole, so it is asked of the plan's side only.
+    assert all("moved_m" not in s for s in at["current"]["stops"])
+
+    # And a stop the plan leaves where it is says nothing at all, rather than
+    # reporting a zero the map would have to filter out again.
+    kept = [s for s in at["proposed"]["stops"] if s["stop_id"] == "1773"]
+    assert kept and kept[0].get("moved_m") is None
+
+
 # --------------------------------------------------------------------------
 # the stop's own fate, beside what happens to the service around it
 # --------------------------------------------------------------------------

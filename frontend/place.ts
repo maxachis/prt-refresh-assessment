@@ -537,8 +537,8 @@ export function serviceBodyHTML(p: PlaceResult, d: Day, middle = ''): string {
       <span><i class="sw-pin"></i> where you clicked</span>
     </div>
     <div class="key-note">A stop both networks keep draws as an ink dot in an
-      orange ring. Two marks mean the plan nudged it across the intersection —
-      renumbering, not a change in service.</div>
+      orange ring; a dashed line joins a pole the plan moves to where it stands
+      today. Two marks with no line are a renumbering.</div>
 
     <dl class="facts">
       <dt>First and last</dt>

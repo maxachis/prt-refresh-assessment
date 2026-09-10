@@ -76,6 +76,35 @@ function fc(features: any[]) {
   return { type: 'FeatureCollection' as const, features };
 }
 
+/**
+ * The dashed leaders between a pole the plan keeps and where it moves it.
+ *
+ * The two marks are painted at their own coordinates, so past a few metres
+ * (`query.STOP_MOVED_M`) they stop composing into one mark and read as two
+ * separate stops — one of them looking like a stop the plan is adding. The
+ * leader says they are the same pole; the hover line says how far.
+ */
+export function movedLeaders(stops: StopRef[]) {
+  return stops
+    .filter((s) => s.moved_m != null)
+    .map((s) => ({
+      type: 'Feature' as const,
+      geometry: {
+        type: 'LineString' as const,
+        coordinates: [[s.moved_lon!, s.moved_lat!], [s.lon, s.lat]],
+      },
+      properties: { stop_id: s.stop_id, moved_m: s.moved_m },
+    }));
+}
+
+/** What a mark around the pin says when the reader hovers it. */
+export function stopPopupHtml(p: any) {
+  const side = p.side === 'current' ? 'today' : 'proposed';
+  const moved = p.moved_m != null
+    ? `<br>moved ${p.moved_m} m from where it stands today` : '';
+  return `<b>${p.name}</b><br>${side} · stop ${p.stop_id} · ${p.metres} m${moved}`;
+}
+
 function stopFeatures(stops: StopRef[], side: string) {
   return stops.map((s) => ({
     type: 'Feature' as const,
@@ -88,6 +117,7 @@ export function initMapLayers(map: maplibregl.Map) {
   map.addSource('walk', { type: 'geojson', data: fc([]) });
   map.addSource('stops-now', { type: 'geojson', data: fc([]) });
   map.addSource('stops-prop', { type: 'geojson', data: fc([]) });
+  map.addSource('stop-moves', { type: 'geojson', data: fc([]) });
 
   map.addLayer({
     id: 'walk-fill', type: 'fill', source: 'walk',
@@ -96,6 +126,16 @@ export function initMapLayers(map: maplibregl.Map) {
   map.addLayer({
     id: 'walk-line', type: 'line', source: 'walk',
     paint: { 'line-color': '#8fb7ff', 'line-width': 1.5, 'line-dasharray': [2, 2] },
+  });
+
+  // Under both marks, so the leader runs behind the poles it joins rather
+  // than across them. Orange because it belongs to the plan's mark: it is the
+  // plan that moved the pole.
+  map.addLayer({
+    id: 'stop-moves-l', type: 'line', source: 'stop-moves',
+    paint: {
+      'line-color': PROP, 'line-width': 1.5, 'line-dasharray': [2, 2],
+    },
   });
 
   // Proposed sits under current so that where a stop survives in both feeds the
@@ -130,10 +170,7 @@ export function initMapLayers(map: maplibregl.Map) {
       const f = e.features?.[0];
       if (!f) return;
       const p = f.properties;
-      popup.setLngLat(e.lngLat)
-        .setHTML(`<b>${p.name}</b><br>${p.side === 'current' ? 'today' : 'proposed'}
-                  · stop ${p.stop_id} · ${p.metres} m`)
-        .addTo(map);
+      popup.setLngLat(e.lngLat).setHTML(stopPopupHtml(p)).addTo(map);
     });
   }
 }
@@ -149,4 +186,6 @@ export function showPlace(
     .setData(fc(stopFeatures(nowStops, 'current')) as any);
   (map.getSource('stops-prop') as maplibregl.GeoJSONSource)
     .setData(fc(stopFeatures(propStops, 'proposed')) as any);
+  (map.getSource('stop-moves') as maplibregl.GeoJSONSource)
+    .setData(fc(movedLeaders(propStops)) as any);
 }
