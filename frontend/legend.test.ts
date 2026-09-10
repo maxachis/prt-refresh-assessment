@@ -385,6 +385,59 @@ const POPULATION: PopulationLayer = {
   cells: [[0, 0, 240, 0, 1500, 12, 100, 0, 700, 12, 50, 0, 600, 12]],
 };
 
+/**
+ * The two absolute rows carry the day they are true of.
+ *
+ * "Loses all service" and "new service" are the only labels on the key that
+ * claim a total, and a total is only ever true of one day type: 152 locations
+ * keep their weekday buses and lose the weekend entirely, so a reader on the
+ * Saturday setting who quotes "loses all service" without the day has said
+ * something the map never showed them. Max asked for this on 2026-09-09.
+ */
+describe('the day inside the absolute labels', () => {
+  const layerWith = (extra: any[] = []) =>
+    ({ ...LAYER, points: [...LAYER.points, ...extra] });
+
+  it('names weekdays on the two absolute rows', () => {
+    const el = stub();
+    renderLegend(el, { layer: layerWith(), day: 'weekday', bounds: BOX,
+                       weight: 'locations' });
+    expect(prose(el)).toContain('loses all service (weekdays)');
+    expect(prose(el)).toContain('new service (weekdays)');
+  });
+
+  it('follows the day switch', () => {
+    const el = stub();
+    renderLegend(el, { layer: layerWith(), day: 'saturday', bounds: BOX,
+                       weight: 'locations' });
+    expect(prose(el)).toContain('loses all service (Saturdays)');
+    expect(prose(el)).toContain('new service (Saturdays)');
+
+    const sun = stub();
+    renderLegend(sun, { layer: layerWith(), day: 'sunday', bounds: BOX,
+                        weight: 'locations' });
+    expect(prose(sun)).toContain('loses all service (Sundays)');
+  });
+
+  it('leaves the relative labels alone', () => {
+    // "Less service" is a comparison and reads correctly whatever day it is
+    // measured on; the day is already in the head line for those.
+    const el = stub();
+    renderLegend(el, { layer: layerWith(), day: 'saturday', bounds: BOX,
+                       weight: 'locations' });
+    expect(prose(el)).toContain('>less service<');
+    expect(prose(el)).not.toContain('less service (');
+  });
+
+  it('says it on the surface key too, which uses the same two words', () => {
+    const el = stub();
+    renderLegend(el, { layer: LAYER, day: 'sunday', bounds: BOX,
+                       weight: 'locations', surface: SURFACE, unit: 'area' });
+    expect(prose(el)).toContain('loses all service (Sundays)');
+    expect(prose(el)).toContain('new service (Sundays)');
+  });
+});
+
 describe('the surface key\'s ground/people switch', () => {
   const opts = { layer: LAYER, day: 'weekday' as const, bounds: BOX,
                  weight: 'locations' as const, surface: SURFACE };

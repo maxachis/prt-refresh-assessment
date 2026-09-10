@@ -41,6 +41,31 @@ const DAY_WORD: Record<Day, string> = {
   sunday: 'a Sunday',
 };
 
+/** The same three days, plural, for a label that has to carry one inside it. */
+const DAY_PLURAL: Record<Day, string> = {
+  weekday: 'weekdays',
+  saturday: 'Saturdays',
+  sunday: 'Sundays',
+};
+
+/**
+ * The two labels that claim a total, and so belong to one day type.
+ *
+ * Every other row is a comparison -- "less service" is true of whichever day
+ * it was measured on and reads correctly without saying which. These two are
+ * absolute, and an absolute is only ever true of the day in front of the
+ * reader: 152 locations keep their weekday buses and lose the weekend
+ * entirely, so "loses all service" on the Saturday setting means Saturdays and
+ * nothing more. Quoted off a screenshot without the day, it becomes a much
+ * larger claim than the map ever made. Max asked for the day on 2026-09-09.
+ */
+const DAY_BOUND_LABELS = new Set(['gone', 'new']);
+
+/** A bucket's label, carrying the day where the label claims a total. */
+function bucketLabel(key: string, label: string, day: Day): string {
+  return DAY_BOUND_LABELS.has(key) ? `${label} (${DAY_PLURAL[day]})` : label;
+}
+
 /**
  * Buckets in reading order, worst first.
  *
@@ -162,8 +187,10 @@ export function surfaceKey(opts: {
       <div class="lg-bar" style="background:linear-gradient(90deg, ${gradient})"></div>
       <div class="lg-ends"><span>¼ or less</span><span>same</span><span>4× or more</span></div>
       <div class="lg-steps">
-        <span><i style="background:${GONE_COLOR}"></i>loses all service</span>
-        <span><i style="background:${NEW_COLOR}"></i>new service</span>
+        <span><i style="background:${GONE_COLOR}"></i>loses all service
+          (${DAY_PLURAL[day]})</span>
+        <span><i style="background:${NEW_COLOR}"></i>new service
+          (${DAY_PLURAL[day]})</span>
       </div>
       <div class="seg lg-weight" role="group" aria-label="Show the surface as">
         ${(Object.keys(UNIT_LABEL) as SurfaceUnit[]).map((u) => `
@@ -668,7 +695,7 @@ export function renderLegend(el: HTMLElement, opts: LegendOptions) {
       <button class="lg-row ${isHidden(b.key) ? 'off' : ''}" data-bucket="${esc(b.key)}"
               aria-pressed="${!isHidden(b.key)}">
         <i style="background:${STYLE[b.key]?.color ?? '#666'}"></i>
-        <span class="lg-lab">${esc(b.label)}</span>
+        <span class="lg-lab">${esc(bucketLabel(b.key, b.label, day))}</span>
         <span class="lg-n">${cell(b.key)}</span>
       </button>`).join('')}
     ${marksBlock(newPlaces, removed, removedCell)}
