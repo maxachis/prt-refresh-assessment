@@ -65,6 +65,38 @@ appears.
 > reproducibility, never for proximity, so anything calling a stop "nearest"
 > has to sort for itself.
 
+## Why no dashed leader either
+
+> Max, 2026-09-10: "Why don't these have dashed lines indicating they've been
+> moved, as is the case with others?"
+
+Because nothing was moved, and the map can only say so where a feed says so.
+The leader (`query.moved_pole`, `mapview.movedLeaders`) is decided **by the
+stop id alone**: PRT keeping an id is the agency stating "this is that stop",
+and 225 poles countywide are kept and shifted more than `STOP_MOVED_M`. Those
+get a line.
+
+1670 and 1672 keep no id, so there is no pairing to draw — and here it is
+weaker than that. Every stop the plan serves near either of them **already runs
+today**: 1658, 1671 and 1669 around Davis; 1518, 1625, 1626 and 1519 around
+Lincoln. Nothing appeared; something went. A line from Davis to Washington
+would assert a relocation neither feed states, and would be wrong in substance
+too — Washington is not a replacement, it is a stop that has been there all
+along.
+
+That splits the 434 quiet drops in two, and the larger half is the honest
+no-line case:
+
+| | Count | What the map draws |
+|---|---|---|
+| Id retired, everything nearby already ran today | **376** | one mark short, no line — nothing to pair with |
+| Id retired, an id new to the plan stands nearby | 58 | two marks, no line — a renumbering the map can see but cannot prove |
+| Id kept, pole moved more than 5 m | 225 | both marks and a dashed leader |
+
+Both West View stops are in the first row. The pin key's "two marks with no
+line are a renumbering" speaks only to the second, which is the smaller group;
+the first has no sentence anywhere.
+
 ## Why this is not simply a bug
 
 It is the deliberate asymmetry recorded in `query.is_removed_stop`, arrived at
