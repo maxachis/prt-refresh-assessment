@@ -25,8 +25,13 @@ export interface HoverSpec {
    * The tooltip for a feature of that layer, or null for "nothing to say" --
    * which the dot layers return before their data has arrived. A null closes
    * the tooltip rather than leaving the previous feature's up.
+   *
+   * `beneath` is everything else the same hit test found, topmost first: what
+   * the pointer is over but not aimed at. A pin's stop mark uses it to say
+   * what the dot underneath it does, which is otherwise unreachable while the
+   * mark covers it -- and it is free, being the query that already ran.
    */
-  html(feature: any): string | null;
+  html(feature: any, beneath: any[]): string | null;
   /**
    * Where to anchor the tooltip. Defaults to the pointer: a dot anchors at its
    * own coordinates instead, so the tooltip does not drift off the mark it
@@ -76,7 +81,7 @@ export function initHover(
         && map.getLayoutProperty(id, 'visibility') !== 'none');
     if (!layers.length) { forget(); return; }
 
-    const [top] = map.queryRenderedFeatures(e.point, { layers });
+    const [top, ...beneath] = map.queryRenderedFeatures(e.point, { layers });
     if (!top) { forget(); return; }
 
     setCursor('pointer');
@@ -86,7 +91,7 @@ export function initHover(
     if (key === showing) return;
 
     const spec = owners.get(top.layer?.id);
-    const html = spec ? spec.html(top) : null;
+    const html = spec ? spec.html(top, beneath) : null;
     if (html === null || html === undefined) {
       showing = null;
       popup.remove();

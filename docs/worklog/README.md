@@ -32,7 +32,7 @@ pass — a reader who stops halfway down must not be misinformed.
 | [The site has two numbers that look like people](the-site-has-two-numbers-that-look-like-people.md) | open, wording decision owed — raised by Max |
 | [The map counts places, not riders](the-map-counts-places-not-riders.md) | fixed, awaiting close — built as the legend's Riders switch; a BASE_CAMP question ID is owed |
 | [The deploy box runs out of memory building the database](the-deploy-box-runs-out-of-memory-building-the-database.md) | open, decision owed — unblocked by a hand-added swapfile the repo does not know about |
-| [The stop marks outlive the click that drew them](stop-marks-outlive-the-click-that-drew-them.md) | open, not fixed |
+| [The stop marks outlive the click that drew them](stop-marks-outlive-the-click-that-drew-them.md) | fixed, awaiting close — the marks belong to the click and to a view with a walk radius, and leave when either stops being true |
 | [The panel keeps the Places list after leaving the Places view](the-panel-keeps-the-places-list-after-leaving-places.md) | open, not fixed |
 | [The place number has no view of its own](the-place-number-has-no-view-of-its-own.md) | open, decision owed — raised by Max |
 | [Two scripts now name a place differently](two-scripts-now-name-a-place-differently.md) | open, deliberate and scoped — travel time still names by nearest stop |
@@ -52,5 +52,5 @@ pass — a reader who stops halfway down must not be misinformed.
 | [The marks around the pin borrow the dot palette](the-pin-marks-borrow-the-dot-palette.md) | fixed, awaiting close — both marks left the bucket palette 2026-09-09: the core says today (ink or empty), the ring says the plan stops here |
 | [A pole the plan drops quietly has no mark of its own](a-pole-the-plan-drops-quietly-has-no-mark.md) | fixed, awaiting close — Max ruled 2026-09-10 that a retired pole is a removal however near the plan stops; the cross and the ring share one 25 m test again and the removal figure moves 972 → 1,308 |
 | [The dot key lost its caveats](the-dot-key-lost-its-caveats.md) | fixed, awaiting close — the three footnotes came out 2026-09-10; the infill one no longer applies now the mark counts poles, the other two replaced by nothing |
-| [A pin mark hides the dot underneath it](the-pin-mark-hides-the-dot-underneath-it.md) | open, decision owed — two units answer the same gesture, separated only by depth; raised by Max |
+| [A pin mark hides the dot underneath it](the-pin-mark-hides-the-dot-underneath-it.md) | fixed, awaiting close — a mark answers for the pole and for the location under it, off the hit test that already ran; raised by Max |
 | [The map hit-tests itself nineteen times per mouse move](the-map-hit-tests-itself-nineteen-times-per-mouse-move.md) | fixed, awaiting close — 19 hit tests per pointer move became 1, and the canvas pixel count was capped for software renderers; the frame rate that prompted it was a GPU-less VM. A raster basemap is worth ~10x more and is built but switched off — **a tile source is owed**, all three tried being watermarked, subscription-only, or the wrong look |

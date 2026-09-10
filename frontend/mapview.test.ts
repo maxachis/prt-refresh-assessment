@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { circle, movedLeaders, stopPopupHtml } from './mapview';
+import {
+  circle, clearPlace, movedLeaders, showPlace, stopPopupHtml, viewHasWalkRadius,
+} from './mapview';
 
 // The server decides membership of a radius with the equirectangular metric in
 // refresh/query.py (METERS_PER_DEGREE = 111_320, longitude scaled by cos lat).
@@ -92,5 +94,74 @@ describe('a pole the plan moves', () => {
     const html = stopPopupHtml({ ...STILL, side: 'proposed' });
     expect(html).toContain('proposed');
     expect(html).not.toContain('moved');
+  });
+});
+
+/** A map stub that records what each source was last given. */
+function fakeMap() {
+  const data: Record<string, any> = {};
+  return {
+    data,
+    getSource: (id: string) => ({ setData: (d: any) => { data[id] = d; } }),
+  };
+}
+
+describe('marks that outlive the click that drew them', () => {
+  const STOP = {
+    stop_id: '1773', name: 'MT PLEASANT RD + NORTHVIEW HTS SCHOOL',
+    lat: 40.48189, lon: -80.00278, metres: 148, new_place: false,
+  };
+  // A pole the plan shifts, so the leader source has something in it too --
+  // that being the one a partial clear would leave behind.
+  const MOVED = {
+    stop_id: '1772', name: 'MT PLEASANT RD + COLBY ST',
+    lat: 40.4831227, lon: -80.0040302, metres: 54, new_place: false,
+    moved_m: 21, moved_lat: 40.48325, moved_lon: -80.00386,
+  };
+  const SOURCES = ['walk', 'stops-now', 'stops-prop', 'stop-moves'];
+
+  it('erases every mark a click drew, not only the circle', () => {
+    const map = fakeMap();
+    showPlace(map as any, 40.4406, -79.9959, 400, [STOP], [MOVED]);
+    for (const id of SOURCES) expect(map.data[id].features.length).toBeGreaterThan(0);
+
+    clearPlace(map as any);
+    for (const id of SOURCES) expect(map.data[id].features).toEqual([]);
+  });
+
+  // The marks answer "what stands within this walk of the pin", so they belong
+  // to the views that ask that. A corridor is a piece of street (convention
+  // 11), a journey's walk is the router's own, and a place is measured at its
+  // own census blocks -- none of them has a walk radius for a circle to mean.
+  it('knows which views a walk circle means anything in', () => {
+    for (const v of ['dots', 'surface', 'both', 'oneseat']) {
+      expect(viewHasWalkRadius(v)).toBe(true);
+    }
+    for (const v of ['corridors', 'journey', 'places']) {
+      expect(viewHasWalkRadius(v)).toBe(false);
+    }
+  });
+});
+
+describe('a mark inside the pin, over a dot the pin hides', () => {
+  const STOP = {
+    stop_id: '1773', name: 'MT PLEASANT RD + NORTHVIEW HTS SCHOOL',
+    lat: 40.48189, lon: -80.00278, metres: 148, new_place: false,
+    side: 'current',
+  };
+
+  it('still says what the pole is', () => {
+    const html = stopPopupHtml(STOP, 'about the same · 203 → 213 buses');
+    expect(html).toContain(STOP.name);
+    expect(html).toContain('stop 1773');
+  });
+
+  it('adds what the location underneath it does', () => {
+    const html = stopPopupHtml(STOP, 'about the same · 203 → 213 buses');
+    expect(html).toContain('about the same · 203 → 213 buses');
+  });
+
+  it('says nothing extra where there is no dot under the mark', () => {
+    expect(stopPopupHtml(STOP, null)).toBe(stopPopupHtml(STOP));
   });
 });

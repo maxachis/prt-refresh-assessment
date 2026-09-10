@@ -1,10 +1,10 @@
 # A pin mark hides the dot underneath it, and the tooltip changes without saying so
 
-Inside a dropped pin the hover answers about a **pole** — stop id, which
+Inside a dropped pin the hover answered about a **pole** — stop id, which
 network, whether it moved — and a pixel away, outside the pin, the same gesture
-answers about a **location** and its bucket; nothing on screen says the second
-reading is still there underneath the first.
-Open, decision owed — raised by Max on 2026-09-10, deliberately not fixed.
+answered about a **location** and its bucket, with nothing saying the second
+reading was still there underneath the first.
+Fixed 2026-09-10, awaiting close — a mark now answers both, pole first.
 
 ## What was observed
 
@@ -61,8 +61,25 @@ Not put to Max; all of these are the agent's, and none is started.
   toggle in the pin key. Honest, invisible, and a discoverability problem of its
   own.
 - **Leave it.** Defensible: the pin is an explicit request for the finer unit,
-  and a reader who wants the coarser one can close the pin. It is where this
-  stands.
+  and a reader who wants the coarser one can close the pin.
+
+## How it was fixed
+
+Max chose the second, on 2026-09-10. A mark's tooltip now carries the pole
+first — name, network, stop id, and the metres it moved — then a rule, then the
+location's own line beneath it, which is `dotLabel`'s output unchanged, so the
+two readings cannot drift apart in wording or in day.
+
+It costs no second hit test. The hover already runs one `queryRenderedFeatures`
+per pointer move and took only the topmost feature; the dot under the mark was
+in that same result and was being thrown away. `HoverSpec.html` now receives
+the rest of the hit as `beneath`, and the stop-mark spec reads the dot out of
+it (`hover.ts`, `mapview.stopMarkHoverSpecs`, wired in `main.ts`).
+
+Two consequences worth knowing. The tooltip is taller, which is felt most where
+poles cluster a few metres apart — the objection recorded against this approach
+above, now shipped rather than answered. And where a mark stands on no dot at
+all, nothing extra is printed, so the pole tooltip is exactly what it was.
 
 Related: [`stop-marks-outlive-the-click-that-drew-them.md`](stop-marks-outlive-the-click-that-drew-them.md)
 is the same marks failing to be erased, which makes this reach further than the

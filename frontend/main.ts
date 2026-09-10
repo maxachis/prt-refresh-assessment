@@ -1,5 +1,7 @@
 import { $, fetchJSON, esc } from './utils';
-import { initMapLayers, showPlace, stopMarkHoverSpecs } from './mapview';
+import {
+  clearPlace, initMapLayers, showPlace, stopMarkHoverSpecs, viewHasWalkRadius,
+} from './mapview';
 import { render, renderEmpty, setDay, activeDay, placeLabel } from './place';
 import { oneSeatPanelHTML, oneSeatPromptHTML } from './oneseatpanel';
 import {
@@ -51,6 +53,7 @@ import { initHover } from './hover';
 import {
   PlaceResult, Day, OneSeatDay, JourneyResult, NamedDestination, Weight,
   SurfaceUnit,
+  StopRef,
 } from './types';
 
 const PGH: [number, number] = [-79.9959, 40.4406];
@@ -292,7 +295,15 @@ map.on('load', () => {
   // under the cursor.
   const popup = new maplibregl.Popup({ closeButton: false, offset: 8 });
   clearHover = initHover(map, popup, [
-    ...stopMarkHoverSpecs(),
+    // A pin's marks are drawn above the dots, so while a pin is down the dot
+    // beneath a mark cannot be hovered at all. The mark answers for both: the
+    // pole it is, then what the location under it does. The dot is already in
+    // the same hit test, so this costs no second query.
+    ...stopMarkHoverSpecs((beneath: any[]) => {
+      const d = layerData();
+      const dot = beneath.find((f) => CHANGE_HIT_LAYERS.includes(f.layer?.id));
+      return d && dot ? dotLabel(dot.properties, activeDay(), d.buckets) : null;
+    }),
     // A removed stop is drawn as a cross and not as a dot, so naming the dot
     // layer alone would leave the 1,308 stops the plan takes away with no
     // hover at all -- and the removal sentence, with the walk to the nearest
@@ -433,7 +444,11 @@ map.on('load', () => {
     // router's own (`journey.CONSTANTS`), and a place is measured at every
     // one of its own census blocks, not inside a circle. Disabled rather
     // than left clickable and silently ignored.
-    setRadiusEnabled(view !== 'corridors' && view !== 'journey' && view !== 'places');
+    setRadiusEnabled(viewHasWalkRadius(view));
+    // The marks answer for a walk radius, so they leave with the views that
+    // have one -- and come back when the reader returns to one, since the
+    // answer they were drawn from is still the current one.
+    syncPlaceMarks();
     // The destination picker means something in two views, and a mode left
     // armed behind a hidden control is a click the reader cannot account for.
     const picksDestination = view === 'oneseat' || view === 'journey';
@@ -1288,6 +1303,11 @@ async function load(lat: number, lon: number) {
   $('panel').classList.add('loading');
 
   placeMarker(lat, lon);
+  // The previous click's marks are about to be replaced or, if this question
+  // has no answer, to have been wrong: either way they stop being true now
+  // rather than when the fetch returns.
+  clearPlace(map);
+  $('pin-key').classList.add('hidden');
 
   try {
     // Carry the dropped pin, if there is one, so the panel answers for the
@@ -1298,8 +1318,8 @@ async function load(lat: number, lon: number) {
       `/api/place?lat=${lat.toFixed(6)}&lon=${lon.toFixed(6)}&radius=${radius}`
       + `${pin}&oneseat_day=${oneSeatDay()}`);
     if (mine !== seq) return;       // a newer click already won
-    showPlace(map, lat, lon, radius, p.current.stops, p.proposed.stops);
-    showPinKey();
+    marks = { lat, lon, radius, now: p.current.stops, proposed: p.proposed.stops };
+    syncPlaceMarks();
     lastPlace = p;
     renderPanel({ scrollToTop: true });
   } catch (err) {
@@ -1313,6 +1333,40 @@ async function load(lat: number, lon: number) {
 }
 
 /**
+ * What the marks on the map were drawn from, or null for "none are drawn".
+ *
+ * Held rather than recomputed because the marks carry the radius they were
+ * measured at, not the one now selected in the toolbar -- the key says so, and
+ * a reader switching radius sees the old circle until the new answer lands.
+ */
+let marks: {
+  lat: number; lon: number; radius: number;
+  now: StopRef[]; proposed: StopRef[];
+} | null = null;
+
+/**
+ * Draw the pin's marks where they mean something, and erase them where they do
+ * not.
+ *
+ * They were written and never erased before 2026-09-10: a circle drawn in
+ * Locations hung over the Streets view, which has no walk radius at all, and
+ * stop marks from an earlier click went on shadowing dots -- and their hovers
+ * -- somewhere the reader had moved on from. The rule is that the marks belong
+ * to the click that drew them AND to a view that asks a walk-radius question;
+ * they come back on returning to one, because the answer behind them is still
+ * the current answer.
+ */
+function syncPlaceMarks() {
+  if (!marks || !viewHasWalkRadius(view)) {
+    clearPlace(map);
+    $('pin-key').classList.add('hidden');
+    return;
+  }
+  showPlace(map, marks.lat, marks.lon, marks.radius, marks.now, marks.proposed);
+  showPinKey(marks.radius);
+}
+
+/**
  * Reveal the key for the marks a click leaves on the map.
  *
  * Called where the marks are drawn rather than from the legend render, which
@@ -1320,8 +1374,8 @@ async function load(lat: number, lon: number) {
  * key has to say the radius they were drawn at, not the one now selected in
  * the toolbar.
  */
-function showPinKey() {
-  $('pin-key').innerHTML = pinKeyHTML(radius);
+function showPinKey(drawnAt: number) {
+  $('pin-key').innerHTML = pinKeyHTML(drawnAt);
   $('pin-key').classList.remove('hidden');
 }
 

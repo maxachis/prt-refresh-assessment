@@ -107,12 +107,53 @@ export function movedLeaders(stops: StopRef[]) {
  * numbers read as one -- Max took the distance from the pin for the distance
  * the plan had shifted the pole. How far a pole moved is the one fact with no
  * picture of its own, since today's pole and the plan's are two marks.
+ *
+ * IT ALSO CARRIES THE LOCATION'S OWN LINE, because it is standing on top of
+ * it. The pin's marks are drawn above the change dots, so while a pin is down
+ * the dot beneath a mark cannot be hovered at all: the same pixel answered
+ * about a pole, and the location reading -- a different unit, per convention 2
+ * -- was unreachable with nothing on screen saying so. Max found that by
+ * accident. So the mark answers both, pole first, since the pole is what the
+ * reader aimed at.
  */
-export function stopPopupHtml(p: any) {
+export function stopPopupHtml(p: any, location?: string | null) {
   const side = p.side === 'current' ? 'today' : 'proposed';
   const moved = p.moved_m != null
     ? `<br>moved ${p.moved_m} m from where it stands today` : '';
-  return `<b>${p.name}</b><br>${side} · stop ${p.stop_id}${moved}`;
+  const beneath = location
+    ? `<div style="margin-top:6px;padding-top:6px;border-top:1px solid rgba(255,255,255,.18)">`
+      + `${location}</div>`
+    : '';
+  return `<b>${p.name}</b><br>${side} · stop ${p.stop_id}${moved}${beneath}`;
+}
+
+/**
+ * Whether a walk circle means anything in this view.
+ *
+ * The marks answer "what stands within this walk of the pin", so they belong
+ * to the views that ask it. A corridor is a piece of street (convention 11), a
+ * journey's walk is the router's own (`journey.CONSTANTS`), and a place is
+ * measured at every one of its own census blocks -- none of the three has a
+ * radius for a circle to be drawn at.
+ */
+export function viewHasWalkRadius(view: string): boolean {
+  return view !== 'corridors' && view !== 'journey' && view !== 'places';
+}
+
+/**
+ * Erase every mark a click left, all four sources together.
+ *
+ * They were written and never erased, so a circle drawn in Locations went on
+ * hanging over the Streets view, and stop marks from an earlier click went on
+ * shadowing dots elsewhere on the map -- including their hover, which is the
+ * defect above wearing a different hat. Four sources rather than one: the
+ * circle, the two stop inventories and the leaders between moved poles. Miss
+ * one and the map keeps half an old answer.
+ */
+export function clearPlace(map: maplibregl.Map) {
+  for (const id of ['walk', 'stops-now', 'stops-prop', 'stop-moves']) {
+    (map.getSource(id) as maplibregl.GeoJSONSource)?.setData(fc([]) as any);
+  }
 }
 
 function stopFeatures(stops: StopRef[], side: string) {
@@ -179,10 +220,15 @@ export function initMapLayers(map: maplibregl.Map) {
  * marks share the one tooltip, instead of the second popup this module used to
  * own being able to stand open beside the dots' one.
  */
-export function stopMarkHoverSpecs(): HoverSpec[] {
+export function stopMarkHoverSpecs(
+  locationUnder: (beneath: any[]) => string | null,
+): HoverSpec[] {
   return ['stops-now-c', 'stops-prop-c'].map((layer) => ({
     layer,
-    html: (f: any) => stopPopupHtml(f.properties),
+    // `beneath` is the rest of the same hit test -- the dot the mark is
+    // standing on is already in it, so reading it costs no second query.
+    html: (f: any, beneath: any[] = []) =>
+      stopPopupHtml(f.properties, locationUnder(beneath)),
   }));
 }
 
