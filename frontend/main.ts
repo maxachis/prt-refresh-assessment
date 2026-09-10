@@ -1,5 +1,5 @@
 import { $, fetchJSON, esc } from './utils';
-import { initMapLayers, showPlace } from './mapview';
+import { initMapLayers, showPlace, stopMarkHoverSpecs } from './mapview';
 import { render, renderEmpty, setDay, activeDay, placeLabel } from './place';
 import { oneSeatPanelHTML, oneSeatPromptHTML } from './oneseatpanel';
 import {
@@ -46,6 +46,8 @@ import {
 } from './urlstate';
 import { fullViewLabel, isEmbedded, withEmbed, withoutEmbed } from './embed';
 import { initSheet, onLayoutFlip, Sheet } from './sheet';
+import { canvasScale, fadeMs, readMachine } from './hardware';
+import { initHover } from './hover';
 import {
   PlaceResult, Day, OneSeatDay, JourneyResult, NamedDestination, Weight,
   SurfaceUnit,
@@ -193,9 +195,32 @@ let sheet: Sheet;
 // second definition of Downtown.
 let named: NamedDestination[] = [];
 
+/** Closes the map's one hover tooltip; set when the hover is wired below. */
+let clearHover: () => void = () => {};
+
+// Read before the map is built, because the two settings it decides are
+// constructor options: what is drawing this page, and therefore how many
+// pixels it is worth asking for. See `hardware.ts` -- the short version is
+// that a browser with no graphics chip draws every frame on its processor,
+// and the pixel count is the only lever that helps it which does not also
+// take something off the map.
+const machine = readMachine();
+
 const map = new maplibregl.Map({
   container: 'map',
   style: 'https://tiles.openfreemap.org/styles/positron',
+  // Fragments are the whole cost on a software renderer and most of it on a
+  // weak GPU. Capped at the device's own ratio, at 2 on any hardware, and at
+  // 1 where the renderer names itself a CPU rasteriser.
+  pixelRatio: canvasScale(machine),
+  // A fade is a repaint per frame for as long as it runs. Kept on hardware,
+  // where it is what stops labels popping; dropped where a repaint costs more
+  // than the frame that asked for it.
+  fadeDuration: fadeMs(machine),
+  // A regional map: there is one Allegheny County and it is never near the
+  // antimeridian, so drawing the world either side of it is fill spent on
+  // ground no reader of this site will ever pan to.
+  renderWorldCopies: false,
   center: opening.camera ? [opening.camera.lon, opening.camera.lat] : PGH,
   zoom: opening.camera?.zoom ?? PGH_ZOOM,
   // Embedded in someone else's page, the wheel is theirs: a reader scrolling
@@ -255,56 +280,47 @@ map.on('load', () => {
     askAt(c[1], c[0]);
   });
 
-  // Hovering the choropleth indicates it is clickable, the same cue the dot
-  // layers give -- see the mouseenter/mouseleave pairs below.
-  map.on('mouseenter', BOUNDARY_LAYER, () => { map.getCanvas().style.cursor = 'pointer'; });
-  map.on('mouseleave', BOUNDARY_LAYER, () => { map.getCanvas().style.cursor = ''; });
-
+  // Everything that answers the pointer, in one place and behind one hit
+  // test. `initHover` explains why: MapLibre's per-layer listeners were
+  // running 19 queries per pointer move, four of the six layers belonging to
+  // views that were not on screen, and a drag pays that on every frame.
+  //
+  // Order is render order, topmost first, so a pin's mark wins over the dot
+  // underneath it -- which is what the reader is aiming at when both are
+  // under the cursor.
   const popup = new maplibregl.Popup({ closeButton: false, offset: 8 });
-  // Both marks answer the pointer. A removed stop is drawn as a cross and not
-  // as a dot, so binding the dot layer alone would leave the 1,308 stops the
-  // plan takes away with no hover at all -- and the removal sentence, with
-  // the walk to the nearest surviving stop, lives in that hover.
-  for (const id of CHANGE_HIT_LAYERS) {
-    map.on('mouseenter', id, () => { map.getCanvas().style.cursor = 'pointer'; });
-    map.on('mouseleave', id, () => {
-      map.getCanvas().style.cursor = '';
-      popup.remove();
-    });
-    map.on('mousemove', id, (e: any) => {
-      const f = e.features?.[0];
-      const d = layerData();
-      if (!f || !d) return;
-      popup.setLngLat((f.geometry as any).coordinates)
-        .setHTML(dotLabel(f.properties, activeDay(), d.buckets)).addTo(map);
-    });
-  }
-
-  map.on('mouseenter', 'oneseat-dots', () => { map.getCanvas().style.cursor = 'pointer'; });
-  map.on('mouseleave', 'oneseat-dots', () => {
-    map.getCanvas().style.cursor = '';
-    popup.remove();
-  });
-  map.on('mousemove', 'oneseat-dots', (e: any) => {
-    const f = e.features?.[0];
-    const d = oneSeatData();
-    if (!f || !d) return;
-    popup.setLngLat((f.geometry as any).coordinates)
-      .setHTML(oneSeatDotLabel(f.properties, d)).addTo(map);
-  });
-
-  // The choropleth's own hover tooltip, sharing the one popup every other
-  // layer uses. `placeFill` decides which reading leads (`placeTooltipHTML`'s
-  // own doc), so this reads the module state directly rather than caching a
-  // stale copy captured when the handler was wired. `activeDay()` is read
-  // the same way, for the one reading ('service') that has a day of its own.
-  map.on('mouseleave', BOUNDARY_LAYER, () => popup.remove());
-  map.on('mousemove', BOUNDARY_LAYER, (e: any) => {
-    const f = e.features?.[0];
-    if (!f) return;
-    popup.setLngLat(e.lngLat)
-      .setHTML(placeTooltipHTML(f.properties, placeFill, activeDay())).addTo(map);
-  });
+  clearHover = initHover(map, popup, [
+    ...stopMarkHoverSpecs(),
+    // A removed stop is drawn as a cross and not as a dot, so naming the dot
+    // layer alone would leave the 1,308 stops the plan takes away with no
+    // hover at all -- and the removal sentence, with the walk to the nearest
+    // surviving stop, lives in that hover.
+    ...CHANGE_HIT_LAYERS.map((layer) => ({
+      layer,
+      html: (f: any) => {
+        const d = layerData();
+        return d ? dotLabel(f.properties, activeDay(), d.buckets) : null;
+      },
+      anchor: (f: any) => (f.geometry as any).coordinates,
+    })),
+    {
+      layer: 'oneseat-dots',
+      html: (f: any) => {
+        const d = oneSeatData();
+        return d ? oneSeatDotLabel(f.properties, d) : null;
+      },
+      anchor: (f: any) => (f.geometry as any).coordinates,
+    },
+    // The choropleth's tooltip anchors at the pointer, having no point of its
+    // own to sit on. `placeFill` decides which reading leads
+    // (`placeTooltipHTML`'s own doc), so this reads the module state rather
+    // than a copy captured when the handler was wired; `activeDay()` likewise,
+    // for the one reading ('service') that has a day of its own.
+    {
+      layer: BOUNDARY_LAYER,
+      html: (f: any) => placeTooltipHTML(f.properties, placeFill, activeDay()),
+    },
+  ]);
 
   initBrush();
 
@@ -391,9 +407,11 @@ map.on('load', () => {
     const previous = view;
     view = b.dataset.view!;
     // A hover popup outlives the layer it came from otherwise: the pointer
-    // never leaves the canvas on a toolbar click, so no mouseleave fires and
-    // a "Stop removed" tooltip sits over the Streets map.
-    popup.remove();
+    // never leaves the canvas on a toolbar click, so nothing else closes it
+    // and a "Stop removed" tooltip sits over the Streets map. Through
+    // `clearHover` rather than the popup directly, so the hover forgets what
+    // it was showing and will reopen it if the pointer is still on the dot.
+    clearHover();
     showChangeLayers(map, view === 'dots' || view === 'both');
     void showSurface(view === 'surface' || view === 'both');
     void showCorridors(view === 'corridors');

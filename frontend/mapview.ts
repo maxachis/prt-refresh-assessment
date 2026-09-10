@@ -7,6 +7,7 @@
  * and nudges stops across intersections — and a toggle would hide exactly that.
  */
 import { StopRef } from './types';
+import { HoverSpec } from './hover';
 
 /**
  * The mark for a stop today, in ink rather than the app's "today" blue.
@@ -168,20 +169,21 @@ export function initMapLayers(map: maplibregl.Map) {
     },
   });
 
-  const popup = new maplibregl.Popup({ closeButton: false, offset: 10 });
-  for (const layer of ['stops-now-c', 'stops-prop-c']) {
-    map.on('mouseenter', layer, () => { map.getCanvas().style.cursor = 'pointer'; });
-    map.on('mouseleave', layer, () => {
-      map.getCanvas().style.cursor = '';
-      popup.remove();
-    });
-    map.on('mousemove', layer, (e: any) => {
-      const f = e.features?.[0];
-      if (!f) return;
-      const p = f.properties;
-      popup.setLngLat(e.lngLat).setHTML(stopPopupHtml(p)).addTo(map);
-    });
-  }
+}
+
+/**
+ * The pointer's answer for the two marks a click puts around a pin.
+ *
+ * Handed to `initHover` with every other hoverable layer rather than bound
+ * here, so the whole map costs one hit test per pointer move -- and so these
+ * marks share the one tooltip, instead of the second popup this module used to
+ * own being able to stand open beside the dots' one.
+ */
+export function stopMarkHoverSpecs(): HoverSpec[] {
+  return ['stops-now-c', 'stops-prop-c'].map((layer) => ({
+    layer,
+    html: (f: any) => stopPopupHtml(f.properties),
+  }));
 }
 
 export function showPlace(

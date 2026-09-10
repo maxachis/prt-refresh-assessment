@@ -1098,6 +1098,54 @@ change three other views by repainting rather than re-fetching.
 Two pages, not one endpoint each: `GET /` is the map and `GET /findings` is the
 equity brief.
 
+## Drawing it on a machine with no graphics chip
+
+A vector map recomputes every dot's screen position on every frame and then
+fills the pixels under them, and some of the machines this is read on have
+nothing but a processor to do that with. Max's VM is the measured case:
+`chrome://gpu` reports every acceleration path off and WebGL arrives through
+Mesa's CPU rasteriser, which names itself `llvmpipe, or similar`. The same is
+true of any browser falling back to SwiftShader, of a locked-down office
+desktop, and of the cheap end of the phones a public-comment audience reads on.
+
+Two things were done about it on 2026-09-10, and one thing was deliberately not.
+
+**Fewer pixels, not fewer dots** (`frontend/hardware.ts`). The canvas is capped
+at 2 device pixels per CSS pixel on any machine — above that the returns are
+invisible and the cost is quadratic, a phone at 3 filling 2.25× the fragments
+of the same map at 2 — and at **1** where the renderer names itself a software
+rasteriser. Measured here at an emulated device ratio of 2, dragging the
+countywide dot view under llvmpipe: **579 ms per frame uncapped against 274 ms
+capped**, two runs each. The label fade goes to 0 in the same case, a fade
+being a repaint per frame for as long as it runs, and world copies are off for
+everyone — there is one Allegheny County and no reader will pan to a second.
+An unrecognised renderer is assumed to be hardware, so a name the list has not
+met costs one reader some sharpness rather than costing every reader theirs.
+
+**One hit test per pointer move, not nineteen** (`frontend/hover.ts`).
+MapLibre's `map.on('mousemove', layer, …)` is a delegated listener that runs
+`queryRenderedFeatures` itself, once per listener: three listeners on each of
+six layers was 19 queries for one mouse move, and four of those six layers
+belonged to views that were not on screen. A drag delivers a pointer event per
+frame, so that work landed on exactly the frames a reader judges the map by.
+The app now dispatches instead — one query over the layers the current view is
+drawing, the topmost feature routed to whichever spec owns its layer, and the
+tooltip left alone while the pointer stays on one feature. **19 queries → 1,
+and 5.1 ms → 1.0 ms of main-thread JavaScript per pointer move at zoom 12**
+(p90 17.4 → 5.1 ms). It also collapses the two popups that could previously
+stand open at once, the pin marks having owned one of their own.
+
+**Not fewer features.** Thinning the dots at low zoom is the obvious third
+lever and it is the one that may not be pulled: the key counts the rows, not
+what survived a filter, so a map drawing 3,000 of the 6,765 dots would print a
+number no reader could see. Max's ruling that every stop is displayed
+regardless of pin (2026-09-10) settles it in the same direction.
+
+**None of this is measurable from a machine with a GPU**, and the reverse is
+also true — this repo's own test browser is llvmpipe, so its frame times say
+what Max's VM feels and nothing about what a visitor's phone feels. Frame
+numbers here are A/B against themselves, never absolute.
+
 ## Linking to a view, and embedding one
 
 The map's own state lives in its query string, so a view can be sent to

@@ -1,12 +1,13 @@
 # The map hit-tests itself nineteen times per mouse move
 
-Every pointer movement over the map runs 19 separate `queryRenderedFeatures`
+Every pointer movement over the map ran 19 separate `queryRenderedFeatures`
 calls — three for each of six hover layers, including four that the current
-view is not showing — costing 2.5–3.5 ms of main-thread JavaScript per move,
-which is spent again on every frame of a drag because a pan is a stream of
+view was not showing — costing 2.5–3.5 ms of main-thread JavaScript per move,
+and spending it again on every frame of a drag, because a pan is a stream of
 mouse moves.
-Open, not fixed: measured 2026-09-10 while looking into a frame rate Max
-reports as struggling. One query per move would do the same work.
+Fixed, awaiting close: 19 queries became 1 on 2026-09-10, and the pixel count
+-- the lever that actually mattered for the frame rate that prompted it -- was
+capped in the same change.
 
 ## What was measured
 
@@ -109,3 +110,35 @@ hit-testing above, and it is testable here.
 - **Do nothing until the environment question is settled.** Defensible: if the
   answer is a software rasteriser, this work will not be felt. It is still 19
   hit-tests where 1 would do, and it will be felt on a phone.
+
+## What was done
+
+Max set the goal on 2026-09-10: "The site should be robust on weak hardware."
+Two changes, both measured on this repo's own llvmpipe browser, which is the
+right test bed for exactly this and the wrong one for anything else.
+
+**The pixel count** (`frontend/hardware.ts`). The canvas is capped at 2 device
+pixels per CSS pixel everywhere, and at 1 where the WebGL renderer names itself
+a software rasteriser; the label fade drops to 0 in that case, and world copies
+are off for everyone. At an emulated device pixel ratio of 2, dragging the
+countywide dot view: **579 ms per frame uncapped, 274 ms capped** (two runs
+each; 617/541 against 265/282). This is the change that speaks to the original
+complaint, and it does nothing at all on a screen already at ratio 1.
+
+**The hit tests** (`frontend/hover.ts`). One `queryRenderedFeatures` per
+pointer move over the layers the current view is drawing, with the topmost
+feature routed to whichever spec owns its layer, and the tooltip left alone
+while the pointer stays on one feature. **19 → 1, and 5.1 ms → 1.0 ms of
+main-thread JavaScript per move at zoom 12**; p90 17.4 → 5.1 ms. Two popups
+could previously stand open at once — the pin marks owned a second one — and
+now cannot.
+
+A third lever was rejected rather than deferred: **thinning the dots at low
+zoom**. The key counts the rows, not what survived a filter, so a map drawing
+half the dots would print a number no reader could check against what they can
+see. Max's ruling that every stop is displayed regardless of pin points the
+same way.
+
+What none of this establishes is what the site feels like to a visitor with a
+GPU. Nobody in this session can measure that; it needs a real phone pointed at
+the local server.
