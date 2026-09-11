@@ -498,6 +498,24 @@ CAVEATS = [
                 "below it, which is what data/coverage_change.csv carries.",
     },
     {
+        "id": "one-direction",
+        "text": "The walk radius is a circle, and a route's two directions "
+                "often run on different streets -- the 61A/B/C and the 71B "
+                "use the Fifth/Forbes one-way pair -- so a location can reach "
+                "a route one way only, its other direction stopping outside "
+                "the circle. That is real access, not a fault in the count: a "
+                "rider here really can board only one way. Across the 6,644 "
+                "locations with a weekday bus today, at 400 m, 14% catch at "
+                "least one route in one direction only and 1% catch every "
+                "route that way. It is convention 4's radius sensitivity "
+                "arriving per direction: a pole a few metres outside the "
+                "circle adds or drops a whole direction of a route, so a "
+                "figure at 400 m and the same figure at 150 m can differ by "
+                "one direction of one route rather than by a stop. Where any "
+                "route here is one-directional the trip counts are labelled "
+                "\"one or both directions\" rather than \"both\".",
+    },
+    {
         "id": "radius",
         "text": "400 m is the headline quarter-mile access distance; 150 m is "
                 "the strict same-corner test. Where the two disagree, both are "

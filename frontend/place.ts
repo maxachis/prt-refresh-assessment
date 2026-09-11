@@ -48,6 +48,18 @@ import {
 const AT_THIS_STOP = 'at this stop';
 const withinWalk = (radius: number) => `within ${radius} m`;
 
+/**
+ * What the headline may claim about directions, which is not always both.
+ *
+ * A radius is a circle and a one-way pair puts a route's two directions on
+ * two streets, so "both directions" was a promise the count did not keep at
+ * one location in seven. The clause is chosen from the measurement rather
+ * than fixed in the template, and at a kerb — one side of one street — there
+ * is no honest directional claim to make at all, so it carries none.
+ */
+const BOTH_DIRECTIONS = 'both directions';
+const ONE_OR_BOTH_DIRECTIONS = 'one or both directions';
+
 let day: Day = 'weekday';
 
 export function activeDay(): Day {
@@ -451,6 +463,33 @@ function removedStopsFact(stops: StopRef[]): string {
     <dd>${gone.length} of ${stops.length}<div class="muted">${note}</div></dd>`;
 }
 
+/**
+ * How many of the routes here a rider can only board one way.
+ *
+ * The row exists because the headline above it used to say "both directions"
+ * of a count that at one location in seven includes a route in one direction
+ * only: the 61A/B/C and the 71B run the Fifth/Forbes one-way pair, so the
+ * circle round a pin in Crawford-Roberts catches four of today's seven routes
+ * inbound and nothing outbound. Absent rather than zero where neither network
+ * has one, on the commonest kind of corner there is — the same rule the added
+ * and removed stop rows follow.
+ *
+ * Not a loss and not graded: a rider who can board one way really can board
+ * one way, and both networks are measured in the same circle. What it warns
+ * about is the edge — convention 4's radius sensitivity, one direction of one
+ * route at a time.
+ */
+function oneDirectionFact(before: DayService, after: DayService): string {
+  const now = before.one_direction_routes ?? [];
+  const prop = after.one_direction_routes ?? [];
+  if (!now.length && !prop.length) return '';
+  const of = (part: string[], all: string[]) =>
+    `${part.length} of ${all.length}`;
+  return `
+      <dt>Routes in one direction only${methodLink('one-direction')}</dt>
+      ${compare(of(now, before.routes), of(prop, after.routes))}`;
+}
+
 function boardingsFact(b: Boardings | null, d: Day, scope: string): string {
   if (!b) return '';
   const stops = b.measured + b.unmeasured;
@@ -520,9 +559,15 @@ function residentsBlock(pop: PlacePopulation | null): string {
  * The scope is a required argument rather than a default, because this is the
  * biggest type on the panel and there are now two of it on screen: an
  * unscoped headline is exactly the number a reader carries away wrong.
+ *
+ * `directions` is the clause after the scope, and it is optional because one
+ * of the two blocks has nothing true to say there: a kerb is one side of one
+ * street. Passed as a phrase rather than a flag so the call site reads as the
+ * sentence it produces.
  */
 function headlineHTML(before: DayService, after: DayService,
-                      d: Day, scope: string): string {
+                      d: Day, scope: string,
+                      { directions }: { directions?: string } = {}): string {
   const delta = after.trips - before.trips;
   const dcls = delta > 0 ? 'up' : delta < 0 ? 'down' : 'flat';
   return `
@@ -541,7 +586,8 @@ function headlineHTML(before: DayService, after: DayService,
         <div class="muted">${pct(before.trips, after.trips)}</div>
       </div>
     </div>
-    <div class="sub">buses per ${dayWord(d)} ${esc(scope)}, both directions</div>`;
+    <div class="sub">buses per ${dayWord(d)} ${esc(scope)}${
+      directions ? `, ${esc(directions)}` : ''}</div>`;
 }
 
 /** The seven periods the headline above sums over. Scope-free by itself. */
@@ -612,6 +658,14 @@ function routesBlockHTML(before: DayService, after: DayService,
  * It is NOT a published figure, and says so. `data/coverage_change.csv` and
  * `docs/answers/` publish the location — convention 2 — and this block would
  * misquote them by an order of magnitude if it were read as theirs.
+ *
+ * AND IT CLAIMS NOTHING ABOUT DIRECTIONS. Its headline said "both directions"
+ * until 2026-09-10, which at a kerb is wrong by construction rather than
+ * occasionally: a kerb is one side of one street, so most of what calls there
+ * calls one way, and the poles within 25 m of it may or may not include the
+ * opposite one. There is no short true clause, so the sentence stops at the
+ * scope — "buses per weekday at this stop" — and the one-direction row stays
+ * in the walk-radius block, where it is news.
  */
 export function kerbBlockHTML(k: KerbResult, d: Day): string {
   const before = k.current.days[d];
@@ -654,8 +708,15 @@ export function serviceBodyHTML(p: PlaceResult, d: Day, middle = ''): string {
   const before = p.current.days[d];
   const after = p.proposed.days[d];
 
+  // "Both directions" only where the circle really caught both of every
+  // route's; otherwise the honest clause, on either network's evidence.
+  const oneWay = before.one_direction_routes?.length
+    || after.one_direction_routes?.length;
+
   return `
-    ${headlineHTML(before, after, d, withinWalk(p.radius))}
+    ${headlineHTML(before, after, d, withinWalk(p.radius),
+                   { directions: oneWay ? ONE_OR_BOTH_DIRECTIONS
+                                        : BOTH_DIRECTIONS })}
 
     <div class="tiers">${tierBadge(before.hourly, after.hourly)}</div>
 
@@ -672,6 +733,7 @@ export function serviceBodyHTML(p: PlaceResult, d: Day, middle = ''): string {
 
     <dl class="facts">
       ${serviceFactsRows(before, after)}
+      ${oneDirectionFact(before, after)}
       <dt>Stops within ${p.radius} m</dt>
       ${compare(String(p.current.stops.length), String(p.proposed.stops.length))}
       ${removedStopsFact(p.current.stops)}

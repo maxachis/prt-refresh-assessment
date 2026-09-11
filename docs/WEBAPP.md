@@ -145,6 +145,25 @@ carries the radius **only when the radius is the panel's one scope**, since a
 "within 400 m" subtitle hung over a kerb headline is the same error one line
 further up.
 
+**And the walk block no longer promises both directions of a count that has
+one of them.** A radius is a circle; a route's two directions often run on
+different streets, so one can fall outside it — the 61A/B/C and the 71B use the
+Fifth/Forbes one-way pair, and a pin in Crawford-Roberts catches four of
+today's seven routes and five of the plan's eight inbound only, none of them
+outbound. Across the 6,644 locations with a weekday bus today, at 400 m, 14%
+catch at least one route one way only and 1% catch every route that way. So
+`query.days_of_service` names them (`one_direction_routes`, both sides, both
+scopes), the panel prints "Routes in one direction only: 4 of 7 → 5 of 8" when
+either network has any, and the headline reads "one or both directions" in that
+case and "both directions" otherwise. It is not a fault — a rider here really
+can board one way only — but it is convention 4's radius sensitivity arriving
+per direction, a pole outside the circle by a few metres taking a whole
+direction of a route with it, which is what the `one-direction` drawer entry
+says. The kerb block draws no such row and now claims no directions at all:
+one side of one street is one-directional by construction, so "both
+directions" there was wrong always rather than sometimes, and its headline
+stops at "buses per weekday at this stop".
+
 Which unit leads is the view's call and the server's together. `place.ts` is
 asked for the kerb block only where the dots are on screen (`main.dotsOn`) —
 Surface, Streets, one-seat, travel time and Places draw no stop for a click to

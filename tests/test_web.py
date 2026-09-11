@@ -497,3 +497,28 @@ def test_a_point_off_the_kerb_carries_no_stop_block(client):
                       params={"lat": 40.4406, "lon": -79.9490}).json()
     assert park["kerb"] is None
     assert park["current"]["days"]["weekday"]["trips"] >= 0
+
+
+def test_place_names_the_routes_the_circle_only_catches_one_way(client):
+    """The panel cannot honestly label a count until the wire says this.
+
+    Uptown, where the 61A/B/C and the 71B run the Fifth/Forbes one-way pair:
+    without this field the headline says "both directions" of four routes it
+    caught inbound only. Both units carry it -- the walk radius, where the
+    panel draws a row, and the kerb, where it does not.
+    """
+    p = client.get("/api/place",
+                   params={"lat": 40.4419, "lon": -79.982, "radius": 400}).json()
+    weekday = p["current"]["days"]["weekday"]
+    assert weekday["one_direction_routes"] == ["61A", "61B", "61C", "71B"]
+    assert p["proposed"]["days"]["weekday"]["one_direction_routes"]
+
+    downtown = client.get("/api/place", params=DOWNTOWN).json()
+    assert "one_direction_routes" in downtown["kerb"]["current"]["days"]["weekday"]
+
+
+def test_meta_explains_the_one_direction_row(client):
+    """A row a reader will read as a fault needs the drawer entry saying it is not."""
+    caveats = {c["id"]: c["text"] for c in client.get("/api/meta").json()["caveats"]}
+    assert "14%" in caveats["one-direction"]
+    assert "one-way" in caveats["one-direction"]

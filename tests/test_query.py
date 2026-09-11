@@ -1182,3 +1182,80 @@ def test_the_panel_carries_the_kerb_beside_the_walk_radius(con):
     assert p["kerb"]["current"]["days"]["weekday"]["trips"] \
         != p["current"]["days"]["weekday"]["trips"]
     assert p["radius"] == query.PRIMARY_RADIUS
+
+
+# The pin is Crawford-Roberts, where the 61A/B/C and the 71B run the
+# Fifth/Forbes one-way pair: a quarter-mile circle catches all four inbound and
+# none of them outbound, so "84 buses within 400 m, both directions" was a
+# promise the count did not keep. The routes are named rather than only counted
+# because the value of this row to a reader is which routes, and because a
+# count alone would pass while the aggregation quietly changed above the stop.
+UPTOWN_LAT, UPTOWN_LON = 40.4419, -79.982
+
+
+def test_a_location_names_the_routes_it_only_catches_one_way(con):
+    """Convention 4's radius sensitivity, arriving per direction."""
+    day = query.side_at_place(
+        con, "current", UPTOWN_LAT, UPTOWN_LON,
+        query.PRIMARY_RADIUS)["days"]["weekday"]
+    assert day["one_direction_routes"] == ["61A", "61B", "61C", "71B"]
+    assert len(day["routes"]) == 7
+    # A subset of the routes, never a tally beside them.
+    assert set(day["one_direction_routes"]) <= set(day["routes"])
+
+
+def test_the_strict_radius_drops_the_route_rather_than_half_of_it(con):
+    """At 150 m the same pin catches nothing one-directionally.
+
+    Which is the shape of this sensitivity: the outbound pole was never near,
+    and the strict circle has now lost the inbound one too, so the count falls
+    from 7 routes to 3 with none of them half-served. The two radii disagree
+    about a whole route here, not about a direction.
+    """
+    day = query.side_at_place(con, "current", UPTOWN_LAT, UPTOWN_LON,
+                              min(query.RADII))["days"]["weekday"]
+    assert day["one_direction_routes"] == []
+    assert len(day["routes"]) == 3
+
+
+def test_the_plan_is_asked_the_same_question_in_the_same_circle(con):
+    """Both sides carry the field, so the panel can compare them."""
+    for side in query.SIDES:
+        day = query.side_at_place(con, side, UPTOWN_LAT, UPTOWN_LON,
+                                  query.PRIMARY_RADIUS)["days"]["weekday"]
+        assert day["one_direction_routes"]
+        assert set(day["one_direction_routes"]) <= set(day["routes"])
+
+
+def test_the_kerb_answers_it_too_rather_than_omitting_the_field(con):
+    """One measurement at two units -- the kerb scope is not a different shape.
+
+    The panel does not draw the row at a kerb (one side of one street is
+    one-directional by construction, so it would be news nowhere), but the
+    field is computed for both scopes because `days_of_service` is one
+    function and a scope-shaped hole in its output is what makes a client
+    guess.
+    """
+    # The downtown pole the other kerb tests use: the Uptown pin has no stop
+    # within 25 m of it, which is the difference between the two units.
+    kerb = query.kerb_service(con, 40.44531, -79.99173)
+    assert kerb is not None
+    for side in query.SIDES:
+        for day in query.DAYS:
+            got = kerb[side]["days"][day]
+            assert isinstance(got["one_direction_routes"], list)
+            assert set(got["one_direction_routes"]) <= set(got["routes"])
+
+
+def test_a_loop_route_is_not_one_directional_because_of_the_circle(con):
+    """A route with one direction everywhere has no other direction to miss.
+
+    Today's 11 and 60 and the plan's 18 and 65 run a single direction across
+    the whole feed -- loops -- so flagging them here would say the circle cut
+    a direction off when there was never one to cut. The row is about the
+    radius, not the timetable.
+    """
+    day = query.side_at_place(con, "current", 40.456043, -80.003929,
+                              query.PRIMARY_RADIUS)["days"]["weekday"]
+    assert "11" in day["routes"]
+    assert "11" not in day["one_direction_routes"]

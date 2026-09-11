@@ -10,6 +10,9 @@ function service(over: Partial<DayService> = {}): DayService {
     hourly: true,
     headways: { in: { median: 10, max_gap_6a_6p: 20 } },
     routes: ['61A'],
+    // Empty on the commonest kind of corner, which is what lets the tests
+    // below check that the row is absent rather than zero.
+    one_direction_routes: [],
     first: 300,
     last: 1500,
     ...over,
@@ -483,5 +486,68 @@ describe('the stop a reader clicked, beside the walk around it', () => {
     const html = panelHTML(PLACE, 'weekday', { withKerb: true });
     expect(html).not.toContain('At this stop');
     expect(html).not.toContain('Within a 400 m walk');
+  });
+});
+
+
+// A 400 m circle is not symmetric about a one-way pair: the 61A/B/C and the
+// 71B run inbound on Fifth and outbound on Forbes, so a pin in
+// Crawford-Roberts catches four of today's seven routes one way only. The
+// headline said "both directions" of that count.
+describe('the routes the circle only catches one way', () => {
+  const oneWay = (now: string[], prop: string[]) => ({
+    ...PLACE,
+    current: { ...PLACE.current, days: { ...PLACE.current.days,
+      weekday: service({ routes: ['61A', '61B', '61C', '71B', '28X', '75', 'P3'],
+                         one_direction_routes: now }) } },
+    proposed: { ...PLACE.proposed, days: { ...PLACE.proposed.days,
+      weekday: service({ routes: ['60X', '61X', '62X', '71X', '80X', '75',
+                                  'P3', 'G2'],
+                         one_direction_routes: prop, boardings: null }) } },
+  });
+
+  const CIRCLE = oneWay(['61A', '61B', '61C', '71B'],
+                        ['60X', '61X', '62X', '71X', '80X']);
+
+  it('says how many of the routes here a rider can only board one way', () => {
+    const html = serviceBodyHTML(CIRCLE, 'weekday');
+    expect(html).toContain('Routes in one direction only');
+    expect(html).toContain('4 of 7');
+    expect(html).toContain('5 of 8');
+  });
+
+  it('stops promising both directions of a count that has one of them', () => {
+    const html = serviceBodyHTML(CIRCLE, 'weekday');
+    expect(html).toContain('buses per weekday within 400 m, one or both directions');
+    expect(html).not.toContain('400 m, both directions');
+  });
+
+  it('keeps the promise where the circle really caught both', () => {
+    const html = serviceBodyHTML(PLACE, 'weekday');
+    expect(html).not.toContain('Routes in one direction only');
+    expect(html).toContain('buses per weekday within 400 m, both directions');
+  });
+
+  it('draws the row when only the plan has one, not just today', () => {
+    // Either network can be the one the circle catches half of, and the row
+    // is how a reader learns which.
+    const html = serviceBodyHTML(oneWay([], ['60X']), 'weekday');
+    expect(html).toContain('0 of 7');
+    expect(html).toContain('1 of 8');
+  });
+
+  it('sends the row to the drawer entry that says it is not a fault', () => {
+    expect(serviceBodyHTML(CIRCLE, 'weekday'))
+      .toContain('data-caveat="one-direction"');
+  });
+
+  it('never draws the row at a kerb, and claims no directions there', () => {
+    // One side of one street: most of what calls at a kerb calls one way, so
+    // the row would be news nowhere and "both directions" was wrong by
+    // construction rather than occasionally.
+    const block = kerbBlockHTML(KERB, 'weekday');
+    expect(block).not.toContain('Routes in one direction only');
+    expect(block).not.toContain('directions');
+    expect(block).toContain('buses per weekday at this stop');
   });
 });

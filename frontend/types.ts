@@ -97,6 +97,13 @@ export interface DayService {
   hourly: boolean;
   headways: Record<string, { median: number | null; max_gap_6a_6p: number | null }>;
   routes: string[];
+  /**
+   * The routes in `routes` this scope only catches one way — their other
+   * direction runs on a street outside it. A subset of `routes`, never a
+   * separate tally: the trips of a one-directional route are already in
+   * `trips`. Empty at most locations and at nearly every kerb.
+   */
+  one_direction_routes: string[];
   first: number | null;
   last: number | null;
 }

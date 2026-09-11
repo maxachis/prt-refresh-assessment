@@ -12,6 +12,7 @@ function service(over: Partial<DayService> = {}): DayService {
     hourly: true,
     headways: { in: { median: 10, max_gap_6a_6p: 20 } },
     routes: ['61A', '61B'],
+    one_direction_routes: [],
     first: 300,
     last: 1500,
     ...over,

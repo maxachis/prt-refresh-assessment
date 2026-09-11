@@ -280,6 +280,33 @@ def _departures(con, side: str, day: str, stop_ids: list[str]):
     return out
 
 
+def _directions_by_route(by_stop, stop_ids) -> dict[str, set[str]]:
+    """{route: the directions of it any of these stops is served in}.
+
+    Above the stop id (convention 2) and scope-free: whether a route is
+    reachable both ways from a set of poles does not depend on how the trips
+    at them are aggregated, so this is the same for a kerb and for a radius.
+    """
+    dirs: dict[str, set[str]] = {}
+    for sid in stop_ids:
+        for route, direction in by_stop.get(sid, {}):
+            dirs.setdefault(route, set()).add(direction)
+    return dirs
+
+
+def _loop_routes(con, side: str, day: str) -> set[str]:
+    """Routes that run a single direction across the WHOLE network that day.
+
+    Loops -- today's 11 and 60, the plan's 18 and 65. They have no other
+    direction for a circle to miss, so `one_direction_routes` leaves them
+    out: that list is a claim about the radius, not about the timetable.
+    """
+    return {r["route"] for r in con.execute(
+        "SELECT route, COUNT(DISTINCT direction) AS nd FROM departures "
+        "WHERE side = ? AND day = ? GROUP BY route HAVING nd = 1",
+        (side, day))}
+
+
 def departures_by_direction(by_stop, stop_ids):
     """{direction: sorted departure minutes} for one network at one location.
 
@@ -585,6 +612,27 @@ def days_of_service(con, side: str, stops, *, scope: str):
     measurements: only `_AGGREGATION` differs between them, and everything
     downstream of it -- the tier, the headways, the span, the routes --
     is computed identically.
+
+    `one_direction_routes` NAMES THE ROUTES THIS SCOPE ONLY CATCHES ONE WAY,
+    and it is here because the trip counts above it were being labelled "both
+    directions" when often they are not. A radius is a circle; a route's two
+    directions frequently run on different streets, so one of them can fall
+    outside it -- the 61A/B/C and the 71B on the Fifth/Forbes pair are the
+    canonical case, all four caught inbound only from Crawford-Roberts at
+    400 m. Across the 6,644 locations with a weekday bus today, at 400 m,
+    14% catch at least one route in one direction only and 1% catch every
+    route that way; at 150 m the Crawford-Roberts pin catches none, because
+    the strict radius has dropped the route entirely rather than half of it.
+
+    This is real access, not a defect: a rider who can only board one way
+    really can only board one way. What it changes is convention 4's radius
+    sensitivity, which now has a per-direction edge to it -- a pole crossing
+    the circle's boundary adds or removes a whole direction of a route, and
+    the panel says "one or both directions" wherever this list is non-empty.
+    A route counted here is still one route in `routes` and its trips are
+    still in `trips`; nothing existing moved. A route that runs one direction
+    everywhere (`_loop_routes`) is never counted: the circle did not cut off
+    a direction that never existed.
     """
     trips_of, directions_of = _AGGREGATION[scope]
     stop_ids = [s[0] for s in stops]
@@ -594,14 +642,18 @@ def days_of_service(con, side: str, stops, *, scope: str):
         by_stop = _departures(con, side, day, stop_ids)
         per = trips_of(by_stop, stop_ids)
         by_dir = directions_of(by_stop, stop_ids)
-        routes = sorted({rt for sid in stop_ids
-                         for rt, _d in by_stop.get(sid, {})})
+        served_directions = _directions_by_route(by_stop, stop_ids)
+        loops = _loop_routes(con, side, day)
+        routes = sorted(served_directions)
         days[day] = {
             "trips": round(sum(per.values())),
             "periods": {k: round(v) for k, v in per.items()},
             "hourly": hourly(by_dir),
             "headways": headways(by_dir),
             "routes": routes,
+            "one_direction_routes": sorted(
+                rt for rt, dirs in served_directions.items()
+                if len(dirs) == 1 and rt not in loops),
             "first": min((min(t) for t in by_dir.values() if t), default=None),
             "last": max((max(t) for t in by_dir.values() if t), default=None),
             # Observed riders exist on today's side only, permanently, so the
