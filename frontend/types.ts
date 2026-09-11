@@ -337,7 +337,8 @@ export interface PlacePopulation {
  * figure from here has to say it is per stop.
  */
 export interface KerbResult {
-  /** The pole the reader clicked: nearest of today's ids on this kerb. */
+  /** The pole the reader clicked: the nearest of today's ids on this kerb,
+   *  or of the plan's where only the plan stands a pole here. */
   stop_id: string;
   /** Every name PRT gives the poles on this kerb, deduplicated. */
   names: string[];
@@ -401,8 +402,10 @@ export interface PlaceResult {
    */
   population: PlacePopulation | null;
   /**
-   * The stop under the click, or null where no pole stands within 25 m of
-   * it. Additive to everything above, which stays the walk radius's answer.
+   * The stop under the click, or null where no pole of either network
+   * stands within 25 m of it — a stop the plan adds has one, reading 0
+   * today. Additive to everything above, which stays the walk radius's
+   * answer.
    */
   kerb?: KerbResult | null;
   /** Empty when the database predates the one-seat layer. */

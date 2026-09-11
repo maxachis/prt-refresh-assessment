@@ -1136,9 +1136,38 @@ def test_a_point_with_no_pole_on_it_has_no_kerb_to_report(con):
     is told there is nothing to lead with and falls back to the walk radius.
     """
     lat, lon = 40.4406, -79.9490   # Schenley Park
-    assert query.stops_within(con, lat, lon, query.STOP_SAME_POLE_M,
-                              "current") == []
+    for side in ("current", "proposed"):
+        assert query.stops_within(con, lat, lon, query.STOP_SAME_POLE_M,
+                                  side) == []
     assert query.kerb_service(con, lat, lon) is None
+
+
+def test_a_stop_the_plan_adds_has_a_kerb_to_report(con):
+    """A pole the plan stands where none stands today is still a pole.
+
+    Until 2026-09-11 the panel's kerb was anchored on today's poles alone, so
+    a click on one of the 481 hollow dots -- the stops the plan adds -- got
+    `kerb: null`, the same answer as a click in a park, and the ROUTES
+    control that needs a kerb never appeared there. The dot layer already
+    counted these kerbs (`kerb_departures` reads both sides and the point's
+    own id on each); the panel has to agree with it here as everywhere else:
+    0 today, the plan's buses proposed, and the id the plan gives the pole.
+    """
+    kerbs = query.kerb_departures(con)
+    added = [p for p in query.change_points(con) if p[3] == 0][:100]
+    assert added, "the plan adds no stops -- the fixture cannot test this"
+
+    for point_id, lat, lon, _published in added:
+        got = query.kerb_service(con, lat, lon)
+        assert got is not None, point_id
+        assert got["stop_id"] == point_id.split(":", 1)[1]
+        assert got["current"]["stops"] == []
+        assert got["names"], point_id
+        for day in query.DAYS:
+            here = (got["current"]["days"][day]["trips"],
+                    got["proposed"]["days"][day]["trips"])
+            assert here == kerbs[point_id][day], f"{point_id} {day}"
+            assert here[0] == 0
 
 
 def test_the_kerb_pools_its_poles_where_the_location_maxes_its_cluster(con):
@@ -1332,3 +1361,24 @@ def test_a_drawn_route_is_a_line_with_the_kerb_on_it(con):
 def test_nothing_is_drawn_where_no_pole_stands(con):
     """Same null as `kerb_service`: no stop, no stop's routes."""
     assert query.kerb_routes(con, 40.4406, -79.9490, "weekday") is None
+
+
+def test_the_plans_routes_are_drawn_at_a_stop_it_adds(con):
+    """Today draws nothing there, the plan draws every bus that calls.
+
+    The same kerb the panel now reports at an added stop, and the same
+    pin as at a downtown one: the drawn set is the listed set on each side,
+    which at a stop no bus serves today means an empty list on today's side
+    rather than a 404.
+    """
+    kerbs = query.kerb_departures(con)
+    served = next(p for p in query.change_points(con)
+                  if p[3] == 0 and kerbs[p[0]]["weekday"][1] > 0)
+    _point_id, lat, lon, _published = served
+    drawn = query.kerb_routes(con, lat, lon, "weekday")
+    listed = query.kerb_service(con, lat, lon)
+    assert drawn["current"] == []
+    assert drawn["proposed"]
+    for side in ("current", "proposed"):
+        assert {f["route"] for f in drawn[side]} == set(
+            listed[side]["days"]["weekday"]["routes"])

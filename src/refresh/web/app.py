@@ -133,7 +133,8 @@ def create_app(db_path: str | Path = "data/refresh.db") -> FastAPI:
         walk radius, the published unit `data/coverage_change.csv` carries.
         `kerb` is the STOP under the point, the same unit Stop-by-stop
         colours and hovers (`query.kerb_service`), and it is null where no
-        pole stands within `query.STOP_SAME_POLE_M`. A client showing both
+        pole of either network stands within `query.STOP_SAME_POLE_M` -- a
+        stop the plan adds has one, reading 0 today. A client showing both
         must label each; a client that ignores `kerb` sees what it always saw.
 
         `dest_lat`/`dest_lon` add one dropped-pin one-seat verdict alongside
@@ -357,9 +358,11 @@ def create_app(db_path: str | Path = "data/refresh.db") -> FastAPI:
         For drawing only. The paths are the feeds' shapes thinned at build
         time and nothing may be measured off them (`query.kerb_routes`).
 
-        404 where no pole stands within `query.STOP_SAME_POLE_M`, for the
-        same reason `/api/place` returns a null kerb there: empty route lists
-        would render as a stop that lost all its buses rather than as no stop.
+        404 where no pole of either network stands within
+        `query.STOP_SAME_POLE_M`, for the same reason `/api/place` returns a
+        null kerb there: empty route lists would render as a stop that lost
+        all its buses rather than as no stop. A stop the plan adds is not
+        that: it answers with today's list empty and the plan's drawn.
         """
         _check_point(lat, lon)
         got = query.kerb_routes(con, lat, lon, day)
@@ -520,8 +523,8 @@ CAVEATS = [
                 "sides, so a corner PRT splits into two stop ids reads as one "
                 "and a consolidation of two poles into one reads as the loss "
                 "it is. Inside 25 m the poles hold their own trips, which is "
-                "why this sums where a location takes the maximum. It is the "
-                "count the map's dots are coloured by, and it is not a "
+                "why this sums where a location takes the maximum. A stop the "
+                "plan adds is a kerb too, reading 0 today. It is the "
                 "published figure -- the published unit is the walk radius "
                 "below it, which is what data/coverage_change.csv carries.",
     },

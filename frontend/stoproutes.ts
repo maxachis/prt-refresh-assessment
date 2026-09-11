@@ -100,6 +100,17 @@ export function isStopRoutesVisible(): boolean {
   return visible;
 }
 
+/**
+ * Whether this network put any line on the map for the kerb in hand.
+ *
+ * A stop the plan adds answers with today's list empty, and a stop the plan
+ * retires with the plan's; the control keeps its position at either, so
+ * "on" and "drawn" came apart there. The pin key describes what is drawn.
+ */
+export function sideHasRoutes(r: KerbRoutesResult | null, side: Side): boolean {
+  return r !== null && r[side].length > 0;
+}
+
 // --------------------------------------------------------------------------
 // the map
 // --------------------------------------------------------------------------

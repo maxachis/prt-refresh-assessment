@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   toGeoJSON, stopRoutesUrl, routeLineLabel, dashSequence, routeColors,
+  sideHasRoutes,
 } from './stoproutes';
 import { KerbRoutesResult, KerbRouteFeature } from './types';
 
@@ -204,5 +205,27 @@ describe('dashSequence', () => {
     const phaseOf = (f: number[]) => f[f.length - 1];
     expect(phaseOf(seq[0])).toBeCloseTo(dash);
     expect(phaseOf(seq[seq.length - 1])).toBeCloseTo(step);
+  });
+});
+
+// --------------------------------------------------------------------------
+// whether the drawn side put anything on the map
+// --------------------------------------------------------------------------
+
+describe('sideHasRoutes', () => {
+  it('is true for a side with a line to draw', () => {
+    expect(sideHasRoutes(result(), 'current')).toBe(true);
+    expect(sideHasRoutes(result(), 'proposed')).toBe(true);
+  });
+
+  it('is false on the empty side of a stop only one network serves', () => {
+    // A stop the plan adds answers with today's list empty; the pin key
+    // must not then describe lines that are not on the map.
+    expect(sideHasRoutes(result({ current: [] }), 'current')).toBe(false);
+    expect(sideHasRoutes(result({ current: [] }), 'proposed')).toBe(true);
+  });
+
+  it('is false before any answer has arrived', () => {
+    expect(sideHasRoutes(null, 'current')).toBe(false);
   });
 });

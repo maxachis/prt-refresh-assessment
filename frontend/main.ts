@@ -39,7 +39,7 @@ import {
 } from './journey';
 import {
   initStopRoutesLayer, drawStopRoutes, setStopRoutesVisible, stopRoutesUrl,
-  routeLineLabel, startFlow, isStopRoutesVisible, stopRoutesData,
+  routeLineLabel, startFlow, isStopRoutesVisible, stopRoutesData, sideHasRoutes,
   StopRoutes, DEFAULT_STOP_ROUTES,
 } from './stoproutes';
 import {
@@ -1518,8 +1518,12 @@ function syncStopRoutes() {
  * the toolbar.
  */
 function showPinKey(drawnAt: number) {
-  $('pin-key').innerHTML = pinKeyHTML(drawnAt,
-    { routes: stopRoutes !== 'off' && isStopRoutesVisible() ? stopRoutes : false });
+  // Keyed only while a line is actually on the map: at a stop only one
+  // network serves, the control can be on the other one, and the panel's
+  // caption is where that is explained.
+  const drawn: false | Side = stopRoutes !== 'off' && isStopRoutesVisible()
+    && sideHasRoutes(stopRoutesData(), stopRoutes) ? stopRoutes : false;
+  $('pin-key').innerHTML = pinKeyHTML(drawnAt, { routes: drawn });
   $('pin-key').classList.remove('hidden');
 }
 
@@ -1577,7 +1581,8 @@ function setSelectMode(on: boolean) {
  *
  * The drawn routes belong to a clicked stop, so the control is offered
  * exactly when there is one: the answer on screen has a kerb (`kerb` is
- * null where no pole stands within 25 m, decided by the server) and the
+ * null where no pole of either network stands within 25 m, decided by the
+ * server -- a stop the plan adds has one) and the
  * view is one that draws dots for a reader to have clicked. Hidden rather
  * than disabled -- a control for "the routes at this stop" with no stop
  * under it has nothing to be disabled about. The state behind it persists

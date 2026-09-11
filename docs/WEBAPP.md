@@ -186,8 +186,20 @@ Surface, Streets, one-seat, travel time and Places draw no stop for a click to
 have landed on, and are unchanged. The server decides whether there *is* a
 kerb, by the 25 m on the ground rather than by a screen hit, so an `at=` link
 opens the same panel at every zoom; `/api/place` returns `kerb: null` where no
-pole stands, and the panel falls back to the walk radius alone. The one-seat
-panel's collapsed service line stays radius-based.
+pole of either network stands, and the panel falls back to the walk radius
+alone. The one-seat panel's collapsed service line stays radius-based.
+
+**A stop the plan adds is a kerb, reading 0 today.** Until 2026-09-11 the
+kerb was anchored on today's poles alone, so a click on one of the 481 hollow
+dots — the stops the plan adds, which the map draws on purpose — got the same
+null as a click in a park: no "At this stop" block, and no ROUTES control,
+at the one kind of stop where the plan's routes are the whole story. The dot
+layer never had that blind spot (`query.kerb_departures` reads both networks
+and the point's own id on each), so the panel disagreed with the hover it was
+built to match. `query.kerb_stops` now reads both sides the same way: the id
+is the nearest pole on whichever network stands one here, today's first, and
+the other network's pole of that id is pulled in however far down the block
+it stands, on either side. Null only where neither network has a pole.
 
 ### Drawing a stop's routes
 
@@ -209,7 +221,12 @@ the view is one that draws dots, since there is no stop to draw routes at on
 the surface, the streets or Places, and none anywhere before the first click.
 Hidden rather than disabled, and the position is kept, so a reader who set it
 to Today and clicks the next stop gets that stop's routes without pressing
-anything.
+anything. At a stop only one network serves — the plan adds it, or retires
+it — the position is still kept and the empty side is still offered: the
+folded trigger wears the active option's disabled state (`dropdown.ts`), so
+disabling Today at an added stop while Today was selected would grey out the
+whole group and lock the reader out of Proposed. The panel's caption says
+instead that no bus calls here on that network and names the other button.
 
 It draws **one network at a time and colours by route, not by side** — the
 one layer here that does. Every other view is a comparison, today against the

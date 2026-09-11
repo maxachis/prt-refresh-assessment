@@ -703,9 +703,20 @@ export interface KerbBlockOptions { routes?: StopRoutes }
  * colours are per route, that the arrows mean direction, and that a train
  * calling here is not among them.
  */
-function drawnRoutesCaptionHTML(d: Day, routes: StopRoutes): string {
+function drawnRoutesCaptionHTML(d: Day, routes: StopRoutes,
+                                drawnRoutes: string[]): string {
   if (routes === 'off') return '';
   const network = routes === 'current' ? "on today's network" : 'under the plan';
+  // A stop the plan adds has no bus on today's side, a stop it retires none
+  // on the plan's. The control keeps whichever network it was on, so a bare
+  // map needs the reason said, and the other button named.
+  if (drawnRoutes.length === 0) {
+    const other = routes === 'current' ? 'Proposed' : 'Today';
+    return `
+    <p class="note">No bus calls at this stop ${network} on a ${dayWord(d)},
+      so there is nothing to draw; the other network's routes are under
+      <b>${other}</b>.</p>`;
+  }
   return `
     <p class="note">Every route calling here on a ${dayWord(d)}, ${network},
       one colour per route, drawn end to end along the street it runs; arrows
@@ -739,7 +750,8 @@ export function kerbBlockHTML(k: KerbResult, d: Day,
       </dl>
       ${boardingsNote(before.boardings)}
       ${routesBlockHTML(before, after, 'Routes calling at this stop', drawn)}
-      ${drawnRoutesCaptionHTML(d, routes)}
+      ${drawnRoutesCaptionHTML(d, routes,
+                               (routes === 'current' ? before : after).routes)}
       <p class="note">This kerb only — every pole within ${k.dedup_m} m of it,
         on both networks, so a corner PRT splits into two stop ids reads as
         one. It is the same count the dot's colour and its hover use, and it
@@ -812,8 +824,9 @@ export function serviceBodyHTML(p: PlaceResult, d: Day, middle = ''): string {
  * travel time and Places ask questions with no kerb in them, and a stop
  * headline there would answer something the map on screen is not showing.
  * The other half of the test is the server's: `kerb` is null where no pole
- * stands within 25 m, decided on the ground rather than by a screen hit, so
- * an `at=` link opens the same panel at every zoom.
+ * of either network stands within 25 m, decided on the ground rather than
+ * by a screen hit, so an `at=` link opens the same panel at every zoom. A
+ * stop the plan adds has a kerb, reading 0 today.
  */
 export interface PanelScope {
   withKerb?: boolean;

@@ -591,6 +591,48 @@ describe('the caption for this stop\'s drawn routes', () => {
     const html = panelHTML(PLACE, 'weekday', { withKerb: true, routes: 'current' });
     expect(html).not.toContain('one colour per route');
   });
+
+  // A stop the plan adds has a kerb with no bus on today's side of it, and a
+  // stop the plan retires has one with no bus on the plan's. The control
+  // keeps whichever network it was on, so the caption has to say why the
+  // map is bare rather than describe lines that are not there.
+  describe('at a stop only one network serves', () => {
+    const ADDED = {
+      ...KERB,
+      current: { ...KERB.current, days: { ...KERB.current.days,
+        weekday: service({ trips: 0, routes: [] }) } },
+    };
+    const REMOVED = {
+      ...KERB,
+      proposed: { ...KERB.proposed, days: { ...KERB.proposed.days,
+        weekday: service({ trips: 0, routes: [], boardings: null }) } },
+    };
+
+    it('says no bus calls today where the plan adds the stop', () => {
+      const on = kerbBlockHTML(ADDED, 'weekday', { routes: 'current' });
+      expect(on).toContain("No bus calls at this stop on today's network");
+      expect(on).toContain('Proposed');
+      expect(on).not.toContain('one colour per route');
+    });
+
+    it('says no bus calls under the plan where it retires the stop', () => {
+      const on = kerbBlockHTML(REMOVED, 'weekday', { routes: 'proposed' });
+      expect(on).toContain('No bus calls at this stop under the plan');
+      expect(on).toContain('Today');
+      expect(on).not.toContain('one colour per route');
+    });
+
+    it('captions the other network as it always did', () => {
+      expect(kerbBlockHTML(ADDED, 'weekday', { routes: 'proposed' }))
+        .toContain('one colour per route');
+      expect(kerbBlockHTML(REMOVED, 'weekday', { routes: 'current' }))
+        .toContain('one colour per route');
+    });
+
+    it('says nothing while the control is off', () => {
+      expect(kerbBlockHTML(ADDED, 'weekday')).not.toContain('No bus calls');
+    });
+  });
 });
 
 // The map's palette is per kerb and nothing on the map is labelled, so the

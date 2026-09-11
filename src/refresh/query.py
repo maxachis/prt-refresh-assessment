@@ -771,28 +771,43 @@ def kerb_stops(con, lat: float, lon: float,
     beside it does not name.
 
     Returns `(own, here, there)`: the id of the pole under the point, today's
-    poles inside `dedup`, and the plan's. The plan's list is the poles inside
-    the same distance PLUS `own` wherever the plan keeps that id but stands
-    it further down the block -- convention 3's rule that a moved stop is not
-    a lost one, which is why the id comes first.
+    poles inside `dedup`, and the plan's. Each side's list is the poles inside
+    that distance PLUS `own` wherever the other network keeps that id but
+    stands it further down the block -- convention 3's rule that a moved stop
+    is not a lost one, which is why the id comes first.
 
-    NULL WHERE NO POLE STANDS, for `kerb_service`'s reason: a reader in the
-    middle of a park is not at a stop with no buses, they are where no stop
-    is. Decided by the metres on the ground and never by a screen hit, so an
-    `at=` link reproduces the same answer at any zoom.
+    THE ID IS TODAY'S WHERE TODAY HAS A POLE, AND THE PLAN'S WHERE ONLY THE
+    PLAN DOES. Until 2026-09-11 the kerb was anchored on today's poles alone,
+    so a click on one of the 481 stops the plan adds -- a hollow dot the map
+    draws on purpose -- got the same null as a click in a park, and the
+    control that draws a kerb's routes never appeared at the one kind of stop
+    where the plan's routes are the whole story. The dot layer never had that
+    blind spot: `kerb_departures` reads both networks and the point's own id
+    on each, so the panel disagreed with the hover it was built to match.
+    Now both sides are read the same way, and the id is the nearest pole on
+    whichever network stands one here, today's first.
+
+    NULL WHERE NO POLE STANDS ON EITHER NETWORK, for `kerb_service`'s reason:
+    a reader in the middle of a park is not at a stop with no buses, they are
+    where no stop is. Decided by the metres on the ground and never by a
+    screen hit, so an `at=` link reproduces the same answer at any zoom.
     """
-    here = stops_within(con, lat, lon, dedup, "current")
-    if not here:
+    here = list(stops_within(con, lat, lon, dedup, "current"))
+    there = list(stops_within(con, lat, lon, dedup, "proposed"))
+    if not here and not there:
         return None
     # Nearest, then lowest id: `stops_within` sorts by id, not by distance,
     # and the dot a reader clicked is the pole under the cursor.
-    own = min(here, key=lambda s: (s[4], s[0]))[0]
+    own = min(here or there, key=lambda s: (s[4], s[0]))[0]
 
-    there = list(stops_within(con, lat, lon, dedup, "proposed"))
-    if own not in {s[0] for s in there}:
-        kept = _stop_at(con, "proposed", own, lat, lon)
-        if kept is not None:
-            there.append(kept)
+    # The id outranks the distance on both sides, the way it does for the
+    # dot: a pole the other network keeps the number of is this kerb's,
+    # however far down the block it stands.
+    for side, poles in (("current", here), ("proposed", there)):
+        if own not in {s[0] for s in poles}:
+            kept = _stop_at(con, side, own, lat, lon)
+            if kept is not None:
+                poles.append(kept)
     return own, here, there
 
 
@@ -816,10 +831,13 @@ def kerb_service(con, lat: float, lon: float,
     its buses, and counting only what falls inside 25 m would print "loses all
     service" at a stop the map draws a leader line to.
 
-    NULL WHERE NO POLE STANDS. A reader clicking the middle of a park is not
-    standing at a stop with no buses left; they are standing where no stop is,
-    and "0 -> 0 at this stop" would be a finding about a stop that does not
-    exist. The panel falls back to the walk radius alone there. Decided by
+    NULL WHERE NO POLE STANDS ON EITHER NETWORK. A reader clicking the middle
+    of a park is not standing at a stop with no buses left; they are standing
+    where no stop is, and "0 -> 0 at this stop" would be a finding about a
+    stop that does not exist. The panel falls back to the walk radius alone
+    there. A stop the plan adds is NOT that case, though until 2026-09-11 it
+    was answered as if it were: a pole stands there on one network, the dot
+    is drawn for it, and "0 -> 12 at this stop" is the finding. Decided by
     the 25 m on the ground and never by a screen hit, so an `at=` link
     reproduces the same panel at any zoom.
 
@@ -840,10 +858,16 @@ def kerb_service(con, lat: float, lon: float,
         "stop_id": own,
         # Every name PRT gives the poles on this kerb, deduplicated: a corner
         # split into two ids is usually one name twice, and occasionally two.
-        "names": sorted({s[1] for s in here if s[1]}),
+        # Today's names where today has a pole here, the plan's otherwise.
+        "names": _kerb_names(here or there),
         "current": side_at_kerb(con, "current", here),
         "proposed": side_at_kerb(con, "proposed", there),
     }
+
+
+def _kerb_names(poles):
+    """Every name PRT gives a set of poles, deduplicated and sorted."""
+    return sorted({s[1] for s in poles if s[1]})
 
 
 def _route_names(con, side: str, route_ids):
@@ -908,7 +932,7 @@ def kerb_routes(con, lat: float, lon: float, day: str,
         # same poles rather than by calling it: the panel already has that
         # block, and recomputing three day types of service to read a label
         # off it would be work nothing here needs.
-        "names": sorted({s[1] for s in here if s[1]}),
+        "names": _kerb_names(here or there),
     }
     for side, stops in (("current", here), ("proposed", there)):
         out[side] = _side_kerb_routes(con, side, day, [s[0] for s in stops])
