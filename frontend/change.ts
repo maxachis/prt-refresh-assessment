@@ -790,8 +790,10 @@ export function dotLabel(props: any, day: Day,
   // Neither a new place nor a removed stop is drawn in a bucket, so neither
   // reports one here: the tooltip was the last place that contradiction
   // survived. Both still report their pole's own buses, which is true of the
-  // kerb either way -- at a removed stop that reads "37 -> 0 at this stop",
-  // under the removal sentence `removedLine` supplies.
+  // kerb either way -- at a removed stop as "Currently 37 at this stop",
+  // under the removal sentence `removedLine` supplies. Not "37 -> 0": that
+  // sentence has already said the plan runs nothing here, and the arrow
+  // restated it as a change in service at a stop the plan does not have.
   const gone = props.removed === 1;
   // Unscoped, because there is nothing left to scope it against: the bucket
   // index the dot was drawn with is `query.bucket()` applied to the very two
@@ -803,8 +805,9 @@ export function dotLabel(props: any, day: Day,
     : (buckets.find((b) => b.key === key)?.label ?? key);
   const cur = props[`sc${i}`], prop = props[`sp${i}`];
   const dayWord = day === 'weekday' ? 'weekday' : day;
+  const count = gone ? `Currently ${cur}` : `${cur} → ${prop}`;
   return `${pole ? poleLine(props) : ''}${removedLine(props)}` +
-    `${cur} → ${prop} buses per ${dayWord} at this stop<br>` +
+    `${count} buses per ${dayWord} at this stop<br>` +
     `${gone ? '' : `<b>${label}</b><br>`}` +
     `<span style="opacity:.6">click for the full comparison</span>`;
 }

@@ -274,10 +274,14 @@ describe('dotLabel at a removed stop', () => {
   });
 
   it('still counts the buses at the pole, which the cross does not say', () => {
+    // As today's count, not as "40 -> 0": the removal sentence above already
+    // says the plan runs nothing here, and a zero on the right restated it as
+    // a change in service at a stop that will not exist.
     const p = { published: 1, removed: 1, replacement: 378, nearestStraight: 340,
                 b0: 'doubled', sc0: 40, sp0: 0 };
-    expect(dotLabel(p, 'weekday', BUCKETS))
-      .toContain('40 → 0 buses per weekday at this stop');
+    const html = dotLabel(p, 'weekday', BUCKETS);
+    expect(html).toContain('Currently 40 buses per weekday at this stop');
+    expect(html).not.toContain('→ 0');
   });
 
   it('names the bucket at a stop that stays', () => {
