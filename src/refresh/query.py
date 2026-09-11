@@ -44,6 +44,7 @@ membership of a radius is decided identically on both sides of the pipeline.
 """
 from __future__ import annotations
 
+import functools
 import json
 from collections import defaultdict
 
@@ -294,17 +295,23 @@ def _directions_by_route(by_stop, stop_ids) -> dict[str, set[str]]:
     return dirs
 
 
-def _loop_routes(con, side: str, day: str) -> set[str]:
+@functools.lru_cache(maxsize=16)
+def _loop_routes(con, side: str, day: str) -> frozenset[str]:
     """Routes that run a single direction across the WHOLE network that day.
 
     Loops -- today's 11 and 60, the plan's 18 and 65. They have no other
     direction for a circle to miss, so `one_direction_routes` leaves them
     out: that list is a claim about the radius, not about the timetable.
+
+    Memoised per (connection, side, day), and not as an optimisation: it is
+    a GROUP BY over every departure, 16 ms, and `build_webdb.py` reaches it
+    through `days_of_service` about 210,000 times. Unmemoised it turned a
+    two-minute database build into an hour on the deploy box.
     """
-    return {r["route"] for r in con.execute(
+    return frozenset(r["route"] for r in con.execute(
         "SELECT route, COUNT(DISTINCT direction) AS nd FROM departures "
         "WHERE side = ? AND day = ? GROUP BY route HAVING nd = 1",
-        (side, day))}
+        (side, day)))
 
 
 def departures_by_direction(by_stop, stop_ids):

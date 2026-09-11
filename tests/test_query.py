@@ -1259,3 +1259,16 @@ def test_a_loop_route_is_not_one_directional_because_of_the_circle(con):
                               query.PRIMARY_RADIUS)["days"]["weekday"]
     assert "11" in day["routes"]
     assert "11" not in day["one_direction_routes"]
+
+
+def test_the_loop_routes_are_looked_up_once_per_network_and_day(con):
+    """A GROUP BY over every departure, per call, made the database build
+    take an hour: `build_webdb.py` runs `days_of_service` ~35,000 times and
+    each ran it for three days and two sides. The answer cannot change
+    between calls on one connection, so it is memoised on (con, side, day).
+    """
+    query._loop_routes.cache_clear()
+    first = query._loop_routes(con, "current", "weekday")
+    again = query._loop_routes(con, "current", "weekday")
+    assert first == again and "11" in first
+    assert query._loop_routes.cache_info().hits == 1
