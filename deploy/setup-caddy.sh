@@ -83,8 +83,12 @@ $DOMAIN {
 EOF
 echo "Wrote /etc/caddy/Caddyfile for $DOMAIN."
 
-# 3. Validate, then start/reload.
-caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
+# 3. Validate, then start/reload. The log directory must belong to the caddy
+#    user first, and validation must run AS that user: validating as root
+#    opens the access log and leaves it root-owned 0600, and the service --
+#    which runs as caddy -- then fails to start with "permission denied".
+install -d -o caddy -g caddy /var/log/caddy
+sudo -u caddy caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
 systemctl enable --now caddy
 systemctl reload caddy 2>/dev/null || systemctl restart caddy
 sleep 4
