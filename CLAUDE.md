@@ -136,6 +136,12 @@ redeploys it; re-running is the redeploy, and is a no-op when the box already
 serves the commit you asked for. It deploys a *pushed commit*, not the working
 tree, and builds `refresh.db` on the box. See `deploy/README.md`.
 
+**Usage of the deployed app** is read from the front door's access log, not
+from a script on the page — `python3 report_usage.py --places
+data/place_boundaries.json access*.log*` after pulling the files off the box
+(`deploy/README.md`, "Reading the usage"). The log has the reader's address
+masked before it is written; never commit a pulled log.
+
 Each script prints a human-readable report to stdout alongside writing its CSV;
 that printed report is the draft material for `FINDINGS.md` and `docs/answers/`.
 

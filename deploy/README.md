@@ -32,8 +32,9 @@ it](#before-you-point-people-at-it), whose one open item is permission, not code
 
 The app has **no moving parts at runtime**. It reads a SQLite database built
 from two frozen GTFS feeds, opens it read-only, and computes every answer from
-that. Nothing is collected, nothing expires, there are no credentials, and the
-data only changes when you deploy new code.
+that. Nothing is collected from readers beyond an access log (below), nothing
+expires, there are no credentials, and the data only changes when you deploy
+new code.
 
 That is the whole difference from `pgh-ghost-bus`, whose deploy kit this is
 modelled on. There, a 20-second poll loop gathers realtime data that can never
@@ -120,6 +121,33 @@ is no CDN in front of it; for a low-traffic public-comment tool that is fine.
 `/api/*` responses are cached for an hour at the front door, because they cannot
 change without a deploy. The HTML and JS bundle deliberately are not — a stale
 bundle against a fresh API is the one failure a reader could not diagnose.
+
+Re-running `setup-caddy.sh` is how a Caddyfile change reaches the box: it
+rewrites the file and reloads Caddy, and is safe to repeat.
+
+## Reading the usage
+
+The access log is the site's only analytics, and it is enough, because every
+question a reader asks the app is a GET with the question in the URL. Caddy
+writes it as JSON to `/var/log/caddy/access.log`, rolled at 50 MB and kept for
+30 days, with the client address **masked to a /24 before the line is
+written** and any `Cookie` or `Authorization` header dropped — so nothing on
+the box identifies a reader, and there is no tag, cookie or third party on the
+page. Pull the files down and summarise them:
+
+```bash
+scp 'root@<ip>:/var/log/caddy/access*.log*' /tmp/prt-usage/
+python3 report_usage.py --places data/place_boundaries.json /tmp/prt-usage/access*
+```
+
+That prints visitors and page loads per Eastern day, which views were used,
+which destinations and day types were asked about, which places were opened,
+and where on the map people clicked — rounded to ~100 m cells and named by the
+county boundary that contains them. The script's docstring says what a
+"visitor" is (one masked address and browser per day, so a count to within a
+factor) and what the log cannot see (repeat views inside the hour-long cache,
+hovers). **Keep the pulled logs out of the repo**: the click cells are coarse,
+but a raw log is still a list of where people asked.
 
 ## Verifying a deploy
 

@@ -59,6 +59,25 @@ $DOMAIN {
     @api path /api/*
     header @api Cache-Control "public, max-age=3600"
 
+    # The access log is the site's only analytics -- see report_usage.py for
+    # what it is read for. The client address is masked to a /24 BEFORE the
+    # line is written, so nothing on disk identifies a reader; what remains is
+    # the question they asked, which is the point. Thirty days, then gone.
+    log {
+        output file /var/log/caddy/access.log {
+            roll_size 50mb
+            roll_keep 10
+            roll_keep_for 720h
+        }
+        format filter {
+            wrap json
+            request>remote_ip ip_mask 24 48
+            request>client_ip ip_mask 24 48
+            request>headers>Cookie delete
+            request>headers>Authorization delete
+        }
+    }
+
     reverse_proxy 127.0.0.1:8000
 }
 EOF

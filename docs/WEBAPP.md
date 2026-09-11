@@ -1451,6 +1451,12 @@ or heartbeat to maintain. See [`deploy/README.md`](../deploy/README.md).
    not a technical matter.
 2. **Decide on address search.** Today the input is a map click. Geocoding means
    an external service (Nominatim's usage policy, or a self-hosted index).
+3. **Say what is collected, when asking PPT.** Since 2026-09-11 the front door
+   keeps a 30-day access log with the reader's address masked to a /24, and
+   `report_usage.py` reads it for which views, places and destinations get
+   asked about — no cookie, no tag, no third party. The `/findings` footer says
+   so; the permission question above should mention it too, so PPT is not
+   surprised by it later. See `deploy/README.md`, "Reading the usage".
 
 ## Known gaps
 
