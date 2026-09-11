@@ -2,7 +2,9 @@ import { $, fetchJSON, esc } from './utils';
 import {
   clearPlace, initMapLayers, showPlace, stopMarkHoverSpecs, viewHasWalkRadius,
 } from './mapview';
-import { render, renderEmpty, setDay, activeDay, placeLabel } from './place';
+import {
+  render, renderEmpty, setDay, activeDay, placeLabel,
+} from './place';
 import { oneSeatPanelHTML, oneSeatPromptHTML } from './oneseatpanel';
 import {
   initChangeLayer, loadChangeLayer, setChangeDay, toggleBucket, resetBuckets,
@@ -33,8 +35,13 @@ import {
 import {
   initJourneyLayer, setJourneyVisible, drawJourney, journeyUrl,
   journeyPanelHTML, journeyPromptHTML, journeyKeyHTML,
-  isVisible as journeyOn, journeyData, Point,
+  isVisible as journeyOn, journeyData, Point, LAYER_RIDE as JOURNEY_RIDE_LAYER,
 } from './journey';
+import {
+  initStopRoutesLayer, drawStopRoutes, setStopRoutesVisible, stopRoutesUrl,
+  routeLineLabel, startFlow, isStopRoutesVisible, stopRoutesData,
+  StopRoutes, DEFAULT_STOP_ROUTES,
+} from './stoproutes';
 import {
   initPlacesLayer, loadPlaces, loadBoundaries, selectPlace, setPlacesVisible,
   placesListHTML, placesKeyHTML, placeTooltipHTML, setPlacesFill,
@@ -53,7 +60,7 @@ import { initHover } from './hover';
 import {
   PlaceResult, Day, OneSeatDay, JourneyResult, NamedDestination, Weight,
   SurfaceUnit,
-  StopRef,
+  StopRef, KerbRoutesResult, Side,
 } from './types';
 
 const PGH: [number, number] = [-79.9959, 40.4406];
@@ -77,6 +84,7 @@ const CONTROL = {
   view: 'data-view',
   dest: 'data-dest',
   placeFill: 'data-place-fill',
+  stopRoutes: 'data-stop-routes',
 } as const;
 
 /**
@@ -150,6 +158,27 @@ let weight: Weight = 'locations';
 // key reads, not which question the surface is answering -- and it has no
 // toolbar button of its own, only the switch drawn inside the key itself.
 let surfaceUnit: SurfaceUnit = 'area';
+
+// Which network's routes are drawn at the clicked kerb, or 'off'. One value
+// with three positions rather than a toggle and a side: the lines are one
+// network at a time, so the side is half of what is drawn. Its control is in
+// the toolbar with every other one that changes what the map draws -- the
+// scope is the clicked stop, but the effect is on the ground, which is the
+// test `docs/WEBAPP.md` applies. Switching between the two networks is a
+// redraw and never a refetch: `/api/kerb_routes` answers with both at once.
+let stopRoutes: StopRoutes = DEFAULT_STOP_ROUTES;
+let stopRoutesSeq = 0;
+
+/**
+ * Which side to hand the drawing, including while nothing is drawn.
+ *
+ * `drawStopRoutes` takes a network rather than this control's three
+ * positions, because clearing the layer is done by handing it no data at all;
+ * the side it is given then decides nothing.
+ */
+function drawnSide(): Side {
+  return stopRoutes === 'off' ? 'current' : stopRoutes;
+}
 
 // Which order the Places list is ranked in. Lives here for the same reason
 // `weight` and `surfaceUnit` do: it changes how the list reads, not which
@@ -249,6 +278,10 @@ map.on('load', () => {
   initCorridorLayer(map, CHANGE_BASE_LAYER);  // same slot; corridors and dots/surface are mutually exclusive
   initOneSeatLayer(map, 'walk-fill');     // the dots' own slot; the two never show together
   initJourneyLayer(map);                  // on top: two drawn trips, over everything
+  // Under a timed trip, not over one: a reader who has both a route drawn and
+  // a journey timed should see the trip they asked to time, not the kerb's
+  // whole route list painted across it.
+  initStopRoutesLayer(map, JOURNEY_RIDE_LAYER);
   initPlacesLayer(map, CHANGE_BASE_LAYER);    // same slot as corridors; mutually exclusive with dots/surface too
   renderPanel();
 
@@ -328,6 +361,13 @@ map.on('load', () => {
       },
       anchor: (f: any) => (f.geometry as any).coordinates,
     },
+    // Last of the map specs, so every dot above wins over a route line
+    // crossing under it: the line is long and the dot is the thing a reader
+    // aimed at, and `initHover` takes the first spec whose layer is hit.
+    {
+      layer: 'stoproutes-lines',
+      html: (f: any) => routeLineLabel(f.properties),
+    },
     // The choropleth's tooltip anchors at the pointer, having no point of its
     // own to sit on. `placeFill` decides which reading leads
     // (`placeTooltipHTML`'s own doc), so this reads the module state rather
@@ -380,6 +420,10 @@ map.on('load', () => {
     // verdict -- so it is redrawn from the answer already in hand.
     if (view !== 'journey') renderPanel();
     setChangeDay(map, day);
+    // The drawn routes are day-scoped too -- a Sunday kerb can run fewer
+    // patterns than a weekday one -- so a day switch re-fetches them the same
+    // way it re-times a journey below.
+    syncStopRoutes();
     setSurfaceDay(map, day);
     // A journey has a day type of its own — a Sunday trip is a fair question
     // to ask, and the published one is the weekday peak — so the answer on
@@ -464,6 +508,7 @@ map.on('load', () => {
     // control needs no line here: it is drawn inside the panel, which the
     // view switch replaces wholesale.)
     $('place-fill-controls').classList.toggle('hidden', view !== 'places');
+    refreshStopRoutesControls();
     // The brush paints dots, so it means nothing in the views that have none.
     // Disarmed rather than merely hidden: a mode left armed behind a control
     // the reader can no longer see would swallow their next click.
@@ -506,6 +551,29 @@ map.on('load', () => {
     // for (`dayControlsShown`'s own doc), so switching to or away from it
     // has to show or hide that row, not just repaint the map.
     refreshDayControls();
+  });
+
+  // Off, today's routes, or the plan's, drawn at the clicked kerb. Three
+  // positions of one control because the map shows one network at a time
+  // (`stoproutes.ts`), and in the toolbar rather than the panel because it
+  // paints the map. The panel is redrawn either way: its route chips are the
+  // only key the per-kerb palette has, so they have to change network with
+  // the lines.
+  segment(CONTROL.stopRoutes, (b) => {
+    const next = b.dataset.stopRoutes as StopRoutes;
+    const wasDrawn = stopRoutes !== 'off' && stopRoutesData() !== null;
+    stopRoutes = next;
+    // `segment` writes the URL and the state line after this returns, so
+    // neither is done here.
+    renderPanel();
+    if (wasDrawn && next !== 'off') {
+      // A switch between the two networks is a redraw, never a second
+      // request: the answer in hand holds both of them.
+      drawStopRoutes(map, stopRoutesData(), next);
+      if (marks) showPinKey(marks.radius);
+    } else {
+      syncStopRoutes();
+    }
   });
 
   $('legend').addEventListener('click', (e) => {
@@ -715,6 +783,10 @@ function applyOpening(s: Partial<UrlState>): void {
   // Before the view, and needing no fetch to have happened: the selection is
   // a set of ids, and the halo catches up with them when the dots arrive.
   if (s.selection) setSelection(map, s.selection);
+  // Before `s.at`: `askAt` -> `load` -> `syncPlaceMarks` -> `syncStopRoutes`
+  // reads this flag to decide whether to fetch at all, so it has to be set
+  // before that chain runs rather than after.
+  if (s.stopRoutes) press(CONTROL.stopRoutes, s.stopRoutes);
   if (s.view) press(CONTROL.view, s.view);
   // Last, because it answers the question the controls above have just
   // finished describing.
@@ -745,6 +817,7 @@ function syncUrl() {
     place: selectedPlace,
     placeFill,
     selection: selectionIds(),
+    stopRoutes,
   };
   const search = toSearch(state);
   // The mode is not part of the question, so it is not in what `toSearch`
@@ -779,7 +852,7 @@ function refreshEmbedLink(search = withoutEmbed(location.search)) {
 function refreshStateLine() {
   $('statebar').innerHTML = questionLineHTML({
     view, day: activeDay(), radius, oneSeatRestricted,
-    destination: destinationName(),
+    destination: destinationName(), stopRoutes,
   });
   refreshControlsButton();
 }
@@ -1095,7 +1168,7 @@ function renderPanel({ scrollToTop = false } = {}) {
   // radius stays below it, labelled, because that is the published unit. The
   // views with no dots in them (`dotsOn` false) get the walk radius alone --
   // there is no stop there for a click to have landed on.
-  render(lastPlace, { withKerb: dotsOn() });
+  render(lastPlace, { withKerb: dotsOn(), routes: stopRoutes });
 }
 
 function showJourney(on: boolean, leaving = false) {
@@ -1322,8 +1395,11 @@ async function load(lat: number, lon: number) {
   placeMarker(lat, lon);
   // The previous click's marks are about to be replaced or, if this question
   // has no answer, to have been wrong: either way they stop being true now
-  // rather than when the fetch returns.
+  // rather than when the fetch returns. The old stop's drawn routes go with
+  // them, or a new click would leave them up on the map while its own fetch
+  // is still in flight.
   clearPlace(map);
+  drawStopRoutes(map, null, drawnSide());
   $('pin-key').classList.add('hidden');
 
   try {
@@ -1336,8 +1412,13 @@ async function load(lat: number, lon: number) {
       + `${pin}&oneseat_day=${oneSeatDay()}`);
     if (mine !== seq) return;       // a newer click already won
     marks = { lat, lon, radius, now: p.current.stops, proposed: p.proposed.stops };
-    syncPlaceMarks();
+    // Before `syncPlaceMarks`, not after: that call reaches `syncStopRoutes`,
+    // which asks whether this point has a kerb at all before fetching its
+    // routes -- and with the answer still unassigned it reads the PREVIOUS
+    // click's, so an opening `stoproutes=current` link drew nothing at all.
     lastPlace = p;
+    refreshStopRoutesControls();
+    syncPlaceMarks();
     renderPanel({ scrollToTop: true });
   } catch (err) {
     if (mine !== seq) return;
@@ -1377,10 +1458,50 @@ function syncPlaceMarks() {
   if (!marks || !viewHasWalkRadius(view)) {
     clearPlace(map);
     $('pin-key').classList.add('hidden');
+    syncStopRoutes();
     return;
   }
   showPlace(map, marks.lat, marks.lon, marks.radius, marks.now, marks.proposed);
   showPinKey(marks.radius);
+  syncStopRoutes();
+}
+
+/**
+ * Fetch, draw, or clear this kerb's routes, to agree with the toggle, the
+ * view and the click all at once.
+ *
+ * Guarded by its own sequence number, the same pattern `load` and
+ * `loadJourney` use: the toggle, the view and the day can all change while a
+ * request for one kerb is in flight, and a slow answer for a stop the reader
+ * has since left must not paint over whatever they clicked next.
+ */
+function syncStopRoutes() {
+  const mine = ++stopRoutesSeq;
+  const refreshKey = () => { if (marks) showPinKey(marks.radius); };
+  if (stopRoutes !== 'off' && dotsOn() && last && lastPlace?.kerb) {
+    void fetchJSON<KerbRoutesResult>(stopRoutesUrl(last, activeDay()))
+      .then((r) => {
+        if (mine !== stopRoutesSeq) return;
+        drawStopRoutes(map, r, drawnSide());
+        setStopRoutesVisible(map, true);
+        startFlow(map);
+        refreshKey();
+      })
+      .catch(() => {
+        // A 404 (no stop within 25 m) or any other failure draws nothing --
+        // the control stays where it is, so returning to a stop that does
+        // have one still shows it, but there is nothing to draw for this
+        // click.
+        if (mine !== stopRoutesSeq) return;
+        drawStopRoutes(map, null, drawnSide());
+        setStopRoutesVisible(map, false);
+        refreshKey();
+      });
+  } else {
+    drawStopRoutes(map, null, drawnSide());
+    setStopRoutesVisible(map, false);
+    refreshKey();
+  }
 }
 
 /**
@@ -1392,7 +1513,8 @@ function syncPlaceMarks() {
  * the toolbar.
  */
 function showPinKey(drawnAt: number) {
-  $('pin-key').innerHTML = pinKeyHTML(drawnAt);
+  $('pin-key').innerHTML = pinKeyHTML(drawnAt,
+    { routes: stopRoutes !== 'off' && isStopRoutesVisible() ? stopRoutes : false });
   $('pin-key').classList.remove('hidden');
 }
 
@@ -1443,6 +1565,23 @@ function setSelectMode(on: boolean) {
   map.getCanvas().style.cursor = selectMode ? 'none' : '';
   if (!selectMode) hideBrushRing();
   refreshSelectControls();
+}
+
+/**
+ * Show the ROUTES group only while a stop is selected.
+ *
+ * The drawn routes belong to a clicked stop, so the control is offered
+ * exactly when there is one: the answer on screen has a kerb (`kerb` is
+ * null where no pole stands within 25 m, decided by the server) and the
+ * view is one that draws dots for a reader to have clicked. Hidden rather
+ * than disabled -- a control for "the routes at this stop" with no stop
+ * under it has nothing to be disabled about. The state behind it persists
+ * through views and clicks, so a reader who set it to Today and moves to
+ * the next stop gets that stop's routes without pressing anything.
+ */
+function refreshStopRoutesControls() {
+  const atStop = dotsOn() && !!lastPlace?.kerb;
+  $('stop-routes-controls').classList.toggle('hidden', !atStop);
 }
 
 /** The brush's two buttons: whether it is armed, and whether there is

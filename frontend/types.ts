@@ -349,6 +349,42 @@ export interface KerbResult {
   proposed: SideResult;
 }
 
+/**
+ * One route pattern calling at a kerb, as `/api/kerb_routes` sends it — the
+ * shape the toolbar's ROUTES control draws end to end.
+ *
+ * `pattern_id` rather than `route` is the thing drawn once each: a route
+ * with a short-turn or a branch calls at the same kerb on more than one
+ * shape, and each is real service a reader asked to see all of. `points` are
+ * already `[lon, lat]`, the order MapLibre wants and the order every other
+ * drawn path in this app carries.
+ */
+export interface KerbRouteFeature {
+  route: string;
+  name: string | null;
+  pattern_id: number;
+  points: [number, number][];
+  stop_index: number;
+}
+
+/**
+ * Every route calling at one kerb, today and under the plan, from
+ * `/api/kerb_routes` — the drawing's own answer, additive to `KerbResult`
+ * rather than folded into it, since drawing every pattern end to end is a
+ * different question from counting the buses that call. Both networks in one
+ * response, so the toolbar's switch between them costs no second request.
+ */
+export interface KerbRoutesResult {
+  lat: number;
+  lon: number;
+  day: Day;
+  dedup_m: number;
+  stop_id: string;
+  names: string[];
+  current: KerbRouteFeature[];
+  proposed: KerbRouteFeature[];
+}
+
 export interface PlaceResult {
   lat: number;
   lon: number;

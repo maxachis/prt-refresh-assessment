@@ -96,6 +96,13 @@
     #pin-key .sw-now { width:6px; height:6px; }
     #pin-key .sw-prop, #pin-key .sw-both { width:11px; height:11px; }
     #pin-key .pk-head { width:100%; margin-bottom:2px; }
+    /* No swatch for the drawn routes: they are one colour per route, chosen
+       per kerb, so there is no fixed colour for a key to show. What is
+       appended while the toolbar's ROUTES control is on a network is two
+       lines of words --
+       which network is drawn, and what the arrows mean -- and the palette
+       itself is keyed by the panel's route chips. */
+    #pin-key .pk-note { flex-basis:100%; font-size:10px; color:var(--muted); }
     /* The mark a location both networks serve draws as: not a colour of
        its own, but the proposed dot with the smaller current one on top
        of it, which is what the map is doing. */
@@ -419,6 +426,14 @@
     .route.only-now { border-color:var(--now); color:var(--now); }
     .route.only-prop { border-color:var(--prop); color:var(--prop); }
     .route.both { color:var(--shared); }
+    /* The chip's own line on the map, while the toolbar's ROUTES control is
+       drawing it. A left bar rather than the chip's text colour, which is
+       already saying which networks run the route: the map's palette is a
+       second fact about the same chip, and overwriting the first with it
+       would trade a published distinction for a decorative one. Last, so it
+       wins the border-colour the presence rules above set. */
+    .route[style*="--route-color"] { border-left:4px solid var(--route-color);
+      padding-left:5px; }
     /* The key names three colours; each word wears the one it names. */
     .k-now { color:var(--now); }
     .k-prop { color:var(--prop); }
@@ -859,6 +874,31 @@
             <button data-view="oneseat">One-seat</button>
             <button data-view="journey">Travel time</button>
             <button data-view="places">Places</button>
+          </div>
+        </div>
+        <!-- Draw every bus route calling at the clicked stop, end to end
+             along the street it drives. Three positions rather than a toggle
+             with a side hanging off it, because the lines are ONE NETWORK AT
+             A TIME: at a downtown kerb the answer is 36 routes, and drawn
+             both at once and coloured by network the line had to carry two
+             channels -- which network, and which route -- and past five or
+             six routes the second one stopped arriving. So the network is a
+             position of this control and the colour is the route's own
+             (frontend/routecolor.ts). Switching between the two costs no
+             fetch: /api/kerb_routes answers with both.
+
+             It lives here, on the map, for the reason every control does --
+             it changes what the map draws, and the panel holds only the
+             answer. Its caption and its route chips, which are the only key
+             the per-kerb palette has, stay in the panel's "At this stop"
+             block. Shown only where dots are on screen: there is no stop to
+             draw routes at on the surface, the streets, or Places. -->
+        <div class="controls hidden" id="stop-routes-controls">
+          <span class="lbl">routes</span>
+          <div class="seg">
+            <button type="button" data-stop-routes="off" class="active">Off</button>
+            <button type="button" data-stop-routes="current">Today</button>
+            <button type="button" data-stop-routes="proposed">Proposed</button>
           </div>
         </div>
         <!-- The one-seat view asks a different KIND of question from the other

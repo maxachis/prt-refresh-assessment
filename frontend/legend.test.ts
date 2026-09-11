@@ -558,6 +558,29 @@ describe('the key for the marks around the pin', () => {
     const words = pinKeyHTML(400).replace(/<[^>]*>/g, ' ').trim().split(/\s+/);
     expect(words.length).toBeLessThanOrEqual(22);
   });
+
+  it('says nothing about drawn routes until the toggle is on', () => {
+    expect(pinKeyHTML(400)).not.toContain('one colour each');
+  });
+
+  it('says which network the drawn lines are, and that the panel keys them', () => {
+    // No swatch pair here any more: the lines are one colour per route now,
+    // so there is no fixed colour for this key to show. The panel's chips
+    // carry the palette, because the palette is different at every kerb.
+    const html = pinKeyHTML(400, { routes: 'current' });
+    expect(html.toLowerCase()).toContain("routes, today's network");
+    expect(html.toLowerCase()).toContain('one colour each');
+    expect(html.toLowerCase()).toContain('keyed in the panel');
+    expect(html.toLowerCase()).toContain('direction of travel');
+    expect(html).not.toContain('sw-route-now');
+    expect(html).not.toContain('sw-route-prop');
+  });
+
+  it('says the plan when the plan is what is drawn', () => {
+    const html = pinKeyHTML(400, { routes: 'proposed' });
+    expect(html.toLowerCase()).toContain('under the plan');
+    expect(html.toLowerCase()).not.toContain("today's network");
+  });
 });
 
 describe('renderLegend with a painted selection', () => {

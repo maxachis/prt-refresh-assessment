@@ -14,6 +14,7 @@ const FULL: UrlState = {
   place: 'baldwin borough',
   placeFill: 'gained',
   selection: ['c:10005', 'p:2201'],
+  stopRoutes: 'proposed',
 };
 
 describe('toSearch', () => {
@@ -27,6 +28,23 @@ describe('toSearch', () => {
     expect(p.get('weight')).toBe('riders');
     expect(p.get('surfaceunit')).toBe('people');
     expect(p.get('placefill')).toBe('gained');
+    expect(p.get('stoproutes')).toBe('proposed');
+  });
+
+  it('writes which network the drawn routes are, since only one is on the map', () => {
+    // Off, today or the plan are three positions of one control, not a
+    // toggle with a refinement hanging off it: the lines are one network at
+    // a time, so which one is half of what is drawn.
+    const p = new URLSearchParams(toSearch({ ...FULL, stopRoutes: 'current' }));
+    expect(p.get('stoproutes')).toBe('current');
+  });
+
+  it('writes the routes control off, unlike the omitted-when-default controls', () => {
+    // Unlike weight/surfaceUnit/placeFill, this control has no "nothing
+    // chosen" state -- off is a position a reader can be in -- so it is
+    // always in the URL, off included.
+    const p = new URLSearchParams(toSearch({ ...FULL, stopRoutes: 'off' }));
+    expect(p.get('stoproutes')).toBe('off');
   });
 
   it('leaves the place fill out of a link that is mapping the default, losses', () => {
@@ -114,6 +132,13 @@ describe('parseUrlState', () => {
     ['?map=40.44,-79.99', 'camera'],
     ['?dest=', 'dest'],
     ['?placefill=net', 'placeFill'],
+    ['?stoproutes=maybe', 'stopRoutes'],
+    // The two parameters this replaced before the feature shipped: `on` was
+    // the old toggle's value and the side rode in a second parameter, so a
+    // link written against either spelling is a link this build cannot
+    // honour, and it opens at the default rather than half-applied.
+    ['?stoproutes=on', 'stopRoutes'],
+    ['?stoproutes=', 'stopRoutes'],
   ])('ignores %s', (search, key) => {
     expect(parseUrlState(search)).not.toHaveProperty(key);
   });

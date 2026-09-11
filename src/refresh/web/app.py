@@ -341,6 +341,34 @@ def create_app(db_path: str | Path = "data/refresh.db") -> FastAPI:
         _check_point(dest_lat, dest_lon)
         return query.journey_between(con, lat, lon, dest_lat, dest_lon, day=day)
 
+    @app.get("/api/kerb_routes")
+    def api_kerb_routes(
+        lat: float = Query(..., description="latitude"),
+        lon: float = Query(..., description="longitude"),
+        day: str = Query("weekday", pattern=f"^({'|'.join(query.DAYS)})$"),
+    ):
+        """Where every bus calling at one kerb goes, on both networks.
+
+        The map's half of the answer panel's kerb block: the block names the
+        routes, this draws them. Same poles and the same bus-only universe,
+        so a line here is always a route in that list -- and a train serving
+        the stop is not drawn, which the panel's caption has to say.
+
+        For drawing only. The paths are the feeds' shapes thinned at build
+        time and nothing may be measured off them (`query.kerb_routes`).
+
+        404 where no pole stands within `query.STOP_SAME_POLE_M`, for the
+        same reason `/api/place` returns a null kerb there: empty route lists
+        would render as a stop that lost all its buses rather than as no stop.
+        """
+        _check_point(lat, lon)
+        got = query.kerb_routes(con, lat, lon, day)
+        if got is None:
+            raise HTTPException(
+                404, f"no stop within {query.STOP_SAME_POLE_M:.0f} m of that "
+                     "point")
+        return got
+
     @app.get("/api/stops")
     def api_stops(
         side: str = Query("current", pattern="^(current|proposed)$"),
@@ -568,6 +596,28 @@ CAVEATS = [
                 "nothing is shown rather than a zero. The place is named by "
                 "the nearest labelled stop, which PRT's own HOOD/MUNI fields "
                 "sometimes get wrong.",
+    },
+    {
+        "id": "stop-routes",
+        "text": "A stop's drawn routes are every route calling at that kerb "
+                "on the day type shown, drawn end to end along the street "
+                "the bus runs. One network at a time, switched in the panel, "
+                "and one colour per route rather than one per network: the "
+                "question here is which buses call, not today against the "
+                "plan, and a downtown kerb has 36 of them, where two shades "
+                "of blue and orange stop being tellable apart past five or "
+                "six. The colours are spaced in OKLCH, so equal steps are "
+                "equal to the eye; they are assigned per kerb, so the panel's "
+                "route chips are the key and a hue means nothing between one "
+                "stop and the next. The lines come from the "
+                "feeds' own shapes, thinned for drawing: nothing may be "
+                "measured off them -- street length is the corridor view's "
+                "question and is measured on the full shape. Buses only, "
+                "like every service figure here, so a train calling at the "
+                "stop draws no line even where it is the service that "
+                "matters. It is a picture of what the panel's stop block "
+                "lists, not a published unit: the published unit is the walk "
+                "radius below it.",
     },
     {
         "id": "day-types",

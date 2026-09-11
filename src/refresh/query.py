@@ -759,6 +759,43 @@ def _stop_at(con, side: str, stop_id: str, lat: float, lon: float):
             math.hypot(dla, dlo))
 
 
+def kerb_stops(con, lat: float, lon: float,
+               dedup: float = STOP_SAME_POLE_M):
+    """Which poles are THIS KERB, on both networks, or None if none are.
+
+    The stop choice `kerb_service` used to make inline, pulled out because a
+    second reader arrived: `kerb_routes` draws the lines for the routes that
+    block lists, and the two must be looking at the same poles. Two
+    selections that agree today would drift the first time either was tuned,
+    and the drift would show as a route drawn on the map that the panel
+    beside it does not name.
+
+    Returns `(own, here, there)`: the id of the pole under the point, today's
+    poles inside `dedup`, and the plan's. The plan's list is the poles inside
+    the same distance PLUS `own` wherever the plan keeps that id but stands
+    it further down the block -- convention 3's rule that a moved stop is not
+    a lost one, which is why the id comes first.
+
+    NULL WHERE NO POLE STANDS, for `kerb_service`'s reason: a reader in the
+    middle of a park is not at a stop with no buses, they are where no stop
+    is. Decided by the metres on the ground and never by a screen hit, so an
+    `at=` link reproduces the same answer at any zoom.
+    """
+    here = stops_within(con, lat, lon, dedup, "current")
+    if not here:
+        return None
+    # Nearest, then lowest id: `stops_within` sorts by id, not by distance,
+    # and the dot a reader clicked is the pole under the cursor.
+    own = min(here, key=lambda s: (s[4], s[0]))[0]
+
+    there = list(stops_within(con, lat, lon, dedup, "proposed"))
+    if own not in {s[0] for s in there}:
+        kept = _stop_at(con, "proposed", own, lat, lon)
+        if kept is not None:
+            there.append(kept)
+    return own, here, there
+
+
 def kerb_service(con, lat: float, lon: float,
                  dedup: float = STOP_SAME_POLE_M):
     """What the plan does to the buses at ONE STOP, or None if there is none.
@@ -792,18 +829,10 @@ def kerb_service(con, lat: float, lon: float,
     quoting a figure from here has to say it is per stop, the way the map's
     key does (convention 2).
     """
-    here = stops_within(con, lat, lon, dedup, "current")
-    if not here:
+    chosen = kerb_stops(con, lat, lon, dedup)
+    if chosen is None:
         return None
-    # Nearest, then lowest id: `stops_within` sorts by id, not by distance,
-    # and the dot a reader clicked is the pole under the cursor.
-    own = min(here, key=lambda s: (s[4], s[0]))[0]
-
-    there = list(stops_within(con, lat, lon, dedup, "proposed"))
-    if own not in {s[0] for s in there}:
-        kept = _stop_at(con, "proposed", own, lat, lon)
-        if kept is not None:
-            there.append(kept)
+    own, here, there = chosen
 
     return {
         "lat": lat, "lon": lon,
@@ -815,6 +844,167 @@ def kerb_service(con, lat: float, lon: float,
         "current": side_at_kerb(con, "current", here),
         "proposed": side_at_kerb(con, "proposed", there),
     }
+
+
+def _route_names(con, side: str, route_ids):
+    """{route_id: long_name} for one network, for labelling a drawn line."""
+    if not route_ids:
+        return {}
+    holes = ",".join("?" * len(route_ids))
+    return {r["route_id"]: r["long_name"] for r in con.execute(
+        f"SELECT route_id, long_name FROM routes WHERE side = ? "
+        f"AND route_id IN ({holes})", (side, *route_ids))}
+
+
+def kerb_routes(con, lat: float, lon: float, day: str,
+                dedup: float = STOP_SAME_POLE_M):
+    """Where every bus calling at ONE KERB goes, on both networks, to draw.
+
+    The panel's kerb block names the routes; this gives each of them its
+    street, end to end, so a reader can see what "the 71B" actually means
+    here rather than reading a number. Same poles as that block
+    (`kerb_stops`), same day type, same bus-only universe -- the route sets
+    are pinned equal in `tests/test_query.py`, because a line on the map that
+    the list beside it does not name would read as service nobody counted.
+
+    FOR DRAWING ONLY, AND NOTHING MAY BE MEASURED OFF IT. The path comes from
+    `journey_shape`, which is thinned to `gtfs.SHAPE_SIMPLIFY_M` between
+    stops and is lossy by construction (see that table's schema comment in
+    `build_webdb.py`). Street length is `analyze_corridor_change.py`'s
+    question, measured on the full shape; a kilometre summed off these
+    vertices would be a different, smaller and wrong number.
+
+    BUSES ONLY, like every service figure here and unlike the journey and
+    one-seat tables, which count rail on purpose (conventions 13 and 14). The
+    route universe is `departures`, so a T stop draws no rail line: at a
+    Beechview kerb the Blue Line runs all day and nothing is drawn for it.
+    That is convention 16's trap arriving at the smallest unit on the site,
+    and the caption in the UI has to say so -- an undrawn train reads as no
+    train.
+
+    DAY-TYPED, unlike the kerb block's counts, which are always all three:
+    one drawing cannot hold three networks on top of each other, so it draws
+    the day the map is set to and says which.
+
+    A PATTERN, NOT A ROUTE, is the unit drawn. Short-turns and branches are
+    real service and a route collapsed to one line would either hide them or
+    invent a street no bus runs. `stop_index` is where this kerb sits along
+    the drawn line, so a client can mark it.
+
+    NOT A PUBLISHED UNIT -- the kerb never is (convention 2). This draws what
+    `data/coverage_change.csv` does not measure and could not: a route's
+    whole length, from a question asked at one corner.
+    """
+    chosen = kerb_stops(con, lat, lon, dedup)
+    if chosen is None:
+        return None
+    own, here, there = chosen
+
+    out = {
+        "lat": lat, "lon": lon, "day": day,
+        "dedup_m": round(dedup),
+        "stop_id": own,
+        # The same names `kerb_service` prints, built the same way from the
+        # same poles rather than by calling it: the panel already has that
+        # block, and recomputing three day types of service to read a label
+        # off it would be work nothing here needs.
+        "names": sorted({s[1] for s in here if s[1]}),
+    }
+    for side, stops in (("current", here), ("proposed", there)):
+        out[side] = _side_kerb_routes(con, side, day, [s[0] for s in stops])
+    return out
+
+
+def _side_kerb_routes(con, side: str, day: str, stop_ids):
+    """One network's drawable patterns through a set of poles.
+
+    The route universe is `departures` -- the same table the kerb block
+    counts -- and the patterns are then every `journey_pattern` of those
+    routes whose calling sequence contains one of these poles. Going through
+    the routes first rather than straight to the patterns is what keeps the
+    two halves of the panel agreeing: the router's tables carry rail and a
+    slightly different trip universe, so a pattern reached without the
+    `departures` filter could draw a line for a route the list omits.
+    """
+    if not stop_ids:
+        return []
+    holes = ",".join("?" * len(stop_ids))
+    wanted = {r["route"] for r in con.execute(
+        f"SELECT DISTINCT route FROM departures WHERE side = ? AND day = ? "
+        f"AND stop_id IN ({holes})", (side, day, *stop_ids))}
+    if not wanted:
+        return []
+    names = _route_names(con, side, sorted(wanted))
+    on_kerb = set(stop_ids)
+
+    features = []
+    for row in con.execute(
+            "SELECT pattern_id, route_id, stops FROM journey_pattern "
+            "WHERE side = ? AND day = ?", (side, day)):
+        if row["route_id"] not in wanted:
+            continue
+        calling = row["stops"].split(";")
+        at = next((i for i, s in enumerate(calling) if s in on_kerb), None)
+        if at is None:
+            continue
+        drawn = _pattern_path(con, side, day, row["pattern_id"], calling, at)
+        if drawn is None:
+            continue
+        points, stop_index = drawn
+        features.append({
+            "route": row["route_id"],
+            "name": names.get(row["route_id"]),
+            "pattern_id": row["pattern_id"],
+            "points": points,
+            "stop_index": stop_index,
+        })
+    # Deterministic, so a link and a screenshot draw the same lines in the
+    # same order -- SQLite's row order is not a promise.
+    features.sort(key=lambda f: (f["route"], f["pattern_id"]))
+    return features
+
+
+def _pattern_path(con, side: str, day: str, pattern_id: int, calling,
+                  at: int):
+    """([[lon, lat], ...], stop_index) for one pattern, or None if undrawable.
+
+    The shape where the feed named one, and the stops joined by straight
+    lines where it did not. Every pattern in the database has a shape today,
+    so the fallback is dead code in practice and kept anyway: `journey_shape`
+    carries no row for a pattern whose trips name no shape, and a feed
+    refresh that dropped one would otherwise silently stop drawing a route
+    the panel still lists.
+    """
+    paths = cached_journey_paths(con, side, day)
+    index = _pattern_order(con, side, day).get(pattern_id)
+    path = paths[index] if index is not None and index < len(paths) else None
+    if path is not None:
+        points, stop_idx = path
+        if at < len(stop_idx):
+            return [list(pt) for pt in points], stop_idx[at]
+    coords = journey_coords(con, side)
+    line = [[coords[s][1], coords[s][0]] for s in calling if s in coords]
+    if len(line) < 2:
+        return None
+    return line, min(at, len(line) - 1)
+
+
+def _pattern_order(con, side: str, day: str):
+    """{pattern_id: index} into `cached_journey_paths`' list.
+
+    That list is positional, ordered by `pattern_id` (see `journey_paths`),
+    because a ride leg names its pattern by index. Anything reaching it by
+    id needs this map, and building it per pattern would be a table scan per
+    line drawn. Cached per database, side and day, exactly as the paths it
+    indexes into are.
+    """
+    key = (_database_of(con), side, day)
+    if key not in _PATTERN_ORDER:
+        _PATTERN_ORDER[key] = {
+            row["pattern_id"]: i for i, row in enumerate(con.execute(
+                "SELECT pattern_id FROM journey_pattern "
+                "WHERE side = ? AND day = ? ORDER BY pattern_id", (side, day)))}
+    return _PATTERN_ORDER[key]
 
 
 def place(con, lat: float, lon: float, radius: float = PRIMARY_RADIUS,
@@ -2403,6 +2593,9 @@ _TIMETABLES: dict[tuple, "journey.Timetable"] = {}
 # Parsed drawn paths, per database, side and day. About 2 MB of text across
 # both feeds, so parsing it per request would cost more than routing does.
 _PATHS: dict[tuple, list] = {}
+# {(database, side, day): {pattern_id: index into _PATHS' list}}, for the one
+# reader that reaches a path by id rather than by a ride leg's index.
+_PATTERN_ORDER: dict[tuple, dict] = {}
 # {database: WalkNetwork or None}, one graph shared by both sides -- a street
 # does not move between the current and proposed plans. None is cached too,
 # not left as a missing key, so a database built before this layer existed is

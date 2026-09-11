@@ -98,7 +98,7 @@ unchanged.
 ### Why the controls sit on the map and the panel is only content
 
 Every control — walk radius, view, one-seat day, destination,
-day type — changes what the map draws, and none of them changes what the panel
+drawn routes, day type — changes what the map draws, and none of them changes what the panel
 is a panel *of*. They ride on the map for that reason, docked as a strip of
 groups along its top edge, and the side panel holds nothing but the answer for
 the point last clicked. It collapses to a rail, which gives the map the window.
@@ -172,6 +172,71 @@ kerb, by the 25 m on the ground rather than by a screen hit, so an `at=` link
 opens the same panel at every zoom; `/api/place` returns `kerb: null` where no
 pole stands, and the panel falls back to the walk radius alone. The one-seat
 panel's collapsed service line stays radius-based.
+
+### Drawing a stop's routes
+
+The toolbar's **ROUTES** group — Off, Today, Proposed — draws every route
+calling at the clicked kerb on the map, end to end along the street it drives,
+with an arrow flowing in the direction of travel. `stoproutes.ts` fetches
+`/api/kerb_routes` for the clicked point and draws it under a timed trip's own
+lines, never over one.
+
+It sat in the panel's own "At this stop" block until 2026-09-11, as a toggle
+with a network switch under it, on the reasoning that the question it answers
+belongs to the clicked stop rather than to the whole map. That is true and it
+is not the test this app applies: **controls belong to the map, the panel
+holds only the answer**, which is the rule the toolbar section above states,
+and this control changes what the map draws. In the toolbar it also sits where
+a reader looks for a switch. The group appears only while a stop is selected:
+the answer on screen has a kerb (the server's 25 m test, not a screen hit) and
+the view is one that draws dots, since there is no stop to draw routes at on
+the surface, the streets or Places, and none anywhere before the first click.
+Hidden rather than disabled, and the position is kept, so a reader who set it
+to Today and clicks the next stop gets that stop's routes without pressing
+anything.
+
+It draws **one network at a time and colours by route, not by side** — the
+one layer here that does. Every other view is a comparison, today against the
+plan, and two colours carry it. This view asks a different question — which
+buses call here — and at a downtown kerb the answer is 36 of them. Drawn both
+at once and coloured by network, the line had to carry two channels, and past
+five or six routes the second one stopped arriving: a reader can tell blue
+from orange and cannot tell the eleventh orange from the twelfth. So the
+network became two of the control's three positions ("Today" / "Proposed"),
+switching between which costs no fetch because the response already holds
+both sides, and the colour became the route's own.
+
+The palette is spaced in **OKLCH** (`routecolor.ts`), at one lightness with
+hues `i · 360/N` apart, because "as far apart as possible" is a claim about
+the eye and equal steps of HSL hue are not equal to the eye — the
+yellow-greens collapse while the blues stay distinct. Where a hue cannot hold
+the asked-for chroma in sRGB, **chroma is pulled in and the hue is not**:
+clipping would move the hue and converge two routes on one flat colour. The
+palette is computed over **the drawn side's route ids alone**, so the two
+networks are not comparable by hue — and it is assigned **per kerb**, so a
+colour means nothing between one stop and the next. The key for it is
+therefore the panel's own route chips, which wear the same colours (the same
+`routeColors` call over the same set); they and the caption above them are
+what stayed in the kerb block when the control left it, because both are the
+answer rather than the knob. The map key says only which network is drawn and
+what the arrows mean, and the state line over the panel appends "· routes
+today" or "· routes proposed" so a screenshotted answer says which network
+its chips belong to.
+
+It still draws **one line per pattern, not one per route** — a short-turn or
+a branch is real service, and picking one pattern to stand for a route with
+several would silently choose which trip a reader gets to see.
+
+Two caveats travel with it. It is **drawing only**: the shapes are lossy the
+way a journey's ride legs are, so nothing may be measured off a length or an
+angle here. And it is **buses only** — the T and the inclines never appear,
+so a stop the toggle shows losing its last bus while a train still calls
+there is convention 13's Beechview trap arriving at a new unit. The control's
+position travels in the URL as `stoproutes=off`/`current`/`proposed`, written
+always, so a link reproduces the map it was copied from. It was two
+parameters — a toggle and a side — before the feature shipped, which is one
+state too many: a network is half of what is drawn, not a refinement of an
+on/off.
 
 ### What the panel says, and what the drawer says instead
 

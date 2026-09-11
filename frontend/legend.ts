@@ -19,7 +19,7 @@
 import { esc } from './utils';
 import {
   Day, ChangeLayer, SurfaceLayer, CorridorLayer, CorridorKlass, OneSeatLayer,
-  Weight, SurfaceUnit, PopulationLayer,
+  Weight, SurfaceUnit, PopulationLayer, Side,
 } from './types';
 import {
   STYLE, countIn, countNewPlacesIn, NEW_PLACE_KEY, countRemovedIn, REMOVED_KEY,
@@ -359,14 +359,25 @@ export function renderOneSeatLegend(
  * the map -- a red pin lands among red dots -- but a key that reproduced it
  * silently would be the place a reader gets it wrong.
  */
-export function pinKeyHTML(radius: number) {
+export function pinKeyHTML(radius: number,
+                           { routes = false }: { routes?: false | Side } = {}) {
+  // A line rather than a swatch pair, because there is no fixed colour to
+  // show: the drawn routes are one colour per route, assigned per kerb, so
+  // the only place the palette can be keyed is the panel's own chip list
+  // beside the control that turned them on. What this key owes the reader is
+  // the two things the chips cannot say -- which network is on the map, and
+  // that the arrows are direction rather than decoration.
+  const routeNote = routes ? `
+    <span class="pk-note">routes, ${routes === 'current' ? "today's network"
+      : 'under the plan'} — one colour each, keyed in the panel</span>
+    <span class="pk-note">arrows: direction of travel</span>` : '';
   return `
     <div class="pk-head">Around the pin</div>
     <span><i class="sw-pin"></i>the pin</span>
     <span><i class="sw-walk"></i>the ${radius} m walk</span>
     <span><i class="sw-now"></i>stop today</span>
     <span><i class="sw-prop"></i>stop proposed</span>
-    <span><i class="sw-both"></i>both, same spot</span>`;
+    <span><i class="sw-both"></i>both, same spot</span>${routeNote}`;
 }
 
 /**

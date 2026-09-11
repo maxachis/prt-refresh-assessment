@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { placeLabel, serviceBodyHTML, panelHTML, kerbBlockHTML } from './place';
-import { DayService, PlaceResult, SideResult } from './types';
+import { DayService, KerbRoutesResult, PlaceResult, SideResult } from './types';
+import { routeColors, toGeoJSON } from './stoproutes';
 
 function service(over: Partial<DayService> = {}): DayService {
   return {
@@ -549,5 +550,103 @@ describe('the routes the circle only catches one way', () => {
     expect(block).not.toContain('Routes in one direction only');
     expect(block).not.toContain('directions');
     expect(block).toContain('buses per weekday at this stop');
+  });
+});
+
+// The toolbar's routes control draws every route calling here on the map;
+// what stays in the kerb block is the caption saying what those lines are.
+describe('the caption for this stop\'s drawn routes', () => {
+  it('says nothing while no routes are drawn', () => {
+    const block = kerbBlockHTML(KERB, 'weekday');
+    expect(block).not.toContain('Buses only');
+    expect(block).not.toContain('one colour per route');
+  });
+
+  it('captions the drawing whenever the control is on a network', () => {
+    const on = kerbBlockHTML(KERB, 'weekday', { routes: 'current' });
+    expect(on).toContain('one colour per route');
+    expect(on.toLowerCase()).toContain('buses only');
+    expect(on).toContain('data-caveat="stop-routes"');
+  });
+
+  it('names the network the lines are, since only one is drawn', () => {
+    expect(kerbBlockHTML(KERB, 'weekday', { routes: 'current' }))
+      .toContain("today's network");
+    expect(kerbBlockHTML(KERB, 'weekday', { routes: 'proposed' }))
+      .toContain('under the plan');
+  });
+
+  // The control that turns the lines on lives on the map with every other
+  // control that changes what the map draws (docs/WEBAPP.md); the panel
+  // holds the answer, which here is what the lines mean.
+  it('carries no control of its own -- the toolbar holds that', () => {
+    const on = kerbBlockHTML(KERB, 'weekday', { routes: 'current' });
+    // The control's own attribute, and the pressed state any button of it
+    // would carry. The only button left in the block is the method link.
+    expect(on).not.toContain('data-stop-routes');
+    expect(on).not.toContain('aria-pressed');
+  });
+
+  it('captions nothing where there is no kerb', () => {
+    const html = panelHTML(PLACE, 'weekday', { withKerb: true, routes: 'current' });
+    expect(html).not.toContain('one colour per route');
+  });
+});
+
+// The map's palette is per kerb and nothing on the map is labelled, so the
+// chips are the key. They are coloured from the same call the lines are.
+describe('the route chips, while the lines are on the map', () => {
+  const MANY: NonNullable<PlaceResult['kerb']> = {
+    ...KERB,
+    current: { ...side('current', 167), stops: [],
+               days: { ...side('current', 167).days,
+                       weekday: service({ routes: ['61B', '71A', '8'] }) } },
+    proposed: { ...side('proposed', 143), stops: [],
+                days: { ...side('proposed', 143).days,
+                        weekday: service({ routes: ['61X', '8'] }) } },
+  };
+
+  it('leaves every chip plain while nothing is drawn', () => {
+    expect(kerbBlockHTML(MANY, 'weekday')).not.toContain('--route-color');
+  });
+
+  it('paints the drawn side\'s chips in their line colours, and only that side\'s', () => {
+    const html = kerbBlockHTML(MANY, 'weekday', { routes: 'current' });
+    const want = routeColors(['61B', '71A', '8']);
+    for (const r of ['61B', '71A', '8']) {
+      expect(html).toContain(`--route-color:${want.get(r)}`);
+    }
+    // The plan's own 61X is not drawn, so it carries no colour: a coloured
+    // chip means "this is on the map", and colouring both lists would make
+    // the key claim twice as much as the map shows.
+    expect(html).not.toContain(routeColors(['61X', '8']).get('61X'));
+  });
+
+  it('switches the colouring to the plan with the lines', () => {
+    const html = kerbBlockHTML(MANY, 'weekday', { routes: 'proposed' });
+    const want = routeColors(['61X', '8']);
+    expect(html).toContain(`--route-color:${want.get('61X')}`);
+  });
+
+  it('agrees with the line the map draws, route for route', () => {
+    // The two palettes are the same by construction -- both are
+    // `routeColors` over the drawn side's route ids -- and
+    // tests/test_query.py pins /api/kerb_routes's route set equal to the
+    // kerb block's, so the two id sets cannot diverge either.
+    const day = 'weekday';
+    const drawn = MANY.current.days[day].routes;
+    const api: KerbRoutesResult = {
+      lat: MANY.lat, lon: MANY.lon, day, dedup_m: 25, stop_id: MANY.stop_id,
+      names: MANY.names,
+      current: drawn.map((route, i) => ({
+        route, name: null, pattern_id: i, stop_index: 0,
+        points: [[-80, 40], [-80.01, 40.01]] as [number, number][],
+      })),
+      proposed: [],
+    };
+    const html = kerbBlockHTML(MANY, day, { routes: 'current' });
+    for (const f of toGeoJSON(api, 'current').features) {
+      expect(html).toContain(`--route-color:${f.properties.color}`);
+    }
   });
 });

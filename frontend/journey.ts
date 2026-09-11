@@ -53,7 +53,9 @@ const SRC = 'journey';
 // cannot be data-driven, so the walks and the rides have to be separate layers
 // rather than one layer switching on the leg kind. MapLibre rejects the layer
 // outright if you try, which is how this was found.
-const LAYER_RIDE = 'journey-rides';
+// Exported so `stoproutes.ts`'s own lines can be inserted just beneath it:
+// the drawn kerb routes are meant to sit under a timed trip, never over one.
+export const LAYER_RIDE = 'journey-rides';
 const LAYER_WALK = 'journey-walks';
 const JOURNEY_LAYERS = [LAYER_RIDE, LAYER_WALK];
 

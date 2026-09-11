@@ -31,6 +31,7 @@ import { Weight, SurfaceUnit } from './types';
 import { Destination } from './oneseat';
 import { PlaceFill, DEFAULT_PLACE_FILL } from './places';
 import { VIEWS } from './statebar';
+import { StopRoutes, DEFAULT_STOP_ROUTES } from './stoproutes';
 
 /**
  * The query parameters, named once.
@@ -52,6 +53,7 @@ export const PARAM = {
   place: 'place',
   placeFill: 'placefill',
   selection: 'sel',
+  stopRoutes: 'stoproutes',
 } as const;
 
 /**
@@ -104,6 +106,21 @@ export interface UrlState {
   placeFill: PlaceFill;
   /** The dots painted on the Stop-by-stop view, by id; empty when none are. */
   selection: string[];
+  /**
+   * Which network's routes are drawn at the clicked kerb, or 'off'. Written
+   * always, like `view` and `day`, rather than only when on: unlike the
+   * selection or the destination pin, there is no "nothing chosen yet" state
+   * for this control, only three positions a reader can be in.
+   *
+   * One parameter where there were two: an `on|off` toggle here and a second
+   * parameter naming the network. The lines are one network at a time, so the
+   * network is half of what is drawn rather than a refinement of a toggle,
+   * and two parameters could say a thing this control cannot be -- on, with
+   * no network. Both were replaced before the feature shipped, so no link in
+   * the wild carries the old spelling; one that did would open at the default
+   * rather than half-applied.
+   */
+  stopRoutes?: StopRoutes;
 }
 
 /** Is this page inside someone else's? */
@@ -150,6 +167,7 @@ export function toSearch(s: UrlState): string {
   // scoped by hand is exactly the one a reader cannot reproduce from the rest
   // of the URL -- see the head line the legend prints over it.
   if (s.selection.length) p.set(PARAM.selection, s.selection.join(','));
+  p.set(PARAM.stopRoutes, s.stopRoutes ?? DEFAULT_STOP_ROUTES);
   return `?${p}`;
 }
 
@@ -206,6 +224,11 @@ export function parseUrlState(search: string): Partial<UrlState> {
   const placeFill = p.get(PARAM.placeFill);
   if (placeFill === 'lost' || placeFill === 'gained' || placeFill === 'service') {
     s.placeFill = placeFill;
+  }
+
+  const stopRoutes = p.get(PARAM.stopRoutes);
+  if (stopRoutes === 'off' || stopRoutes === 'current' || stopRoutes === 'proposed') {
+    s.stopRoutes = stopRoutes;
   }
 
   return s;

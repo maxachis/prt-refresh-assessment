@@ -522,3 +522,34 @@ def test_meta_explains_the_one_direction_row(client):
     caveats = {c["id"]: c["text"] for c in client.get("/api/meta").json()["caveats"]}
     assert "14%" in caveats["one-direction"]
     assert "one-way" in caveats["one-direction"]
+
+
+def test_the_stop_routes_endpoint_draws_both_networks(client):
+    r = client.get("/api/kerb_routes", params={**DOWNTOWN, "day": "weekday"})
+    assert r.status_code == 200
+    got = r.json()
+    assert got["stop_id"] and got["day"] == "weekday"
+    assert got["current"] and got["proposed"]
+    for f in got["current"] + got["proposed"]:
+        assert len(f["points"]) >= 2
+        assert len(f["points"]) > f["stop_index"]
+
+
+def test_the_stop_routes_endpoint_has_nothing_to_draw_off_the_kerb(client):
+    """404 rather than empty lists: empty lists read as a stop with no buses."""
+    r = client.get("/api/kerb_routes",
+                   params={"lat": 40.4406, "lon": -79.9490, "day": "weekday"})
+    assert r.status_code == 404
+    assert "stop" in r.json()["detail"]
+
+
+def test_the_stop_routes_endpoint_rejects_a_day_it_does_not_measure(client):
+    r = client.get("/api/kerb_routes", params={**DOWNTOWN, "day": "tuesday"})
+    assert r.status_code == 422
+
+
+def test_meta_carries_the_stop_routes_caveat(client):
+    """A screenshot of the drawn lines must carry what they are not."""
+    text = {c["id"]: c["text"] for c in client.get("/api/meta").json()["caveats"]}
+    assert "stop-routes" in text
+    assert "measured" in text["stop-routes"]

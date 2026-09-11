@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { questionLine, questionLineHTML, viewLabel } from './statebar';
+import { DEFAULT_STOP_ROUTES } from './stoproutes';
 
 const BASE = {
   view: 'dots',
@@ -7,6 +8,7 @@ const BASE = {
   radius: 400,
   oneSeatRestricted: false,
   destination: 'Downtown',
+  stopRoutes: DEFAULT_STOP_ROUTES,
 };
 
 describe('questionLine', () => {
@@ -61,6 +63,38 @@ describe('questionLine', () => {
   // county-wide and day-free -- so neither suffix belongs on the line.
   it('drops both the day and the radius from Places, which uses neither', () => {
     expect(questionLine({ ...BASE, view: 'places' })).toBe('Places');
+  });
+});
+
+// The toolbar's routes control puts a second network's lines on the map
+// under the same day and radius, and the panel below carries that network's
+// route chips. A line that did not say which network was drawn would leave
+// the chips unattributed.
+describe('the drawn routes on the line', () => {
+  it('says nothing while the control is off', () => {
+    expect(questionLine(BASE)).toBe('Stop-by-stop \u00b7 a weekday \u00b7 400 m walk');
+  });
+
+  it('names the network whose routes are drawn', () => {
+    expect(questionLine({ ...BASE, stopRoutes: 'current' }))
+      .toBe('Stop-by-stop \u00b7 a weekday \u00b7 400 m walk \u00b7 routes today');
+    expect(questionLine({ ...BASE, stopRoutes: 'proposed' }))
+      .toBe('Stop-by-stop \u00b7 a weekday \u00b7 400 m walk \u00b7 routes proposed');
+  });
+
+  it('keeps saying it over the combined view, which still draws dots', () => {
+    expect(questionLine({ ...BASE, view: 'both', stopRoutes: 'proposed' }))
+      .toBe('Stop-by-stop + surface \u00b7 a weekday \u00b7 400 m walk \u00b7 routes proposed');
+  });
+
+  // The control is hidden outside the dot views and nothing is on the map
+  // there, so the state it kept for the reader's return must not be
+  // announced as if it were drawn.
+  it('stays quiet in a view with no stop to draw routes at', () => {
+    expect(questionLine({ ...BASE, view: 'surface', stopRoutes: 'proposed' }))
+      .toBe('Surface \u00b7 a weekday \u00b7 400 m walk');
+    expect(questionLine({ ...BASE, view: 'places', stopRoutes: 'proposed' }))
+      .toBe('Places');
   });
 });
 

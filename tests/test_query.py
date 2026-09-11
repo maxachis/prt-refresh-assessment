@@ -1272,3 +1272,63 @@ def test_the_loop_routes_are_looked_up_once_per_network_and_day(con):
     again = query._loop_routes(con, "current", "weekday")
     assert first == again and "11" in first
     assert query._loop_routes.cache_info().hits == 1
+
+
+# --------------------------------------------------------------------------
+# drawing a kerb's routes
+# --------------------------------------------------------------------------
+
+DOWNTOWN_KERB = (40.442748, -80.004257)
+
+
+def test_kerb_stops_is_the_choice_kerb_service_already_made(con):
+    """The extraction must not move the stop the panel headlines.
+
+    `kerb_routes` has to draw the routes of exactly the kerb the block above
+    it counts, so both read the same helper rather than each picking poles
+    for themselves -- two selections that agreed today would drift the first
+    time one of them was tuned.
+    """
+    assert query.kerb_stops(con, 40.4406, -79.9490) is None
+    own, here, there = query.kerb_stops(con, *DOWNTOWN_KERB)
+    served = query.kerb_service(con, *DOWNTOWN_KERB)
+    assert own == served["stop_id"]
+    assert {s[0] for s in here} == {s["stop_id"] for s in served["current"]["stops"]}
+    assert {s[0] for s in there} == {s["stop_id"] for s in served["proposed"]["stops"]}
+
+
+@pytest.mark.parametrize("day", query.DAYS)
+def test_the_drawn_routes_are_the_routes_the_kerb_block_lists(con, day):
+    """The map may not draw a route the panel beside it does not name.
+
+    Same day type, same poles, same bus-only universe: a reader looking at a
+    line on the map has to be able to find it in the list, and a route in the
+    list with no line would read as a route that goes nowhere.
+    """
+    drawn = query.kerb_routes(con, *DOWNTOWN_KERB, day)
+    listed = query.kerb_service(con, *DOWNTOWN_KERB)
+    for side in ("current", "proposed"):
+        assert {f["route"] for f in drawn[side]} == set(
+            listed[side]["days"][day]["routes"])
+
+
+def test_a_drawn_route_is_a_line_with_the_kerb_on_it(con):
+    """Every feature must be drawable and must know where the stop sits."""
+    drawn = query.kerb_routes(con, *DOWNTOWN_KERB, "weekday")
+    assert drawn["stop_id"] and drawn["day"] == "weekday"
+    assert drawn["names"] == query.kerb_service(con, *DOWNTOWN_KERB)["names"]
+    features = drawn["current"] + drawn["proposed"]
+    assert features
+    for f in features:
+        assert len(f["points"]) >= 2
+        assert all(len(p) == 2 for p in f["points"])
+        assert 0 <= f["stop_index"] < len(f["points"])
+    for side in ("current", "proposed"):
+        keys = [(f["route"], f["pattern_id"]) for f in drawn[side]]
+        assert keys == sorted(keys)
+        assert len(keys) == len(set(keys))
+
+
+def test_nothing_is_drawn_where_no_pole_stands(con):
+    """Same null as `kerb_service`: no stop, no stop's routes."""
+    assert query.kerb_routes(con, 40.4406, -79.9490, "weekday") is None

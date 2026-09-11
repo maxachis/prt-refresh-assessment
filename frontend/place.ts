@@ -32,8 +32,10 @@
 import { esc, clock, duration, signed, pct } from './utils';
 import {
   PKEYS, PERIOD_LABEL, Day, PlaceResult, DayService, OneSeatVerdict, OneSeatDay,
-  Boardings, PlacePopulation, StopRef, KerbResult,
+  Boardings, PlacePopulation, StopRef, KerbResult, Side,
 } from './types';
+import { routeColors } from './routecolor';
+import { StopRoutes } from './stoproutes';
 
 /**
  * How a block of numbers says which unit it is measured at.
@@ -309,15 +311,27 @@ function span(s: DayService): number | null {
  * the two indistinguishable -- still true, and what a column each answers:
  * neither list can bleed into the other's space.
  */
-export function routePair(current: string[], proposed: string[]): string {
+export function routePair(current: string[], proposed: string[],
+                          drawn?: DrawnRoutes): string {
   const both = new Set(current.filter((r) => proposed.includes(r)));
+  const colorsFor = (side: Side) =>
+    (drawn && drawn.side === side ? drawn.colors : undefined);
   return `<div class="rpair">
       <div class="rside"><span class="rlab">today</span>
-        ${markedRoutes(current, both, 'now')}</div>
+        ${markedRoutes(current, both, 'now', colorsFor('current'))}</div>
       <div class="rside"><span class="rlab">proposed</span>
-        ${markedRoutes(proposed, both, 'prop')}</div>
+        ${markedRoutes(proposed, both, 'prop', colorsFor('proposed'))}</div>
     </div>`;
 }
+
+/**
+ * The palette on the map right now, so the chips can wear it.
+ *
+ * One side only, because only one is drawn: a coloured chip means "this
+ * route is a line on the map", and colouring the network that is not drawn
+ * would have the list claim twice what the map shows.
+ */
+export interface DrawnRoutes { side: Side; colors: Map<string, string> }
 
 /**
  * One side's routes, each marked by which networks run it.
@@ -329,11 +343,17 @@ export function routePair(current: string[], proposed: string[]): string {
  * the 61A-D become the 60X/61X/62X, and a red pill would call that a loss.
  */
 function markedRoutes(routes: string[], both: Set<string>,
-                      side: 'now' | 'prop'): string {
+                      side: 'now' | 'prop',
+                      colors?: Map<string, string>): string {
   if (!routes.length) return `<span class="muted">none</span>`;
   return routes.map((r) => {
     const mark = both.has(r) ? 'both' : `only-${side}`;
-    return `<span class="route ${mark}">${esc(r)}</span>`;
+    // The line's colour rides on a custom property rather than replacing the
+    // text colour: which networks run a route and which line on the map is
+    // it are two different facts, and the chip has to carry both.
+    const color = colors?.get(r);
+    const paint = color ? ` style="--route-color:${color}"` : '';
+    return `<span class="route ${mark}"${paint}>${esc(r)}</span>`;
   }).join(' ');
 }
 
@@ -627,11 +647,11 @@ function serviceFactsRows(before: DayService, after: DayService): string {
 
 /** Both networks' route lists, under a heading that says at what scope. */
 function routesBlockHTML(before: DayService, after: DayService,
-                         heading: string): string {
+                         heading: string, drawn?: DrawnRoutes): string {
   return `
     <div class="routes">
       <h3>${esc(heading)}</h3>
-      ${routePair(before.routes, after.routes)}
+      ${routePair(before.routes, after.routes, drawn)}
       <p class="note"><span class="k-now">Blue</span> runs here only today,
          <span class="k-prop">orange</span> only under the plan,
          <span class="k-shared">grey</span> both. Renumbering is not
@@ -667,9 +687,43 @@ function routesBlockHTML(before: DayService, after: DayService,
  * scope — "buses per weekday at this stop" — and the one-direction row stays
  * in the walk-radius block, where it is news.
  */
-export function kerbBlockHTML(k: KerbResult, d: Day): string {
+/**
+ * Which of the toolbar ROUTES control's three positions is on, so the block
+ * can say what the lines on the map are and colour its chips to match.
+ */
+export interface KerbBlockOptions { routes?: StopRoutes }
+
+/**
+ * What the lines on the map are, in words — the panel's half of the toolbar's
+ * ROUTES control.
+ *
+ * The control itself is on the map (`stoproutes.ts`), with every other
+ * control that changes what is drawn. What is left here is the part that is
+ * an answer rather than a knob: which network those lines are, that the
+ * colours are per route, that the arrows mean direction, and that a train
+ * calling here is not among them.
+ */
+function drawnRoutesCaptionHTML(d: Day, routes: StopRoutes): string {
+  if (routes === 'off') return '';
+  const network = routes === 'current' ? "on today's network" : 'under the plan';
+  return `
+    <p class="note">Every route calling here on a ${dayWord(d)}, ${network},
+      one colour per route, drawn end to end along the street it runs; arrows
+      point the direction of travel. Buses only: a train serving this stop is
+      not drawn.${methodLink('stop-routes')}</p>`;
+}
+
+export function kerbBlockHTML(k: KerbResult, d: Day,
+                              opts: KerbBlockOptions = {}): string {
   const before = k.current.days[d];
   const after = k.proposed.days[d];
+  // Over the drawn side's own route list, which is the set `/api/kerb_routes`
+  // answers with for this kerb and day (pinned equal in tests/test_query.py),
+  // so the chip and the line cannot land on different hues.
+  const routes = opts.routes ?? 'off';
+  const drawn: DrawnRoutes | undefined = routes === 'off' ? undefined
+    : { side: routes,
+        colors: routeColors((routes === 'current' ? before : after).routes) };
   const poles = k.names.length ? k.names.join(' · ') : `stop ${k.stop_id}`;
   return `
     <section class="scope kerb-scope">
@@ -684,7 +738,8 @@ export function kerbBlockHTML(k: KerbResult, d: Day): string {
         ${boardingsFact(before.boardings, d, AT_THIS_STOP)}
       </dl>
       ${boardingsNote(before.boardings)}
-      ${routesBlockHTML(before, after, 'Routes calling at this stop')}
+      ${routesBlockHTML(before, after, 'Routes calling at this stop', drawn)}
+      ${drawnRoutesCaptionHTML(d, routes)}
       <p class="note">This kerb only — every pole within ${k.dedup_m} m of it,
         on both networks, so a corner PRT splits into two stop ids reads as
         one. It is the same count the dot's colour and its hover use, and it
@@ -760,7 +815,10 @@ export function serviceBodyHTML(p: PlaceResult, d: Day, middle = ''): string {
  * stands within 25 m, decided on the ground rather than by a screen hit, so
  * an `at=` link opens the same panel at every zoom.
  */
-export interface PanelScope { withKerb?: boolean }
+export interface PanelScope {
+  withKerb?: boolean;
+  routes?: StopRoutes;
+}
 
 /**
  * The whole panel for a clicked point, as HTML.
@@ -769,7 +827,7 @@ export interface PanelScope { withKerb?: boolean }
  * which is how everything else in this module is checked.
  */
 export function panelHTML(p: PlaceResult, d: Day,
-                          { withKerb = false }: PanelScope = {}): string {
+                          { withKerb = false, routes = 'off' }: PanelScope = {}): string {
   const kerb = withKerb ? p.kerb ?? null : null;
   // The place head carries the radius only when it is the panel's one scope.
   // Hung over a kerb headline it would label the wrong number -- the trap
@@ -782,7 +840,7 @@ export function panelHTML(p: PlaceResult, d: Day,
       <h2>${esc(placeLabel(p))}</h2>
       <div class="muted">${where}</div>
     </div>
-    ${kerb ? kerbBlockHTML(kerb, d) : ''}
+    ${kerb ? kerbBlockHTML(kerb, d, { routes }) : ''}
     ${kerb ? `<h3 class="scope-head">Within a ${p.radius} m walk</h3>
       <div class="scope-sub">The published unit: every stop a rider can walk
         to, on both networks, measured in the same circle.</div>` : ''}

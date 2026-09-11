@@ -20,6 +20,7 @@
  */
 import { esc } from './utils';
 import { Day } from './types';
+import { StopRoutes } from './stoproutes';
 
 const SEP = ' · ';
 
@@ -31,6 +32,8 @@ export interface QuestionState {
   oneSeatRestricted: boolean;
   /** What the destination-taking views are measuring to, already named. */
   destination: string;
+  /** Which network's routes are drawn at the clicked kerb, or 'off'. */
+  stopRoutes: StopRoutes;
 }
 
 const VIEW_LABEL: Record<string, string> = {
@@ -74,6 +77,24 @@ const DAY_WORD: Record<Day, string> = {
 const TAKES_DESTINATION = ['oneseat', 'journey'];
 
 /**
+ * Views with stops drawn on them, which are the only ones a kerb's routes can
+ * be drawn at.
+ *
+ * The control keeps its position while a reader is elsewhere, so that coming
+ * back to Stop-by-stop brings the lines back -- but nothing is on the map
+ * meanwhile, and a line announcing routes over a surface nobody drew them on
+ * would be the same misattribution the day and radius suffixes are guarded
+ * against above.
+ */
+const DRAWS_STOPS = ['dots', 'both'];
+
+/** What the line calls each of the two networks whose routes it can draw. */
+const ROUTES_WORD: Record<string, string> = {
+  current: 'routes today',
+  proposed: 'routes proposed',
+};
+
+/**
  * The walk radius applies to the panel, not to the layer.
  *
  * So it stays on the line for Streets -- whose map ignores it, but whose
@@ -98,6 +119,9 @@ export function questionLine(s: QuestionState): string {
   parts.push(s.view === 'oneseat' && !s.oneSeatRestricted
     ? 'any day' : DAY_WORD[s.day]);
   if (usesRadius(s.view)) parts.push(`${s.radius} m walk`);
+  if (s.stopRoutes !== 'off' && DRAWS_STOPS.includes(s.view)) {
+    parts.push(ROUTES_WORD[s.stopRoutes]);
+  }
   return parts.join(SEP);
 }
 
