@@ -273,11 +273,39 @@
       border-radius:10px; padding:5px 10px; backdrop-filter:blur(3px); }
     .controls .lbl { color:var(--muted); font-size:11px; text-transform:uppercase;
       letter-spacing:.06em; }
-    .seg { display:inline-flex; border:1px solid var(--line); border-radius:8px;
-      overflow:hidden; }
-    .seg button { border:0; border-right:1px solid var(--line); background:#0c0e12;
-      color:var(--muted); padding:5px 11px; font:inherit; font-size:12px; cursor:pointer; }
-    .seg button:last-child { border-right:0; }
+    /* Each group is folded to the option it is set to. Seven groups laid
+       flat were two bands of the map wide, every alternative on screen for a
+       choice a reader makes a few times an hour; folded, the strip still
+       says what question is being asked and the map has its top edge back.
+       The trigger is created by `dropdown.ts` in front of the segment and
+       mirrors the active option -- text, disabled, armed -- so the buttons
+       beneath it are exactly what they were. The list drops from the
+       trigger's own left edge, which is why the two share a wrapper. */
+    .dd { position:relative; }
+    .seg-current { display:inline-flex; align-items:center; gap:7px;
+      border:1px solid var(--line); border-radius:8px; background:#0c0e12;
+      color:var(--ink); padding:5px 9px 5px 11px; font:inherit; font-size:12px;
+      font-weight:600; cursor:pointer; white-space:nowrap; }
+    .seg-current::after { content:'▾'; color:var(--muted); font-size:11px;
+      font-weight:400; }
+    .seg-current:hover, .seg-current[aria-expanded="true"] { border-color:#39414f; }
+    .seg-current[aria-expanded="true"] { background:#1b1f27; }
+    .seg-current:disabled { opacity:.35; cursor:not-allowed; }
+    .seg-current:focus-visible { outline:2px solid var(--now); outline-offset:1px; }
+    .seg { display:none; position:absolute; top:calc(100% + 4px); left:0;
+      min-width:100%; flex-direction:column; border:1px solid var(--line);
+      border-radius:8px; overflow:hidden; background:#0c0e12;
+      box-shadow:0 8px 24px rgba(0,0,0,.45); }
+    .controls.open .seg { display:flex; }
+    /* The open group rises above its siblings, or a list from the first row
+       would paint under the groups of the second. */
+    .controls { position:relative; }
+    .controls.open { z-index:1; }
+    .seg button { border:0; border-bottom:1px solid var(--line); background:#0c0e12;
+      color:var(--muted); padding:7px 12px; font:inherit; font-size:12px; cursor:pointer;
+      text-align:left; white-space:nowrap; }
+    .seg button:last-child { border-bottom:0; }
+    .seg button:hover:not(:disabled):not(.active) { background:#1b1f27; color:var(--ink); }
     /* The selected pill inverts rather than lightening a shade. Five groups
        ride in the strip and each has exactly one selection, so "which one is
        on" has to survive being read at a glance, from the corner of the eye,
@@ -560,7 +588,7 @@
     /* Armed "pick a point": the map is waiting for a click, and the control
        has to look different from a plain selection or the reader has no way
        to tell the mode is on. */
-    .seg button.armed { background:#2b3038; color:var(--ink);
+    .seg button.armed, .seg-current.armed { background:#2b3038; color:var(--ink);
       box-shadow:inset 0 0 0 1px #6fb6ef; }
 
     /* Methods drawer — the caveats travel with the numbers. */
@@ -695,10 +723,18 @@
       /* The segments become chip rows: a fixed strip of six buttons cannot fit
          a phone, and wrapping one with a shared border and `overflow:hidden`
          puts the seams in the wrong places. */
-      #mapbar .seg { display:flex; flex-wrap:wrap; gap:6px; border:0;
-        overflow:visible; }
+      /* Not folded here: the sheet is already the mode a reader enters to
+         change a control, and inside it a chip row is one tap per choice
+         where a list would be two. The trigger goes and the wrapper gets
+         out of the grid's way, so the label and the chips are its two
+         cells as before. */
+      #mapbar .seg-current { display:none; }
+      #mapbar .dd { display:contents; }
+      #mapbar .seg { display:flex; position:static; flex-direction:row;
+        flex-wrap:wrap; gap:6px; border:0; overflow:visible; min-width:0;
+        background:none; box-shadow:none; }
       #mapbar .seg button { flex:1 1 auto; border:1px solid var(--line);
-        border-radius:9px; padding:9px 12px; font-size:13px; }
+        border-radius:9px; padding:9px 12px; font-size:13px; text-align:center; }
       #mapbar .seg button.active { border-color:var(--sel); }
 
       /* --- the key --- */
@@ -762,7 +798,7 @@
        44 pt and Android 48 dp; the app was shipping 30 px segment buttons,
        26 px legend rows and a 20x22 px panel toggle. */
     @media (pointer: coarse) {
-      .seg button { min-height:44px; padding:10px 14px; }
+      .seg button, .seg-current { min-height:44px; padding:10px 14px; }
       #legend .lg-row { min-height:40px; }
       #legend-collapse, #side-toggle, #methods-close {
         min-width:34px; min-height:34px; }

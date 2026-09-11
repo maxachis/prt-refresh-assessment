@@ -110,6 +110,22 @@ remaining 55% of the screen, most of which the legend covered. On a phone the
 strip is not a strip — see below — but the principle holds in both layouts:
 controls belong to the map, the panel holds only the answer.
 
+Since 2026-09-11 each group is **folded to the option it is set to**, with a
+caret after it, and opens a list beneath itself when clicked
+(`frontend/dropdown.ts`). Laid flat, the seven groups were two bands of
+geography wide — every alternative of every control on screen, for choices a
+reader makes a few times an hour — and in the one-seat and travel-time views
+they wrapped to a second row. Folded, the strip still says what question is
+being asked (walk 400 m, view One-seat, to Downtown) and the map has its top
+edge back. The option buttons underneath are untouched: every handler, and the
+button-press a link arrives through, finds the same buttons with the same
+active class, and the trigger in front of each group merely mirrors whichever
+option is active — its text, its disabled state under Streets, the pin's
+"click the map…" while it waits. One list is open at a time; choosing, clicking
+elsewhere, or Escape closes it. The phone sheet is *not* folded: there the
+toolbar is already a mode a reader enters, and inside it a chip row is one tap
+per choice where a list would be two.
+
 What that costs is proximity: the day type and the walk radius used to sit two
 centimetres above the numbers they were measured at. **The state line puts that
 back** (`frontend/statebar.ts`), pinned above the panel where it cannot scroll

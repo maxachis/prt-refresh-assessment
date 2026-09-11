@@ -57,6 +57,7 @@ import { fullViewLabel, isEmbedded, withEmbed, withoutEmbed } from './embed';
 import { initSheet, onLayoutFlip, Sheet } from './sheet';
 import { basemapStyle, canvasScale, fadeMs, readMachine } from './hardware';
 import { initHover } from './hover';
+import { initDropdowns } from './dropdown';
 import {
   PlaceResult, Day, OneSeatDay, JourneyResult, NamedDestination, Weight,
   SurfaceUnit,
@@ -684,6 +685,10 @@ map.on('load', () => {
   });
 
   initControlSheet();
+  // Folds each toolbar group to its current value. It watches the option
+  // buttons rather than wiring them, so nothing above or below -- the
+  // `segment()` handlers, a link's `press` -- knows it is there.
+  initDropdowns();
 
   refreshStateLine();
   refreshSelectControls();
