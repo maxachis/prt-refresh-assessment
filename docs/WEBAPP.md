@@ -1315,10 +1315,16 @@ one-to-one route's reroute reads as two alignments over each other, which is
 the only way "how did this route change" has a picture. Today's side is drawn
 **wider, underneath** (`routechange.CASING_WIDTH`): the two sides are mostly
 the same street, and at one width the plan's line simply covered today's, so
-"today's alignment" appeared to be only the stub where they part company. As
-a casing, a shared stretch reads orange edged in blue and an abandoned one
-reads blue alone — the 77 + 86 → 86 merge shows the 77's Penn Hills loop in
-blue by itself beside the shared trunk. Blue therefore means
+"today's alignment" appeared to be only the stub where they part company. The plan's side is
+**dotted** on top of it (Max: so it "stands out better when it overlaps with
+existing alignment"), since even as a casing a shared street was mostly the
+plan's colour with a blue edge; between the dots today's line shows through,
+so a shared stretch reads blue with orange dots, a street only the plan runs
+reads orange dots alone, and one it abandons reads solid blue — the 77 + 86
+→ 86 merge shows the 77's Penn Hills loop in blue by itself beside the
+dotted trunk. A dot pattern cannot vary per feature in MapLibre, so the plan
+side is a layer of its own over the same source, filtered by side
+(`routechange.addPlanDotsLayer`), and the key's swatch for it is dotted too. Blue therefore means
 *new route* before a selection and *today's alignment* after one; the key
 rewrites its rows at the moment of selection precisely because that is a
 trap, and an embed, which keeps the key and loses the panel, still says which

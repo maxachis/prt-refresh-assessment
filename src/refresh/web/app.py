@@ -141,7 +141,6 @@ def create_app(db_path: str | Path = "data/refresh.db", *,
             for radius in query.RADII:
                 cached_layer(name, radius)
 
-
     def _check_point(lat: float, lon: float):
         if not (LAT_RANGE[0] <= lat <= LAT_RANGE[1]
                 and LON_RANGE[0] <= lon <= LON_RANGE[1]):

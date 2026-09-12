@@ -169,6 +169,10 @@
       margin-left:-1.1px; background:#e8232f; border-radius:1px; }
     #legend .lg-row i.lg-cross::before { transform:rotate(45deg); }
     #legend .lg-row i.lg-cross::after  { transform:rotate(-45deg); }
+    /* A dotted line, for the Route changes key's proposed alignment: the
+       map draws that side dotted over today's solid casing. */
+    #legend .lg-row i.lg-dotted { background:none; box-shadow:none; height:0;
+      width:14px; border-radius:0; border-top:3px dotted; }
     /* The second question the key answers, set apart from the outcome rows so
        the two are not added together -- see legend.removedRow. */
     #legend .lg-marks { margin-top:7px; padding-top:5px;

@@ -294,14 +294,32 @@ const LAYER_LINES = 'routechange-lines';
 const LAYER_ARROWS = 'routechange-arrows';
 const SEL_SRC = 'routechange-selected';
 const LAYER_SEL_LINES = 'routechange-selected-lines';
+const LAYER_SEL_PLAN = 'routechange-selected-plan';
 const LAYER_SEL_ARROWS = 'routechange-selected-arrows';
-const ALL_LAYERS = [LAYER_LINES, LAYER_ARROWS, LAYER_SEL_LINES, LAYER_SEL_ARROWS];
+const ALL_LAYERS = [LAYER_LINES, LAYER_ARROWS, LAYER_SEL_LINES, LAYER_SEL_PLAN, LAYER_SEL_ARROWS];
 
 /**
  * The line layers a click or a hover is tested against, topmost first: a
  * selected group's own lines win over the dimmed network beneath them.
  */
-export const ROUTE_HIT_LAYERS = [LAYER_SEL_LINES, LAYER_LINES];
+export const ROUTE_HIT_LAYERS = [LAYER_SEL_PLAN, LAYER_SEL_LINES, LAYER_LINES];
+
+/**
+ * The selected group's plan side is dotted -- a dot a line-width across,
+ * then a gap of one and a half -- so that where the two sides share a
+ * street today's casing shows through between the dots, and the shared
+ * stretch reads as both rather than as the plan's line alone with a blue
+ * edge (Max's ask). Dots, not dashes, because a dash over a casing of a
+ * different colour flickers as the map moves, and because at the overview
+ * zooms a dash is what a short new-alignment stub already looks like.
+ * `line-dasharray` cannot vary per feature, so the plan side is its own
+ * layer over the same source, filtered by side.
+ */
+const PLAN_DOTS = [0, 2.5];
+const SIDE_IS: Record<Side, any> = {
+  current: ['==', ['get', 'side'], 'current'],
+  proposed: ['==', ['get', 'side'], 'proposed'],
+};
 
 /**
  * The arrow image, registered once as an SDF so `icon-color` can paint it per
@@ -537,7 +555,30 @@ export function initRouteChangesLayer(map: maplibregl.Map, beforeId?: string) {
   // insertion trick `initPlacesLayer` uses for its fill and points.
   addLineLayers(map, SRC, LAYER_LINES, LAYER_ARROWS, beforeId, FULL_OPACITY);
   addLineLayers(map, SEL_SRC, LAYER_SEL_LINES, LAYER_SEL_ARROWS, beforeId, SELECTED_OPACITY);
+  addPlanDotsLayer(map, beforeId);
   applyBucketFilter(map);
+}
+
+/**
+ * The selected group's plan side, dotted, over today's solid casing. The
+ * solid selected layer keeps only today's side, so the plan is drawn once;
+ * the arrows stay on both, since a dot has no direction.
+ */
+function addPlanDotsLayer(map: maplibregl.Map, beforeId: string | undefined) {
+  map.setFilter(LAYER_SEL_LINES, SIDE_IS.current);
+  map.addLayer({
+    id: LAYER_SEL_PLAN,
+    type: 'line',
+    source: SEL_SRC,
+    filter: SIDE_IS.proposed,
+    layout: { visibility: 'none', 'line-cap': 'round', 'line-join': 'round' },
+    paint: {
+      'line-color': ['get', 'color'],
+      'line-width': lineWidth('status'),
+      'line-opacity': SELECTED_OPACITY,
+      'line-dasharray': PLAN_DOTS,
+    },
+  }, LAYER_SEL_ARROWS);
 }
 
 // --------------------------------------------------------------------------
@@ -950,6 +991,12 @@ function swatchRow(color: string, label: string): string {
     <span class="lg-lab">${label}</span></div>`;
 }
 
+/** The plan side's row: a dotted swatch, as the line is drawn. */
+function dottedRow(color: string, label: string): string {
+  return `<div class="lg-row lg-static"><i class="lg-dotted" style="border-color:${color}"></i>
+    <span class="lg-lab">${label}</span></div>`;
+}
+
 /** One row of the overview's key: a switch, dimmed while its lines are off. */
 function keyRow(attr: string, value: string, color: string, label: string, n: number,
                 off: boolean): string {
@@ -1028,7 +1075,7 @@ export function routeKeyHTML({ groups, day, hidden, serviceHidden, reading, sele
       <div class="lg-head"><b>${esc(mappingLabel(selected))}</b>
         <span class="muted">· ${esc(STATUS_LABEL[selected.status])} · ${esc(DAY_WORD[day])}</span></div>
       ${swatchRow(NOW_COLOR, "today's alignment")}
-      ${swatchRow(PROP_COLOR, 'proposed alignment')}
+      ${dottedRow(PROP_COLOR, 'proposed alignment')}
       <div class="lg-foot">The rest of the network is dimmed. Click a line to
         select another group, or empty map to clear. Lines are drawing only:
         nothing is measured off their length.</div>`;

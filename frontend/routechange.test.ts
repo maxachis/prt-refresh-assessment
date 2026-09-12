@@ -616,9 +616,16 @@ describe('routeKeyHTML', () => {
     expect(selected).toContain('51 CARRICK → 51 Carrick, 51S Carrick Short');
     expect(selected).toContain(`background:${NOW_COLOR}`);
     expect(selected).toContain("today's alignment");
-    expect(selected).toContain(`background:${PROP_COLOR}`);
     expect(selected).toContain('proposed alignment');
     expect(selected).not.toContain(`background:${RESHAPED_COLOR}`);
+  });
+
+  it('draws the proposed swatch dotted, as the line is, and today solid', () => {
+    const detail: RouteGroupDetail = { ...group(), day: 'weekday', features: [feature()] };
+    const selected = routeKeyHTML({ groups: GROUPS, day: 'weekday', hidden: ['one-to-one'], serviceHidden: [], reading: 'status', selected: detail });
+    expect(selected).toMatch(new RegExp(`<i class="lg-dotted" style="border-color:${PROP_COLOR}"></i>\\s*<span class="lg-lab">proposed alignment`));
+    expect(selected).not.toContain(`background:${PROP_COLOR}`);
+    expect(selected).toMatch(new RegExp(`<i style="background:${NOW_COLOR}[^"]*"></i>\\s*<span class="lg-lab">today's alignment`));
   });
 
   it('has something to say before the layer arrives', () => {
