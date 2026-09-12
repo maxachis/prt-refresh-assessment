@@ -262,11 +262,14 @@ export type OneSeatStatus = 'here' | 'keeps' | 'gains' | 'loses' | 'none';
 /**
  * One location on the one-seat layer:
  *
- *   [lat, lon, published, statusIndex, routesToday, routesProposed]
+ *   [lat, lon, published, statusIndex, routesToday, routesProposed, removed]
  *
  * The two route strings are ';'-joined and hold only the routes that actually
  * provide the one-seat ride — not everything serving the location — so the
- * hover text can name them without a second request.
+ * hover text can name them without a second request. `removed` is the
+ * Stop-by-stop view's flag, decided at the kerb: 1 where the plan retires
+ * this stop, so a lost ride can be drawn as that view's cross when the stop
+ * itself goes and as a red dot when it stays. A mark, not a sixth status.
  */
 export type OneSeatPoint = (number | string)[];
 
@@ -294,6 +297,8 @@ export interface OneSeatLayer {
   destination: DestinationRef;
   statuses: { key: OneSeatStatus; label: string }[];
   counts: Record<OneSeatStatus, number>;
+  /** Of `counts`, how many stand at a stop the plan retires. */
+  retired: Record<OneSeatStatus, number>;
   fields: string[];
   points: OneSeatPoint[];
 }

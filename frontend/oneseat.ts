@@ -34,12 +34,29 @@
  *    the county, and leaving it off would make the map's empty half read as
  *    missing data rather than as the finding it is: most of Allegheny County
  *    cannot reach Oakland without transferring, before or after.
+ *  - A LOST RIDE IS TWO SENTENCES, AND THE MAP DRAWS THEM APART. Either the
+ *    stop stays and the ride to Downtown now needs a transfer, or PRT retires
+ *    the stop itself. One red row told both as one, and it told them in
+ *    opposite proportions: Downtown's 955 losses are mostly retired stops
+ *    (679), Oakland's 354 mostly stops that stay (294) -- the 28X, 54, 67 and
+ *    69 keep their poles and lose their Oakland leg, which is the story the
+ *    view is for. The split follows Stop-by-stop's precedent exactly: it is
+ *    decided at the KERB (`removed`, `query.is_removed_stop`), never at the
+ *    walk radius, and drawn with that view's cross -- Max's ruling there was
+ *    that a retired stop is marked and the reader infers a nearby one from
+ *    the map. Only a LOSS is split. A retired stop that keeps its ride stays
+ *    a keeps dot, because the ride is there and the stop providing it is on
+ *    screen; crossing those out would put ~600 more red marks on a map whose
+ *    finding is connectivity, not coverage. So the cross carries a narrower
+ *    sentence here than in Stop-by-stop -- "retired, AND the ride is gone" --
+ *    and the row label says so in words rather than leaning on the glyph.
  */
 import { Day, OneSeatDay, OneSeatLayer, OneSeatPoint, OneSeatStatus } from './types';
 import { fetchJSON } from './utils';
 import { GONE_COLOR, NEW_COLOR } from './surface';
 import { KEPT_COLOR } from './corridor';
 import { PlaceFill } from './places';
+import { ensureRemovedCrossIcon, REMOVED_ICON_SIZE } from './change';
 
 /** Neutral, off the red/blue axis: the destination is not an outcome. */
 export const HERE_COLOR = '#2b3038';
@@ -63,8 +80,49 @@ export const STATUS_STYLE: Record<OneSeatStatus, { color: string; size: number }
 /** Reading order for the legend: the two findings first. */
 export const STATUS_ORDER: OneSeatStatus[] = ['loses', 'gains', 'keeps', 'none', 'here'];
 
+/**
+ * The legend's own key for a lost ride at a stop the plan retires. A row,
+ * not a status: the server's five verdicts are the panel's too, and a clicked
+ * point has no kerb to retire. Never sent to the server.
+ */
+export const LOSES_RETIRED = 'loses_retired';
+export type OneSeatRow = OneSeatStatus | typeof LOSES_RETIRED;
+
+/** Reading order for the legend: the two halves of a loss, then the gain. */
+export const LEGEND_ROWS: OneSeatRow[] = [
+  'loses', LOSES_RETIRED, 'gains', 'keeps', 'none', 'here'];
+
+/**
+ * A row's label. The server's wording for every status, with the lost ride
+ * split in two -- both halves say which they are, so neither can be quoted
+ * as the whole (Max: "make sure the labels of both distinguish").
+ */
+export function rowLabel(row: OneSeatRow, statuses: OneSeatLayer['statuses']): string {
+  const status = row === LOSES_RETIRED ? 'loses' : row;
+  const base = statuses.find((s) => s.key === status)?.label ?? status;
+  if (row === 'loses') return `${base} — stop kept`;
+  if (row === LOSES_RETIRED) return `${base} — stop retired`;
+  return base;
+}
+
+/** The citywide counts by legend row: `counts` with its loss split by `retired`. */
+export function rowCounts(layer: OneSeatLayer): Record<OneSeatRow, number> {
+  return {
+    ...layer.counts,
+    loses: layer.counts.loses - layer.retired.loses,
+    [LOSES_RETIRED]: layer.retired.loses,
+  };
+}
+
 const SRC = 'oneseat';
 const LAYER = 'oneseat-dots';
+/** The crosses: a lost ride at a retired stop, drawn INSTEAD of its dot. */
+const REMOVED_LAYER = 'oneseat-removed';
+const LOST_AT_RETIRED_STOP: any = ['all',
+  ['==', ['get', 'status'], 'loses'], ['==', ['get', 'removed'], 1]];
+
+/** Both layers, for the hit test: a cross has to answer a hover and a click too. */
+export const ONESEAT_HIT_LAYERS = [LAYER, REMOVED_LAYER];
 
 let data: OneSeatLayer | null = null;
 let visible = false;
@@ -77,18 +135,24 @@ export function isVisible(): boolean {
   return visible;
 }
 
-/** Statuses in view, tallied from the raw rows — see change.ts's countInBounds. */
+/**
+ * Legend rows in view, tallied from the raw rows — see change.ts's
+ * countInBounds. A lost ride at a retired stop lands on its own row and not
+ * on `loses`, so the two add up to what one row used to count.
+ */
 export function countInBounds(
   points: OneSeatPoint[], keys: string[],
   west: number, south: number, east: number, north: number,
 ): Record<string, number> {
   const out: Record<string, number> = {};
   for (const k of keys) out[k] = 0;
+  out[LOSES_RETIRED] = 0;
   for (const p of points) {
     const lat = p[0] as number, lon = p[1] as number;
     if (lat < south || lat > north || lon < west || lon > east) continue;
     const key = keys[p[3] as number];
-    if (key !== undefined) out[key]++;
+    if (key === undefined) continue;
+    out[key === 'loses' && p[6] === 1 ? LOSES_RETIRED : key]++;
   }
   return out;
 }
@@ -104,6 +168,7 @@ export function toGeoJSON(layer: OneSeatLayer) {
         status: keys[p[3] as number],
         current: p[4] as string,
         proposed: p[5] as string,
+        removed: (p[6] as number) ?? 0,
       },
     })),
   };
@@ -132,6 +197,10 @@ export function initOneSeatLayer(map: maplibregl.Map, beforeId: string) {
   });
   map.addLayer({
     id: LAYER, type: 'circle', source: SRC,
+    // A lost ride at a retired stop is a cross OR a dot, never both -- the
+    // rule Stop-by-stop settled on when the two channels on one dot produced
+    // marks a reader could not resolve.
+    filter: ['!', LOST_AT_RETIRED_STOP],
     layout: { visibility: 'none' },
     paint: {
       'circle-color': colorExpr(),
@@ -139,6 +208,21 @@ export function initOneSeatLayer(map: maplibregl.Map, beforeId: string) {
       'circle-opacity': 0.85,
       'circle-stroke-color': 'rgba(255,255,255,.9)',
       'circle-stroke-width': ['interpolate', ['linear'], ['zoom'], 9, 0.4, 12, 0.9, 16, 1.5],
+    },
+  }, beforeId);
+  // The same image and the same size ramp as Stop-by-stop's cross, so the
+  // mark is one mark across the two views. Overlap allowed for the reason it
+  // is there: a suppressed cross in a dense corridor would silently unmark a
+  // retired stop, and "no cross" has to keep meaning "the stop stays".
+  map.addLayer({
+    id: REMOVED_LAYER, type: 'symbol', source: SRC,
+    filter: LOST_AT_RETIRED_STOP,
+    layout: {
+      visibility: 'none',
+      'icon-image': ensureRemovedCrossIcon(map),
+      'icon-size': REMOVED_ICON_SIZE,
+      'icon-allow-overlap': true,
+      'icon-ignore-placement': true,
     },
   }, beforeId);
 }
@@ -234,7 +318,9 @@ export async function loadOneSeatLayer(
 
 export function setOneSeatVisible(map: maplibregl.Map, on: boolean) {
   visible = on;
-  map.setLayoutProperty(LAYER, 'visibility', on ? 'visible' : 'none');
+  for (const id of ONESEAT_HIT_LAYERS) {
+    map.setLayoutProperty(id, 'visibility', on ? 'visible' : 'none');
+  }
 }
 
 /** What the destination is called, for a legend header or a panel line. */
@@ -247,10 +333,15 @@ export function destinationLabel(layer: OneSeatLayer): string {
   return 'the destination';
 }
 
-/** Hover text for one dot: the verdict, then the route numbers behind it. */
+/**
+ * Hover text for one dot: the verdict, then the route numbers behind it. A
+ * lost ride says which half it is -- the stop kept, or retired -- in the
+ * same words as its legend row.
+ */
 export function dotLabel(props: any, layer: OneSeatLayer): string {
-  const label = layer.statuses.find((s) => s.key === props.status)?.label
-    ?? props.status;
+  const row: OneSeatRow = props.status === 'loses' && props.removed === 1
+    ? LOSES_RETIRED : props.status;
+  const label = rowLabel(row, layer.statuses);
   const now = (props.current || '').split(';').filter(Boolean);
   const prop = (props.proposed || '').split(';').filter(Boolean);
   const line = (rs: string[]) => (rs.length ? rs.join(', ') : 'none');

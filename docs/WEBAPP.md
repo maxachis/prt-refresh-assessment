@@ -1008,6 +1008,40 @@ whole county repaints for it.
    anchor, and a wider circle may only add. Where the radius bites hardest is a
    dropped pin, which is one seed with nothing to saturate it.
 
+### A lost ride is drawn two ways, and the split is decided at the stop
+
+"Loses its one-seat ride" is two different sentences. Either the stop stays
+and the ride to Downtown now needs a transfer, or PRT retires the stop
+itself. One red row told both as one, and it told them in opposite
+proportions: at 400 m on the published answer, Downtown's 955 losses are
+mostly retired stops (679), while Oakland's 354 are mostly stops that stay
+(294) — the 28X, 54, 67 and 69 corridors keep their poles and lose their
+Oakland leg. The second is the sentence PPT wanted the map to be able to
+show, and it was invisible while the two shared a row.
+
+So the key now has two loss rows, labelled so neither can be quoted as the
+whole — *loses its one-seat ride — stop kept* and *— stop retired* — and
+the retired half is drawn as **Stop-by-stop's cross** instead of a dot. The
+split follows that view's precedent exactly (convention 2): it is the same
+`removed` flag, decided at the **kerb** by the same 25 m same-pole test, and
+never at the walk radius. *Max chose this.* A 400 m test would have made the
+cross mean "nothing to board within a quarter mile", a coverage sentence in a
+connectivity view, and one the surface already says; the kerb keeps the cross
+meaning what it means everywhere else — this stop goes, and the reader infers
+a nearby one from the map. Two consequences to carry:
+
+- **Only a loss is split.** A retired stop that keeps its one-seat ride stays
+  a plain keeps dot: the ride is there and the stop providing it is on
+  screen. Downtown has 593 such stops; crossing them out would put ~600 more
+  red marks on a map whose finding is connectivity, not coverage. So the
+  cross carries a narrower sentence here than in Stop-by-stop — retired
+  *and* the ride is gone — and the row label says so in words.
+- **The two rows sum to the old one**, in view and citywide. The API ships
+  `removed` per point and `retired` per status beside `counts`; the five
+  verdicts are unchanged, because a clicked point has no kerb to retire and
+  the panel can only ever say the first sentence. `tests/test_oneseat.py`
+  pins the split for both destinations.
+
 ### What a destination is
 
 A **set of seed points**, which is what lets a district and a pin share one

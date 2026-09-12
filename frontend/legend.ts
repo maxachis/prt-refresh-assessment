@@ -31,8 +31,8 @@ import {
 import { summarisePopulationInBounds } from './population';
 import { KLASS_COLOR, pavementPct } from './corridor';
 import {
-  STATUS_STYLE, STATUS_ORDER, countInBounds as countOneSeatInBounds,
-  destinationLabel, ANY_DAY,
+  STATUS_STYLE, LEGEND_ROWS, LOSES_RETIRED, OneSeatRow, rowLabel, rowCounts,
+  countInBounds as countOneSeatInBounds, destinationLabel, ANY_DAY,
 } from './oneseat';
 
 const DAY_WORD: Record<Day, string> = {
@@ -285,6 +285,13 @@ export function renderCorridorLegend(el: HTMLElement, layer: CorridorLayer) {
  * IT COUNTS RAIL. Said out loud because every other number on this screen
  * excludes it, and a reader comparing the two would otherwise be comparing
  * different universes without being told.
+ *
+ * A LOST RIDE IS TWO ROWS. The stop stays and the ride now needs a transfer,
+ * or the plan retires the stop itself -- the second drawn as Stop-by-stop's
+ * cross and keyed by it, decided at the kerb and never at the walk radius,
+ * exactly as it is there. Both labels say which half they are, because the
+ * number beside either is the one that gets quoted and neither is the whole.
+ * See `oneseat.ts` for why only a loss is split.
  */
 export function renderOneSeatLegend(
   el: HTMLElement, layer: OneSeatLayer,
@@ -293,8 +300,12 @@ export function renderOneSeatLegend(
   const keys = layer.statuses.map((s) => s.key);
   const counts = countOneSeatInBounds(
     layer.points, keys, bounds.west, bounds.south, bounds.east, bounds.north);
-  const label = (k: string) => layer.statuses.find((s) => s.key === k)?.label ?? k;
-  const total = STATUS_ORDER.reduce((n, k) => n + (counts[k] ?? 0), 0);
+  const citywide = rowCounts(layer);
+  const label = (row: OneSeatRow) => rowLabel(row, layer.statuses);
+  const swatch = (row: OneSeatRow) => (row === LOSES_RETIRED
+    ? '<i class="lg-cross"></i>'
+    : `<i style="background:${STATUS_STYLE[row].color}"></i>`);
+  const total = LEGEND_ROWS.reduce((n, k) => n + (counts[k] ?? 0), 0);
   const to = destinationLabel(layer);
   const restricted = layer.day && layer.day !== ANY_DAY;
   const dayNote = restricted
@@ -311,19 +322,22 @@ export function renderOneSeatLegend(
       · ${layer.radius} m walk${restricted
         ? ` · ${DAY_WORD[layer.day as Day]}` : ' · any day'}</span>
     </div>
-    ${STATUS_ORDER.map((k) => `
+    ${LEGEND_ROWS.map((k) => `
       <div class="lg-row lg-static">
-        <i style="background:${STATUS_STYLE[k].color}"></i>
+        ${swatch(k)}
         <span class="lg-lab">${esc(label(k))}</span>
         <span class="lg-n">${(counts[k] ?? 0).toLocaleString()}</span>
       </div>`).join('')}
     <div class="lg-ends" style="margin-top:4px">
-      citywide: ${STATUS_ORDER.map((k) =>
-        `${(layer.counts[k] ?? 0).toLocaleString()} ${esc(label(k))}`).join(' · ')}
+      citywide: ${LEGEND_ROWS.map((k) =>
+        `${(citywide[k] ?? 0).toLocaleString()} ${esc(label(k))}`).join(' · ')}
     </div>
     <div class="lg-foot">Can a rider reach ${esc(to)} without transferring?
       ${dayNote} No frequency or travel time enters it: a surviving ride may
       run hourly, or take an hour. Click a dot for that location's timetable.
+      A cross is a stop the plan retires, as in Stop-by-stop — decided at the
+      stop, not the walk — so the ride may survive at a stop a block away;
+      a retired stop that keeps its ride stays a plain dot.
       The only view here that counts the T and the inclines — without them the
       South Hills would read as losing rides the Blue Line still runs.</div>`;
 }

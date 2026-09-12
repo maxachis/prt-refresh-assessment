@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
-  STATUS_STYLE, STATUS_ORDER, countInBounds, toGeoJSON, dotLabel,
+  STATUS_STYLE, STATUS_ORDER, LEGEND_ROWS, LOSES_RETIRED, rowLabel, rowCounts,
+  countInBounds, toGeoJSON, dotLabel, ONESEAT_HIT_LAYERS,
   destinationQuery, destinationLabel, activeDestButton, NO_RIDE_COLOR,
   oneSeatQuery, oneSeatDayFor, ANY_DAY, dayControlsShown,
 } from './oneseat';
@@ -27,7 +28,8 @@ function layer(points: OneSeatLayer['points'],
     },
     statuses: STATUSES,
     counts: { here: 0, keeps: 0, gains: 0, loses: 0, none: 0 },
-    fields: ['lat', 'lon', 'published', 'status', 'current', 'proposed'],
+    retired: { here: 0, keeps: 0, gains: 0, loses: 0, none: 0 },
+    fields: ['lat', 'lon', 'published', 'status', 'current', 'proposed', 'removed'],
     points,
   };
 }
@@ -62,12 +64,56 @@ describe('the palette', () => {
   });
 });
 
+describe('the legend rows', () => {
+  // A "loses" dot is two sentences -- the stop stays and the ride now needs
+  // a transfer, or PRT retires the stop itself -- and one red row told them
+  // as one. Downtown's 955 losses are mostly retired stops; Oakland's 354 are
+  // mostly stops that stay. The split is the Stop-by-stop precedent: decided
+  // at the kerb, never at the walk radius, and drawn with that view's cross.
+  it('splits a lost ride by whether the stop is kept or retired, and leads with both', () => {
+    expect(LEGEND_ROWS.slice(0, 3)).toEqual(['loses', LOSES_RETIRED, 'gains']);
+    expect(LEGEND_ROWS).toHaveLength(STATUS_ORDER.length + 1);
+  });
+
+  it('labels both halves so neither can be read as the whole', () => {
+    // Max: the labels of both must distinguish a loss where the kerb is
+    // kept from one where it is retired.
+    const kept = rowLabel('loses', STATUSES);
+    const retired = rowLabel(LOSES_RETIRED, STATUSES);
+    expect(kept).toContain('loses its one-seat ride');
+    expect(retired).toContain('loses its one-seat ride');
+    expect(kept).toMatch(/stop kept/i);
+    expect(retired).toMatch(/stop retired/i);
+    expect(rowLabel('gains', STATUSES)).toBe('gains a one-seat ride');
+  });
+
+  it('splits the citywide counts the same way, so the column still adds up', () => {
+    const l = layer([]);
+    l.counts = { here: 79, keeps: 5230, gains: 160, loses: 955, none: 341 };
+    l.retired = { here: 11, keeps: 593, gains: 4, loses: 679, none: 21 };
+    const rows = rowCounts(l);
+    expect(rows.loses).toBe(276);
+    expect(rows[LOSES_RETIRED]).toBe(679);
+    // A retired stop that keeps its ride stays a keeps dot: the ride is
+    // there, at a stop the reader can see.
+    expect(rows.keeps).toBe(5230);
+    expect(Object.values(rows).reduce((a, b) => a + b, 0))
+      .toBe(Object.values(l.counts).reduce((a, b) => a + b, 0));
+  });
+
+  it('draws the retired half in its own layer, so a click or hover can find it', () => {
+    expect(ONESEAT_HIT_LAYERS).toHaveLength(2);
+  });
+});
+
 describe('countInBounds', () => {
   const keys = STATUSES.map((s) => s.key);
   const points = [
-    [40.44, -79.99, 1, 3, '61A', ''],          // loses, in view
-    [40.45, -79.98, 1, 2, '', 'P3'],           // gains, in view
-    [40.90, -79.99, 1, 3, '61A', ''],          // loses, north of view
+    [40.44, -79.99, 1, 3, '61A', '', 0],       // loses, stop kept, in view
+    [40.45, -79.98, 1, 2, '', 'P3', 0],        // gains, in view
+    [40.90, -79.99, 1, 3, '61A', '', 0],       // loses, north of view
+    [40.46, -79.97, 1, 3, '54', '', 1],        // loses, stop retired, in view
+    [40.47, -79.96, 1, 1, '61A', '61A', 1],    // keeps, at a retired stop
   ];
 
   it('counts only what is on screen', () => {
@@ -76,9 +122,18 @@ describe('countInBounds', () => {
     expect(got.gains).toBe(1);
   });
 
-  it('reports a zero for every status, not a missing key', () => {
+  it('counts a lost ride at a retired stop on its own row, and nowhere else', () => {
+    const got = countInBounds(points, keys, -80.1, 40.4, -79.9, 40.5);
+    expect(got[LOSES_RETIRED]).toBe(1);
+    expect(got.loses).toBe(1);
+    // The mark only splits a LOSS. A kept ride at a retired stop is a kept
+    // ride; the stop that provides it is on the map.
+    expect(got.keeps).toBe(1);
+  });
+
+  it('reports a zero for every row, not a missing key', () => {
     const got = countInBounds([], keys, -80.1, 40.4, -79.9, 40.5);
-    expect(Object.keys(got).sort()).toEqual(keys.slice().sort());
+    expect(Object.keys(got).sort()).toEqual([...keys, LOSES_RETIRED].sort());
     expect(Object.values(got).every((v) => v === 0)).toBe(true);
   });
 });
@@ -94,10 +149,15 @@ describe('toGeoJSON', () => {
   });
 
   it('puts coordinates in lon/lat order and carries both route lists', () => {
-    const gj = toGeoJSON(layer([[40.44, -79.99, 1, 3, '61A;61B', '']]));
+    const gj = toGeoJSON(layer([[40.44, -79.99, 1, 3, '61A;61B', '', 0]]));
     expect(gj.features[0].geometry.coordinates).toEqual([-79.99, 40.44]);
     expect(gj.features[0].properties.current).toBe('61A;61B');
     expect(gj.features[0].properties.proposed).toBe('');
+  });
+
+  it('carries the retired-stop flag, which is what the cross layer filters on', () => {
+    const gj = toGeoJSON(layer([[40.44, -79.99, 1, 3, '54', '', 1]]));
+    expect(gj.features[0].properties.removed).toBe(1);
   });
 });
 
@@ -128,11 +188,25 @@ describe('dotLabel', () => {
     // A bare verdict invites the map to be quoted without the route numbers
     // that make it checkable.
     const html = dotLabel(
-      { status: 'loses', current: '61A;61B', proposed: '' }, layer([]));
+      { status: 'loses', current: '61A;61B', proposed: '', removed: 0 }, layer([]));
     expect(html).toContain('loses its one-seat ride');
     expect(html).toContain('Downtown');
     expect(html).toContain('61A, 61B');
     expect(html).toContain('none');
+  });
+
+  it('says whether the stop under a lost ride is kept or retired', () => {
+    const kept = dotLabel(
+      { status: 'loses', current: '28X', proposed: '', removed: 0 }, layer([]));
+    const gone = dotLabel(
+      { status: 'loses', current: '28X', proposed: '', removed: 1 }, layer([]));
+    expect(kept).toMatch(/stop kept/i);
+    expect(gone).toMatch(/stop retired/i);
+    // Only a loss is split. A kept ride at a retired stop is labelled as the
+    // kept ride it is.
+    const keeps = dotLabel(
+      { status: 'keeps', current: '61A', proposed: '61A', removed: 1 }, layer([]));
+    expect(keeps).not.toMatch(/retired/i);
   });
 
   it('says a place at the destination needs no ride to it', () => {

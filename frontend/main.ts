@@ -28,7 +28,7 @@ import {
 } from './corridor';
 import {
   initOneSeatLayer, loadOneSeatLayer, setOneSeatVisible, oneSeatDayFor,
-  dayControlsShown,
+  dayControlsShown, ONESEAT_HIT_LAYERS,
   layerData as oneSeatData, isVisible as oneSeatOn,
   dotLabel as oneSeatDotLabel, HERE_COLOR, Destination, activeDestButton,
 } from './oneseat';
@@ -308,7 +308,7 @@ map.on('load', () => {
     // opens is measured at the same point the dot was coloured from. Clicking
     // a dot and getting a different answer to the one it is painted with is
     // the single worst thing this layer could do.
-    const layers = [...CHANGE_HIT_LAYERS, 'oneseat-dots'].filter((l) =>
+    const layers = [...CHANGE_HIT_LAYERS, ...ONESEAT_HIT_LAYERS].filter((l) =>
       map.getLayoutProperty(l, 'visibility') !== 'none');
     const hit = map.queryRenderedFeatures(e.point, { layers })[0];
     const c = hit ? (hit.geometry as any).coordinates : [e.lngLat.lng, e.lngLat.lat];
@@ -354,14 +354,16 @@ map.on('load', () => {
       },
       anchor: (f: any) => (f.geometry as any).coordinates,
     })),
-    {
-      layer: 'oneseat-dots',
+    // Both one-seat layers: a lost ride at a retired stop is drawn as a
+    // cross and not as a dot, and its hover is where "stop retired" is said.
+    ...ONESEAT_HIT_LAYERS.map((layer) => ({
+      layer,
       html: (f: any) => {
         const d = oneSeatData();
         return d ? oneSeatDotLabel(f.properties, d) : null;
       },
       anchor: (f: any) => (f.geometry as any).coordinates,
-    },
+    })),
     // Last of the map specs, so every dot above wins over a route line
     // crossing under it: the line is long and the dot is the thing a reader
     // aimed at, and `initHover` takes the first spec whose layer is hit.

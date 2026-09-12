@@ -2484,6 +2484,18 @@ def oneseat_layer(con, radius: float = PRIMARY_RADIUS,
     The point set, the radii and the published/new-coverage split are
     `change_points`' -- the same dots, recoloured by a different question, so
     a reader switching views is not also switching what is on the map.
+
+    Each dot also carries `removed`: does the plan retire this stop? It is
+    the Stop-by-stop view's own flag, off `stop_place`, decided at the kerb by
+    `is_removed_stop` and never at the walk radius, so the cross the one-seat
+    map draws with it means exactly what it means there. It is a MARK on the
+    dot and not a sixth verdict, which is why `ONESEAT_STATUSES` stays at
+    five: a "loses" dot is two sentences -- the stop stays and the ride now
+    needs a transfer, or the stop itself goes -- and the panel behind a
+    clicked point, which has no kerb, can only ever say the first. `retired`
+    is the marked share of each status, so the key can split its citywide
+    "loses" the way the map splits the dots. A point the plan adds
+    (`p:<stop_id>`) has no kerb today and is never marked.
     """
     name, seeds, reach = resolve_destination(con, radius, key, dest_lat,
                                              dest_lon, day)
@@ -2492,24 +2504,30 @@ def oneseat_layer(con, radius: float = PRIMARY_RADIUS,
         "SELECT point_id, side, lat, lon, published, routes FROM point_reach "
         "WHERE radius = ? AND day = ? ORDER BY point_id",
         (int(radius), day)).fetchall()
+    removed = {f"c:{r['stop_id']}": r["removed"] for r in
+               con.execute("SELECT stop_id, removed FROM stop_place")}
 
     idx = {k: i for i, k in enumerate(ONESEAT_KEYS)}
     packed: dict[str, dict] = {}
     for r in rows:
         p = packed.setdefault(r["point_id"], {
             "lat": r["lat"], "lon": r["lon"], "published": r["published"],
+            "removed": removed.get(r["point_id"], 0),
             "current": set(), "proposed": set()})
         serving = set(r["routes"].split(";")) if r["routes"] else set()
         p[r["side"]] = serving & reach[r["side"]]
 
-    points, counts = [], {k: 0 for k in ONESEAT_KEYS}
+    points = []
+    counts = {k: 0 for k in ONESEAT_KEYS}
+    retired = {k: 0 for k in ONESEAT_KEYS}
     for p in packed.values():
         status = oneseat_status(p["current"], p["proposed"],
                                 at_destination(p["lat"], p["lon"], seeds, radius))
         counts[status] += 1
+        retired[status] += p["removed"]
         points.append([round(p["lat"], 6), round(p["lon"], 6), p["published"],
                        idx[status], ";".join(sorted(p["current"])),
-                       ";".join(sorted(p["proposed"]))])
+                       ";".join(sorted(p["proposed"])), p["removed"]])
 
     return {
         "radius": int(radius),
@@ -2518,7 +2536,9 @@ def oneseat_layer(con, radius: float = PRIMARY_RADIUS,
                         "lat": dest_lat, "lon": dest_lon},
         "statuses": [{"key": k, "label": lab} for k, lab in ONESEAT_STATUSES],
         "counts": counts,
-        "fields": ["lat", "lon", "published", "status", "current", "proposed"],
+        "retired": retired,
+        "fields": ["lat", "lon", "published", "status", "current", "proposed",
+                   "removed"],
         "points": points,
     }
 

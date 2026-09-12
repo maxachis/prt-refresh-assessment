@@ -194,6 +194,27 @@ function crossIcon(scale = 2): ImageData {
   return g.getImageData(0, 0, s, s);
 }
 
+/**
+ * The cross, registered once per map and shared by every view that marks a
+ * retired stop -- Stop-by-stop and the one-seat map both. One image, one
+ * size ramp, so the mark cannot mean "the plan retires this stop" at two
+ * different weights depending on which key the reader is looking at.
+ *
+ * Tracks the dots' own zoom growth, and stays a little wider than they are:
+ * an X exactly the size of the dot paints over the colour it is crossing,
+ * and the colour is the other half of what the mark says. Wider, the dot
+ * reads in the four quadrants between the arms.
+ */
+export const REMOVED_ICON_SIZE: any = ['interpolate', ['linear'], ['zoom'],
+  9, 0.34, 12, 0.55, 16, 1.0];
+
+export function ensureRemovedCrossIcon(map: maplibregl.Map): string {
+  if (!map.hasImage(REMOVED_ICON)) {
+    map.addImage(REMOVED_ICON, crossIcon(), { pixelRatio: 2 });
+  }
+  return REMOVED_ICON;
+}
+
 let data: ChangeLayer | null = null;
 /** Buckets the reader has switched off by clicking the legend. */
 const hidden = new Set<string>();
@@ -666,20 +687,12 @@ export function initChangeLayer(map: maplibregl.Map) {
   // removed stop -- see REMOVED_STOP. Overlap is allowed: a suppressed cross
   // would silently unmark a removed stop in exactly the dense corridors where
   // the removals cluster, and "no cross" has to keep meaning "not removed".
-  if (!map.hasImage(REMOVED_ICON)) {
-    map.addImage(REMOVED_ICON, crossIcon(), { pixelRatio: 2 });
-  }
   map.addLayer({
     id: REMOVED_LAYER, type: 'symbol', source: SRC,
     filter: REMOVED_STOP,
     layout: {
-      'icon-image': REMOVED_ICON,
-      // Tracks the dots' own zoom growth, and stays a little wider than they
-      // are: an X exactly the size of the dot paints over the colour it is
-      // crossing, and the colour is the other half of what the mark says.
-      // Wider, the dot reads in the four quadrants between the arms.
-      'icon-size': ['interpolate', ['linear'], ['zoom'],
-        9, 0.34, 12, 0.55, 16, 1.0],
+      'icon-image': ensureRemovedCrossIcon(map),
+      'icon-size': REMOVED_ICON_SIZE,
       'icon-allow-overlap': true,
       'icon-ignore-placement': true,
     },

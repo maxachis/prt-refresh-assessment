@@ -338,11 +338,51 @@ function oneSeatLayer(day: OneSeatDay): OneSeatLayer {
       { key: 'loses', label: 'loses its one-seat ride' },
       { key: 'none', label: 'no one-seat ride either way' },
     ],
-    counts: { here: 1, keeps: 2, gains: 1, loses: 1, none: 1 },
-    fields: ['lat', 'lon', 'published', 'status', 'current', 'proposed'],
-    points: [[40.44, -79.99, 1, 1, '61A', '61A']],
+    counts: { here: 1, keeps: 2, gains: 1, loses: 3, none: 1 },
+    retired: { here: 0, keeps: 1, gains: 0, loses: 2, none: 0 },
+    fields: ['lat', 'lon', 'published', 'status', 'current', 'proposed', 'removed'],
+    points: [
+      [40.44, -79.99, 1, 1, '61A', '61A', 0],
+      [40.45, -79.98, 1, 3, '28X', '', 0],       // loses, stop kept
+      [40.46, -79.97, 1, 3, '54', '', 1],        // loses, stop retired
+      [40.47, -79.96, 1, 3, '69', '', 1],        // loses, stop retired
+      [40.48, -79.95, 1, 1, '61A', '61A', 1],    // keeps, at a retired stop
+    ],
   };
 }
+
+describe('the one-seat legend on a lost ride', () => {
+  // The Stop-by-stop precedent: a retired stop is that view's cross, decided
+  // at the kerb and not the walk radius. Here it splits one row into two.
+  it('keys the two halves of a loss apart, the retired half as the cross', () => {
+    const el = stub();
+    renderOneSeatLegend(el, oneSeatLayer('any'), WHOLE_COUNTY);
+    expect(el.innerHTML).toMatch(/stop kept[\s\S]*?<span class="lg-n">1<\/span>/);
+    expect(el.innerHTML).toMatch(/lg-cross[\s\S]*?stop retired[\s\S]*?<span class="lg-n">2<\/span>/);
+    // Both add up to what one row used to say.
+    expect(el.innerHTML).toContain('5 locations in view');
+  });
+
+  it('splits the citywide line the same way', () => {
+    const el = stub();
+    renderOneSeatLegend(el, oneSeatLayer('any'), WHOLE_COUNTY);
+    expect(el.innerHTML).toMatch(/citywide:.*1 loses its one-seat ride — stop kept/);
+    expect(el.innerHTML).toMatch(/citywide:.*2 loses its one-seat ride — stop retired/);
+  });
+
+  it('leaves a kept ride at a retired stop on the keeps row', () => {
+    const el = stub();
+    renderOneSeatLegend(el, oneSeatLayer('any'), WHOLE_COUNTY);
+    expect(el.innerHTML).toMatch(/keeps a one-seat ride<\/span>\s*<span class="lg-n">2<\/span>/);
+  });
+
+  it('says the cross is decided at the stop, not the walk', () => {
+    const el = stub();
+    renderOneSeatLegend(el, oneSeatLayer('any'), WHOLE_COUNTY);
+    expect(el.innerHTML).toMatch(/retires/);
+    expect(el.innerHTML).toMatch(/not the walk/i);
+  });
+});
 
 describe('the one-seat legend on a day type', () => {
   it('says which day it answered for, and that it is not the published one', () => {

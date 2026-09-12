@@ -329,3 +329,57 @@ def test_a_day_loses_one_seat_rides_the_any_day_answer_keeps(built):
     sunday = query.oneseat_layer(built, query.PRIMARY_RADIUS, key="downtown",
                                  day="sunday")
     assert sunday["counts"]["keeps"] < wide["counts"]["keeps"]
+
+
+# --------------------------------------------------------------------------
+# the retired-kerb mark
+# --------------------------------------------------------------------------
+#
+# A "loses" dot is two different sentences: the stop stays and the ride to
+# Downtown now needs a transfer, or PRT retires the stop itself. The layer
+# ships the Stop-by-stop view's own `removed` flag on every dot so the map can
+# draw the second as that view's cross. It is a MARK, not a sixth verdict --
+# decided at the kerb (`is_removed_stop`), never at the walk radius -- and the
+# panel keeps five statuses because a clicked point has no kerb to retire.
+
+def test_every_dot_says_whether_the_plan_retires_its_kerb(built):
+    layer = query.oneseat_layer(built, query.PRIMARY_RADIUS, key="downtown")
+    assert layer["fields"][-1] == "removed"
+    removed = {f"c:{r['stop_id']}": r["removed"] for r in
+               built.execute("SELECT stop_id, removed FROM stop_place")}
+    at = {(round(r["lat"], 6), round(r["lon"], 6)): r["point_id"]
+          for r in built.execute(
+              "SELECT DISTINCT point_id, lat, lon FROM point_reach "
+              "WHERE radius = ?", (query.PRIMARY_RADIUS,))}
+    for p in layer["points"]:
+        pid = at[(p[0], p[1])]
+        # A point the plan adds has no kerb today, so nothing to retire.
+        expected = removed.get(pid, 0) if pid.startswith("c:") else 0
+        assert p[6] == expected, f"{pid} carries removed={p[6]}"
+
+
+def test_the_retired_counts_are_the_marked_share_of_each_status(built):
+    layer = query.oneseat_layer(built, query.PRIMARY_RADIUS, key="oakland")
+    labels = [s["key"] for s in layer["statuses"]]
+    assert set(layer["retired"]) == set(query.ONESEAT_KEYS)
+    marked = {k: 0 for k in query.ONESEAT_KEYS}
+    for p in layer["points"]:
+        marked[labels[p[3]]] += p[6]
+    assert layer["retired"] == marked
+    for k in query.ONESEAT_KEYS:
+        assert layer["retired"][k] <= layer["counts"][k]
+
+
+def test_the_two_destinations_lose_their_rides_in_opposite_ways(built):
+    """The sentence that earned the mark, pinned so it cannot drift silently.
+
+    At 400 m on the published day-free answer, Downtown's 955 "loses" dots are
+    mostly stops the plan retires (679), while Oakland's 354 are mostly stops
+    that stay with the ride gone (294 kept, 60 retired): the 28X, 54, 67 and
+    69 corridors keep their poles and lose their Oakland leg. One red row
+    told both stories as one.
+    """
+    down = query.oneseat_layer(built, query.PRIMARY_RADIUS, key="downtown")
+    oak = query.oneseat_layer(built, query.PRIMARY_RADIUS, key="oakland")
+    assert (down["counts"]["loses"], down["retired"]["loses"]) == (955, 679)
+    assert (oak["counts"]["loses"], oak["retired"]["loses"]) == (354, 60)

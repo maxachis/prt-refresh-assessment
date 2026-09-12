@@ -403,6 +403,17 @@ changes published findings.
     widening the
     universe here can never widen it under a published service number.
 
+    **The map draws a lost ride two ways, and the split is decided at the
+    kerb.** Since 2026-09-12 the one-seat key has two loss rows — "stop
+    kept" and "stop retired" — the second drawn as Stop-by-stop's cross,
+    keyed on that view's own `removed` flag (convention 2's 25 m same-pole
+    test), never on the walk radius. Downtown's 955 losses at 400 m are
+    mostly retired stops (679); Oakland's 354 are mostly stops that stay
+    (294), which is the sentence the split exists to show. Only a loss is
+    split: a retired stop that keeps its ride is a plain keeps dot. The two
+    rows sum to the old one and the five verdicts are unchanged —
+    `docs/WEBAPP.md`, "A lost ride is drawn two ways".
+
 14. **A journey is a fifth unit, and it is the only one with a clock.**
     `analyze_travel_time.py` and the app's `/api/journey` ask how long a
     rider's actual trip takes, origin to destination — the only measure here
