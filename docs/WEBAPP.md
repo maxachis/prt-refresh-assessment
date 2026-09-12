@@ -1265,11 +1265,17 @@ sends the reader there.
 **The map draws what changed and hides what merely continued.** Nothing
 selected, every group's shown side is a line coloured by its status —
 discontinued routes red, along today's alignment; new routes blue, along the
-plan's; split and merged routes purple, along the plan's. The 65 one-to-one
-groups are grey and **off by default**, behind a toolbar toggle (Max: "grey
-behind a toggle"): they are most of the network, and a map with all 108 groups
-on it at once is the whole network drawn twice, which is the picture the
-stop-by-stop and one-seat views already give. The one-to-one bucket is the
+plan's; split and merged routes purple, along the plan's. **The key's rows
+are the filter**, as the Stop-by-stop key's are: each row switches its lines
+off and on, a switched-off row is dimmed, and "Show all" turns every row back
+on. The 65 one-to-one groups are grey and **off by default** (Max: "grey
+behind a toggle", then "make it so that, like with other views, the legend is
+selectable"): they are most of the network, and a map with all 108 groups on
+it at once is the whole network drawn twice, which is the picture the
+stop-by-stop and one-seat views already give. Unlike the dots' buckets, the
+switched-off rows travel in the link (`routehide=`), because the default hides
+sixty routes and an embed has to draw what its author saw; an empty list is
+spelled `none`, since absence means the default. The one-to-one bucket is the
 one whose name has to be read carefully — one today's number maps to one of
 the plan's, which says nothing about its service; the 61C becomes the 61X and
 gains 8% of its weekday trips — so the key names it *one-to-one* and never
@@ -1294,7 +1300,11 @@ it is.
 
 **The directory is the panel's empty state**, as the ranked list is for Places:
 grouped under Discontinued, New, Split or merged, and One-to-one, the last
-folded shut so the panel opens on what changed. The card for a selected group
+folded shut so the panel opens on what changed. Each row's name is printed
+in its bucket's colour, and a group with one side is named by that side alone
+— "17 SHADELAND" under Discontinued, not "17 SHADELAND → —": the heading
+already says the other side is missing, and an arrow to a dash read as a
+rendering fault (Max's call). The card for a selected group
 gives its service on all three day types — trips and revenue hours, today
 against the plan, with the published percent — beside today's weekday riders
 from WPRDC's route-level table. The figures are copied from
@@ -1474,7 +1484,7 @@ self-documenting.
 
 | Parameter | Value |
 |---|---|
-| `view` | `dots`, `surface`, `both`, `corridors`, `oneseat`, `journey`, `places` |
+| `view` | `dots`, `surface`, `both`, `corridors`, `oneseat`, `journey`, `places`, `routes` |
 | `day` | `weekday`, `saturday`, `sunday` |
 | `radius` | `400` or `150` (convention 4's two radii) |
 | `oneseatday` | `any` — the published day-free measure — or `selected` (convention 13) |
@@ -1483,6 +1493,8 @@ self-documenting.
 | `dest` | `downtown`, `oakland`, or `lat,lon` for a dropped pin |
 | `at` | `lat,lon` — where the reader asked; opens the answer panel |
 | `map` | `lat,lon,zoom` — where the map is looking |
+| `route` | A route group's key (`c:51`, `p:45`, `c:77-86`) to open the Route changes view on; checked against the key grammar before it reaches a request |
+| `routehide` | The Route changes key's switched-off rows, comma-separated from `discontinued`, `new`, `reshaped`, `one-to-one`; `none` for every row on. Absent means the default, which is `one-to-one` alone |
 | `embed` | `1` — map and key only, for an iframe; see below |
 
 A parameter that fails to parse is ignored and its control left at the default,

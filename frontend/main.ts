@@ -51,8 +51,9 @@ import {
 } from './places';
 import {
   initRouteChangesLayer, loadRouteChanges, selectRouteGroup, clearRouteSelection,
-  setRouteChangesVisible, setOneToOne, routeListHTML, routeCardHTML, routeKeyHTML,
-  routeTooltipHTML, mappingLabel, ROUTE_HIT_LAYERS, OneToOne, DEFAULT_ONE_TO_ONE,
+  setRouteChangesVisible, routeListHTML, routeCardHTML, routeKeyHTML,
+  routeTooltipHTML, mappingLabel, ROUTE_HIT_LAYERS, RouteBucket, isRouteBucket,
+  hiddenRouteBuckets, toggleRouteBucket, setHiddenRouteBuckets,
   groupsData as routeGroups, selectedData as routeDetail, isVisible as routesOn,
 } from './routechange';
 import { questionLineHTML, viewLabel } from './statebar';
@@ -94,7 +95,6 @@ const CONTROL = {
   dest: 'data-dest',
   placeFill: 'data-place-fill',
   stopRoutes: 'data-stop-routes',
-  oneToOne: 'data-onetoone',
 } as const;
 
 /**
@@ -217,13 +217,6 @@ let placeFill: PlaceFill = DEFAULT_PLACE_FILL;
 // null while the directory is showing. Kept here for the reason
 // `selectedPlace` is: `syncUrl` writes it and a reload restores it.
 let selectedRoute: string | null = null;
-
-// Whether the Route changes view draws its one-to-one grey -- the sixty-odd
-// groups that keep one number on each side. Off by default, Max's decision:
-// drawn at full weight they are most of the network, a map of everything
-// coloured by nothing. In the toolbar (`#route-onetoone-controls`) because it
-// changes what the map draws.
-let oneToOne: OneToOne = DEFAULT_ONE_TO_ONE;
 
 // Whether the brush is armed, so a drag paints stops instead of panning the
 // map. A mode rather than a modifier because a phone has no modifier: paint
@@ -569,7 +562,6 @@ map.on('load', () => {
     $('place-fill-controls').classList.toggle('hidden', view !== 'places');
     // Same for the one-to-one control: it decides whether the Route changes
     // grey is drawn, and there is no grey to draw in any other view.
-    $('route-onetoone-controls').classList.toggle('hidden', view !== 'routes');
     refreshStopRoutesControls();
     // The brush paints dots, so it means nothing in the views that have none.
     // Disarmed rather than merely hidden: a mode left armed behind a control
@@ -638,15 +630,6 @@ map.on('load', () => {
     }
   });
 
-  // Whether the Route changes view draws the one-to-one grey. A filter on the
-  // layer rather than a refetch: the overview already carries every group,
-  // and the grey is dropped or restored from what is in hand. The legend says
-  // which state it is in, since a map missing sixty routes has to say so.
-  segment(CONTROL.oneToOne, (b) => {
-    oneToOne = b.dataset.onetoone as OneToOne;
-    setOneToOne(map, oneToOne);
-    refreshLegend();
-  });
 
   $('legend').addEventListener('click', (e) => {
     const w = (e.target as HTMLElement).closest<HTMLElement>('[data-weight]');
@@ -663,12 +646,30 @@ map.on('load', () => {
       syncUrl();
       return;
     }
+    // The Route changes key's rows switch their lines off and on the same
+    // way. A filter on the layer rather than a refetch: the overview already
+    // carries every group. Into the link, unlike the dots' buckets, because
+    // its default hides sixty routes and an embed has to draw what its
+    // author saw.
+    const bucket = (e.target as HTMLElement).closest<HTMLElement>('[data-route-bucket]');
+    if (bucket && isRouteBucket(bucket.dataset.routeBucket!)) {
+      toggleRouteBucket(map, bucket.dataset.routeBucket as RouteBucket);
+      refreshLegend();
+      syncUrl();
+      return;
+    }
     const row = (e.target as HTMLElement).closest<HTMLElement>('[data-bucket]');
     if (!row) return;
     toggleBucket(map, row.dataset.bucket!, activeDay());
     refreshLegend();
   });
   $('legend-reset').addEventListener('click', () => {
+    if (routesOn()) {
+      setHiddenRouteBuckets(map, []);
+      refreshLegend();
+      syncUrl();
+      return;
+    }
     resetBuckets(map, activeDay());
     refreshLegend();
   });
@@ -859,10 +860,10 @@ function applyOpening(s: Partial<UrlState>): void {
   // turns the layer on, so pressing it first paints the fill correctly on
   // the first frame instead of the default and then a second repaint.
   if (s.placeFill) press(CONTROL.placeFill, s.placeFill);
-  // Before the view, for the same reason as the fill: `showRoutes` draws the
-  // layer with whatever filter the control holds, so pressing it first means
-  // one draw at the asked-for state rather than the default and a repaint.
-  if (s.oneToOne) press(CONTROL.oneToOne, s.oneToOne);
+  // Before the view, for the same reason as the fill: the filter is set on
+  // the layer at once, so the overview's first draw is at the asked-for
+  // state rather than the default and a repaint.
+  if (s.routeHidden) setHiddenRouteBuckets(map, s.routeHidden);
   if (s.dest) {
     // A dropped pin has no button to press; a named district does, and
     // pressing it lights the toolbar as well as moving the destination.
@@ -913,7 +914,7 @@ function syncUrl() {
     selection: selectionIds(),
     stopRoutes,
     route: selectedRoute,
-    oneToOne,
+    routeHidden: hiddenRouteBuckets(),
   };
   const search = toSearch(state);
   // The mode is not part of the question, so it is not in what `toSearch`
@@ -1036,14 +1037,14 @@ function renderLegendBody() {
   // legend nor the one-seat legend has one, so the button is hidden rather
   // than left clickable and silently inert.
   $('legend-reset').classList.toggle('hidden',
-    corridorOn() || oneSeatOn() || journeyOn() || placesOn() || routesOn() || !dotsOn());
+    corridorOn() || oneSeatOn() || journeyOn() || placesOn() || !(dotsOn() || routesOn()));
   if (journeyOn()) {
     $('legend').innerHTML = journeyKeyHTML(journeyData());
     return;
   }
   if (routesOn()) {
     $('legend').innerHTML = routeKeyHTML({
-      groups: routeGroups(), day: activeDay(), oneToOne, selected: routeDetail(),
+      groups: routeGroups(), day: activeDay(), hidden: hiddenRouteBuckets(), selected: routeDetail(),
     });
     return;
   }
@@ -1218,13 +1219,7 @@ async function goToPlace(key: string) {
  * selected rather than losing the reader's place.
  */
 async function showRoutes(on: boolean) {
-  if (on) {
-    await withLoadingLegend(() => loadRouteChanges(map, activeDay()));
-    // The filter can have been pressed from a URL before the layer was ever
-    // shown (`applyOpening` presses it before `view`), so it is brought into
-    // line here rather than assumed to still be the default.
-    setOneToOne(map, oneToOne);
-  }
+  if (on) await withLoadingLegend(() => loadRouteChanges(map, activeDay()));
   setRouteChangesVisible(map, on);
   if (on) renderPanel({ scrollToTop: true });
   refreshLegend();
@@ -1268,7 +1263,6 @@ function clearRoute() {
 async function reloadRouteChanges() {
   await withLoadingLegend(async () => {
     await loadRouteChanges(map, activeDay());
-    setOneToOne(map, oneToOne);
     if (selectedRoute) {
       await selectRouteGroup(map, selectedRoute, activeDay(), { fly: false });
     }

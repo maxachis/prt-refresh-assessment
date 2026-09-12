@@ -26,13 +26,16 @@
  *    service", and access stays with the location, surface and street views.
  *    The caveat (`ROUTE_CHANGES_CAVEAT`) travels with the directory, the card
  *    and the method drawer.
- *  - ONE-TO-ONE IS GREY, AND BEHIND A TOGGLE. Sixty-odd of the hundred-odd
+ *  - THE KEY'S ROWS ARE THE FILTER, AND ONE-TO-ONE STARTS OFF. Each row of
+ *    the key is a bucket (`RouteBucket`) a reader can switch off and on, the
+ *    way the Stop-by-stop key's rows are. Sixty-odd of the hundred-odd
  *    groups keep one number on each side, and drawn at full weight they are
  *    most of the network — a map of everything, coloured by nothing. Max's
  *    decision: grey, drawn beneath the coloured lines, and off until asked
- *    (`OneToOne`, the toolbar's `#route-onetoone-controls`). The key says
- *    which state the grey is in, because a map missing sixty routes has to
- *    say it is.
+ *    (`DEFAULT_HIDDEN_BUCKETS`). The key shows a switched-off row dimmed,
+ *    because a map missing sixty routes has to say it is; and the hidden
+ *    list travels in the link (`routehide=`) so an embed draws what its
+ *    author saw.
  *  - SELECTING A GROUP CHANGES WHAT BLUE MEANS. Unselected, the lines are
  *    coloured by status and blue is `new`. Selected, the group's own two
  *    sides are drawn in the site's today/plan pair (`NOW_COLOR` is a blue too)
@@ -60,11 +63,30 @@ import { NOW_COLOR, PROP_COLOR } from './journey';
 // --------------------------------------------------------------------------
 
 /**
- * The toolbar's ONE-TO-ONE control: whether the grey routes are drawn at all.
- * Off by default -- see the module docstring's second bullet.
+ * The key's rows, each a switch over the statuses it stands for. Split and
+ * merged are one row -- one colour on the map, one heading in the panel --
+ * because "reshaped" is the reading a reader wants first and the card's pill
+ * says which. Only the one-to-one grey starts off; see the module docstring's
+ * second bullet.
  */
-export type OneToOne = 'hidden' | 'shown';
-export const DEFAULT_ONE_TO_ONE: OneToOne = 'hidden';
+export type RouteBucket = 'discontinued' | 'new' | 'reshaped' | 'one-to-one';
+export const ROUTE_BUCKETS: RouteBucket[] = ['discontinued', 'new', 'reshaped', 'one-to-one'];
+export const BUCKET_STATUSES: Record<RouteBucket, RouteStatus[]> = {
+  discontinued: ['discontinued'],
+  new: ['new'],
+  reshaped: ['split', 'merged'],
+  'one-to-one': ['one-to-one'],
+};
+export const DEFAULT_HIDDEN_BUCKETS: RouteBucket[] = ['one-to-one'];
+
+export function isRouteBucket(s: string): s is RouteBucket {
+  return (ROUTE_BUCKETS as string[]).includes(s);
+}
+
+/** A list of buckets in the key's order, each at most once -- the form a link carries. */
+export function normaliseBuckets(buckets: readonly RouteBucket[]): RouteBucket[] {
+  return ROUTE_BUCKETS.filter((b) => buckets.includes(b));
+}
 
 /**
  * The colour for a route the plan reshapes -- split into several, or several
@@ -160,14 +182,17 @@ export function sideLabel(refs: RouteRef[], { named = true } = {}): string {
 /**
  * A group as its mapping: "51 CARRICK → 51 Carrick, 51S Carrick Short".
  *
+ * A group with one side is that side alone -- "2 Mount Royal", not
+ * "2 Mount Royal → —": the status beside it already says the other side is
+ * missing, and an arrow to a dash read as a rendering fault (Max's call).
  * `farSideNamed: false` gives the directory's short form, where the plan's
  * side is numbers alone ("51 CARRICK → 51, 51S") -- except for a new group,
  * whose plan side is the only side there is and so keeps its name.
  */
 export function mappingLabel(g: RouteGroup, { farSideNamed = true } = {}): string {
-  const near = sideLabel(g.current);
-  const far = sideLabel(g.proposed, { named: farSideNamed || g.current.length === 0 });
-  return `${near}${MAPS_TO}${far}`;
+  if (g.current.length === 0) return sideLabel(g.proposed);
+  if (g.proposed.length === 0) return sideLabel(g.current);
+  return `${sideLabel(g.current)}${MAPS_TO}${sideLabel(g.proposed, { named: farSideNamed })}`;
 }
 
 /**
@@ -314,13 +339,16 @@ export function routeGroupBounds(features: RouteChangeFeature[]): [[number, numb
 }
 
 /**
- * The layer filter for the ONE-TO-ONE control: drop the grey while it is
- * hidden, no filter while it is shown. A filter rather than an opacity of
- * zero, because a hidden feature is also un-hoverable and un-clickable --
- * a transparent line that still answered the pointer would be a ghost.
+ * The overview's filter for the key's switched-off rows: drop every status
+ * they stand for, no filter when every row is on. A filter rather than an
+ * opacity of zero, because a hidden feature is also un-hoverable and
+ * un-clickable -- a transparent line that still answered the pointer would
+ * be a ghost.
  */
-export function oneToOneFilter(mode: OneToOne): any {
-  return mode === 'hidden' ? ['!=', ['get', 'status'], 'one-to-one'] : null;
+export function bucketFilter(hidden: readonly RouteBucket[]): any {
+  if (hidden.length === 0) return null;
+  const statuses = hidden.flatMap((b) => BUCKET_STATUSES[b]);
+  return ['!', ['in', ['get', 'status'], ['literal', statuses]]];
 }
 
 /**
@@ -409,7 +437,7 @@ export function initRouteChangesLayer(map: maplibregl.Map, beforeId?: string) {
   // insertion trick `initPlacesLayer` uses for its fill and points.
   addLineLayers(map, SRC, LAYER_LINES, LAYER_ARROWS, beforeId, FULL_OPACITY);
   addLineLayers(map, SEL_SRC, LAYER_SEL_LINES, LAYER_SEL_ARROWS, beforeId, SELECTED_OPACITY);
-  setOneToOne(map, DEFAULT_ONE_TO_ONE);
+  applyBucketFilter(map);
 }
 
 // --------------------------------------------------------------------------
@@ -419,6 +447,10 @@ export function initRouteChangesLayer(map: maplibregl.Map, beforeId?: string) {
 let overview: RouteChangesResult | null = null;
 let detail: RouteGroupDetail | null = null;
 let visible = false;
+// The key's switched-off rows, held here the way `change.ts` holds its
+// hidden buckets: the filter is a fact about the layer, and the key, the
+// link and the map all read it from one place.
+const hiddenBuckets = new Set<RouteBucket>(DEFAULT_HIDDEN_BUCKETS);
 
 /** The overview on screen -- the groups and the drawn day -- or null before it has loaded. */
 export function layerData(): RouteChangesResult | null {
@@ -508,10 +540,30 @@ function setDimmed(map: maplibregl.Map, dim: boolean) {
   map.setPaintProperty(LAYER_ARROWS, 'icon-opacity', opacity);
 }
 
-/** Show or drop the one-to-one grey -- see `oneToOneFilter`. Only the overview carries grey. */
-export function setOneToOne(map: maplibregl.Map, mode: OneToOne) {
-  map.setFilter(LAYER_LINES, oneToOneFilter(mode));
-  map.setFilter(LAYER_ARROWS, oneToOneFilter(mode));
+/** The key's switched-off rows, in key order. */
+export function hiddenRouteBuckets(): RouteBucket[] {
+  return normaliseBuckets([...hiddenBuckets]);
+}
+
+/** Switch one row of the key off or on. */
+export function toggleRouteBucket(map: maplibregl.Map, bucket: RouteBucket) {
+  if (hiddenBuckets.has(bucket)) hiddenBuckets.delete(bucket);
+  else hiddenBuckets.add(bucket);
+  applyBucketFilter(map);
+}
+
+/** Set the switched-off rows outright -- from a link, or "Show all"'s empty list. */
+export function setHiddenRouteBuckets(map: maplibregl.Map, buckets: readonly RouteBucket[]) {
+  hiddenBuckets.clear();
+  for (const b of buckets) hiddenBuckets.add(b);
+  applyBucketFilter(map);
+}
+
+/** Only the overview is filtered: a selected group draws whatever bucket it is in. */
+function applyBucketFilter(map: maplibregl.Map) {
+  const filter = bucketFilter(hiddenRouteBuckets());
+  map.setFilter(LAYER_LINES, filter);
+  map.setFilter(LAYER_ARROWS, filter);
 }
 
 export function setRouteChangesVisible(map: maplibregl.Map, on: boolean) {
@@ -560,11 +612,21 @@ function trend(pct: number | null): 'up' | 'down' | 'flat' {
   return pct > 0 ? 'up' : 'down';
 }
 
+/**
+ * The name's colour class: the map's colour for the three coloured buckets,
+ * none for one-to-one -- its grey would read as disabled text on the dark
+ * panel, and it is the section whose whole point is that it is not one of
+ * the three.
+ */
+function nameClass(status: RouteStatus): string {
+  return status === 'one-to-one' ? 'rc-map' : `rc-map ${status}`;
+}
+
 function routeRow(g: RouteGroup, selected: boolean): string {
   return `
     <button type="button" class="rc-row${selected ? ' selected' : ''}"
             data-select-route="${esc(g.key)}">
-      <span class="rc-map">${esc(mappingLabel(g, { farSideNamed: false }))}</span>
+      <span class="${nameClass(g.status)}">${esc(mappingLabel(g, { farSideNamed: false }))}</span>
       ${rowChange(g)}
     </button>`;
 }
@@ -681,15 +743,28 @@ export interface RouteKeyOptions {
   groups: RouteGroup[] | null;
   /** The day the drawn patterns are for. */
   day: Day;
-  /** Whether the one-to-one grey is on the map. */
-  oneToOne: OneToOne;
+  /** The rows switched off, whose lines are not on the map. */
+  hidden: readonly RouteBucket[];
   /** The selected group, whose two sides have taken over the colours. */
   selected: RouteGroupDetail | null;
 }
 
-function swatchRow(color: string, label: string, n?: string): string {
+function swatchRow(color: string, label: string): string {
   return `<div class="lg-row lg-static"><i style="background:${color};border-radius:2px"></i>
-    <span class="lg-lab">${label}</span>${n === undefined ? '' : `<span class="lg-n">${n}</span>`}</div>`;
+    <span class="lg-lab">${label}</span></div>`;
+}
+
+/** One row of the overview's key: a switch, dimmed while its lines are off. */
+function bucketRow(bucket: RouteBucket, label: string, n: number, hidden: readonly RouteBucket[]): string {
+  const off = hidden.includes(bucket);
+  const color = STATUS_COLOR[BUCKET_STATUSES[bucket][0]];
+  return `
+    <button class="lg-row ${off ? 'off' : ''}" data-route-bucket="${bucket}"
+            aria-pressed="${!off}">
+      <i style="background:${color};border-radius:2px"></i>
+      <span class="lg-lab">${label}</span>
+      <span class="lg-n">${n}</span>
+    </button>`;
 }
 
 /**
@@ -699,7 +774,7 @@ function swatchRow(color: string, label: string, n?: string): string {
  * The head line is the summary sentence for the day, written to stand alone:
  * the phone and embed layouts fold the key down to it.
  */
-export function routeKeyHTML({ groups, day, oneToOne, selected }: RouteKeyOptions): string {
+export function routeKeyHTML({ groups, day, hidden, selected }: RouteKeyOptions): string {
   if (selected) {
     return `
       <div class="lg-head"><b>${esc(mappingLabel(selected))}</b>
@@ -717,13 +792,14 @@ export function routeKeyHTML({ groups, day, oneToOne, selected }: RouteKeyOption
     + ` · ${n.new} new · ${reshaped} split or merged · ${DAY_WORD[day]}`;
   return `
     <div class="lg-head"><b>${esc(head)}</b></div>
-    ${swatchRow(STATUS_COLOR.discontinued, 'discontinued — today’s alignment', String(n.discontinued))}
-    ${swatchRow(STATUS_COLOR.new, 'new — proposed alignment', String(n.new))}
-    ${swatchRow(RESHAPED_COLOR, 'split or merged — proposed alignment', String(reshaped))}
-    ${swatchRow(STATUS_COLOR['one-to-one'], `one-to-one (${oneToOne})`, String(n['one-to-one']))}
+    ${bucketRow('discontinued', 'discontinued — today’s alignment', n.discontinued, hidden)}
+    ${bucketRow('new', 'new — proposed alignment', n.new, hidden)}
+    ${bucketRow('reshaped', 'split or merged — proposed alignment', reshaped, hidden)}
+    ${bucketRow('one-to-one', 'one-to-one — proposed alignment', n['one-to-one'], hidden)}
     <div class="lg-foot">A route group is PRT’s own mapping of today’s
       numbers onto the plan’s, not a corridor. Patterns are the ones that
-      run on ${esc(DAY_WORD[day])}. Click a line to select its group.</div>`;
+      run on ${esc(DAY_WORD[day])}. Click a row to show or hide its lines;
+      click a line to select its group.</div>`;
 }
 
 // --------------------------------------------------------------------------

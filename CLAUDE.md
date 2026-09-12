@@ -641,8 +641,10 @@ changes published findings.
     the card prints it as "PRT points riders to", PRT's claim, never as a
     measured replacement. **One-to-one is not unchanged**: 65 groups map one
     number to one number and the 61C → 61X gains 8% of its weekday trips; the
-    bucket is named *one-to-one* everywhere and drawn grey behind a toggle,
-    off by default (Max's decision). And **the colours change meaning on
+    bucket is named *one-to-one* everywhere and drawn grey, switched off by
+    default from the key's own rows, which are the view's filter the way
+    the Stop-by-stop key's are (Max's decision; `routehide=` carries the
+    switched-off rows in a link). And **the colours change meaning on
     selection** — blue is *new* in the overview and *today's alignment* once
     a group is selected — so the key rewrites itself at that moment and
     anything screenshotted from this view needs the key in the frame. Access

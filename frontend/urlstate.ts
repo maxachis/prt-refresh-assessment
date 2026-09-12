@@ -32,7 +32,9 @@ import { Destination } from './oneseat';
 import { PlaceFill, DEFAULT_PLACE_FILL } from './places';
 import { VIEWS } from './statebar';
 import { StopRoutes, DEFAULT_STOP_ROUTES } from './stoproutes';
-import { OneToOne, DEFAULT_ONE_TO_ONE, isRouteKey } from './routechange';
+import {
+  RouteBucket, DEFAULT_HIDDEN_BUCKETS, isRouteBucket, isRouteKey, normaliseBuckets,
+} from './routechange';
 
 /**
  * The query parameters, named once.
@@ -56,7 +58,7 @@ export const PARAM = {
   selection: 'sel',
   stopRoutes: 'stoproutes',
   route: 'route',
-  oneToOne: 'onetoone',
+  routeHidden: 'routehide',
 } as const;
 
 /**
@@ -130,12 +132,17 @@ export interface UrlState {
    */
   route?: string | null;
   /**
-   * Whether the Route changes view is drawing its one-to-one grey. Written
-   * always, like `stopRoutes`: two positions a reader can be in, no "nothing
-   * chosen yet".
+   * The rows of the Route changes key switched off, in key order. Written
+   * only when it differs from the default -- the one-to-one grey off -- on
+   * `weight`'s rule; an empty list is spelled `none`, since absence means
+   * the default and the default is not empty.
    */
-  oneToOne?: OneToOne;
+  routeHidden?: RouteBucket[];
 }
+
+/** How an empty `routehide` is spelled: absence would mean the default instead. */
+const NO_HIDDEN_BUCKETS = 'none';
+const BUCKET_SEP = ',';
 
 /** Is this page inside someone else's? */
 export function isFramed(win: { self: unknown; top: unknown }): boolean {
@@ -184,7 +191,10 @@ export function toSearch(s: UrlState): string {
   p.set(PARAM.stopRoutes, s.stopRoutes ?? DEFAULT_STOP_ROUTES);
   // Absence, like `place`: written once a group is selected, never before.
   if (s.route) p.set(PARAM.route, s.route);
-  p.set(PARAM.oneToOne, s.oneToOne ?? DEFAULT_ONE_TO_ONE);
+  if (s.routeHidden && !sameBuckets(s.routeHidden, DEFAULT_HIDDEN_BUCKETS)) {
+    p.set(PARAM.routeHidden, s.routeHidden.length
+      ? s.routeHidden.join(BUCKET_SEP) : NO_HIDDEN_BUCKETS);
+  }
   return `?${p}`;
 }
 
@@ -254,10 +264,20 @@ export function parseUrlState(search: string): Partial<UrlState> {
   const route = p.get(PARAM.route);
   if (route && isRouteKey(route)) s.route = route;
 
-  const oneToOne = p.get(PARAM.oneToOne);
-  if (oneToOne === 'hidden' || oneToOne === 'shown') s.oneToOne = oneToOne;
+  const routeHidden = p.get(PARAM.routeHidden);
+  if (routeHidden === NO_HIDDEN_BUCKETS) s.routeHidden = [];
+  else if (routeHidden) {
+    // Unknown names are dropped rather than failing the whole list, on the
+    // hand-edited-link principle above; a list with nothing left is skipped.
+    const known = normaliseBuckets(routeHidden.split(BUCKET_SEP).filter(isRouteBucket));
+    if (known.length) s.routeHidden = known;
+  }
 
   return s;
+}
+
+function sameBuckets(a: readonly RouteBucket[], b: readonly RouteBucket[]): boolean {
+  return a.length === b.length && a.every((x, i) => x === b[i]);
 }
 
 function coords(p: Point): string {

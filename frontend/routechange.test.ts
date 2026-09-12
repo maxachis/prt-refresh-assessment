@@ -4,7 +4,8 @@ import {
   isRouteKey, mappingLabel, sideLabel, signedPct, statusCounts,
   toOverviewGeoJSON, toSelectedGeoJSON, routeGroupBounds, CASING_WIDTH, SELECTED_WIDTH,
   routeListHTML, routeCardHTML, routeKeyHTML, routeTooltipHTML,
-  oneToOneFilter, ROUTE_CHANGES_CAVEAT,
+  ROUTE_CHANGES_CAVEAT, ROUTE_BUCKETS, BUCKET_STATUSES, DEFAULT_HIDDEN_BUCKETS,
+  isRouteBucket, normaliseBuckets, bucketFilter,
 } from './routechange';
 import { GONE_COLOR, NEW_COLOR } from './surface';
 import { KEPT_COLOR } from './corridor';
@@ -147,14 +148,16 @@ describe('mappingLabel', () => {
     expect(mappingLabel(MERGED, { farSideNamed: false })).toBe('77 PENN HILLS, 86 LIBERTY → 86');
   });
 
-  it('draws a dash for the side a discontinued or new group does not have', () => {
-    expect(mappingLabel(DISCONTINUED)).toBe('2 Mount Royal → —');
-    expect(mappingLabel(NEW)).toBe('— → 45 Carrick-Oakland-East Liberty');
+  it('names a discontinued or new group by its one side alone, with no arrow to nowhere', () => {
+    // The status says which side it is; "→ —" said it twice and read as a
+    // rendering fault (Max's call).
+    expect(mappingLabel(DISCONTINUED)).toBe('2 Mount Royal');
+    expect(mappingLabel(NEW)).toBe('45 Carrick-Oakland-East Liberty');
   });
 
   it('keeps a new route\'s name even in the short form -- it is the only side there is', () => {
     expect(mappingLabel(NEW, { farSideNamed: false }))
-      .toBe('— → 45 Carrick-Oakland-East Liberty');
+      .toBe('45 Carrick-Oakland-East Liberty');
   });
 
   it('names one side on its own', () => {
@@ -277,10 +280,37 @@ describe('routeGroupBounds', () => {
   });
 });
 
-describe('oneToOneFilter', () => {
-  it('hides the one-to-one groups by default and lifts the filter when asked', () => {
-    expect(oneToOneFilter('hidden')).toEqual(['!=', ['get', 'status'], 'one-to-one']);
-    expect(oneToOneFilter('shown')).toBeNull();
+describe('route buckets', () => {
+  it('are the key\'s four rows, covering every status exactly once', () => {
+    expect(ROUTE_BUCKETS).toEqual(['discontinued', 'new', 'reshaped', 'one-to-one']);
+    const covered = ROUTE_BUCKETS.flatMap((b) => BUCKET_STATUSES[b]).sort();
+    expect(covered).toEqual([...STATUS_ORDER].sort());
+    expect(BUCKET_STATUSES.reshaped).toEqual(['split', 'merged']);
+  });
+
+  it('start with only the one-to-one grey hidden', () => {
+    expect(DEFAULT_HIDDEN_BUCKETS).toEqual(['one-to-one']);
+  });
+
+  it('recognise a bucket name and nothing else', () => {
+    expect(isRouteBucket('reshaped')).toBe(true);
+    expect(isRouteBucket('split')).toBe(false);
+    expect(isRouteBucket('')).toBe(false);
+  });
+
+  it('normalise a list into key order without repeats', () => {
+    expect(normaliseBuckets(['one-to-one', 'new', 'new'])).toEqual(['new', 'one-to-one']);
+    expect(normaliseBuckets([])).toEqual([]);
+  });
+});
+
+describe('bucketFilter', () => {
+  it('drops the statuses of every hidden bucket, and nothing when none is hidden', () => {
+    expect(bucketFilter(['one-to-one']))
+      .toEqual(['!', ['in', ['get', 'status'], ['literal', ['one-to-one']]]]);
+    expect(bucketFilter(['reshaped', 'new']))
+      .toEqual(['!', ['in', ['get', 'status'], ['literal', ['split', 'merged', 'new']]]]);
+    expect(bucketFilter([])).toBeNull();
   });
 });
 
@@ -313,9 +343,21 @@ describe('routeListHTML', () => {
 
   it('writes each row as a mapping to the other side, and the weekday trips change', () => {
     expect(html).toContain('51 CARRICK → 51, 51S');
-    expect(html).toContain('2 Mount Royal → —');
-    expect(html).toContain('— → 45 Carrick-Oakland-East Liberty');
+    expect(html).toContain('2 Mount Royal');
+    expect(html).toContain('45 Carrick-Oakland-East Liberty');
+    expect(html).not.toContain('→ —');
+    expect(html).not.toContain('— →');
     expect(html).toContain('−10%');
+  });
+
+  it('colours each row\'s name by its status, so the panel reads in the key\'s colours', () => {
+    expect(html).toMatch(/class="rc-map discontinued"[^>]*>2 Mount Royal/);
+    expect(html).toMatch(/class="rc-map new"[^>]*>45 Carrick/);
+    expect(html).toMatch(/class="rc-map split"[^>]*>51 CARRICK/);
+    expect(html).toMatch(/class="rc-map merged"[^>]*>77 PENN HILLS/);
+    // One-to-one is the uncoloured section: it is not one of the three the
+    // map colours, and grey text on the dark panel would read as disabled.
+    expect(html).toMatch(/class="rc-map"[^>]*>61C/);
   });
 
   it('draws a dash, not 0%, where the weekday change is undefined', () => {
@@ -428,27 +470,36 @@ describe('routeCardHTML', () => {
 });
 
 describe('routeKeyHTML', () => {
-  const nothing = routeKeyHTML({ groups: GROUPS, day: 'weekday', oneToOne: 'hidden', selected: null });
+  const nothing = routeKeyHTML({ groups: GROUPS, day: 'weekday', hidden: ['one-to-one'], selected: null });
 
   it('opens with a summary sentence that stands alone when the key is folded', () => {
     expect(nothing).toContain(
       '5 route groups · 1 discontinued · 1 new · 2 split or merged · a weekday');
   });
 
-  it('keys a swatch per status with its count, and says whether the grey is on', () => {
+  it('keys a swatch per bucket with its count', () => {
     expect(nothing).toContain(`background:${GONE_COLOR}`);
     expect(nothing).toContain(`background:${NEW_COLOR}`);
     expect(nothing).toContain(`background:${RESHAPED_COLOR}`);
     expect(nothing).toContain(`background:${KEPT_COLOR}`);
-    expect(nothing).toMatch(/one-to-one[\s\S]*?\(hidden\)/);
-    const shown = routeKeyHTML({ groups: GROUPS, day: 'saturday', oneToOne: 'shown', selected: null });
-    expect(shown).toMatch(/one-to-one[\s\S]*?\(shown\)/);
-    expect(shown).toContain('a Saturday');
+    expect(routeKeyHTML({ groups: GROUPS, day: 'saturday', hidden: [], selected: null }))
+      .toContain('a Saturday');
+  });
+
+  it('makes every row a toggle, pressed while its lines are drawn, like the dots key', () => {
+    for (const b of ROUTE_BUCKETS) {
+      expect(nothing).toMatch(new RegExp(`<button class="lg-row[^"]*" data-route-bucket="${b}"`));
+    }
+    expect(nothing).toMatch(/class="lg-row off" data-route-bucket="one-to-one"\s+aria-pressed="false"/);
+    expect(nothing).toMatch(/class="lg-row " data-route-bucket="new"\s+aria-pressed="true"/);
+    const grey = routeKeyHTML({ groups: GROUPS, day: 'weekday', hidden: ['new'], selected: null });
+    expect(grey).toMatch(/class="lg-row " data-route-bucket="one-to-one"/);
+    expect(grey).toMatch(/class="lg-row off" data-route-bucket="new"/);
   });
 
   it('switches to the two alignment swatches once a group is selected, because blue changes meaning', () => {
     const detail: RouteGroupDetail = { ...group(), features: [feature()] };
-    const selected = routeKeyHTML({ groups: GROUPS, day: 'weekday', oneToOne: 'hidden', selected: detail });
+    const selected = routeKeyHTML({ groups: GROUPS, day: 'weekday', hidden: ['one-to-one'], selected: detail });
     expect(selected).toContain('51 CARRICK → 51 Carrick, 51S Carrick Short');
     expect(selected).toContain(`background:${NOW_COLOR}`);
     expect(selected).toContain("today's alignment");
@@ -458,7 +509,7 @@ describe('routeKeyHTML', () => {
   });
 
   it('has something to say before the layer arrives', () => {
-    expect(routeKeyHTML({ groups: null, day: 'weekday', oneToOne: 'hidden', selected: null }))
+    expect(routeKeyHTML({ groups: null, day: 'weekday', hidden: ['one-to-one'], selected: null }))
       .toContain('Route changes');
   });
 });

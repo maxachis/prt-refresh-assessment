@@ -521,6 +521,9 @@
        purple is a lighter tint here than on the map (routechange.ts's
        RESHAPED_COLOR), because the map colour sits at about 3:1 against this
        panel and a pill's text needs more. */
+    /* The view's three colours as the panel prints them: the map's hexes
+       sit at about 3:1 on the dark panel, and text there needs more. */
+    #panel { --rc-gone:var(--down); --rc-new:#6fb6ef; --rc-reshaped:#c9a0e6; }
     .rc-list { display:flex; flex-direction:column; gap:6px; margin-bottom:6px; }
     button.rc-row { display:flex; gap:10px; align-items:baseline; width:100%;
       padding:7px 10px; background:#0c0e12; border:1px solid var(--line);
@@ -528,7 +531,13 @@
       cursor:pointer; text-align:left; }
     button.rc-row:hover { border-color:#3a4150; }
     button.rc-row.selected { border-color:var(--sel); background:#171b23; }
+    /* A row's name wears the map's colour for its bucket -- the same three
+       tints the card's pill uses, lightened for the dark panel -- so the
+       directory reads in the key's colours; one-to-one stays plain. */
     .rc-map { flex:1; }
+    .rc-map.discontinued { color:var(--rc-gone); }
+    .rc-map.new { color:var(--rc-new); }
+    .rc-map.split, .rc-map.merged { color:var(--rc-reshaped); }
     .rc-pct { font-size:12px; font-variant-numeric:tabular-nums; white-space:nowrap; }
     .rc-pct.up { color:var(--up); } .rc-pct.down { color:var(--down); }
     .rc-pct.flat { color:var(--muted); }
@@ -537,11 +546,11 @@
     .rc-status { display:inline-block; font-size:11px; padding:2px 8px;
       border-radius:999px; border:1px solid var(--line); color:var(--muted);
       margin-top:4px; }
-    .rc-status.discontinued { color:var(--down); border-color:#5c2626;
+    .rc-status.discontinued { color:var(--rc-gone); border-color:#5c2626;
       background:rgba(255,107,107,.09); }
-    .rc-status.new { color:#6fb6ef; border-color:#22496b;
+    .rc-status.new { color:var(--rc-new); border-color:#22496b;
       background:rgba(15,121,201,.12); }
-    .rc-status.split, .rc-status.merged { color:#c9a0e6; border-color:#4a2a5e;
+    .rc-status.split, .rc-status.merged { color:var(--rc-reshaped); border-color:#4a2a5e;
       background:rgba(142,68,173,.14); }
     .rc-status.one-to-one { color:var(--ink); }
     /* PRT's own word for the row -- neutral, because it is the plan's account
@@ -1048,21 +1057,6 @@
             <button type="button" data-place-fill="lost" class="active">Losses</button>
             <button type="button" data-place-fill="gained">Gains</button>
             <button type="button" data-place-fill="service">Service</button>
-          </div>
-        </div>
-        <!-- The Route changes view's one-to-one grey: the sixty-odd groups
-             that keep one number on each side. Off by default -- drawn at full
-             weight they are most of the network, a map of everything coloured
-             by nothing -- and grey beneath the coloured lines when on. Lives
-             in the toolbar for the reason every control does: it decides what
-             the MAP draws, and the key says which state it is in, since a map
-             missing sixty routes has to say so. Shown only in that view; no
-             other has a grey to draw. -->
-        <div class="controls hidden" id="route-onetoone-controls">
-          <span class="lbl">one-to-one</span>
-          <div class="seg">
-            <button type="button" data-onetoone="hidden" class="active">Hidden</button>
-            <button type="button" data-onetoone="shown">Shown</button>
           </div>
         </div>
         <!-- Day type governs the map layer as well as the panel: a place that

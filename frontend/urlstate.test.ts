@@ -16,7 +16,7 @@ const FULL: UrlState = {
   selection: ['c:10005', 'p:2201'],
   stopRoutes: 'proposed',
   route: 'c:77-86',
-  oneToOne: 'shown',
+  routeHidden: ['new', 'one-to-one'],
 };
 
 describe('toSearch', () => {
@@ -32,7 +32,7 @@ describe('toSearch', () => {
     expect(p.get('placefill')).toBe('gained');
     expect(p.get('stoproutes')).toBe('proposed');
     expect(p.get('route')).toBe('c:77-86');
-    expect(p.get('onetoone')).toBe('shown');
+    expect(p.get('routehide')).toBe('new,one-to-one');
   });
 
   it('writes which network the drawn routes are, since only one is on the map', () => {
@@ -96,11 +96,19 @@ describe('toSearch', () => {
     expect(p.has('route')).toBe(false);
   });
 
-  it('writes the one-to-one control hidden as well as shown, like the routes control', () => {
-    // Two positions a reader can be in, no "nothing chosen yet" -- so it is
-    // always in the link, the way `stoproutes` is.
-    const p = new URLSearchParams(toSearch({ ...FULL, oneToOne: 'hidden' }));
-    expect(p.get('onetoone')).toBe('hidden');
+  it('leaves the hidden route buckets out at the default, and says "none" when every row is on', () => {
+    // The default hides the one-to-one grey; a link carries the list only
+    // when the reader changed it, on the same only-when-chosen rule as
+    // `weight`. An empty list is written out, because absence means the
+    // default and the default is not empty.
+    expect(new URLSearchParams(toSearch({ ...FULL, routeHidden: ['one-to-one'] })).has('routehide'))
+      .toBe(false);
+    expect(new URLSearchParams(toSearch({ ...FULL, routeHidden: [] })).get('routehide')).toBe('none');
+  });
+
+  it('reads the hidden buckets back in key order, dropping what it does not know', () => {
+    expect(parseUrlState('?routehide=one-to-one,new,bogus').routeHidden).toEqual(['new', 'one-to-one']);
+    expect(parseUrlState('?routehide=none').routeHidden).toEqual([]);
   });
 
   it('round-trips through parse', () => {
@@ -153,7 +161,8 @@ describe('parseUrlState', () => {
     ['?route=c:', 'route'],
     ['?route=x:51', 'route'],
     ['?route=c:51/../etc', 'route'],
-    ['?onetoone=maybe', 'oneToOne'],
+    ['?routehide=maybe', 'routeHidden'],
+    ['?routehide=', 'routeHidden'],
     ['?stoproutes=maybe', 'stopRoutes'],
     // The two parameters this replaced before the feature shipped: `on` was
     // the old toggle's value and the side rode in a second parameter, so a
