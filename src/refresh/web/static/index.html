@@ -513,6 +513,50 @@
     .place-lost { color:var(--down); }
     .place-gained { color:#6fb6ef; }
 
+    /* The Route changes view: a directory of route groups under status
+       headings, and a card per selected group. Rows are styled after the
+       Places rows -- the same idea, a list that is the answer -- and the
+       status pill after the one-seat verdict pills, taking the map's own
+       colours so the panel and the lines agree at a glance. The reshaped
+       purple is a lighter tint here than on the map (routechange.ts's
+       RESHAPED_COLOR), because the map colour sits at about 3:1 against this
+       panel and a pill's text needs more. */
+    .rc-list { display:flex; flex-direction:column; gap:6px; margin-bottom:6px; }
+    button.rc-row { display:flex; gap:10px; align-items:baseline; width:100%;
+      padding:7px 10px; background:#0c0e12; border:1px solid var(--line);
+      border-radius:5px; color:var(--ink); font:inherit; font-size:13px;
+      cursor:pointer; text-align:left; }
+    button.rc-row:hover { border-color:#3a4150; }
+    button.rc-row.selected { border-color:var(--sel); background:#171b23; }
+    .rc-map { flex:1; }
+    .rc-pct { font-size:12px; font-variant-numeric:tabular-nums; white-space:nowrap; }
+    .rc-pct.up { color:var(--up); } .rc-pct.down { color:var(--down); }
+    .rc-pct.flat { color:var(--muted); }
+    details.rc-kept > summary { margin-bottom:8px; }
+    .rc-back { margin-bottom:10px; }
+    .rc-status { display:inline-block; font-size:11px; padding:2px 8px;
+      border-radius:999px; border:1px solid var(--line); color:var(--muted);
+      margin-top:4px; }
+    .rc-status.discontinued { color:var(--down); border-color:#5c2626;
+      background:rgba(255,107,107,.09); }
+    .rc-status.new { color:#6fb6ef; border-color:#22496b;
+      background:rgba(15,121,201,.12); }
+    .rc-status.split, .rc-status.merged { color:#c9a0e6; border-color:#4a2a5e;
+      background:rgba(142,68,173,.14); }
+    .rc-status.one-to-one { color:var(--ink); }
+    /* PRT's own word for the row -- neutral, because it is the plan's account
+       of itself and not one of this view's statuses. */
+    .rc-cat { display:inline-block; font-size:11px; padding:1px 7px; margin-left:6px;
+      border-radius:999px; border:1px solid var(--line); color:var(--muted); }
+    .rc-prt { margin:8px 0; font-size:12px; line-height:1.5; }
+    .rc-prt-lede { font-size:12px; margin:0 0 4px; }
+    .rc-riders { margin:10px 0 0; font-size:13px; font-variant-numeric:tabular-nums; }
+    /* Seven columns of figures: the shared 34 px cell cannot hold "160.7",
+       so the width is left to the content, the way the travel-time table
+       widens its own. */
+    table.periods.rc td.n, table.periods.rc th.n { width:auto; padding-left:10px; }
+    table.periods.rc thead th.n { text-align:center; padding-left:10px; }
+
     /* The one-seat block: a verdict per named destination, with the route
        numbers that make it checkable. Statuses take the map's own colours so
        the panel and the layer agree at a glance -- red loses, blue gains. */
@@ -899,7 +943,17 @@
              panel rather than by clicking the map -- selecting a place from
              the ranked list is what flies the map and draws its changed census
              block groups, always as points and never as a filled boundary,
-             because this repo has no place geometry to fill one with. -->
+             because this repo has no place geometry to fill one with. Route
+             changes is the seventh, and the one unit the repo's first
+             convention otherwise forbids: a ROUTE GROUP, the set of today's
+             route numbers and the plan's that PRT maps onto one another
+             (analyze_route_hours.py). It exists because "what happens to the
+             51?" is the question a rider actually asks and no other view can
+             answer it -- but a group is not a corridor, and its caveat
+             travels with it: Carrick's 51 reads as -10% while the new 45
+             runs much of the same street as a separate group. It has no walk
+             radius; it keeps the day type, because the patterns drawn are the
+             ones that run on that day. -->
         <div class="controls">
           <span class="lbl">view</span>
           <div class="seg">
@@ -910,6 +964,7 @@
             <button data-view="oneseat">One-seat</button>
             <button data-view="journey">Travel time</button>
             <button data-view="places">Places</button>
+            <button data-view="routes">Route changes</button>
           </div>
         </div>
         <!-- Draw every bus route calling at the clicked stop, end to end
@@ -993,6 +1048,21 @@
             <button type="button" data-place-fill="lost" class="active">Losses</button>
             <button type="button" data-place-fill="gained">Gains</button>
             <button type="button" data-place-fill="service">Service</button>
+          </div>
+        </div>
+        <!-- The Route changes view's one-to-one grey: the sixty-odd groups
+             that keep one number on each side. Off by default -- drawn at full
+             weight they are most of the network, a map of everything coloured
+             by nothing -- and grey beneath the coloured lines when on. Lives
+             in the toolbar for the reason every control does: it decides what
+             the MAP draws, and the key says which state it is in, since a map
+             missing sixty routes has to say so. Shown only in that view; no
+             other has a grey to draw. -->
+        <div class="controls hidden" id="route-onetoone-controls">
+          <span class="lbl">one-to-one</span>
+          <div class="seg">
+            <button type="button" data-onetoone="hidden" class="active">Hidden</button>
+            <button type="button" data-onetoone="shown">Shown</button>
           </div>
         </div>
         <!-- Day type governs the map layer as well as the panel: a place that

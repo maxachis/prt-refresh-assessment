@@ -15,6 +15,8 @@ const FULL: UrlState = {
   placeFill: 'gained',
   selection: ['c:10005', 'p:2201'],
   stopRoutes: 'proposed',
+  route: 'c:77-86',
+  oneToOne: 'shown',
 };
 
 describe('toSearch', () => {
@@ -29,6 +31,8 @@ describe('toSearch', () => {
     expect(p.get('surfaceunit')).toBe('people');
     expect(p.get('placefill')).toBe('gained');
     expect(p.get('stoproutes')).toBe('proposed');
+    expect(p.get('route')).toBe('c:77-86');
+    expect(p.get('onetoone')).toBe('shown');
   });
 
   it('writes which network the drawn routes are, since only one is on the map', () => {
@@ -86,6 +90,19 @@ describe('toSearch', () => {
     expect(p.has('place')).toBe(false);
   });
 
+  it('leaves out the selected route group until one has been picked', () => {
+    // Absence, like `place` and `at`: nothing is selected until it is.
+    const p = new URLSearchParams(toSearch({ ...FULL, route: null }));
+    expect(p.has('route')).toBe(false);
+  });
+
+  it('writes the one-to-one control hidden as well as shown, like the routes control', () => {
+    // Two positions a reader can be in, no "nothing chosen yet" -- so it is
+    // always in the link, the way `stoproutes` is.
+    const p = new URLSearchParams(toSearch({ ...FULL, oneToOne: 'hidden' }));
+    expect(p.get('onetoone')).toBe('hidden');
+  });
+
   it('round-trips through parse', () => {
     expect(parseUrlState(toSearch(FULL))).toEqual(FULL);
   });
@@ -132,6 +149,11 @@ describe('parseUrlState', () => {
     ['?map=40.44,-79.99', 'camera'],
     ['?dest=', 'dest'],
     ['?placefill=net', 'placeFill'],
+    ['?route=51', 'route'],
+    ['?route=c:', 'route'],
+    ['?route=x:51', 'route'],
+    ['?route=c:51/../etc', 'route'],
+    ['?onetoone=maybe', 'oneToOne'],
     ['?stoproutes=maybe', 'stopRoutes'],
     // The two parameters this replaced before the feature shipped: `on` was
     // the old toggle's value and the side rode in a second parameter, so a
@@ -147,6 +169,11 @@ describe('parseUrlState', () => {
     // "Pick a point" is a mode the next click consumes. Arriving in it would
     // make an embedded map answer a question nobody asked on the first tap.
     expect(parseUrlState('?dest=pin')).not.toHaveProperty('dest');
+  });
+
+  it('reads a route group key in either of the API\'s two spellings', () => {
+    expect(parseUrlState('?route=c:51').route).toBe('c:51');
+    expect(parseUrlState('?route=p:89-89S').route).toBe('p:89-89S');
   });
 
   it('takes only the parameters that are there', () => {

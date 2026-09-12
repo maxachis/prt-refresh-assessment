@@ -396,6 +396,31 @@ def create_app(db_path: str | Path = "data/refresh.db") -> FastAPI:
         """
         return query.crosswalk(con)
 
+    @app.get("/api/route_changes")
+    def api_route_changes(
+        day: str = Query("weekday", pattern=f"^({'|'.join(query.DAYS)})$"),
+    ):
+        """Every route GROUP the plan changes, for one day type, with the
+        drawn paths of whichever side each group's overview shows.
+
+        No `radius` parameter, for `/api/corridors`' reason: a group is a set
+        of routes, not a catchment. See `query.route_changes` for what a
+        group is (and is not).
+        """
+        return query.route_changes(con, day)
+
+    @app.get("/api/route_changes/{key}")
+    def api_route_change(
+        key: str,
+        day: str = Query("weekday", pattern=f"^({'|'.join(query.DAYS)})$"),
+    ):
+        """One route group, drawn on BOTH sides for a click-through detail
+        view. 404 for a key `/api/route_changes` did not publish."""
+        detail = query.route_change(con, key, day)
+        if detail is None:
+            raise HTTPException(404, f"no such route group: {key}")
+        return detail
+
     @app.get("/")
     def index():
         return FileResponse(_STATIC / "index.html")
@@ -632,5 +657,20 @@ CAVEATS = [
         "id": "bus-only",
         "text": "Bus only. Rail and the inclines are outside the Refresh and "
                 "are dropped from both sides.",
+    },
+    {
+        "id": "route-changes",
+        "text": "This view is route-based, which every other published "
+                "service figure here avoids (convention 1): the unit is a "
+                "GROUP of routes PRT's own crosswalk maps to one another, "
+                "never a route compared to the same-numbered route. A group "
+                "is not a corridor -- Carrick's current 51 reads -10% "
+                "weekday trips in its own group, while the new route 45 "
+                "runs 70 weekday trips over much of the same street in a "
+                "separate group, and nothing here adds the two together. "
+                "PRT's \"related routes\" is PRT's own suggestion, not a "
+                "measured replacement. Revenue hours are in-service time "
+                "only and not a cost figure. It is schedule against "
+                "schedule, like every other figure on this site.",
     },
 ]

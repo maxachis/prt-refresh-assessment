@@ -1234,6 +1234,87 @@ leaving the buttons live would let them mean nothing silently. The day control
 does apply: the published answer is the weekday peak, but a Saturday or Sunday
 trip is a fair question and re-times the answer on screen.
 
+## The Route changes view
+
+The one view whose unit is a **route** — or rather a *route group*, the
+connected set of today's numbers and the plan's that PRT maps onto one
+another, which is `analyze_route_hours.py`'s unit and the one
+`data/route_frequency_change.csv` publishes. It answers the question a rider
+actually arrives with — "what happens to my bus?" — which every other view
+declines on principle: convention 1 forbids comparing route N to route N,
+because the plan re-splits corridors, and the site measures locations, ground,
+streets, people and journeys instead. This view is route-based anyway, on the
+same terms as the one-seat and travel-time views (conventions 13 and 14): it
+is a different question, it is labelled as one, and its caveat travels with
+every number it shows.
+
+**A group is not a corridor, and the card says so.** The 51 group reads −10%
+weekday trips; the new 45 runs 70 weekday trips over much of the same street in
+a separate group, because PRT's crosswalk records it as new rather than as the
+51's successor, and the only column that would connect them — PRT's "related
+routes" — chains across the network and cannot be unioned on
+(`analyze_route_hours.py`'s docstring). So the card prints the measured group
+and PRT's own suggestion as two different things: the service table is the
+group's, and "PRT points riders to: …" is PRT's, labelled as PRT's, with a link
+to PRT's route page — and PRT's own "N/A", which is how 35 of its rows spell
+"nowhere", arrives empty so the card does not point riders to N/A. Neither is
+a replacement claim the repo has measured. Where
+access is measured is the location, surface and street views, and the card
+sends the reader there.
+
+**The map draws what changed and hides what merely continued.** Nothing
+selected, every group's shown side is a line coloured by its status —
+discontinued routes red, along today's alignment; new routes blue, along the
+plan's; split and merged routes purple, along the plan's. The 65 one-to-one
+groups are grey and **off by default**, behind a toolbar toggle (Max: "grey
+behind a toggle"): they are most of the network, and a map with all 108 groups
+on it at once is the whole network drawn twice, which is the picture the
+stop-by-stop and one-seat views already give. The one-to-one bucket is the
+one whose name has to be read carefully — one today's number maps to one of
+the plan's, which says nothing about its service; the 61C becomes the 61X and
+gains 8% of its weekday trips — so the key names it *one-to-one* and never
+*unchanged*.
+
+**Selecting a group changes what the colours mean, and the key changes with
+them.** A click on a line, or a row in the panel's directory, dims every other
+line and draws the group's own two sides in the site's today/plan pair — the
+blue and orange the travel-time view uses for its two itineraries — so a
+one-to-one route's reroute reads as two alignments over each other, which is
+the only way "how did this route change" has a picture. Today's side is drawn
+**wider, underneath** (`routechange.CASING_WIDTH`): the two sides are mostly
+the same street, and at one width the plan's line simply covered today's, so
+"today's alignment" appeared to be only the stub where they part company. As
+a casing, a shared stretch reads orange edged in blue and an abandoned one
+reads blue alone — the 77 + 86 → 86 merge shows the 77's Penn Hills loop in
+blue by itself beside the shared trunk. Blue therefore means
+*new route* before a selection and *today's alignment* after one; the key
+rewrites its rows at the moment of selection precisely because that is a
+trap, and an embed, which keeps the key and loses the panel, still says which
+it is.
+
+**The directory is the panel's empty state**, as the ranked list is for Places:
+grouped under Discontinued, New, Split or merged, and One-to-one, the last
+folded shut so the panel opens on what changed. The card for a selected group
+gives its service on all three day types — trips and revenue hours, today
+against the plan, with the published percent — beside today's weekday riders
+from WPRDC's route-level table. The figures are copied from
+`route_frequency_change.csv` at build time rather than recomputed from the
+app's own timetables, so a percent on the card is the percent
+`docs/answers/LOSE-SERVICE-HOURS.md` cites and cannot drift from it. Revenue
+hours are in-service time only — no layover, no deadhead — and the card says
+they are not a cost figure.
+
+**The day switch moves the map and not the list.** The drawn patterns are per
+day type, because a route's Sunday pattern is not its weekday one and today's
+53 has no weekday pattern at all; the group list and the card's three-row
+table are day-free by construction. The state line says the day for the map's
+sake.
+
+**Nothing is measured off the lines.** They are the journey layer's shapes,
+thinned at build time and lossy by construction (`journey_shape`'s schema
+comment); the API and the module both say so. Street length lost is
+`analyze_corridor_change.py`'s question, measured on the full shape.
+
 ## The on-demand zones: removed, 2026-08-25
 
 The app used to carry a violet overlay of 10 proposed microtransit zones,
@@ -1270,6 +1351,8 @@ Reasoning and evidence:
 | `GET /api/stops?side=&lat=&lon=&radius=` | Stops one network puts inside the radius. |
 | `GET /api/routes?side=` | Bus routes with trips, revenue hours and span per day type. |
 | `GET /api/crosswalk` | PRT's current → proposed route mapping. A labelling aid; no served number goes through it. |
+| `GET /api/route_changes?day=` | Every route GROUP `analyze_route_hours.py` publishes (108, day-free list), with trips/hours/riders copied from `data/route_frequency_change.csv` and the drawn path of whichever side each group's overview shows, for one day type. Route-based, against convention 1 — see `query.route_changes`'s docstring for why a group is not a corridor. |
+| `GET /api/route_changes/{key}?day=` | One route group, drawn on both sides for one day type. 404 on an unknown key. |
 | `GET /api/meta` | Feed versions, sample dates, periods, caveats. |
 
 ### The three precomputed layers are built once, not once per request

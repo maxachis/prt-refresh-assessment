@@ -112,6 +112,7 @@ CENSUS_BLOCK_GROUPS = DATA / "census_block_groups.csv"
 # half the plan's gain side.
 ACS_UNIVERSE = "race_total"
 CORRIDOR = DATA / "corridor_change.csv"
+ROUTE_FREQUENCY = DATA / "route_frequency_change.csv"
 
 SIDES = ["current", "proposed"]
 
@@ -186,6 +187,55 @@ CREATE TABLE crosswalk (
     category       TEXT,
     related_routes TEXT,
     route_page     TEXT
+);
+
+-- One row per GROUP of routes `analyze_route_hours.py` connects across the
+-- two networks -- never per route. Convention 1 forbids comparing route N to
+-- route N because the plan re-splits corridors, so the unit here is the
+-- connected component that script builds from the crosswalk plus the S-variant
+-- edges it derives. A GROUP IS STILL NOT A CORRIDOR: Carrick's current 51
+-- groups with the proposed 51 and 51S and reads -10% weekday trips, while the
+-- new route 45 -- 70 weekday trips over much of the same street -- sits in
+-- its own "new" group with no current side at all. Nothing joins the two.
+--
+-- Figures are copied from `data/route_frequency_change.csv` verbatim, never
+-- recomputed, so this table can never drift from what `docs/answers/` and
+-- FINDINGS.md cite -- the same discipline `place_population` observes.
+--
+-- `key` is stable across a rebuild so a URL can name a group, the way the
+-- change layer's dots are named "c:<stop>"/"p:<stop>": "c:" plus the current
+-- route ids, hyphen-joined ("c:51", "c:77-86"), where the group has a current
+-- side, else "p:" plus the proposed ids ("p:45", "p:89-89S"). A discontinued
+-- and a new group can share a route NUMBER without sharing a key -- today's
+-- 89 is discontinued ("c:89") while the proposed 89/89S is new ("p:89-89S")
+-- -- because a number gets reused for different service; see that script's
+-- docstring for why the two sides are namespaced.
+CREATE TABLE route_group (
+    key             TEXT PRIMARY KEY,
+    rank            INTEGER NOT NULL,   -- 1-based CSV row order, riders_weekday desc
+    current_routes  TEXT NOT NULL,      -- ';'-joined current route ids, '' if none
+    proposed_routes TEXT NOT NULL,      -- ';'-joined proposed route ids, '' if none
+    status          TEXT NOT NULL,      -- discontinued|new|one-to-one|split|merged
+    riders_weekday  REAL
+);
+
+-- Trips and revenue hours, per group per day type, copied straight from the
+-- CSV. Revenue hours are IN-SERVICE time only -- no layover, deadhead or
+-- pull-in/pull-out, because none of that is in a GTFS -- so this is a floor
+-- on platform hours and never a cost figure (`analyze_route_hours.py`).
+-- `pct_trips`/`pct_hours` are NULL wherever the CSV leaves the cell empty: a
+-- new group has nothing on the current side to compare against, and a group
+-- with zero trips on one side has no percentage change to publish.
+CREATE TABLE route_group_service (
+    key        TEXT NOT NULL,
+    day        TEXT NOT NULL,
+    cur_trips  REAL NOT NULL,
+    prop_trips REAL NOT NULL,
+    cur_hours  REAL NOT NULL,
+    prop_hours REAL NOT NULL,
+    pct_trips  REAL,
+    pct_hours  REAL,
+    PRIMARY KEY (key, day)
 );
 
 -- What the equity work published for each named place: how many residents lose
@@ -660,6 +710,68 @@ def load_crosswalk():
             for r in csv.DictReader(open(path, encoding="utf-8"))]
 
 
+def route_group_key(current_routes: str, proposed_routes: str) -> str:
+    """The stable id a URL names a route group by -- see the schema comment
+    on `route_group`. Current side wins when both are non-empty, because a
+    one-to-one or split group is anchored on the route riders know today; a
+    "new" group (empty current side) has nothing to anchor on but its
+    proposed number."""
+    if current_routes:
+        return "c:" + "-".join(current_routes.split(";"))
+    return "p:" + "-".join(proposed_routes.split(";"))
+
+
+def load_route_groups():
+    """([route_group rows], [route_group_service rows]) from
+    `data/route_frequency_change.csv`.
+
+    Fatal on a missing file, like the corridor and walk-network layers: the
+    Route changes view has no meaningful empty state, and a database built
+    without it would have to silently drop the view rather than refuse to
+    build.
+    """
+    if not ROUTE_FREQUENCY.exists():
+        sys.exit(f"error: {ROUTE_FREQUENCY} missing -- run "
+                  "`python3 analyze_route_hours.py` first")
+
+    def num(v):
+        # The CSV leaves a pct cell EMPTY where undefined (a new group, or a
+        # group with zero trips on one side) -- treated as NULL, never 0.0,
+        # which would print a real percentage for a comparison that has none.
+        return float(v) if v not in (None, "") else None
+
+    groups, service = [], []
+    with open(ROUTE_FREQUENCY, encoding="utf-8") as f:
+        for i, r in enumerate(csv.DictReader(f), start=1):
+            key = route_group_key(r["current_routes"], r["proposed_routes"])
+            groups.append((key, i, r["current_routes"], r["proposed_routes"],
+                          r["status"], num(r["riders_weekday"])))
+            for day in DAYS:
+                service.append((
+                    key, day,
+                    float(r[f"cur_{day}_trips"]), float(r[f"prop_{day}_trips"]),
+                    float(r[f"cur_{day}_hours"]), float(r[f"prop_{day}_hours"]),
+                    num(r[f"pct_{day}_trips"]), num(r[f"pct_{day}_hours"]),
+                ))
+    return groups, service
+
+
+def write_route_groups(con):
+    """Fill `route_group` and `route_group_service` on an open connection.
+
+    Factored out of `build()` so a standalone script can call this against an
+    existing `refresh.db` without a full rebuild -- exactly what regenerating
+    this one layer needs, the way `write_stop_fates` is its own function for
+    the same reason.
+    """
+    groups, service = load_route_groups()
+    con.executemany("INSERT INTO route_group VALUES (?,?,?,?,?,?)", groups)
+    con.executemany(
+        "INSERT INTO route_group_service VALUES (?,?,?,?,?,?,?,?)", service)
+    print(f"  route groups: {len(groups)} groups, {len(service)} group-days")
+    return groups, service
+
+
 # How far the search for a replacement stop looks before reporting none.
 # Twice convention 4's quarter mile: past this the answer a rider needs is not
 # "how far" but "there isn't one", and an unbounded search would spend minutes
@@ -779,6 +891,8 @@ def build(out_path):
     cw = load_crosswalk()
     con.executemany("INSERT INTO crosswalk VALUES (?,?,?,?,?)", cw)
     print(f"  place labels: {len(places):,} stops   crosswalk: {len(cw)} rows")
+
+    write_route_groups(con)
 
     corridor = load_corridor()
     con.executemany("INSERT INTO corridor VALUES (?,?,?,?)", corridor)

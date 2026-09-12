@@ -44,6 +44,7 @@ const VIEW_LABEL: Record<string, string> = {
   oneseat: 'One-seat ride',
   journey: 'Travel time',
   places: 'Places',
+  routes: 'Route changes',
 };
 
 /**
@@ -98,12 +99,14 @@ const ROUTES_WORD: Record<string, string> = {
  * The walk radius applies to the panel, not to the layer.
  *
  * So it stays on the line for Streets -- whose map ignores it, but whose
- * click still opens the walk-access panel -- and comes off only for the
+ * click still opens the walk-access panel -- and comes off for the
  * travel-time view, where the panel is an itinerary and every walk in it was
- * measured by the router rather than by this control.
+ * measured by the router rather than by this control, and for Route changes,
+ * whose panel is a directory of route groups and never opens a walk-access
+ * answer at all.
  */
 function usesRadius(view: string): boolean {
-  return view !== 'journey';
+  return view !== 'journey' && view !== 'routes';
 }
 
 export function questionLine(s: QuestionState): string {
@@ -115,6 +118,11 @@ export function questionLine(s: QuestionState): string {
   // same trap the one-seat and travel-time comments above are guarding
   // against for their own controls.
   if (s.view === 'places') return parts[0];
+  // Route changes keeps the day and nothing else. Unlike Places, its map IS
+  // day-typed: the patterns drawn are the ones that run on the toolbar's day,
+  // and a Sunday map is missing every weekday-only route, so the line has to
+  // say which day it is showing. Its directory and card are day-free, but
+  // the card tabulates all three days by name and cannot be misread.
   if (TAKES_DESTINATION.includes(s.view)) parts[0] += ` to ${s.destination}`;
   parts.push(s.view === 'oneseat' && !s.oneSeatRestricted
     ? 'any day' : DAY_WORD[s.day]);

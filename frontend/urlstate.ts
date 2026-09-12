@@ -32,6 +32,7 @@ import { Destination } from './oneseat';
 import { PlaceFill, DEFAULT_PLACE_FILL } from './places';
 import { VIEWS } from './statebar';
 import { StopRoutes, DEFAULT_STOP_ROUTES } from './stoproutes';
+import { OneToOne, DEFAULT_ONE_TO_ONE, isRouteKey } from './routechange';
 
 /**
  * The query parameters, named once.
@@ -54,6 +55,8 @@ export const PARAM = {
   placeFill: 'placefill',
   selection: 'sel',
   stopRoutes: 'stoproutes',
+  route: 'route',
+  oneToOne: 'onetoone',
 } as const;
 
 /**
@@ -121,6 +124,17 @@ export interface UrlState {
    * rather than half-applied.
    */
   stopRoutes?: StopRoutes;
+  /**
+   * The Route changes view's selected group, by its `/api/route_changes`
+   * key, or null while the directory is showing. Absence, like `place`.
+   */
+  route?: string | null;
+  /**
+   * Whether the Route changes view is drawing its one-to-one grey. Written
+   * always, like `stopRoutes`: two positions a reader can be in, no "nothing
+   * chosen yet".
+   */
+  oneToOne?: OneToOne;
 }
 
 /** Is this page inside someone else's? */
@@ -168,6 +182,9 @@ export function toSearch(s: UrlState): string {
   // of the URL -- see the head line the legend prints over it.
   if (s.selection.length) p.set(PARAM.selection, s.selection.join(','));
   p.set(PARAM.stopRoutes, s.stopRoutes ?? DEFAULT_STOP_ROUTES);
+  // Absence, like `place`: written once a group is selected, never before.
+  if (s.route) p.set(PARAM.route, s.route);
+  p.set(PARAM.oneToOne, s.oneToOne ?? DEFAULT_ONE_TO_ONE);
   return `?${p}`;
 }
 
@@ -230,6 +247,15 @@ export function parseUrlState(search: string): Partial<UrlState> {
   if (stopRoutes === 'off' || stopRoutes === 'current' || stopRoutes === 'proposed') {
     s.stopRoutes = stopRoutes;
   }
+
+  // Checked against the key grammar before it can reach a fetch: this is the
+  // one parameter that becomes part of a request path, and a hand-typed link
+  // is the expected input.
+  const route = p.get(PARAM.route);
+  if (route && isRouteKey(route)) s.route = route;
+
+  const oneToOne = p.get(PARAM.oneToOne);
+  if (oneToOne === 'hidden' || oneToOne === 'shown') s.oneToOne = oneToOne;
 
   return s;
 }

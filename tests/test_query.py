@@ -1382,3 +1382,141 @@ def test_the_plans_routes_are_drawn_at_a_stop_it_adds(con):
     for side in ("current", "proposed"):
         assert {f["route"] for f in drawn[side]} == set(
             listed[side]["days"]["weekday"]["routes"])
+
+
+# --------------------------------------------------------------------------
+# route_changes / route_change -- the route-group view (convention 1's unit)
+# --------------------------------------------------------------------------
+
+RAIL_ROUTE_IDS = {"BLUE", "RED", "SILVER", "SLVR", "MI", "DQI"}
+
+
+@pytest.fixture(scope="module")
+def route_changes_present(con):
+    if not query._has_table(con, "route_group"):
+        pytest.skip("refresh.db predates the route_group table -- rebuild it "
+                    "with `python3 build_webdb.py` (needs "
+                    "analyze_route_hours.py to have run first)")
+
+
+def test_route_changes_carries_every_group(con, route_changes_present):
+    """108 rows, the whole published CSV, regardless of day type."""
+    got = query.route_changes(con, "weekday")
+    assert got["day"] == "weekday"
+    assert len(got["groups"]) == 108
+
+
+def test_route_changes_status_counts_match_the_published_csv(con,
+                                                              route_changes_present):
+    got = query.route_changes(con, "weekday")
+    counts = {}
+    for g in got["groups"]:
+        counts[g["status"]] = counts.get(g["status"], 0) + 1
+    assert counts == {"discontinued": 21, "new": 14, "one-to-one": 65,
+                      "split": 7, "merged": 1}
+
+
+def test_route_group_keys_are_unique(con, route_changes_present):
+    got = query.route_changes(con, "weekday")
+    keys = [g["key"] for g in got["groups"]]
+    assert len(keys) == len(set(keys))
+
+
+def test_carricks_51_group_is_a_split_reading_the_published_figures(
+        con, route_changes_present):
+    """Pins the headline case the docstrings describe: today's 51 splits into
+    the proposed 51 and 51S, at -10.5% weekday trips, 6,012.9 weekday riders."""
+    got = query.route_changes(con, "weekday")
+    group = next(g for g in got["groups"] if g["key"] == "c:51")
+    assert group["status"] == "split"
+    assert [r["route"] for r in group["proposed"]] == ["51", "51S"]
+    assert group["riders_weekday"] == 6012.9
+    assert group["service"]["weekday"]["pct_trips"] == -10.5
+    assert group["shown"] == "proposed"
+
+
+def test_a_new_group_has_an_empty_current_side_and_shows_the_proposed(
+        con, route_changes_present):
+    """The new route 45 covers much of Carrick's corridor but is its own
+    group -- convention 1's "group is not a corridor" case."""
+    got = query.route_changes(con, "weekday")
+    group = next(g for g in got["groups"] if g["key"] == "p:45")
+    assert group["status"] == "new"
+    assert group["current"] == []
+    assert group["shown"] == "proposed"
+
+
+def test_a_discontinued_group_shows_the_current_side_and_is_distinct_from_the_new_reuse(
+        con, route_changes_present):
+    """Today's 89 (Garfield Commons) is discontinued; the proposed 89/89S is
+    an unrelated NEW group because PRT reuses the number for different
+    service (`analyze_route_hours.py`'s docstring)."""
+    got = query.route_changes(con, "weekday")
+    discontinued = next(g for g in got["groups"] if g["key"] == "c:89")
+    assert discontinued["status"] == "discontinued"
+    assert discontinued["shown"] == "current"
+    reused = next(g for g in got["groups"] if g["key"] == "p:89-89S")
+    assert reused["status"] == "new"
+    assert reused is not discontinued
+
+
+def test_features_belong_to_their_group_and_the_shown_side(con,
+                                                            route_changes_present):
+    got = query.route_changes(con, "weekday")
+    by_key = {g["key"]: g for g in got["groups"]}
+    for f in got["features"]:
+        group = by_key[f["key"]]
+        assert f["route"] in {r["route"] for r in group[group["shown"]]}
+
+
+def test_no_feature_draws_a_rail_route(con, route_changes_present):
+    got = query.route_changes(con, "weekday")
+    assert not any(f["route"] in RAIL_ROUTE_IDS for f in got["features"])
+
+
+def test_a_discontinued_groups_prt_row_carries_prts_own_related_routes(
+        con, route_changes_present):
+    """c:17 (Shadeland) is PRT's own "Discontinued" crosswalk row, unlike
+    c:89 (Garfield Commons), which the crosswalk never mentions at all --
+    its group exists only because current route 89 has no proposed edge."""
+    got = query.route_changes(con, "weekday")
+    discontinued = next(g for g in got["groups"] if g["key"] == "c:17")
+    assert discontinued["prt"]
+    row = discontinued["prt"][0]
+    assert row["related_routes"]
+    assert row["route_page"]
+
+
+def test_prts_na_related_routes_arrives_empty(con, route_changes_present):
+    """PRT's table spells "no related routes" as the literal "N/A" on 35 rows
+    and as an empty cell on 13; the card prints "PRT points riders to: ..."
+    only when there is somewhere to point, so both must arrive as empty."""
+    got = query.route_changes(con, "weekday")
+    one_to_one = next(g for g in got["groups"] if g["key"] == "c:61C")
+    assert one_to_one["prt"]
+    assert one_to_one["prt"][0]["related_routes"] == ""
+    assert not any(r["related_routes"] == "N/A"
+                   for g in got["groups"] for r in g["prt"])
+
+
+def test_route_change_gives_both_sides_features_for_one_group(con,
+                                                               route_changes_present):
+    detail = query.route_change(con, "c:51", "weekday")
+    assert detail is not None
+    assert detail["key"] == "c:51"
+    sides = {f["side"] for f in detail["features"]}
+    assert sides == {"current", "proposed"}
+
+
+def test_route_change_is_none_for_an_unknown_key(con, route_changes_present):
+    assert query.route_change(con, "c:does-not-exist", "weekday") is None
+
+
+def test_the_group_list_does_not_change_across_day_types(con,
+                                                          route_changes_present):
+    """The groups carry all three days' `service` figures already, so the
+    list itself -- everything but the top-level `day` and `features` -- must
+    be identical across the three calls."""
+    by_day = {day: query.route_changes(con, day) for day in query.DAYS}
+    groups = {day: got["groups"] for day, got in by_day.items()}
+    assert groups["weekday"] == groups["saturday"] == groups["sunday"]

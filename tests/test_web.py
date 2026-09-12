@@ -553,3 +553,35 @@ def test_meta_carries_the_stop_routes_caveat(client):
     text = {c["id"]: c["text"] for c in client.get("/api/meta").json()["caveats"]}
     assert "stop-routes" in text
     assert "measured" in text["stop-routes"]
+
+
+def test_route_changes_is_served(client):
+    r = client.get("/api/route_changes", params={"day": "weekday"})
+    assert r.status_code == 200
+    got = r.json()
+    assert got["day"] == "weekday"
+    assert len(got["groups"]) == 108
+    assert got["features"]
+
+
+def test_route_changes_rejects_a_day_it_does_not_measure(client):
+    r = client.get("/api/route_changes", params={"day": "tuesday"})
+    assert r.status_code == 422
+
+
+def test_route_change_detail_is_served(client):
+    r = client.get("/api/route_changes/c:51", params={"day": "weekday"})
+    assert r.status_code == 200
+    assert r.json()["key"] == "c:51"
+
+
+def test_route_change_detail_404s_for_an_unknown_key(client):
+    r = client.get("/api/route_changes/c:does-not-exist",
+                   params={"day": "weekday"})
+    assert r.status_code == 404
+
+
+def test_meta_carries_the_route_changes_caveat(client):
+    text = {c["id"]: c["text"] for c in client.get("/api/meta").json()["caveats"]}
+    assert "route-changes" in text
+    assert "group" in text["route-changes"]

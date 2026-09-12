@@ -14,8 +14,8 @@ Since both networks gained a real GTFS it also carries **a web app** (`src/refre
 `frontend/`) that answers "what changes here?" at an arbitrary point, as dots
 at today's stops, as a continuous 100 m surface, as the street network
 itself gaining and losing buses, as who keeps a one-seat ride to Downtown,
-Oakland or a point you pick, or as how many minutes a trip to one of those
-takes on each network. See [`docs/WEBAPP.md`](docs/WEBAPP.md). The pipeline remains the primary artifact and
+Oakland or a point you pick, as how many minutes a trip to one of those
+takes on each network, or as what happens to each route by name. See [`docs/WEBAPP.md`](docs/WEBAPP.md). The pipeline remains the primary artifact and
 stays standard-library only; the app is an optional extra that only reads what
 the pipeline builds. It is deployed at
 <https://prt-refresh.lemaliconsulting.com> (`deploy/README.md`), though nobody
@@ -67,7 +67,10 @@ python3 build_webdb.py              # -> data/refresh.db, for the web app only.
                                     #    built from census_blocks.csv and
                                     #    census_block_groups.csv, and a missing
                                     #    one is a build error rather than a
-                                    #    silently absent layer.
+                                    #    silently absent layer. Also needs
+                                    #    analyze_route_hours.py to have run,
+                                    #    for the route-group tables the
+                                    #    Route changes view reads.
 ```
 
 **The pedestrian network** is a third independent ingest, because it reads
@@ -619,6 +622,32 @@ changes published findings.
     describes at a larger scale. A painted number is evidence about the
     stops somebody chose; quoting it as a finding about the plan needs the
     same care as any other selected sample.
+
+18. **The Route changes view is route-based on purpose, and its unit is a
+    group, which is still not a corridor.** The app's `routes` view
+    (`frontend/routechange.ts`, `/api/route_changes`) answers "what happens
+    to my bus?" — the question convention 1 forbids every published figure
+    from touching. It is allowed on the same terms as the one-seat and
+    journey views: a different question, labelled as one, with its caveat
+    (`route-changes` in `/api/meta`) on the directory, the card and the
+    drawer. Its unit is `analyze_route_hours.py`'s **route group** — the
+    connected component over PRT's crosswalk plus the S-variant edges — and
+    every figure on the card is copied from `data/route_frequency_change.csv`
+    at build time, never recomputed, so it cannot drift from
+    `docs/answers/LOSE-SERVICE-HOURS.md`. Three things follow. **A group is
+    not a corridor**: the 51 group reads −10% weekday trips while the new 45
+    runs 70 trips over much of the same street in its own group, and nothing
+    may add them — PRT's `related_routes` chains and cannot be unioned on, so
+    the card prints it as "PRT points riders to", PRT's claim, never as a
+    measured replacement. **One-to-one is not unchanged**: 65 groups map one
+    number to one number and the 61C → 61X gains 8% of its weekday trips; the
+    bucket is named *one-to-one* everywhere and drawn grey behind a toggle,
+    off by default (Max's decision). And **the colours change meaning on
+    selection** — blue is *new* in the overview and *today's alignment* once
+    a group is selected — so the key rewrites itself at that moment and
+    anything screenshotted from this view needs the key in the frame. Access
+    is measured in the location, surface and street views, and the card says
+    so; see `docs/WEBAPP.md`, "The Route changes view".
 
 State data vintage and PRT's own accuracy disclaimer (stop figures are
 "unadjusted, unofficial totals" that may understate ridership by up to 30%)
