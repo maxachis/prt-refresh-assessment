@@ -631,6 +631,23 @@ with nothing left to catch, and they stay red. The published 633 is quoted on
 quote belongs in a published file rather than in a viewport-dependent key, and
 the key never showed the citywide number anyway.
 
+**The key says so in its labels, since 2026-09-12.** Measured at the kerb, the
+0 is exact and citywide: all 1,307 stops that lose every weekday bus are
+crosses, against 0 kept ones (Saturday 760 crosses and 210 kept; Sunday 743
+and 192). A key that read "loses all service (weekdays) · 0" over a map
+covered in crosses was taken to mean nobody loses all service, and the cross
+row as the same count twice. So the two absolute rows now say what they hold —
+"loses all service, stop kept (weekdays)", "new service, stop kept
+(weekdays)" — and the cross row says what the mark means for the buses, "the
+plan removes this stop — no bus here on any day". That clause is day-free
+because the count is: a removed stop has no proposed pole within 25 m, so it
+has no bus on any day, including the 548 crosses that had no Saturday bus to
+lose. The surface key keeps the plain labels, since a 100 m cell has no pole to
+keep and its red can be a cell whose every stop is removed. The weekday
+"stop kept" row is therefore a permanent 0 with a long label, which is
+accepted: a row that vanished when the day switched would be its own
+confusion.
+
 Three things follow in the drawing, each of which was a defect until it was
 fixed. The cross answers only its own switch in the key, since hiding "more
 service" must not take the 192 removed stops whose radius gains service with
