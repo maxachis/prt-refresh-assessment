@@ -65,14 +65,19 @@ export type StopRoutes = 'off' | Side;
  */
 export const DEFAULT_STOP_ROUTES: StopRoutes = 'off';
 
+/**
+ * The kerb layer's ids. Its lines layer is exported because a second route
+ * layer (`routeview.ts`, a route asked for by name) is inserted just beneath
+ * it, so the kerb's own routes always draw over a route the reader searched
+ * for.
+ */
 const SRC = 'stoproutes';
-const LAYER_LINES = 'stoproutes-lines';
+export const STOP_ROUTES_BASE_LAYER = 'stoproutes-lines';
 const LAYER_FLOW = 'stoproutes-flow';
 const LAYER_ARROWS = 'stoproutes-arrows';
-const STOP_ROUTES_LAYERS = [LAYER_LINES, LAYER_FLOW, LAYER_ARROWS];
 
 /**
- * One arrow image, not one per side.
+ * One arrow image, not one per side and not one per layer.
  *
  * It is registered as an SDF — MapLibre reads the alpha channel as a signed
  * distance field rather than as a picture — which is what lets `icon-color`
@@ -90,14 +95,13 @@ const ARROW = 'stoproutes-arrow';
 const WIDE = 3.5;
 
 let data: KerbRoutesResult | null = null;
-let visible = false;
 
 export function stopRoutesData(): KerbRoutesResult | null {
   return data;
 }
 
 export function isStopRoutesVisible(): boolean {
-  return visible;
+  return kerb.isVisible();
 }
 
 /**
@@ -157,8 +161,8 @@ export function toGeoJSON(r: KerbRoutesResult, side: Side) {
 }
 
 /** One width for every line, zoom-scaled the way the side-coloured pair was. */
-function lineWidth(): any {
-  return ['interpolate', ['linear'], ['zoom'], 9, WIDE * 0.6, 14, WIDE];
+function lineWidth(wide: number): any {
+  return ['interpolate', ['linear'], ['zoom'], 9, wide * 0.6, 14, wide];
 }
 
 /**
@@ -191,67 +195,138 @@ function arrowIcon(scale = 2): ImageData {
   return g.getImageData(0, 0, s, s);
 }
 
+// --------------------------------------------------------------------------
+// one set of route lines, reusable
+// --------------------------------------------------------------------------
+
+/** The ids one set of route lines lives under: a source and its three layers. */
+export interface RouteLinesIds {
+  source: string;
+  lines: string;
+  flow: string;
+  arrows: string;
+}
+
+export interface RouteLinesOptions {
+  ids: RouteLinesIds;
+  /** The solid line's width at zoom 14 and up; the kerb's is `WIDE`. */
+  width?: number;
+}
+
+/**
+ * One set of route lines on the map: a solid line per feature in its own
+ * colour, a flowing dash over it, and arrowheads along it.
+ *
+ * A factory rather than a module, because two things now draw this way —
+ * the routes at a clicked kerb, and a route the reader asked for by name
+ * (`routeview.ts`) — and they have to be two SOURCES: the kerb's lines are
+ * cleared by the next click and the searched route is not, so one source
+ * would make each erase the other. The rendering is identical, down to the
+ * shared arrow image, so that a line reads the same whichever way it was
+ * asked for. Each instance owns its own flow animation; the kerb's stopping
+ * must not stop the searched route's.
+ */
+export interface RouteLines {
+  init(map: maplibregl.Map, beforeId?: string): void;
+  setVisible(map: maplibregl.Map, on: boolean): void;
+  /**
+   * Replace the drawn features. Does not touch the flow: the caller knows
+   * whether an empty collection is "nothing to draw" (stop the loop) or one
+   * side of a kerb the other side of which is about to be switched to.
+   */
+  setData(map: maplibregl.Map, gj: { type: 'FeatureCollection'; features: unknown[] }): void;
+  startFlow(map: maplibregl.Map): void;
+  stopFlow(): void;
+  isVisible(): boolean;
+}
+
+export function createRouteLines({ ids, width = WIDE }: RouteLinesOptions): RouteLines {
+  const layers = [ids.lines, ids.flow, ids.arrows];
+  let visible = false;
+  const flow = createFlow(ids.flow);
+
+  return {
+    init(map, beforeId) {
+      map.addSource(ids.source, {
+        type: 'geojson',
+        data: { type: 'FeatureCollection', features: [] } as any,
+      });
+      map.addLayer({
+        id: ids.lines,
+        type: 'line',
+        source: ids.source,
+        layout: { visibility: 'none', 'line-cap': 'round', 'line-join': 'round' },
+        paint: {
+          'line-color': ['get', 'color'],
+          'line-width': lineWidth(width),
+          'line-opacity': 0.85,
+        },
+      }, beforeId);
+      // The moving dash rides on its own layer -- line-dasharray cannot be
+      // data-driven, the same constraint journey.ts's ride/walk split works
+      // around -- thin and light so it reads as motion over the solid line
+      // rather than as a second route of its own.
+      map.addLayer({
+        id: ids.flow,
+        type: 'line',
+        source: ids.source,
+        layout: { visibility: 'none', 'line-cap': 'butt', 'line-join': 'round' },
+        paint: {
+          'line-color': '#ffffff',
+          'line-width': 1.4,
+          'line-opacity': 0.5,
+          'line-dasharray': [0, 3, 4],
+        },
+      }, beforeId);
+      if (!map.hasImage(ARROW)) {
+        map.addImage(ARROW, arrowIcon(), { pixelRatio: 2, sdf: true });
+      }
+      map.addLayer({
+        id: ids.arrows,
+        type: 'symbol',
+        source: ids.source,
+        layout: {
+          visibility: 'none',
+          'symbol-placement': 'line',
+          'symbol-spacing': 90,
+          'icon-image': ARROW,
+          'icon-size': ['interpolate', ['linear'], ['zoom'], 12, 0.55, 16, 0.9],
+          'icon-rotation-alignment': 'map',
+          'icon-allow-overlap': true,
+          'icon-ignore-placement': true,
+        },
+        // The arrow wears its own route's colour, which is the whole reason
+        // the image is an SDF rather than a picture.
+        paint: { 'icon-color': ['get', 'color'] },
+      }, beforeId);
+    },
+    setVisible(map, on) {
+      visible = on;
+      for (const layer of layers) {
+        map.setLayoutProperty(layer, 'visibility', on ? 'visible' : 'none');
+      }
+      if (!on) flow.stop();
+    },
+    setData(map, gj) {
+      (map.getSource(ids.source) as maplibregl.GeoJSONSource).setData(gj as any);
+    },
+    startFlow: flow.start,
+    stopFlow: flow.stop,
+    isVisible: () => visible,
+  };
+}
+
+/** The kerb's own lines, which every export above and below is about. */
+const kerb = createRouteLines({
+  ids: { source: SRC, lines: STOP_ROUTES_BASE_LAYER, flow: LAYER_FLOW, arrows: LAYER_ARROWS },
+});
+
 export function initStopRoutesLayer(map: maplibregl.Map, beforeId?: string) {
-  map.addSource(SRC, {
-    type: 'geojson',
-    data: { type: 'FeatureCollection', features: [] } as any,
-  });
-  map.addLayer({
-    id: LAYER_LINES,
-    type: 'line',
-    source: SRC,
-    layout: { visibility: 'none', 'line-cap': 'round', 'line-join': 'round' },
-    paint: {
-      'line-color': ['get', 'color'],
-      'line-width': lineWidth(),
-      'line-opacity': 0.85,
-    },
-  }, beforeId);
-  // The moving dash rides on its own layer -- line-dasharray cannot be
-  // data-driven, the same constraint journey.ts's ride/walk split works
-  // around -- thin and light so it reads as motion over the solid line
-  // rather than as a second route of its own.
-  map.addLayer({
-    id: LAYER_FLOW,
-    type: 'line',
-    source: SRC,
-    layout: { visibility: 'none', 'line-cap': 'butt', 'line-join': 'round' },
-    paint: {
-      'line-color': '#ffffff',
-      'line-width': 1.4,
-      'line-opacity': 0.5,
-      'line-dasharray': [0, 3, 4],
-    },
-  }, beforeId);
-  if (!map.hasImage(ARROW)) {
-    map.addImage(ARROW, arrowIcon(), { pixelRatio: 2, sdf: true });
-  }
-  map.addLayer({
-    id: LAYER_ARROWS,
-    type: 'symbol',
-    source: SRC,
-    layout: {
-      visibility: 'none',
-      'symbol-placement': 'line',
-      'symbol-spacing': 90,
-      'icon-image': ARROW,
-      'icon-size': ['interpolate', ['linear'], ['zoom'], 12, 0.55, 16, 0.9],
-      'icon-rotation-alignment': 'map',
-      'icon-allow-overlap': true,
-      'icon-ignore-placement': true,
-    },
-    // The arrow wears its own route's colour, which is the whole reason the
-    // image is an SDF rather than a picture.
-    paint: { 'icon-color': ['get', 'color'] },
-  }, beforeId);
+  kerb.init(map, beforeId);
 }
 
 export function setStopRoutesVisible(map: maplibregl.Map, on: boolean) {
-  visible = on;
-  for (const layer of STOP_ROUTES_LAYERS) {
-    map.setLayoutProperty(layer, 'visibility', on ? 'visible' : 'none');
-  }
-  if (!on) stopFlow();
+  kerb.setVisible(map, on);
 }
 
 /**
@@ -264,9 +339,11 @@ export function setStopRoutesVisible(map: maplibregl.Map, on: boolean) {
 export function drawStopRoutes(map: maplibregl.Map, r: KerbRoutesResult | null,
                                side: Side) {
   data = r;
-  const gj = r ? toGeoJSON(r, side) : { type: 'FeatureCollection' as const, features: [] };
-  (map.getSource(SRC) as maplibregl.GeoJSONSource).setData(gj as any);
-  if (!r) stopFlow();
+  kerb.setData(map, r ? toGeoJSON(r, side) : { type: 'FeatureCollection', features: [] });
+  // No loop may run while nothing is drawn. An empty SIDE of a kerb keeps
+  // it running, as before: the other side is one switch away and would
+  // otherwise come back still.
+  if (!r) kerb.stopFlow();
 }
 
 // --------------------------------------------------------------------------
@@ -283,7 +360,12 @@ export function stopRoutesUrl(point: Point, day: Day): string {
 // the words
 // --------------------------------------------------------------------------
 
-const SIDE_WORD: Record<Side, string> = { current: 'today', proposed: 'proposed' };
+/**
+ * What a line's hover calls each network. Exported for the search box,
+ * whose route rows are labelled the same way so that a row and the line it
+ * draws cannot call one network two things.
+ */
+export const SIDE_WORD: Record<Side, string> = { current: 'today', proposed: 'proposed' };
 
 /**
  * The hover for one drawn pattern: which route, which network, which way.
@@ -337,52 +419,72 @@ export function dashSequence(dash: number, gap: number, steps: number): number[]
 
 const FLOW_SEQUENCE = dashSequence(3, 4, 24);
 
-let flowFrame: number | null = null;
-let flowStep = 0;
-let flowLast = 0;
-let flowMap: maplibregl.Map | null = null;
-
 function reducedMotion(): boolean {
   return typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 }
 
-function tick(now: number) {
-  if (!flowMap) return;
-  flowFrame = requestAnimationFrame(tick);
-  if (now - flowLast < 1000 / FLOW_FPS) return;
-  flowLast = now;
-  flowStep = (flowStep + 1) % FLOW_SEQUENCE.length;
-  flowMap.setPaintProperty(LAYER_FLOW, 'line-dasharray', FLOW_SEQUENCE[flowStep]);
-}
-
-function onVisibilityChange() {
-  if (!flowMap) return;
-  if (document.hidden) {
-    if (flowFrame !== null) { cancelAnimationFrame(flowFrame); flowFrame = null; }
-  } else if (flowFrame === null) {
-    flowLast = 0;
-    flowFrame = requestAnimationFrame(tick);
-  }
-}
-
 /**
- * Start the dash flowing. A no-op under reduced motion -- the arrows still
- * show and say the direction, only the animation is what a reader asked the
- * browser to spare them.
+ * One flow animation, driving one dash layer.
+ *
+ * Per layer rather than module-wide, because two sets of lines can be on
+ * the map at once (the kerb's and a searched route's), each with its own
+ * dash; one loop stepping one layer would leave the other's dash still.
+ * Each loop is one `requestAnimationFrame` chain, paused while the tab is
+ * hidden.
  */
-export function startFlow(map: maplibregl.Map) {
-  if (reducedMotion()) return;
-  if (flowMap) return;               // already running
-  flowMap = map;
-  flowStep = 0;
-  flowLast = 0;
-  document.addEventListener('visibilitychange', onVisibilityChange);
-  flowFrame = requestAnimationFrame(tick);
+function createFlow(layer: string): { start(map: maplibregl.Map): void; stop(): void } {
+  let frame: number | null = null;
+  let step = 0;
+  let last = 0;
+  let flowMap: maplibregl.Map | null = null;
+
+  const tick = (now: number) => {
+    if (!flowMap) return;
+    frame = requestAnimationFrame(tick);
+    if (now - last < 1000 / FLOW_FPS) return;
+    last = now;
+    step = (step + 1) % FLOW_SEQUENCE.length;
+    flowMap.setPaintProperty(layer, 'line-dasharray', FLOW_SEQUENCE[step]);
+  };
+
+  const onVisibilityChange = () => {
+    if (!flowMap) return;
+    if (document.hidden) {
+      if (frame !== null) { cancelAnimationFrame(frame); frame = null; }
+    } else if (frame === null) {
+      last = 0;
+      frame = requestAnimationFrame(tick);
+    }
+  };
+
+  return {
+    // A no-op under reduced motion -- the arrows still show and say the
+    // direction, only the animation is what a reader asked the browser to
+    // spare them.
+    start(map) {
+      if (reducedMotion()) return;
+      if (flowMap) return;               // already running
+      flowMap = map;
+      step = 0;
+      last = 0;
+      document.addEventListener('visibilitychange', onVisibilityChange);
+      frame = requestAnimationFrame(tick);
+    },
+    // Frees the frame -- no loop may run while nothing is drawn.
+    stop() {
+      if (frame !== null) { cancelAnimationFrame(frame); frame = null; }
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+      flowMap = null;
+    },
+  };
 }
 
-/** Stop the dash and free the frame -- no loop may run while nothing is drawn. */
+/** Start the kerb's dash flowing. */
+export function startFlow(map: maplibregl.Map) {
+  kerb.startFlow(map);
+}
+
+/** Stop the kerb's dash. */
 export function stopFlow() {
-  if (flowFrame !== null) { cancelAnimationFrame(flowFrame); flowFrame = null; }
-  document.removeEventListener('visibilitychange', onVisibilityChange);
-  flowMap = null;
+  kerb.stopFlow();
 }

@@ -37,6 +37,7 @@ import {
   RouteReading, DEFAULT_ROUTE_READING, isRouteReading,
   ServiceRow, isServiceBucket, normaliseServiceBuckets,
 } from './routechange';
+import { DrawnRoute } from './routeview';
 
 /**
  * The query parameters, named once.
@@ -63,7 +64,18 @@ export const PARAM = {
   routeHidden: 'routehide',
   routeReading: 'routecolor',
   serviceHidden: 'servicehide',
+  drawnRoute: 'drawn',
 } as const;
+
+/**
+ * How `drawn=` joins its two halves: `<side>:<route_id>`, split at the
+ * first colon only, since a side never contains one and a route id might.
+ * Not `route=`: that is the Route changes view's selected GROUP, a key of
+ * `/api/route_changes`, where this is one route on one network drawn from
+ * the search box. Two things that both answer to "route" and mean different
+ * units, so the parameter says what it is -- drawn.
+ */
+const DRAWN_ROUTE_SEP = ':';
 
 /**
  * A dot's id, as `/api/change` names it: `c:<stop_id>` where a bus stops
@@ -154,6 +166,12 @@ export interface UrlState {
    * hidden, so absence and empty are the same state and `none` has no job.
    */
   serviceHidden?: ServiceRow[];
+  /**
+   * A route drawn from the search box, or null while none is. An absence
+   * like `at` and `place`, not a control with a default: nothing is drawn
+   * until a reader names a route, and a link that names one draws it.
+   */
+  drawnRoute?: DrawnRoute | null;
 }
 
 /** How an empty `routehide` is spelled: absence would mean the default instead. */
@@ -215,6 +233,12 @@ export function toSearch(s: UrlState): string {
     p.set(PARAM.routeReading, s.routeReading);
   }
   if (s.serviceHidden?.length) p.set(PARAM.serviceHidden, s.serviceHidden.join(BUCKET_SEP));
+  // Absence, like `at`: no route is drawn until one is asked for by name.
+  // One value carrying both halves, for the reason `stoproutes` is one
+  // parameter -- a route id without its network is not a route.
+  if (s.drawnRoute) {
+    p.set(PARAM.drawnRoute, `${s.drawnRoute.side}${DRAWN_ROUTE_SEP}${s.drawnRoute.route_id}`);
+  }
   return `?${p}`;
 }
 
@@ -301,12 +325,25 @@ export function parseUrlState(search: string): Partial<UrlState> {
     const known = normaliseServiceBuckets(serviceHidden.split(BUCKET_SEP).filter(isServiceBucket));
     if (known.length) s.serviceHidden = known;
   }
+  const drawnRoute = parseDrawnRoute(p.get(PARAM.drawnRoute));
+  if (drawnRoute) s.drawnRoute = drawnRoute;
 
   return s;
 }
 
 function sameBuckets(a: readonly RouteBucket[], b: readonly RouteBucket[]): boolean {
   return a.length === b.length && a.every((x, i) => x === b[i]);
+}
+
+/** `<side>:<route_id>`, or nothing: a side this build has no name for, or an empty id, is ignored whole. */
+function parseDrawnRoute(raw: string | null): DrawnRoute | null {
+  if (!raw) return null;
+  const cut = raw.indexOf(DRAWN_ROUTE_SEP);
+  if (cut < 0) return null;
+  const side = raw.slice(0, cut);
+  const route_id = raw.slice(cut + 1);
+  if ((side !== 'current' && side !== 'proposed') || !route_id) return null;
+  return { side, route_id };
 }
 
 function coords(p: Point): string {

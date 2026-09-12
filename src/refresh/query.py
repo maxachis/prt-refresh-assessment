@@ -3265,3 +3265,408 @@ def route_change(con, key: str, day: str) -> dict | None:
 
 def meta(con):
     return {r["key"]: r["value"] for r in con.execute("SELECT * FROM meta")}
+
+
+# --------------------------------------------------------------------------
+# search: a type-ahead over places, stops and routes
+#
+# This is the site's one free-text entry point, so it deliberately answers
+# three different units side by side rather than forcing a reader to already
+# know whether "Carrick" is a place, a stop name or a route -- a place
+# (`place_boundary`), a stop CORNER (grouped poles, not the raw `stops`
+# table -- see `_search_stop_index`), and a bus route (`routes`, filtered to
+# the ones that actually run, per convention below). Matching is
+# case-insensitive token-PREFIX AND-match: every query token has to prefix
+# some token of the target, in any order, so "forbes murr" and "murray
+# forbes" both find "FORBES AVE + MURRAY AVE". Ranking is `search_rank`,
+# kept pure and tested on its own so an ordering bug names the rule that
+# broke rather than a specific query.
+#
+# The three candidate lists are built once per database file and cached
+# (`_SEARCH_PLACE_INDEX` etc., keyed by database file exactly like
+# `place_index`'s `_PLACE_INDEX`), because this runs on every keystroke and
+# the stop table alone is 11.7k rows.
+# --------------------------------------------------------------------------
+
+_WORD_RE = re.compile(r"[^a-z0-9]+")
+
+
+def _normalise_name(s: str) -> str:
+    """Case-fold and collapse punctuation/whitespace to single spaces.
+
+    The one normalisation every part of search shares -- matching, stop
+    corner grouping, and the crosswalk-miss tests -- so that "MURRAY AVE +
+    FORBES AVE" and "Murray Ave + Forbes Ave" tokenise identically.
+    """
+    return _WORD_RE.sub(" ", (s or "").lower()).strip()
+
+
+def _metres(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    """Straight-line distance, the same equirectangular metric as `_bbox`."""
+    coslat = math.cos(math.radians((lat1 + lat2) / 2)) or 1e-9
+    dla = (lat2 - lat1) * METERS_PER_DEGREE
+    dlo = (lon2 - lon1) * METERS_PER_DEGREE * coslat
+    return math.hypot(dla, dlo)
+
+
+def _tokens_match(q_tokens, target_tokens) -> bool:
+    """Every query token must prefix some token of the target."""
+    return all(any(t.startswith(qt) for t in target_tokens)
+               for qt in q_tokens)
+
+
+def search_rank(q_tokens, target_tokens, target_name: str, *,
+                exact: bool = False):
+    """Sort key for one search candidate -- lower sorts first.
+
+    Pure and database-free by design (`tests/test_query.py` pins the
+    ordering on its own), because the alternative -- ranking inline while
+    reading rows -- means an ordering bug can only be reproduced with a
+    specific database and query. The rule, in order: an exact match (routes'
+    `short_name`, e.g. "61" over "61A"); a target whose FIRST token starts
+    with the query's first token, over one that only matches mid-name
+    ("murray ave" over "forbes murray" for query "murray"); shorter target
+    name; then the name itself, alphabetically. Callers append their own
+    final tiebreak (id, side, coordinates) to this tuple so the overall sort
+    is fully deterministic -- convention 3's rule at a new unit.
+    """
+    first_hit = bool(q_tokens) and bool(target_tokens) and \
+        target_tokens[0].startswith(q_tokens[0])
+    return (0 if exact else 1, 0 if first_hit else 1,
+            len(target_name), target_name.lower())
+
+
+_SEARCH_PLACE_INDEX = {}
+_SEARCH_STOP_INDEX = {}
+_SEARCH_ROUTE_INDEX = {}
+
+
+def _search_place_index(con):
+    """Every named place, indexed for search -- ALL of them, zero-resident
+    places (Pittsburgh city, per convention 12's containment note) included,
+    because a reader searching "Pittsburgh" should still be able to fly
+    there even though its residents are counted under its 90 neighbourhoods.
+
+    Built from `place_boundary` directly rather than through `place_index`'s
+    `geometry.Place` objects: `Place` does not carry the boundary `key`
+    search has to return (it exists only to answer "which place contains
+    this point"), so this reads the same table and reuses `geometry._bbox`
+    for the bounding box rather than duplicating that arithmetic.
+    """
+    cached = _SEARCH_PLACE_INDEX.get(_database_of(con))
+    if cached is None:
+        cached = []
+        for r in con.execute(
+                "SELECT key, place, kind, polygons FROM place_boundary"):
+            polygons = json.loads(r["polygons"])
+            min_lat, min_lon, max_lat, max_lon = geometry._bbox(polygons)
+            cached.append({
+                "key": r["key"], "name": r["place"], "kind": r["kind"],
+                "bbox": [min_lon, min_lat, max_lon, max_lat],
+                "tokens": tuple(_normalise_name(r["place"]).split()),
+            })
+        _SEARCH_PLACE_INDEX[_database_of(con)] = cached
+    return cached
+
+
+def _cluster_corners(rows, radius: float):
+    """Union-find rows (same normalised name already) into corners within
+    `radius` of each other.
+
+    Same normalised name is not enough on its own -- "MAIN ST" recurs across
+    the county -- so within a name group this still clusters by distance,
+    exactly as `STOP_SAME_POLE_M` does at the smaller, single-corner scale.
+    Name groups are small in practice (PRT rarely puts more than a handful
+    of poles under one name), so the pairwise scan here costs nothing next
+    to the one SQL query that built the 11.7k-row input.
+    """
+    n = len(rows)
+    parent = list(range(n))
+
+    def find(i):
+        while parent[i] != i:
+            parent[i] = parent[parent[i]]
+            i = parent[i]
+        return i
+
+    for i in range(n):
+        for j in range(i + 1, n):
+            if _metres(rows[i][3], rows[i][4], rows[j][3], rows[j][4]) <= radius:
+                ri, rj = find(i), find(j)
+                if ri != rj:
+                    parent[ri] = rj
+
+    groups = defaultdict(list)
+    for i in range(n):
+        groups[find(i)].append(rows[i])
+    return list(groups.values())
+
+
+def _corner_row(con, cluster):
+    """One search row for a cluster of poles PRT treats as one corner.
+
+    `sides` and the displayed point favour CURRENT poles (sorted by stop id,
+    per convention 3): where both networks stand here, the point a reader
+    clicks should be the one they can see today. The displayed NAME favours
+    the PROPOSED spelling where the cluster has one, because current-side
+    names are PRT's all-caps GTFS convention ("BROWNSVILLE RD + NOBLES LN")
+    and the proposed feed's Title Case ("Brenning St + Carmalt") is what a
+    reader actually typed would look like echoed back.
+    """
+    current = sorted((c for c in cluster if c[0] == "current"),
+                     key=lambda c: c[1])
+    proposed = sorted((c for c in cluster if c[0] == "proposed"),
+                      key=lambda c: c[1])
+    sides = [s for s in ("current", "proposed")
+            if any(c[0] == s for c in cluster)]
+    name = proposed[0][2] if proposed else current[0][2]
+    lat, lon = (current[0][3], current[0][4]) if current \
+        else (proposed[0][3], proposed[0][4])
+    return {
+        "name": name, "lat": lat, "lon": lon, "sides": sides,
+        # The place that CONTAINS the point (convention 6), never PRT's own
+        # HOOD/MUNI label for the pole: PRT reuses one name at corners
+        # kilometres apart ("NOBLESTOWN RD + #235" stands twice, 2.5 km
+        # apart), and the place is what tells the two rows apart on screen.
+        "place": place_containing(con, lat, lon),
+        "tokens": tuple(_normalise_name(name).split()),
+    }
+
+
+def _search_stop_index(con):
+    """Every stop CORNER, one row per corner, for search.
+
+    A row here is a corner rather than a pole because PRT splits one corner
+    into two ids per direction and the plan both splits and consolidates
+    them (convention 2) -- see `_corner_row` and `_cluster_corners`. The
+    point returned is one pole of the corner; the click path a reader is
+    sent down from search reads every pole within `STOP_SAME_POLE_M` anyway
+    (`kerb_routes`, `kerb_service`), so this only has to land near enough to
+    open the right kerb, not name every pole of it.
+    """
+    cached = _SEARCH_STOP_INDEX.get(_database_of(con))
+    if cached is None:
+        by_norm = defaultdict(list)
+        for side in ("current", "proposed"):
+            for r in con.execute(
+                    "SELECT stop_id, name, lat, lon FROM stops WHERE side = ?",
+                    (side,)):
+                norm = _normalise_name(r["name"])
+                by_norm[norm].append(
+                    (side, r["stop_id"], r["name"], r["lat"], r["lon"]))
+        cached = []
+        for group in by_norm.values():
+            for cluster in _cluster_corners(group, RADII[1]):
+                cached.append(_corner_row(con, cluster))
+        _SEARCH_STOP_INDEX[_database_of(con)] = cached
+    return cached
+
+
+def _bus_route_ids(con, side: str):
+    """{route_id, ...} that actually run on this side -- the `departures`
+    universe, not just `routes`.
+
+    `routes` is already bus-only (rail is dropped at ingest, per convention
+    16), but it still carries a couple of ids -- 'TEST', 'MISC' in the
+    current feed -- that name no scheduled trip on either side. Anything
+    offered for drawing or in search has to actually run, so this is the
+    same "buses only" filter `/api/routes`' own bus-only test exercises,
+    pulled out so search and `route_drawing` share it rather than each
+    reimplementing convention 16's bus-only rule.
+    """
+    return {r[0] for r in con.execute(
+        "SELECT DISTINCT route FROM departures WHERE side = ?", (side,))}
+
+
+def _search_route_index(con):
+    """Every bus route on both sides, indexed for search.
+
+    Matches against `short_name` AND `long_name` together ("61" and
+    "MCKEESPORT-HOMESTEAD" both find 61C), which is why each row's tokens
+    are the union of the two rather than either alone.
+    """
+    cached = _SEARCH_ROUTE_INDEX.get(_database_of(con))
+    if cached is None:
+        cached = []
+        for side in ("current", "proposed"):
+            bus_ids = _bus_route_ids(con, side)
+            days_by_route = defaultdict(list)
+            for r in con.execute(
+                    "SELECT route_id, day FROM route_service WHERE side = ?",
+                    (side,)):
+                days_by_route[r["route_id"]].append(r["day"])
+            for r in con.execute(
+                    "SELECT route_id, short_name, long_name FROM routes "
+                    "WHERE side = ?", (side,)):
+                if r["route_id"] not in bus_ids:
+                    continue
+                days = [d for d in DAYS if d in days_by_route[r["route_id"]]]
+                text = f"{r['short_name'] or ''} {r['long_name'] or ''}"
+                cached.append({
+                    "side": side, "route_id": r["route_id"],
+                    "short_name": r["short_name"], "long_name": r["long_name"],
+                    "days": days, "tokens": tuple(_normalise_name(text).split()),
+                })
+        _SEARCH_ROUTE_INDEX[_database_of(con)] = cached
+    return cached
+
+
+def search(con, q: str, limit: int = 6):
+    """Free-text lookup of named places, bus stops and routes.
+
+    The type-ahead box's one query, and the only endpoint this repo serves
+    over POST rather than GET: the front door keeps a 30-day access log of
+    request URIs (`deploy/setup-caddy.sh`, `report_usage.py`), and a search
+    box gets typed into before a reader has any reason to trust it -- a home
+    address, most likely -- long before this repo offers address search
+    itself. Query text belongs in a POST body, never a logged URL. (Caddy
+    also sets `Cache-Control: public` on `/api/*`; a POST response is never
+    cached, which independently rules out GET here.)
+
+    `limit` is clamped to 1..20 rather than rejected, since a type-ahead
+    caller passing something silly should still get a usable answer. An
+    empty or whitespace-only query returns three empty lists rather than
+    every place/stop/route in the county.
+    """
+    limit = max(1, min(20, limit))
+    q_stripped = q.strip()
+    out = {"q": q_stripped, "places": [], "stops": [], "routes": []}
+    q_tokens = tuple(_normalise_name(q_stripped).split())
+    if not q_tokens:
+        return out
+
+    places = [p for p in _search_place_index(con)
+              if _tokens_match(q_tokens, p["tokens"])]
+    places.sort(key=lambda p: search_rank(q_tokens, p["tokens"], p["name"])
+                + (p["key"],))
+    out["places"] = [
+        {"key": p["key"], "name": p["name"], "kind": p["kind"],
+         "bbox": p["bbox"]}
+        for p in places[:limit]]
+
+    stops = [s for s in _search_stop_index(con)
+             if _tokens_match(q_tokens, s["tokens"])]
+    stops.sort(key=lambda s: search_rank(q_tokens, s["tokens"], s["name"])
+               + (s["lat"], s["lon"]))
+    out["stops"] = [
+        {"name": s["name"], "lat": s["lat"], "lon": s["lon"],
+         "sides": s["sides"], "place": s["place"]}
+        for s in stops[:limit]]
+
+    q_joined = " ".join(q_tokens)
+    routes_ = [(r, _normalise_name(r["short_name"]) == q_joined)
+               for r in _search_route_index(con)
+               if _tokens_match(q_tokens, r["tokens"])]
+    # Ranked by the NUMBER, not the long name: "61" should list 61A, 61B,
+    # 61C, 61D and then the plan's 61X, which is the order a rider holds them
+    # in, where the long names would put "MURRAY SHORT" ahead of "NORTH
+    # BRADDOCK" for no reason a reader could see.
+    routes_.sort(key=lambda pair: search_rank(
+        q_tokens, pair[0]["tokens"],
+        pair[0]["short_name"] or pair[0]["route_id"], exact=pair[1])
+        + (0 if pair[0]["side"] == "current" else 1, pair[0]["route_id"]))
+    out["routes"] = [
+        {"side": r["side"], "route_id": r["route_id"],
+         "short_name": r["short_name"], "long_name": r["long_name"],
+         "days": r["days"]}
+        for r, _exact in routes_[:limit]]
+
+    return out
+
+
+# --------------------------------------------------------------------------
+# route_drawing: one route, end to end, for the map to show from search
+# --------------------------------------------------------------------------
+
+def _route_crosswalk(con, side: str, short_name: str | None):
+    """PRT's own current -> proposed label for one route, or None.
+
+    The join is on the FIRST whitespace-separated token of the crosswalk
+    cell, because the cells are free text PRT wrote for a comment form, not
+    a key: "2 Mount Royal--DISCONTINUED" joins on "2", "Y49" joins on
+    itself. `side="current"` joins against `current_route`'s first token,
+    `side="proposed"` against `final_route`'s -- exact string comparison,
+    not case-folded, because these are PRT's own route numbers and "61C"
+    and "61c" are not the same route.
+    """
+    if not short_name:
+        return None
+    column = "current_route" if side == "current" else "final_route"
+    for r in con.execute(
+            "SELECT * FROM crosswalk ORDER BY current_route, final_route"):
+        cell = r[column]
+        if cell and cell.split()[0] == short_name:
+            return dict(r)
+    return None
+
+
+def route_drawing(con, side: str, route_id: str, day: str):
+    """One route, drawn end to end on both networks' own streets, for the map
+    to show when a reader picks a route out of search.
+
+    A LABELLING AID, per convention 1 -- exactly the framing `kerb_routes`
+    carries at the smaller, per-corner unit. Nothing here measures a route
+    against its successor; a route number is not a unit of analysis anywhere
+    in this repo; this only lets a reader who thinks in route numbers ("the
+    61C") see what that number actually covers. The `crosswalk` alongside it
+    is PRT's own labelling table, not a comparison of one route's service
+    against another's -- see `_route_crosswalk`.
+
+    FOR DRAWING ONLY, and nothing may be measured off it: `features` comes
+    from `journey_shape` by way of `_pattern_path`, thinned to
+    `gtfs.SHAPE_SIMPLIFY_M` between stops and lossy by construction. Street
+    length is `analyze_corridor_change.py`'s question, measured on the full
+    shape.
+
+    BUSES ONLY, like every service figure here (convention 16): a route id
+    absent from `departures` on this side -- rail, or a feed artefact like
+    'TEST'/'MISC' that names no scheduled trip -- answers None, the same as
+    an unknown id, so the caller cannot tell "not a route" from "not a bus
+    route" and does not need to.
+
+    DAY-TYPED: `features` is every `journey_pattern` calling this route on
+    `day`, and is the empty list -- not a 404 -- when the route does not run
+    that day, exactly as `kerb_routes` distinguishes "no stop here" (404)
+    from "no buses at this hour" (empty list). `days` names which day types
+    this route runs on this side at all, so a client can grey out the days
+    with nothing to draw before the reader picks one.
+
+    Returns None where `(side, route_id)` names no bus route on that side.
+    """
+    row = con.execute(
+        "SELECT route_id, short_name, long_name, color FROM routes "
+        "WHERE side = ? AND route_id = ?", (side, route_id)).fetchone()
+    if row is None or route_id not in _bus_route_ids(con, side):
+        return None
+
+    days = [d["day"] for d in con.execute(
+        "SELECT day FROM route_service WHERE side = ? AND route_id = ?",
+        (side, route_id))]
+    days = [d for d in DAYS if d in days]
+
+    features = []
+    for pr in con.execute(
+            "SELECT pattern_id, stops FROM journey_pattern "
+            "WHERE side = ? AND day = ? AND route_id = ? "
+            "ORDER BY pattern_id", (side, day, route_id)):
+        calling = pr["stops"].split(";")
+        drawn = _pattern_path(con, side, day, pr["pattern_id"], calling, 0)
+        if drawn is None:
+            continue
+        points, _stop_index = drawn
+        features.append({"pattern_id": pr["pattern_id"], "points": points})
+
+    bbox = None
+    if features:
+        lons = [pt[0] for f in features for pt in f["points"]]
+        lats = [pt[1] for f in features for pt in f["points"]]
+        bbox = [min(lons), min(lats), max(lons), max(lats)]
+
+    return {
+        "side": side, "route_id": route_id,
+        "short_name": row["short_name"], "long_name": row["long_name"],
+        "color": row["color"] or None,
+        "day": day, "days": days,
+        "features": features, "bbox": bbox,
+        "crosswalk": _route_crosswalk(con, side, row["short_name"]),
+    }

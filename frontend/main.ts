@@ -40,8 +40,14 @@ import {
 import {
   initStopRoutesLayer, drawStopRoutes, setStopRoutesVisible, stopRoutesUrl,
   routeLineLabel, startFlow, isStopRoutesVisible, stopRoutesData, sideHasRoutes,
-  StopRoutes, DEFAULT_STOP_ROUTES,
+  StopRoutes, DEFAULT_STOP_ROUTES, STOP_ROUTES_BASE_LAYER,
 } from './stoproutes';
+import {
+  initRouteLayer, drawRoute, routeUrl,
+  routeKeyHTML as drawnRouteKeyHTML, routeCardHTML as drawnRouteCardHTML,
+  DrawnRoute, ROUTE_VIEW_LINES_LAYER,
+} from './routeview';
+import { initSearch, easeTarget, searchRequest, Row } from './search';
 import {
   initPlacesLayer, loadPlaces, loadBoundaries, selectPlace, setPlacesVisible,
   placesListHTML, placesKeyHTML, placeTooltipHTML, setPlacesFill,
@@ -58,7 +64,7 @@ import {
   RouteReading, isRouteReading, routeReading, setRouteReading,
   groupsData as routeGroups, selectedData as routeDetail, isVisible as routesOn,
 } from './routechange';
-import { questionLineHTML, viewLabel } from './statebar';
+import { questionLineHTML, routeQuestionLineHTML, viewLabel } from './statebar';
 import {
   Camera, UrlState, isFramed, parseUrlState, toSearch,
 } from './urlstate';
@@ -71,7 +77,8 @@ import { initDropdowns } from './dropdown';
 import {
   PlaceResult, Day, OneSeatDay, JourneyResult, NamedDestination, Weight,
   SurfaceUnit,
-  StopRef, KerbRoutesResult, Side,
+  StopRef, KerbRoutesResult, Side, RouteResult, SearchResponse, SearchStop,
+  SearchPlace,
 } from './types';
 
 const PGH: [number, number] = [-79.9959, 40.4406];
@@ -181,6 +188,38 @@ let surfaceUnit: SurfaceUnit = 'area';
 // redraw and never a refetch: `/api/kerb_routes` answers with both at once.
 let stopRoutes: StopRoutes = DEFAULT_STOP_ROUTES;
 let stopRoutesSeq = 0;
+
+// A route the reader asked for by name in the search box, drawn end to end
+// on one network, or null. One value holding both halves, like `stopRoutes`:
+// a route id without its network is not a route. It outlives a map click --
+// unlike the kerb's routes, which `load` clears, this line was asked for by
+// name and the reader is now clicking ALONG it -- and is cleared only by the
+// × on its chip in the key or by picking another route.
+let drawnRoute: DrawnRoute | null = null;
+// The answer for `drawnRoute` on the toolbar's day, once it has arrived.
+let routeData: RouteResult | null = null;
+let routeSeq = 0;
+
+// What the panel is a panel OF: the point last clicked, or the route last
+// picked by name. A route pick puts PRT's crosswalk row in the panel, and
+// the next click replaces it with that point's answer -- while the line
+// stays on the map. Kept as its own flag rather than inferred from
+// `drawnRoute`, because a drawn route and a clicked point coexist and only
+// one of them can have the panel.
+let panelSubject: 'point' | 'route' = 'point';
+
+/**
+ * Screen pixels kept clear around a searched thing when the map is fitted
+ * to it, so a place's edge or a route's end is not under the toolbar or
+ * the key.
+ */
+const FIT_PADDING_PX = 60;
+
+/**
+ * How far in a fit may zoom. A short route fitted to its own box would
+ * otherwise land at street level on one block of it.
+ */
+const FIT_MAX_ZOOM = 15;
 
 /**
  * Which side to hand the drawing, including while nothing is drawn.
@@ -306,6 +345,9 @@ map.on('load', () => {
   // a journey timed should see the trip they asked to time, not the kerb's
   // whole route list painted across it.
   initStopRoutesLayer(map, JOURNEY_RIDE_LAYER);
+  // Just under the kerb's routes: a stop's own routes are the answer, and
+  // the route the reader searched for is only how they got to the stop.
+  initRouteLayer(map, STOP_ROUTES_BASE_LAYER);
   initPlacesLayer(map, CHANGE_BASE_LAYER);    // same slot as corridors; mutually exclusive with dots/surface too
   initRouteChangesLayer(map, CHANGE_BASE_LAYER);  // same slot again; a whole view of its own
   renderPanel();
@@ -413,7 +455,13 @@ map.on('load', () => {
     // crossing under it: the line is long and the dot is the thing a reader
     // aimed at, and `initHover` takes the first spec whose layer is hit.
     {
-      layer: 'stoproutes-lines',
+      layer: STOP_ROUTES_BASE_LAYER,
+      html: (f: any) => routeLineLabel(f.properties),
+    },
+    // After the kerb's lines, which draw over it: the same label, because
+    // a searched route's line carries the same properties.
+    {
+      layer: ROUTE_VIEW_LINES_LAYER,
       html: (f: any) => routeLineLabel(f.properties),
     },
     // The Route changes lines: the selected group's own layer first, since it
@@ -482,6 +530,9 @@ map.on('load', () => {
     // patterns than a weekday one -- so a day switch re-fetches them the same
     // way it re-times a journey below.
     syncStopRoutes();
+    // And a route drawn by name is drawn for one day: a Sunday can run it
+    // on fewer patterns, or not at all, and the chip says so.
+    syncRoute();
     setSurfaceDay(map, day);
     // A journey has a day type of its own — a Sunday trip is a fair question
     // to ask, and the published one is the weekday peak — so the answer on
@@ -537,6 +588,12 @@ map.on('load', () => {
     // `clearHover` rather than the popup directly, so the hover forgets what
     // it was showing and will reopen it if the pointer is still on the dot.
     clearHover();
+    // Three views fill the panel themselves -- a journey with its prompt
+    // or itinerary, Places with its ranked list, Route changes with its
+    // directory -- so a route card cannot keep it there, and the state line
+    // must not go on naming the route over a panel that is no longer about
+    // it. The line on the map stays.
+    if (view === 'journey' || view === 'places' || view === 'routes') takePanelForPoint();
     showChangeLayers(map, view === 'dots' || view === 'both');
     void showSurface(view === 'surface' || view === 'both');
     void showCorridors(view === 'corridors');
@@ -721,6 +778,12 @@ map.on('load', () => {
   $('legend-collapse').addEventListener('click', () => {
     collapseLegend(!$('legend-box').classList.contains('collapsed'));
   });
+  // The × on the searched route's chip. Delegated, because the chip is
+  // redrawn with every answer and a listener on the button would die with
+  // the first repaint.
+  $('route-key').addEventListener('click', (e) => {
+    if ((e.target as HTMLElement).closest('[data-clear-route]')) clearDrawnRoute();
+  });
 
   // The one-seat panel lists the destinations it is NOT measuring to, with
   // their verdicts, and each is a control: it is where a reader discovers the
@@ -800,6 +863,7 @@ map.on('load', () => {
   });
 
   initControlSheet();
+  initSearchBox();
   // Folds each toolbar group to its current value. It watches the option
   // buttons rather than wiring them, so nothing above or below -- the
   // `segment()` handlers, a link's `press` -- knows it is there.
@@ -914,6 +978,14 @@ function applyOpening(s: Partial<UrlState>): void {
   // before that chain runs rather than after.
   if (s.stopRoutes) press(CONTROL.stopRoutes, s.stopRoutes);
   if (s.view) press(CONTROL.view, s.view);
+  // Before `s.at`, and in the order a reader would have done the two: the
+  // route goes on the map first, then the click's answer takes the panel
+  // from the route's card, exactly as it does live. The other order would
+  // leave the card over an answer the link asked for. The map is fitted to
+  // the route only when the link carries no camera of its own -- a link the
+  // app wrote carries one, and it is where the reader had panned to after
+  // the fit, which the fit would otherwise undo.
+  if (s.drawnRoute) pickRoute(s.drawnRoute, { fit: !s.camera });
   // Last, because it answers the question the controls above have just
   // finished describing.
   if (s.at) askAt(s.at.lat, s.at.lon);
@@ -953,6 +1025,7 @@ function syncUrl() {
     routeHidden: hiddenRouteBuckets(),
     routeReading: routeReading(),
     serviceHidden: hiddenServiceBuckets(),
+    drawnRoute,
   };
   const search = toSearch(state);
   // The mode is not part of the question, so it is not in what `toSearch`
@@ -1014,12 +1087,25 @@ function refreshReportLink() {
   a.href = href;
 }
 
-/** Say, above the panel, which question the panel is answering. */
+/**
+ * Say, above the panel, which question the panel is answering.
+ *
+ * Or, when the panel is a route card, which route: the card is PRT's row
+ * for a route the reader named, not the view's answer, and a line
+ * attaching a walk radius to it would be attaching a measurement the card
+ * does not make. The day is the toolbar's, read live rather than from the
+ * answer in hand, so a day switch changes the line at once rather than
+ * when the refetch lands.
+ */
 function refreshStateLine() {
-  $('statebar').innerHTML = questionLineHTML({
-    view, day: activeDay(), radius, oneSeatRestricted,
-    destination: destinationName(), stopRoutes,
-  });
+  $('statebar').innerHTML = panelSubject === 'route' && drawnRoute && routeData
+    ? routeQuestionLineHTML({
+        short_name: routeData.short_name, side: drawnRoute.side, day: activeDay(),
+      })
+    : questionLineHTML({
+        view, day: activeDay(), radius, oneSeatRestricted,
+        destination: destinationName(), stopRoutes,
+      });
   refreshControlsButton();
 }
 
@@ -1046,17 +1132,100 @@ function collapseLegend(collapsed: boolean) {
  * that tap had just revealed.
  */
 function initControlSheet() {
-  const open = (on: boolean) => {
-    $('app').classList.toggle('controls-open', on);
-    $('controls-toggle').setAttribute('aria-expanded', String(on));
-  };
   $('controls-toggle').addEventListener('click', () => {
-    open(!$('app').classList.contains('controls-open'));
+    setControlsOpen(!$('app').classList.contains('controls-open'));
   });
-  $('controls-scrim').addEventListener('click', () => open(false));
+  $('controls-scrim').addEventListener('click', () => setControlsOpen(false));
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') open(false);
+    if (e.key === 'Escape') setControlsOpen(false);
   });
+}
+
+/** Open or shut the phone toolbar. A no-op in effect on a wide screen, where the strip is always up. */
+function setControlsOpen(on: boolean) {
+  $('app').classList.toggle('controls-open', on);
+  $('controls-toggle').setAttribute('aria-expanded', String(on));
+}
+
+/**
+ * The search box: what a pick does is what the map already does.
+ *
+ * A stop is asked about exactly as a click asks -- through `askAt`, so the
+ * panel opens with that kerb (convention 2) -- after the map has been eased
+ * to it if it was off screen or the map was zoomed out to the county. A
+ * place is fitted to; in the Places view it is also selected in the list,
+ * since that is what clicking it there would do. A route is drawn
+ * (`pickRoute`). None of them changes the reader's view: the view is the
+ * question, and the box is only how they pointed.
+ *
+ * On a phone the toolbar is a sheet and a pick shuts it. The chip rows in
+ * the sheet deliberately do not shut it, because those controls interact;
+ * a pick is terminal -- the reader asked to be taken somewhere, and the
+ * sheet would be covering it.
+ */
+function initSearchBox() {
+  const box = initSearch({
+    elements: {
+      group: $('search-controls'),
+      input: $('search-input') as HTMLInputElement,
+      list: $('search-results'),
+      opener: $('search-toggle'),
+    },
+    search: async (q) => {
+      const { url, init } = searchRequest(q);
+      const r = await fetch(url, init);
+      if (!r.ok) throw new Error(r.statusText);
+      return r.json() as Promise<SearchResponse>;
+    },
+    onPick: (row: Row) => {
+      setControlsOpen(false);
+      switch (row.kind) {
+        case 'stop': goToStop(row.stop); break;
+        case 'place': goToSearchedPlace(row.place); break;
+        case 'route':
+          pickRoute({ side: row.route.side, route_id: row.route.route_id }, { fit: true });
+          break;
+      }
+    },
+  });
+  // The phone's one-tap way in: open the sheet with the cursor already in
+  // the box.
+  $('search-toggle').addEventListener('click', () => {
+    setControlsOpen(true);
+    box.focus();
+  });
+}
+
+/**
+ * Ask at a stop found by name, as a click on it would.
+ *
+ * The map moves first only when it has to (`easeTarget`): a reader who has
+ * framed a neighbourhood and is picking its stops from the list should not
+ * have the map jump under each pick. Places has no click to answer -- a
+ * click there selects a place, not a point -- so there the move is all.
+ */
+function goToStop(s: SearchStop) {
+  const b = map.getBounds();
+  const target = easeTarget({
+    zoom: map.getZoom(),
+    bounds: { west: b.getWest(), south: b.getSouth(), east: b.getEast(), north: b.getNorth() },
+  }, s);
+  if (target) map.easeTo({ center: [target.lon, target.lat], zoom: target.zoom });
+  if (view === 'places') return;
+  askAt(s.lat, s.lon);
+}
+
+/**
+ * Fit the map to a place found by name; in the Places view, select it too.
+ *
+ * `goToPlace` flies to a changed place's own centre once its block groups
+ * arrive, so in that view the fit is the first move and the row's own the
+ * second; for a place the plan does not touch there is no second and the
+ * fit stands.
+ */
+function goToSearchedPlace(p: SearchPlace) {
+  map.fitBounds(p.bbox, { padding: FIT_PADDING_PX, maxZoom: FIT_MAX_ZOOM });
+  if (view === 'places') void goToPlace(p.key);
 }
 
 /**
@@ -1394,6 +1563,15 @@ function renderPanel({ scrollToTop = false } = {}) {
       : routeListHTML(routeGroups() ?? [], selectedRoute, { reading: routeReading(), day: activeDay() });
     return;
   }
+  // A route picked by name has the panel until the next click takes it
+  // back (`load` and `loadJourney` set the subject to the point). The card
+  // is redrawn from the answer in hand, so a day change redraws it the way
+  // it redraws a point's report -- and says "finding" until the first
+  // answer has arrived.
+  if (panelSubject === 'route' && drawnRoute) {
+    $('panel').innerHTML = routeData ? drawnRouteCardHTML(routeData) : routePendingHTML();
+    return;
+  }
   if (!lastPlace) {
     if (view === 'oneseat') $('panel').innerHTML = oneSeatPromptHTML(destinationName());
     else renderEmpty($('panel'));
@@ -1447,6 +1625,7 @@ function showJourney(on: boolean, leaving = false) {
 async function loadJourney(lat: number, lon: number) {
   const mine = ++seq;
   last = { lat, lon };
+  takePanelForPoint();
   syncUrl();
   placeMarker(lat, lon);
 
@@ -1634,6 +1813,7 @@ function setPinMode(on: boolean) {
 async function load(lat: number, lon: number) {
   const mine = ++seq;
   last = { lat, lon };
+  takePanelForPoint();
   syncUrl();
   $('panel').classList.add('loading');
 
@@ -1642,7 +1822,9 @@ async function load(lat: number, lon: number) {
   // has no answer, to have been wrong: either way they stop being true now
   // rather than when the fetch returns. The old stop's drawn routes go with
   // them, or a new click would leave them up on the map while its own fetch
-  // is still in flight.
+  // is still in flight. A route drawn from the search box does NOT go with
+  // them: it was asked for by name, not by this click, and the reader is
+  // now clicking along it to see what changes at its stops.
   clearPlace(map);
   drawStopRoutes(map, null, drawnSide());
   $('pin-key').classList.add('hidden');
@@ -1765,6 +1947,122 @@ function showPinKey(drawnAt: number) {
     && sideHasRoutes(stopRoutesData(), stopRoutes) ? stopRoutes : false;
   $('pin-key').innerHTML = pinKeyHTML(drawnAt, { routes: drawn });
   $('pin-key').classList.remove('hidden');
+}
+
+// --------------------------------------------------------------------------
+// a route drawn by name
+// --------------------------------------------------------------------------
+
+/**
+ * Give the panel back to the clicked point.
+ *
+ * Called at the top of every click-driven load, so a route card is replaced
+ * by the click's answer the way any earlier answer would be -- and so a
+ * route answer that lands AFTER the click cannot take the panel back
+ * (`loadRoute` checks the subject before rendering).
+ */
+function takePanelForPoint() {
+  if (panelSubject === 'point') return;
+  panelSubject = 'point';
+  refreshStateLine();
+}
+
+/**
+ * Draw a route the reader named, and give it the panel.
+ *
+ * `fit` moves the map to the route's extent. On for a pick from the box --
+ * the reader asked to see it -- and off for a link that carries a camera
+ * of its own (`applyOpening`), where the fit would undo where the link's
+ * author had panned to.
+ */
+function pickRoute(next: DrawnRoute, { fit }: { fit: boolean }) {
+  panelSubject = 'route';
+  void loadRoute(next, { fit });
+}
+
+/** Refetch the drawn route for the toolbar's day, without moving the map or taking the panel. */
+function syncRoute() {
+  if (drawnRoute) void loadRoute(drawnRoute, { fit: false });
+}
+
+function sameRoute(a: DrawnRoute | null, b: DrawnRoute): boolean {
+  return a !== null && a.side === b.side && a.route_id === b.route_id;
+}
+
+/**
+ * Fetch and draw one route on one network for the toolbar's day.
+ *
+ * Its own sequence number, the pattern every fetch here uses: the day can
+ * change and another route can be picked while a request is in flight, and
+ * a slow answer must not paint over the newer one. The panel is redrawn
+ * only while the route still has it -- a click made meanwhile has taken it
+ * for the point, and keeps it.
+ */
+async function loadRoute(next: DrawnRoute, { fit }: { fit: boolean }) {
+  const mine = ++routeSeq;
+  // A different route's answer must not stand in for this one while it
+  // loads; the same route's does, since only the day is changing.
+  if (!sameRoute(drawnRoute, next)) routeData = null;
+  drawnRoute = next;
+  syncUrl();
+  refreshStateLine();
+  if (panelSubject === 'route') renderPanel({ scrollToTop: true });
+  try {
+    const r = await fetchJSON<RouteResult>(routeUrl(next, activeDay()));
+    if (mine !== routeSeq) return;         // a newer pick or day already won
+    routeData = r;
+    drawRoute(map, r);
+    showRouteKey(r);
+    if (fit && r.bbox) map.fitBounds(r.bbox, { padding: FIT_PADDING_PX, maxZoom: FIT_MAX_ZOOM });
+    refreshStateLine();
+    if (panelSubject === 'route') renderPanel({ scrollToTop: true });
+  } catch (err) {
+    if (mine !== routeSeq) return;
+    // An unknown route -- a link written against another build, or a typo
+    // in a hand-edited one. Nothing to draw and nothing to key, so the
+    // route is dropped rather than left named in the URL with no line; the
+    // panel says why, and the next click replaces that as it would a card.
+    const hadPanel = panelSubject === 'route';
+    clearDrawnRoute();
+    if (hadPanel) {
+      $('panel').innerHTML = `<div class="empty"><h2>No such route</h2>
+        <p class="muted">${esc((err as Error).message)}</p></div>`;
+    }
+  }
+}
+
+/**
+ * Take the route off the map, its chip out of the key, and its card out of
+ * the panel. The only ways here are the chip's × and picking another
+ * route; a map click is deliberately not one of them.
+ */
+function clearDrawnRoute() {
+  routeSeq++;                            // an answer in flight is stale now
+  drawnRoute = null;
+  routeData = null;
+  drawRoute(map, null);
+  $('route-key').classList.add('hidden');
+  if (panelSubject === 'route') {
+    panelSubject = 'point';
+    renderPanel({ scrollToTop: true });
+  }
+  refreshStateLine();
+  syncUrl();
+}
+
+/**
+ * The chip in the key: the drawn line's only key and its only clear
+ * button, so it shows whenever a route is drawn, whatever the panel is
+ * showing and whether or not the route runs on the day in hand.
+ */
+function showRouteKey(r: RouteResult) {
+  $('route-key').innerHTML = drawnRouteKeyHTML(r);
+  $('route-key').classList.remove('hidden');
+}
+
+function routePendingHTML(): string {
+  return `<div class="empty"><h2>Finding the route…</h2>
+    <p class="muted">Fetching its shapes and PRT's crosswalk row.</p></div>`;
 }
 
 /**

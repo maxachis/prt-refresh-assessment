@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { questionLine, questionLineHTML, viewLabel } from './statebar';
+import {
+  questionLine, questionLineHTML, viewLabel, routeQuestionLine, routeQuestionLineHTML,
+} from './statebar';
 import { DEFAULT_STOP_ROUTES } from './stoproutes';
 
 const BASE = {
@@ -129,5 +131,22 @@ describe('viewLabel', () => {
 
   it('falls back to the raw key rather than going blank', () => {
     expect(viewLabel('nonesuch')).toBe('nonesuch');
+  });
+});
+
+describe('routeQuestionLine', () => {
+  // When the panel is a route card, the line says the route rather than
+  // the view: the card is not the view's answer, it is PRT's row for the
+  // route the reader named, and the day is the day the line is drawn for.
+  it('names the route, the network and the day, in the line\'s own words', () => {
+    expect(routeQuestionLine({ short_name: '61C', side: 'current', day: 'weekday' }))
+      .toBe('Route 61C · today · a weekday');
+    expect(routeQuestionLine({ short_name: '61', side: 'proposed', day: 'sunday' }))
+      .toBe('Route 61 · proposed · a Sunday');
+  });
+
+  it('leads with the route in bold, escaped, as the HTML', () => {
+    expect(routeQuestionLineHTML({ short_name: '<61>', side: 'current', day: 'saturday' }))
+      .toBe('<b>Route &lt;61&gt;</b> · today · a Saturday');
   });
 });

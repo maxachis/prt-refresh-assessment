@@ -19,7 +19,7 @@
  * counting helpers.
  */
 import { esc } from './utils';
-import { Day } from './types';
+import { Day, Side } from './types';
 import { StopRoutes } from './stoproutes';
 
 const SEP = ' · ';
@@ -73,6 +73,15 @@ const DAY_WORD: Record<Day, string> = {
   saturday: 'a Saturday',
   sunday: 'a Sunday',
 };
+
+/**
+ * The day type as this line says it — "a weekday". Exported so the key for
+ * a searched route (`routeview.ts`) says the day the same way the line over
+ * the panel does; two spellings of one day type would read as two days.
+ */
+export function dayPhrase(day: Day): string {
+  return DAY_WORD[day];
+}
 
 /** Views that measure to somewhere, and so have to name it. */
 const TAKES_DESTINATION = ['oneseat', 'journey'];
@@ -141,6 +150,38 @@ export function questionLine(s: QuestionState): string {
  * it.
  */
 export function questionLineHTML(s: QuestionState): string {
-  const [head, ...rest] = questionLine(s).split(SEP);
+  return headed(questionLine(s));
+}
+
+/** The line's first part in bold, the rest plain; every part escaped. */
+function headed(line: string): string {
+  const [head, ...rest] = line.split(SEP);
   return `<b>${esc(head)}</b>${rest.map((r) => SEP + esc(r)).join('')}`;
+}
+
+/**
+ * The panel's subject when it is a route card rather than a view's answer.
+ *
+ * A route picked from the search box puts PRT's crosswalk row in the panel
+ * (`routeview.ts`), and that is not what the view is measuring: it is a
+ * route, on one network, drawn for one day. Saying "Stop-by-stop · a
+ * weekday · 400 m walk" over it would attach a walk radius to a card that
+ * has none, so the line says the route instead, in the same three-part
+ * shape.
+ */
+export interface RouteSubject {
+  short_name: string;
+  side: Side;
+  day: Day;
+}
+
+/** What the line calls the network a searched route is on; the map's hover uses the same two words. */
+const ROUTE_SIDE_WORD: Record<Side, string> = { current: 'today', proposed: 'proposed' };
+
+export function routeQuestionLine(r: RouteSubject): string {
+  return ['Route ' + r.short_name, ROUTE_SIDE_WORD[r.side], DAY_WORD[r.day]].join(SEP);
+}
+
+export function routeQuestionLineHTML(r: RouteSubject): string {
+  return headed(routeQuestionLine(r));
 }

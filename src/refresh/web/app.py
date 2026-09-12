@@ -25,8 +25,22 @@ from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel, Field
 
 from .. import feedback, journey, query
+
+# The type-ahead box's longest reasonable query, and the cap that keeps
+# /api/search a POST body rather than a URL: past this a request is not a
+# search term any more. See `api_search`'s docstring for why it is a POST at
+# all.
+SEARCH_QUERY_MAX_CHARS = 200
+
+
+class SearchRequest(BaseModel):
+    """Body of `POST /api/search`. Both fields default so `{}` is a valid,
+    empty search rather than a validation error."""
+    q: str = Field(default="", max_length=SEARCH_QUERY_MAX_CHARS)
+    limit: int = Field(default=6, description="rows per list; clamped 1..20")
 
 _STATIC = Path(__file__).parent / "static"
 
@@ -486,6 +500,53 @@ def create_app(db_path: str | Path = "data/refresh.db", *,
             raise HTTPException(404, f"no such route group: {key}")
         return detail
 
+    @app.post("/api/search")
+    def api_search(body: SearchRequest):
+        """Free-text lookup of named places, bus stops and routes.
+
+        POST, NOT GET, DELIBERATELY. The front door keeps a 30-day access
+        log of request URIs (`deploy/setup-caddy.sh`, `report_usage.py`),
+        and a reader will type things into a search box before they have any
+        reason to trust it with them -- a home address, most plausibly, long
+        before this repo offers address search itself. A GET puts that text
+        in the URL and therefore in the log; a POST body never appears
+        there. (`/api/*` also carries `Cache-Control: public` in Caddy's
+        config, and a POST is never cached regardless -- a second, smaller
+        reason this is not a GET.)
+
+        `q` is capped at `SEARCH_QUERY_MAX_CHARS` (422 past it, via the
+        request model) and clamped to a stripped, whitespace-only-safe
+        empty string otherwise; `limit` is clamped to 1..20 inside
+        `query.search` rather than rejected out of range, since a type-ahead
+        caller passing something silly should still get a usable answer.
+        """
+        return query.search(db(), body.q, limit=body.limit)
+
+    @app.get("/api/route")
+    def api_route(
+        side: str = Query(..., pattern="^(current|proposed)$"),
+        route_id: str = Query(..., description="e.g. '61C'"),
+        day: str = Query(..., pattern=f"^({'|'.join(query.DAYS)})$"),
+    ):
+        """One route, drawn end to end on both networks' own streets.
+
+        What the map shows when a reader picks a route out of search.
+        A LABELLING AID, per convention 1: nothing here measures a route
+        against its successor, and the `crosswalk` alongside the drawing is
+        PRT's own current -> proposed label, not a service comparison. See
+        `query.route_drawing` for the full method and its caveats -- drawing
+        only, buses only, day-typed.
+
+        404 where `(side, route_id)` names no bus route on that side --
+        unknown id and rail id both answer the same way, since a caller has
+        no need to tell them apart.
+        """
+        got = query.route_drawing(db(), side, route_id, day)
+        if got is None:
+            raise HTTPException(
+                404, f"no bus route {route_id!r} on the {side} network")
+        return got
+
     @app.get("/")
     def index():
         return FileResponse(_STATIC / "index.html")
@@ -713,6 +774,19 @@ CAVEATS = [
                 "matters. It is a picture of what the panel's stop block "
                 "lists, not a published unit: the published unit is the walk "
                 "radius below it.",
+    },
+    {
+        "id": "route-search",
+        "text": "A route drawn from search is for drawing only, like the "
+                "stop block's own lines: nothing about a route's service "
+                "may be measured off it, street length included -- that is "
+                "the corridor view's question, measured on the full shape. "
+                "Buses only, like every service figure here, so searching a "
+                "rail line finds nothing. The crosswalk shown beside the "
+                "drawing is PRT's own current -> proposed route labelling, "
+                "not a comparison of one route's service against another's "
+                "-- route numbers are never a unit of analysis in this "
+                "repo (convention 1).",
     },
     {
         "id": "day-types",

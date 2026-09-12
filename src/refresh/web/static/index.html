@@ -48,7 +48,7 @@
     * { box-sizing: border-box; }
     /* Phone-only furniture: no sheet to drag and no toolbar to open when the
        toolbar is already on screen and the panel is a column. */
-    #sheet-handle, #controls-toggle, #controls-scrim { display:none; }
+    #sheet-handle, #controls-toggle, #search-toggle, #controls-scrim { display:none; }
     .hidden { display: none !important; }
     html, body { margin:0; height:100%; background:var(--bg); color:var(--ink);
       font:14px/1.5 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
@@ -103,6 +103,23 @@
        which network is drawn, and what the arrows mean -- and the palette
        itself is keyed by the panel's route chips. */
     #pin-key .pk-note { flex-basis:100%; font-size:10px; color:var(--muted); }
+    /* The searched route's key: the same block as the pin key, one line
+       naming the route in the line's own colour, with the × that clears
+       it. It has a swatch where the kerb routes have none, because there is
+       one line and the feed gave it a colour -- this is the one drawn route
+       a reader can match by eye. It does NOT fold with the key: the chip is
+       the drawn line's only key, and a collapsed box with a line still on
+       the map would leave that line unaccounted for. */
+    #route-key { margin:8px 2px 0; padding-top:8px; border-top:1px solid var(--line); }
+    #route-key .pk-note { flex-basis:100%; font-size:10px; color:var(--muted); }
+    #route-key .rk-head { display:flex; align-items:center; gap:6px; width:100%;
+      font-size:12px; color:var(--ink); }
+    #route-key .sw-route { width:14px; height:4px; border-radius:2px; flex:none; margin:0; }
+    #route-key .rk-name { flex:1 1 auto; min-width:0; }
+    #route-key .rk-clear { flex:none; width:18px; height:18px; padding:0; line-height:1;
+      cursor:pointer; background:none; color:var(--muted); border:0; font:inherit;
+      font-size:14px; border-radius:4px; }
+    #route-key .rk-clear:hover { color:var(--ink); background:#20242d; }
     /* The mark a location both networks serve draws as: not a colour of
        its own, but the proposed dot with the smaller current one on top
        of it, which is what the map is doing. */
@@ -273,7 +290,11 @@
        corners and move under their own wrapping. It stops short of the
        navigation control at top right rather than covering the zoom buttons.
        What the panel loses by the move -- the framing that used to sit two
-       centimetres above the numbers -- the state line puts back. */
+       centimetres above the numbers -- the state line puts back. The one
+       group that is not a control is the search box at its left end: it
+       changes nothing about the question, it is how a reader who knows a
+       stop, a route or a place by NAME points the map at it, and pointing
+       belongs on the map with the rest. */
     #mapbar { position:absolute; top:10px; left:10px; right:58px; z-index:2;
       display:flex; flex-wrap:wrap; align-items:flex-start; gap:6px; }
     /* Each group carries its own ground rather than the bar carrying one for
@@ -332,6 +353,49 @@
        catchment -- so the radius control is disabled rather than silently
        ignored while that view is active. */
     .seg button:disabled { opacity:.35; cursor:not-allowed; }
+
+    /* The search box, first on the strip. Dressed like a folded trigger so
+       the strip reads as one row of like things, and kept narrow -- the
+       other groups still have to fit beside it in one row at 1280 px with
+       the panel open. The results list hangs from the group the way a
+       folded group's list does: absolute, below, on its own ground, and it
+       is wider than the box because a stop name is "BROWNSVILLE RD AT
+       NOBLES LN" and a route's tag is its long name. */
+    #search-input { width:172px; border:1px solid var(--line); border-radius:8px;
+      background:#0c0e12; color:var(--ink); padding:5px 9px; font:inherit;
+      font-size:12px; }
+    #search-input::placeholder { color:var(--muted); }
+    #search-input:focus { outline:none; border-color:#39414f; }
+    #search-input:focus-visible { outline:2px solid var(--now); outline-offset:1px; }
+    #search-input::-webkit-search-cancel-button { display:none; }
+    #search-results { display:none; position:absolute; top:calc(100% + 4px); left:0;
+      width:380px; max-height:min(60vh, 480px); overflow-y:auto;
+      border:1px solid var(--line); border-radius:8px; background:#0c0e12;
+      box-shadow:0 8px 24px rgba(0,0,0,.45); padding:4px 0; }
+    /* `.controls.open` below lifts the group over its siblings, and this
+       lifts the whole bar over the key while the list is open: a long list
+       reaches the legend box, and a reader's fifth result was under the
+       key's own ground. The bar is its own stacking context (positioned,
+       with a z-index), so lifting the group inside it ranks it against its
+       siblings only; the bar itself has to outrank the key. */
+    #search-controls.open { z-index:3; }
+    #mapbar:has(#search-controls.open) { z-index:3; }
+    #search-controls.open #search-results { display:block; }
+    .sr-head { color:var(--muted); font-size:10px; text-transform:uppercase;
+      letter-spacing:.06em; padding:6px 12px 2px; }
+    .sr-group + .sr-group { border-top:1px solid var(--line); margin-top:4px; }
+    /* Two lines per row, not one: the tag is where a stop's place and a
+       route's long name live, and beside the name on one line both were
+       ellipsised at exactly the word that told two rows apart. */
+    .sr-row { display:block; padding:5px 12px 6px;
+      font-size:12px; color:var(--ink); cursor:pointer; }
+    .sr-row:hover, .sr-row.hl { background:#1b1f27; }
+    .sr-name { display:block; overflow:hidden; text-overflow:ellipsis;
+      white-space:nowrap; }
+    .sr-tag { display:block; color:var(--muted); font-size:11px; white-space:nowrap;
+      overflow:hidden; text-overflow:ellipsis; margin-top:1px; }
+    .sr-empty { color:var(--muted); font-size:12px; padding:8px 12px; }
+
     .link { background:none; border:0; color:var(--now); cursor:pointer;
       font:inherit; font-size:12px; padding:0; }
     a.link { text-decoration:none; }
@@ -767,6 +831,17 @@
         color:var(--ink); font:inherit; font-size:13px; cursor:pointer; }
       #controls-toggle::after { content:'▾'; color:var(--muted); font-size:11px; }
       #app.controls-open #controls-toggle::after { content:'✕'; }
+      /* The one-tap way to the search box, in the corner the zoom buttons
+         gave up. Dressed as its neighbour, square, at the same height. */
+      #search-toggle { display:inline-flex; align-items:center; justify-content:center;
+        position:absolute; top:10px; right:10px; z-index:7; width:38px; min-height:38px;
+        padding:0; border:1px solid var(--line); border-radius:10px;
+        background:rgba(20,23,29,.95); backdrop-filter:blur(3px);
+        color:var(--ink); font:inherit; font-size:18px; line-height:1; cursor:pointer; }
+      /* Behind the sheet once it is open: the sheet's own box holds the
+         input by then, and the button would otherwise float over the
+         search row it opened. */
+      #app.controls-open #search-toggle { visibility:hidden; }
       #controls-scrim { display:block; position:absolute; inset:0; z-index:5;
         background:rgba(8,10,14,.5); opacity:0; pointer-events:none;
         transition:opacity .2s ease; }
@@ -779,7 +854,13 @@
         border-bottom:1px solid var(--line);
         transform:translateY(-100%); visibility:hidden;
         transition:transform .2s ease, visibility .2s; }
-      #app.controls-open #mapbar { transform:none; visibility:visible; }
+      /* Visible at once on the way in, and only delayed on the way out
+         (the .2s above, so the slide-out can be seen): a sheet that is
+         still `hidden` for its first fifth of a second cannot take focus,
+         and the search button opens it precisely to put the cursor in the
+         box. */
+      #app.controls-open #mapbar { transform:none; visibility:visible;
+        transition:transform .2s ease, visibility 0s; }
       /* Each group is a labelled row on the sheet's own ground, so the pills
          drop their borders and backgrounds -- five nested boxes deep is what
          made the desktop strip unreadable at this width. */
@@ -802,6 +883,16 @@
       #mapbar .seg button { flex:1 1 auto; border:1px solid var(--line);
         border-radius:9px; padding:9px 12px; font-size:13px; text-align:center; }
       #mapbar .seg button.active { border-color:var(--sel); }
+      /* The search row: label and box in the grid's two cells like every
+         other group, and the results flow in the sheet beneath them rather
+         than hanging over the map -- the sheet is already the mode the
+         reader is in, and a list positioned off it would be clipped by its
+         own scroll. A larger font, because iOS zooms the page into any box
+         set smaller than 16 px the moment it is focused. */
+      #search-input { width:100%; min-height:44px; font-size:16px; }
+      #search-results { grid-column:1 / -1; position:static; width:auto;
+        max-height:40dvh; box-shadow:none; }
+      .sr-row { min-height:44px; align-items:center; font-size:14px; }
 
       /* --- the key --- */
       /* It was 250x277 of a 390x490 map -- 36% -- and it sat over the middle,
@@ -930,8 +1021,32 @@
            sheet, and says which view is up while it is closed. -->
       <button id="controls-toggle" aria-expanded="false"
               aria-controls="mapbar">Stop-by-stop</button>
+      <!-- The search box lives inside the sheet, which on a phone is one tap
+           away behind the button above -- and then a second tap to reach the
+           box. A reader who arrived knowing the name of their stop should
+           not have to open a toolbar to type it, so this second button opens
+           the sheet AND puts the cursor in the box: one tap. Phone only,
+           like its neighbour; on a wide screen the box is on the strip. -->
+      <button id="search-toggle" aria-controls="mapbar"
+              aria-label="Find a stop, route or place" title="Search">⌕</button>
       <div id="controls-scrim"></div>
+      <!-- The toolbar's groups, left to right. The SEARCH box is first: it
+           is not a control in the sense the rest are -- it changes nothing
+           about the question -- but it is how a reader who knows a name
+           rather than a map position points at the thing to ask about, and
+           the strip is where pointing happens. What it finds (a stop, a
+           route, a place) and what a pick does is `frontend/search.ts`; the
+           text goes by POST so it never reaches the access log. -->
       <div id="mapbar">
+        <div class="controls" id="search-controls">
+          <label class="lbl" for="search-input">find</label>
+          <input id="search-input" type="search" autocomplete="off"
+                 spellcheck="false" placeholder="Find a stop, route or place"
+                 role="combobox" aria-autocomplete="list" aria-expanded="false"
+                 aria-controls="search-results" aria-haspopup="listbox" />
+          <div id="search-results" role="listbox"
+               aria-label="Search results"></div>
+        </div>
         <div class="controls">
           <span class="lbl">walk</span>
           <div class="seg">
@@ -1129,6 +1244,13 @@
           <button class="link hidden" id="legend-clear">Clear</button>
         </div>
         <div id="pin-key" class="legend hidden"></div>
+        <!-- The key for a route drawn from the search box, and the only way
+             to clear it short of picking another. It stays up whatever the
+             panel is showing, because the line stays on the map: a map
+             click does not clear it (the reader is clicking along it), so
+             a key that left with the panel would leave a line on the map
+             that nothing on screen accounts for. -->
+        <div id="route-key" class="legend hidden"></div>
       </div>
       <!-- Shown only in an embed, where it is the whole of the site's
            identity and the only door back to the answer panel, the method and

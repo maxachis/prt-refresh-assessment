@@ -248,3 +248,39 @@ describe('a painted selection in the link', () => {
     expect(s).toEqual(['c:10005', 'p:2201']);
   });
 });
+
+describe('a route drawn from search, in the link', () => {
+  it('writes the side and the route id as one value, under its own name', () => {
+    // One parameter rather than two, for the reason `stoproutes` is one: a
+    // route id means nothing without the network it is on, and two
+    // parameters could name a side with no route or a route with no side.
+    // And `drawn`, not `route`: that name is the Route changes view's
+    // selected group, a different unit that happens to share the word.
+    const p = new URLSearchParams(toSearch({ ...FULL, drawnRoute: { side: 'proposed', route_id: '61' } }));
+    expect(p.get('drawn')).toBe('proposed:61');
+    expect(p.get('route')).toBe(FULL.route);
+  });
+
+  it('leaves nothing behind when no route is drawn', () => {
+    expect(new URLSearchParams(toSearch(FULL)).has('drawn')).toBe(false);
+    expect(new URLSearchParams(toSearch({ ...FULL, drawnRoute: null })).has('drawn')).toBe(false);
+  });
+
+  it('round-trips', () => {
+    const drawn = { ...FULL, drawnRoute: { side: 'current' as const, route_id: '61C' } };
+    expect(parseUrlState(toSearch(drawn)).drawnRoute).toEqual({ side: 'current', route_id: '61C' });
+  });
+
+  it('keeps a colon inside the route id, splitting only at the first', () => {
+    expect(parseUrlState('?drawn=current:a:b').drawnRoute).toEqual({ side: 'current', route_id: 'a:b' });
+  });
+
+  it.each([
+    '?drawn=61C',            // no side
+    '?drawn=today:61C',      // a side this build has no name for
+    '?drawn=current:',       // no route
+    '?drawn=',
+  ])('ignores %s', (search) => {
+    expect(parseUrlState(search)).not.toHaveProperty('drawnRoute');
+  });
+});

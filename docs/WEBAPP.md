@@ -61,6 +61,8 @@ data/raw/proposed_gtfs/    ─┘      (stdlib)         (43 MB, ~2.5 min)     re
 | `frontend/oneseatpanel.ts` | The one-seat view's own answer panel — a verdict about a destination, not a count at a point. |
 | `frontend/statebar.ts` | The line above the panel saying which question the panel is answering. |
 | `frontend/sheet.ts` | The phone layout: the answer panel as a bottom sheet over a full-height map. |
+| `frontend/search.ts` | The toolbar's search box — a stop, a route or a place found by name, and what picking each does. |
+| `frontend/routeview.ts` | A route asked for by name: drawn on one network, with PRT's crosswalk row as its card. |
 
 The stack follows `pgh-ghost-bus` (kept as a gitignored reference checkout at
 `pgh-ghost-bus/`): uv, `src/` package, an optional web extra, read-only SQLite,
@@ -134,6 +136,75 @@ decoration. The one-seat view can be showing either of two different
 measurements, only one of which is what `data/oneseat_change.csv` publishes, and
 convention 13 requires anything quoting a one-seat number to say which; the
 legend says it for the map, and this says it for the panel, in the same words.
+
+### Search: pointing at a thing by its name
+
+Everything else on the map is reached by looking — pan until the corner you
+mean is under the cursor, then click it. That works for a reader who knows
+where a corner is on a map and not for one who knows it as "Brownsville at
+Nobles", and the second reader is who this site is for. So the first group on
+the strip is a **search box** (`frontend/search.ts`), reachable on a phone by
+its own button beside the toolbar's — one tap opens the sheet with the cursor
+already in the box. It finds three kinds of thing, listed under three
+headings rather than interleaved by a score, because a pick on each does a
+different thing and none of them changes the reader's view:
+
+- **A stop**, by name, tagged with the place that contains it and which
+  networks have a pole of that name — "Squirrel Hill South · today · plan",
+  "today", or "plan". The place is by boundary containment (convention 6),
+  never PRT's own stop label, and it is there because PRT reuses one name
+  at corners kilometres apart. One row is a *corner*, not a pole: the poles
+  PRT gives one name within 150 m of each other are one row (convention 2),
+  and the point it lands on is one of them. A pick asks about it exactly as a map
+  click would (`askAt`, so the panel opens with that kerb, convention 2),
+  easing the map to it first only if it is off screen or the map is zoomed
+  out to the county. The tag is deliberately not a verdict: a stop only
+  today's network has is one the plan removes *or renames*, and which is
+  decided at the kerb by the same code a click runs, never from a name
+  match. In Places, where a click asks nothing, the pick only moves the map.
+- **A place** — a municipality or a city neighbourhood, tagged with the
+  county's own word for it. A pick fits the map to its box in every view,
+  and in Places also selects it in the ranked list, as clicking its row would.
+- **A route**, on one network, tagged "today" or "proposed" with its long
+  name. A pick draws it — see below.
+
+**The query goes by POST**, and that is the one decision here that is not
+cosmetic. The deployed site keeps an access log of request URIs (`deploy/
+README.md`), and people type their home address into a box like this one. A
+`GET /api/search?q=` would write every address to disk on the box; a POST body
+is never logged. The box waits 150 ms after a keystroke and applies an answer
+only if it is for the latest text, the same guard `main.ts` puts on a click.
+
+**A route drawn from search** (`frontend/routeview.ts`) is the third
+route-shaped thing on the site, and it is allowed to exist for the same reason
+the kerb's routes are: it draws **one route on one network** and says nothing
+about the other. It shares the kerb layer's rendering — solid line, flowing
+dash, arrowheads — on a source of its own just beneath the kerb's, because the
+two have different lives: the kerb's lines belong to a click and the next
+click clears them, while this line was asked for by name and the reader is now
+clicking *along* it, so a click leaves it alone. Its only key is a chip in the
+map key — "51 Carrick · today · a weekday", in the line's own colour from the
+feed where it has one — and the chip's × is the only way to clear it short of
+picking another route. It is drawn for the toolbar's day; switching the day
+refetches it, and on a day the route does not run the chip says so and nothing
+is drawn. It travels in the URL as `drawn=<side>:<route_id>`, written only
+while one is drawn, and a link carrying it draws the route on load — fitted
+to, unless the link also carries a camera, which is where its author had
+panned to after the fit. Not `route=`: that parameter is the Route changes
+view's selected *group*, a key of `/api/route_changes`, where this is one
+route on one network. The two can share a link, and mean different things.
+
+The card it puts in the panel is **PRT's crosswalk row, printed as PRT wrote
+it** — "PRT's crosswalk: Modified · 51 Carrick. Related: 51S Carrick Short",
+with a link to PRT's own page for the route — and the card then says, in so
+many words, what convention 1 requires: this is PRT's labelling of which route
+replaces which, it is not a comparison, this site never measures a route
+against its successor because the plan re-splits corridors and a route can
+"lose half its trips" while every stop on it keeps them, and the comparison
+is one click away on any stop along the line. The state line over the card
+names the route rather than the view, since the card carries no walk radius
+for the view's line to attach. The drawing's own two caveats travel with it:
+drawing only, and buses only.
 
 ### The panel answers in two units
 
@@ -1761,8 +1832,12 @@ the box: nothing about it touches the server.
    stop of a feed PRT publishes at no URL, and sending a file to a requester is
    not the same as publishing it. One question to PPT settles it. Permission,
    not a technical matter.
-2. **Decide on address search.** Today the input is a map click. Geocoding means
-   an external service (Nominatim's usage policy, or a self-hosted index).
+2. **Decide on address search.** A stop, a route or a named place can be
+   found by name since 2026-09-12; an address cannot. The source is chosen
+   (the county's own address points on WPRDC) and the geocoder will be
+   self-hosted, never a third party; what is owed is the licence question
+   and one sentence in the permission email —
+   [`docs/worklog/address-search-needs-a-geocoder-and-the-log-must-not-see-the-query.md`](worklog/address-search-needs-a-geocoder-and-the-log-must-not-see-the-query.md).
 3. **Say what is collected, when asking PPT.** Since 2026-09-11 the front door
    keeps a 30-day access log with the reader's address masked to a /24, and
    `report_usage.py` reads it for which views, places and destinations get
@@ -1818,6 +1893,5 @@ the box: nothing about it touches the server.
   is not. Widening it is a query parameter and a control, not new analysis,
   but every number then stops being the published one, which is why it has not
   been added on a whim.
-- Stop-name and neighbourhood search is not built (the DB has FTS5 available).
 - `nearest_place_label` uses PRT's `HOOD`/`MUNI` labels, which contain errors up
   to 40 km (caveat 4). It is a display hint; nothing computed depends on it.

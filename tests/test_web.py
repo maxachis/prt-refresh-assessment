@@ -638,6 +638,91 @@ def test_meta_carries_the_stop_routes_caveat(client):
     """A screenshot of the drawn lines must carry what they are not."""
     text = {c["id"]: c["text"] for c in client.get("/api/meta").json()["caveats"]}
     assert "stop-routes" in text
+
+
+# --------------------------------------------------------------------------
+# search
+# --------------------------------------------------------------------------
+
+def test_search_is_a_post_not_a_get(client):
+    """Query text must never land in a logged URL -- see the endpoint's own
+    docstring and `query.search`'s."""
+    r = client.post("/api/search", json={"q": "carrick"})
+    assert r.status_code == 200
+    assert client.get("/api/search").status_code in (404, 405)
+
+
+def test_search_empty_body_answers_with_empty_lists(client):
+    r = client.post("/api/search", json={})
+    assert r.status_code == 200
+    body = r.json()
+    assert body == {"q": "", "places": [], "stops": [], "routes": []}
+
+
+def test_search_finds_carrick(client):
+    r = client.post("/api/search", json={"q": "carrick"})
+    assert r.status_code == 200
+    body = r.json()
+    assert any(p["key"] == "carrick" for p in body["places"])
+
+
+def test_search_honours_a_custom_limit(client):
+    r = client.post("/api/search", json={"q": "ave", "limit": 2})
+    assert r.status_code == 200
+    body = r.json()
+    assert len(body["places"]) <= 2
+    assert len(body["stops"]) <= 2
+    assert len(body["routes"]) <= 2
+
+
+def test_search_rejects_a_body_over_200_chars(client):
+    r = client.post("/api/search", json={"q": "a" * 201})
+    assert r.status_code == 422
+
+
+def test_search_accepts_exactly_200_chars(client):
+    r = client.post("/api/search", json={"q": "carrick " + "a" * 192})
+    assert r.status_code == 200
+
+
+# --------------------------------------------------------------------------
+# route drawing
+# --------------------------------------------------------------------------
+
+def test_route_endpoint_draws_current_61c(client):
+    r = client.get("/api/route",
+                   params={"side": "current", "route_id": "61C", "day": "weekday"})
+    assert r.status_code == 200
+    body = r.json()
+    assert body["route_id"] == "61C"
+    assert body["features"]
+    assert body["bbox"] and len(body["bbox"]) == 4
+    assert body["days"]
+
+
+def test_route_endpoint_404s_on_an_unknown_route(client):
+    r = client.get("/api/route",
+                   params={"side": "current", "route_id": "NOTAROUTE",
+                           "day": "weekday"})
+    assert r.status_code == 404
+
+
+def test_route_endpoint_422s_on_a_bad_side(client):
+    r = client.get("/api/route",
+                   params={"side": "draft2", "route_id": "61C", "day": "weekday"})
+    assert r.status_code == 422
+
+
+def test_route_endpoint_422s_on_a_bad_day(client):
+    r = client.get("/api/route",
+                   params={"side": "current", "route_id": "61C", "day": "tuesday"})
+    assert r.status_code == 422
+
+
+def test_meta_carries_the_route_search_caveat(client):
+    text = {c["id"]: c["text"] for c in client.get("/api/meta").json()["caveats"]}
+    assert "route-search" in text
+    assert "labelling" in text["route-search"] or "labeling" in text["route-search"]
     assert "measured" in text["stop-routes"]
 
 

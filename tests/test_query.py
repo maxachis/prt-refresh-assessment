@@ -1547,3 +1547,207 @@ def test_the_group_list_does_not_change_across_day_types(con,
     by_day = {day: query.route_changes(con, day) for day in query.DAYS}
     groups = {day: got["groups"] for day, got in by_day.items()}
     assert groups["weekday"] == groups["saturday"] == groups["sunday"]
+
+
+# --------------------------------------------------------------------------
+# search: type-ahead over places, stops and routes
+# --------------------------------------------------------------------------
+
+def test_search_rank_prefers_exact_over_prefix_over_midname():
+    """Pure ranking rules, no database -- the ordering has to be testable on
+    its own so a failure names the rule, not a query."""
+    q = ("61",)
+    exact = query.search_rank(q, ("61",), "61", exact=True)
+    prefix = query.search_rank(q, ("61c",), "61c", exact=False)
+    other_route_exact_wins = query.search_rank(q, ("61a",), "61a", exact=False)
+    assert exact < prefix
+    assert exact < other_route_exact_wins
+
+
+def test_search_rank_prefers_first_token_match_to_midname_match():
+    q = ("murray",)
+    first = query.search_rank(q, ("murray", "ave"), "murray ave")
+    mid = query.search_rank(q, ("forbes", "murray"), "forbes murray")
+    assert first < mid
+
+
+def test_search_rank_prefers_shorter_names_then_alphabetical():
+    q = ("main",)
+    short = query.search_rank(q, ("main", "st"), "main st")
+    long_ = query.search_rank(q, ("main", "street", "extension"),
+                              "main street extension")
+    assert short < long_
+    a = query.search_rank(q, ("main", "ave"), "main ave")
+    b = query.search_rank(q, ("main", "blvd"), "main blvd")
+    assert a < b   # "ave" < "blvd" alphabetically, same length
+
+
+def test_search_empty_query_returns_three_empty_lists(con):
+    got = query.search(con, "   ")
+    assert got == {"q": "", "places": [], "stops": [], "routes": []}
+
+
+def test_search_finds_carrick_with_a_four_number_bbox_and_a_route(con):
+    """No stop in the feed is literally named "Carrick" -- it is a
+    neighbourhood name, not a corner -- so the cross-unit check here is the
+    route search finds instead: PRT's own route 51 long name."""
+    got = query.search(con, "carrick")
+    assert any(p["key"] == "carrick" for p in got["places"])
+    place = next(p for p in got["places"] if p["key"] == "carrick")
+    assert place["kind"] == "neighbourhood"
+    assert len(place["bbox"]) == 4
+    min_lon, min_lat, max_lon, max_lat = place["bbox"]
+    assert min_lon < max_lon and min_lat < max_lat
+    assert got["routes"]
+
+
+def test_search_matches_stop_name_tokens_in_any_order(con):
+    forward = query.search(con, "forbes murr")
+    backward = query.search(con, "murray forbes")
+    assert forward["stops"] and backward["stops"]
+    for row in forward["stops"]:
+        norm = row["name"].lower()
+        assert "forbes" in norm and "murr" in norm
+    assert row["sides"]
+
+
+def test_search_ranks_exact_short_name_route_first(con):
+    got = query.search(con, "61c")
+    assert got["routes"]
+    top = got["routes"][0]
+    assert top["short_name"] == "61C"
+    assert top["side"] == "current"
+    for r in got["routes"]:
+        assert r["days"]
+
+
+def test_search_lists_a_route_family_by_number_then_side(con):
+    """"61" is the 61A, 61B, 61C, 61D of today and then the plan's 61X --
+    the order a rider holds them in. Ranking by the long name put "MURRAY
+    SHORT" ahead of "NORTH BRADDOCK" for no reason a reader could see."""
+    names = [(r["side"], r["short_name"])
+             for r in query.search(con, "61", limit=20)["routes"]]
+    family = [n for n in names if n[1].startswith("61")]
+    assert family[:4] == [("current", "61A"), ("current", "61B"),
+                          ("current", "61C"), ("current", "61D")]
+    assert ("proposed", "61X") in family[4:]
+
+
+def test_search_names_a_stop_row_by_the_place_that_contains_it(con):
+    """PRT reuses one name at two corners kilometres apart -- "NOBLESTOWN RD
+    + #235" stands at 40.4132 and again at 40.4278 -- so a row needs the
+    place it is in to be told from its namesake. By containment (convention
+    6), never by PRT's own stop label."""
+    got = query.search(con, "forbes murray")
+    assert got["stops"]
+    for s in got["stops"]:
+        assert "place" in s
+    assert any(s["place"] == "Squirrel Hill North"
+               or s["place"] == "Squirrel Hill South" for s in got["stops"])
+
+
+def test_search_honours_the_limit(con):
+    got = query.search(con, "ave", limit=2)
+    assert len(got["places"]) <= 2
+    assert len(got["stops"]) <= 2
+    assert len(got["routes"]) <= 2
+
+
+def test_search_groups_a_corner_shared_by_both_networks_into_one_row(con):
+    """A corner PRT keeps under the same name on both sides must not double.
+
+    Found rather than hard-coded: pick any normalised name that has at least
+    one current pole and one proposed pole within `query.RADII[1]` of each
+    other, and check the search result names it once with both sides listed.
+    """
+    import re
+    rows = con.execute("SELECT side, name, lat, lon FROM stops").fetchall()
+    by_norm = {}
+    for r in rows:
+        norm = re.sub(r"[^a-z0-9]+", " ", r["name"].lower()).strip()
+        by_norm.setdefault(norm, []).append(r)
+    target = None
+    for norm, group in by_norm.items():
+        currents = [g for g in group if g["side"] == "current"]
+        proposeds = [g for g in group if g["side"] == "proposed"]
+        if not currents or not proposeds:
+            continue
+        c, p = currents[0], proposeds[0]
+        d = query._metres(c["lat"], c["lon"], p["lat"], p["lon"])
+        if d <= query.RADII[1]:
+            target = norm
+            break
+    assert target, "fixture db has no corner shared by both networks"
+    q = target.split()[0]
+    got = query.search(con, q, limit=20)
+    matches = [s for s in got["stops"]
+               if re.sub(r"[^a-z0-9]+", " ", s["name"].lower()).strip() == target]
+    assert len(matches) == 1
+    assert set(matches[0]["sides"]) == {"current", "proposed"}
+
+
+# --------------------------------------------------------------------------
+# route_drawing: one route, end to end
+# --------------------------------------------------------------------------
+
+def test_route_drawing_draws_current_61c_on_weekday(con):
+    drawn = query.route_drawing(con, "current", "61C", "weekday")
+    assert drawn["side"] == "current" and drawn["route_id"] == "61C"
+    assert drawn["day"] == "weekday"
+    assert "weekday" in drawn["days"]
+    assert drawn["features"]
+    for f in drawn["features"]:
+        assert len(f["points"]) >= 2
+        assert all(len(pt) == 2 for pt in f["points"])
+    assert drawn["bbox"] and len(drawn["bbox"]) == 4
+    ids = [f["pattern_id"] for f in drawn["features"]]
+    assert ids == sorted(ids)
+
+
+def test_route_drawing_unknown_route_is_none(con):
+    assert query.route_drawing(con, "current", "NOTAROUTE", "weekday") is None
+
+
+def test_route_drawing_a_rail_route_is_none(con):
+    """Rail is outside the Refresh, like every other service figure here."""
+    assert query.route_drawing(con, "current", "BLUE", "weekday") is None
+
+
+def test_route_drawing_on_a_day_it_does_not_run_is_empty_not_missing(con):
+    row = con.execute(
+        "SELECT route_id FROM route_service WHERE side='current' "
+        "GROUP BY route_id HAVING COUNT(*) < 3 LIMIT 1").fetchone()
+    if row is None:
+        pytest.skip("fixture db has no partial-week route to test against")
+    route_id = row["route_id"]
+    ran = {r["day"] for r in con.execute(
+        "SELECT day FROM route_service WHERE side='current' AND route_id=?",
+        (route_id,))}
+    missing_day = next(d for d in query.DAYS if d not in ran)
+    drawn = query.route_drawing(con, "current", route_id, missing_day)
+    assert drawn is not None
+    assert drawn["features"] == []
+    assert drawn["bbox"] is None
+
+
+def test_route_drawing_carries_the_crosswalk_on_both_sides(con):
+    current = query.route_drawing(con, "current", "61C", "weekday")
+    assert current["crosswalk"] is not None
+    assert current["crosswalk"]["current_route"].split()[0] == "61C"
+
+    proposed = query.route_drawing(con, "proposed", "61X", "weekday")
+    assert proposed["crosswalk"] is not None
+    assert proposed["crosswalk"]["final_route"].split()[0] == "61X"
+
+
+def test_route_drawing_crosswalk_is_none_on_a_miss(con):
+    row = con.execute(
+        "SELECT route_id, short_name FROM routes WHERE side='current'").fetchall()
+    cw_firsts = {r["current_route"].split()[0]
+                 for r in con.execute("SELECT current_route FROM crosswalk")
+                 if r["current_route"]}
+    miss = next((r for r in row if r["short_name"] not in cw_firsts), None)
+    if miss is None:
+        pytest.skip("every current route has a crosswalk row in this fixture")
+    drawn = query.route_drawing(con, "current", miss["route_id"], "weekday")
+    assert drawn["crosswalk"] is None

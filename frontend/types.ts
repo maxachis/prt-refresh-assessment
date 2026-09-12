@@ -802,3 +802,83 @@ export interface RouteGroupDetail extends RouteGroup {
   day: Day;
   features: RouteChangeFeature[];
 }
+
+// --------------------------------------------------------------------------
+// search, and a route asked for by name
+// --------------------------------------------------------------------------
+
+/** `[minLon, minLat, maxLon, maxLat]`, the order MapLibre's `fitBounds` takes. */
+export type BBox = [number, number, number, number];
+
+/** A named place the box found: a municipality or a city neighbourhood. */
+export interface SearchPlace {
+  key: string;
+  name: string;
+  /** "neighbourhood", "borough", "township", … — the county's own word. */
+  kind: string;
+  bbox: BBox;
+}
+
+/**
+ * A stop the box found, by name, with which networks have a pole of that
+ * name. A stop on `current` alone is one the plan removes or renames; one
+ * on `proposed` alone is one it adds. The row says which and nothing more —
+ * whether a stop "loses" anything is decided at the kerb once it is clicked,
+ * never from a name match.
+ */
+export interface SearchStop {
+  name: string;
+  lat: number;
+  lon: number;
+  sides: Side[];
+  /** The place that contains the corner, by boundary; null outside every one. */
+  place: string | null;
+}
+
+/** A route the box found, on one side: routes are per network, never shared. */
+export interface SearchRoute {
+  side: Side;
+  route_id: string;
+  short_name: string;
+  long_name: string;
+  days: Day[];
+}
+
+/**
+ * What `POST /api/search` answers with. Three lists rather than one ranked
+ * list, because the three are different units and a pick on each does a
+ * different thing; the box groups them under three headings for that reason.
+ */
+export interface SearchResponse {
+  q: string;
+  places: SearchPlace[];
+  stops: SearchStop[];
+  routes: SearchRoute[];
+}
+
+/** One drawable shape of a route, already `[lon, lat]` like every other path here. */
+export interface RouteFeature {
+  pattern_id: number;
+  points: [number, number][];
+}
+
+/**
+ * One route on one network, from `/api/route`, drawn for the day asked for.
+ * `features` is empty on a day the route does not run; `days` says which
+ * days it does, so the panel can say "does not run on Sundays" rather than
+ * drawing nothing and leaving the reader to guess why.
+ */
+export interface RouteResult {
+  side: Side;
+  route_id: string;
+  short_name: string;
+  long_name: string;
+  /** The feed's own `route_color`, hex without the `#`, or null. */
+  color: string | null;
+  day: Day;
+  days: Day[];
+  features: RouteFeature[];
+  bbox: BBox | null;
+  /** PRT's own labelling of which route replaces which, printed as written -- never a comparison this site makes (convention 1). */
+  crosswalk: RouteCrosswalkRow | null;
+}
