@@ -43,6 +43,39 @@ def test_meta_carries_the_provenance_caveat(client):
     assert {"location-not-route", "cluster-max", "boardings"} <= ids
 
 
+def test_meta_carries_no_feedback_form_until_one_is_configured(client, monkeypatch):
+    """With no form configured the map must render no report link -- the
+    field is null, not a template that would draw a link to nowhere."""
+    from refresh import feedback
+    monkeypatch.setattr(feedback, "FORM_URL_TEMPLATE", None)
+    assert client.get("/api/meta").json()["feedback"] is None
+
+
+def test_meta_hands_the_map_the_form_template(client, monkeypatch):
+    """The frontend does the {view} substitution itself -- the view URL
+    changes on every click, so the server can only ever hand over the
+    template, never a finished link."""
+    from refresh import feedback
+    monkeypatch.setattr(
+        feedback, "FORM_URL_TEMPLATE",
+        "https://docs.google.com/forms/d/e/X/viewform?entry.1={view}")
+    m = client.get("/api/meta").json()
+    assert m["feedback"]["url_template"] == feedback.FORM_URL_TEMPLATE
+
+
+def test_a_form_template_with_no_placeholder_stops_the_server_starting(
+        db_path, monkeypatch):
+    """The map substitutes the view into the template on every click, so a
+    template that cannot take one must fail at `refresh serve`, where the
+    person who pasted it is watching -- not inside the browser, silently,
+    once per click."""
+    from refresh import feedback
+    monkeypatch.setattr(feedback, "FORM_URL_TEMPLATE",
+                        "https://docs.google.com/forms/d/e/X/viewform")
+    with pytest.raises(ValueError):
+        create_app(db_path)
+
+
 def test_each_request_thread_gets_its_own_connection(db_path):
     """FastAPI runs a sync endpoint on a worker thread, and Python's sqlite3
     resets statements under a cursor another thread is still reading -- one

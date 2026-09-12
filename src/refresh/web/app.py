@@ -26,7 +26,7 @@ from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 
-from .. import journey, query
+from .. import feedback, journey, query
 
 _STATIC = Path(__file__).parent / "static"
 
@@ -75,6 +75,10 @@ def create_app(db_path: str | Path = "data/refresh.db", *,
     """
     db = _connection_per_thread(db_path)
     meta = query.meta(db())
+    # Refuse to start on a report-form template that cannot take a view. The
+    # map substitutes the view on every click, so this is the only moment the
+    # mistake surfaces in front of whoever made it.
+    feedback.template()
 
     app = FastAPI(
         title="PRT Bus Line Refresh — before and after",
@@ -164,6 +168,13 @@ def create_app(db_path: str | Path = "data/refresh.db", *,
                 "constants": journey.CONSTANTS,
             },
             "caveats": CAVEATS,
+            # Only the template travels here -- the frontend does the {view}
+            # substitution itself, because the view URL changes on every
+            # click and only the browser holds the current one. Read at
+            # request time, not captured at start-up, so a test can flip it
+            # without rebuilding the app.
+            "feedback": ({"url_template": feedback.template()}
+                        if feedback.template() else None),
         }
 
     @app.get("/api/place")

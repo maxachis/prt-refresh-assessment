@@ -905,6 +905,15 @@
                county baseline rather than anything with a location. That is a
                different page, not another layer. -->
           <a class="link" href="/findings">Findings</a>
+          <!-- Hidden until /api/meta says a form exists -- a link to a form
+               that is not there is worse than no link. Opens in a new tab so
+               the reader keeps the exact view they are reporting rather than
+               losing it to the form's own page. The href is that view's URL
+               prefilled into the form, and it is rewritten by main.ts every
+               time the address bar is, since a report with the wrong view
+               attached is unreproducible. -->
+          <a class="link hidden" id="report-link" target="_blank"
+             rel="noopener" href="#">Report a problem</a>
         </div>
       </header>
       <div id="statebar"></div>

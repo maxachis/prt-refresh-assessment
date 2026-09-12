@@ -63,6 +63,7 @@ import {
   Camera, UrlState, isFramed, parseUrlState, toSearch,
 } from './urlstate';
 import { fullViewLabel, isEmbedded, withEmbed, withoutEmbed } from './embed';
+import { feedbackHref } from './feedback';
 import { initSheet, onLayoutFlip, Sheet } from './sheet';
 import { basemapStyle, canvasScale, fadeMs, readMachine } from './hardware';
 import { initHover } from './hover';
@@ -243,6 +244,12 @@ let sheet: Sheet;
 // searches to, so "to Downtown" here is the published question rather than a
 // second definition of Downtown.
 let named: NamedDestination[] = [];
+
+// The report-a-problem form's prefill template, from /api/meta -- null while
+// no form is configured, which is also the default the link ships hidden
+// under, so a slow or failed /api/meta leaves the link exactly as absent as
+// an explicit "no form yet" would.
+let feedbackTemplate: string | null = null;
 
 /** Closes the map's one hover tooltip; set when the hover is wired below. */
 let clearHover: () => void = () => {};
@@ -954,6 +961,7 @@ function syncUrl() {
   // whole app in a 300 px box.
   history.replaceState(null, '', (embedded ? withEmbed(search) : search) + location.hash);
   refreshEmbedLink(search);
+  refreshReportLink();
 }
 
 /**
@@ -979,6 +987,31 @@ function refreshEmbedLink(search = withoutEmbed(location.search)) {
     ? (routeDetail() ? mappingLabel(routeDetail()!) : null)
     : last ? (lastPlace ? placeLabel(lastPlace) : 'this point') : null;
   a.querySelector('.el-action')!.textContent = fullViewLabel(place);
+}
+
+/**
+ * Point the "Report a problem" link at the view on screen.
+ *
+ * A report of "the numbers look wrong" with no view attached is not
+ * reproducible, so the link has to carry the exact question the reader was
+ * looking at -- day, radius, clicked point, selection -- which is exactly
+ * what `location.href` holds once `syncUrl` above has finished writing it.
+ * Called from there, after the write, and once more when the template first
+ * arrives from `/api/meta`, since the link is otherwise still pointed at "#".
+ *
+ * An embed shows no side panel at all, so this element is only ever on
+ * screen in the full app; the embed keeps just its own corner link
+ * (`refreshEmbedLink`), which already carries the same view.
+ */
+function refreshReportLink() {
+  const a = $('report-link') as HTMLAnchorElement;
+  const href = feedbackTemplate && feedbackHref(feedbackTemplate, location.href);
+  if (!href) {
+    a.classList.add('hidden');
+    return;
+  }
+  a.classList.remove('hidden');
+  a.href = href;
 }
 
 /** Say, above the panel, which question the panel is answering. */
@@ -1977,6 +2010,8 @@ async function loadMeta() {
     // the reader to its own method rather than restating it underneath.
     $('caveats').innerHTML = m.caveats
       .map((c: any) => `<li id="caveat-${c.id}">${c.text}</li>`).join('');
+    feedbackTemplate = m.feedback?.url_template ?? null;
+    refreshReportLink();
   } catch {
     /* the methods panel is not load-bearing; the map still works without it */
   }

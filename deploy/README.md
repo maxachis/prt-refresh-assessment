@@ -133,7 +133,9 @@ writes it as JSON to `/var/log/caddy/access.log`, rolled at 50 MB and kept for
 30 days, with the client address **masked to a /24 before the line is
 written** and any `Cookie` or `Authorization` header dropped — so nothing on
 the box identifies a reader, and there is no tag, cookie or third party on the
-page. Pull the files down and summarise them:
+page. The "Report a problem" link is the one exception, and it is an outbound
+link only: it sends a reader to a Google Form and nothing about it touches
+this box or shows up in the access log. Pull the files down and summarise them:
 
 ```bash
 scp 'root@<ip>:/var/log/caddy/access*.log*' /tmp/prt-usage/

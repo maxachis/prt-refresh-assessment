@@ -137,6 +137,25 @@ def test_the_served_page_carries_a_way_back_to_the_map():
     assert 'href="/"' in brief.app_page("<h1>x</h1>")
 
 
+def test_the_footer_offers_the_report_form_only_once_one_exists(monkeypatch):
+    """The form does not exist yet, so the footer must stay silent about it
+    until `FORM_URL_TEMPLATE` is set -- a "Report it" link to nowhere is
+    worse than the paragraph's absence."""
+    from refresh import feedback
+    monkeypatch.setattr(feedback, "FORM_URL_TEMPLATE", None)
+    assert "Report it" not in brief.feedback_paragraph()
+
+    monkeypatch.setattr(
+        feedback, "FORM_URL_TEMPLATE",
+        "https://docs.google.com/forms/d/e/X/viewform?usp=pp_url&entry.1={view}")
+    html = brief.feedback_paragraph()
+    assert "Report it" in html
+    # The findings page is served at no other address, so the prefilled link
+    # has to name it absolutely -- a reader's report is text sent back to us,
+    # and a relative link would name whatever page happened to embed this.
+    assert "https%3A%2F%2Fprt-refresh.lemaliconsulting.com%2Ffindings" in html
+
+
 def test_a_nameless_place_says_why_it_has_no_name():
     """Now vanishingly rare rather than routine: block groups are named by the
     boundary containing them, and municipal boundaries partition the county, so

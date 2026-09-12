@@ -1721,6 +1721,37 @@ an SSH tunnel, which is also how you show it to a few people first. The kit is
 small on purpose — nothing here collects data, so there is no replica, archive
 or heartbeat to maintain. See [`deploy/README.md`](../deploy/README.md).
 
+## Reporting a problem
+
+The map's header and the findings page's footer both carry a "Report a
+problem" link to a Google Form, prefilled with the URL of the exact view the
+reader was looking at — day, radius, clicked point, selection — since a
+report that a number looks wrong is not reproducible without knowing which
+number. It is hidden everywhere until `FORM_URL_TEMPLATE` in
+[`src/refresh/feedback.py`](../src/refresh/feedback.py) is set: a link to a
+form that does not exist yet is worse than no link, so both surfaces check
+that constant before drawing one, and `/api/meta`'s `feedback` field is
+`null` until it is.
+
+To turn it on:
+
+1. Create the form. A short-answer field, "Link to the view you were looking
+   at", is the one field the prefill needs; suggested fields beyond it: what
+   the site shows, what you believe is true and how you know it, a route or
+   stop id if you have one, and an optional email for follow-up.
+2. Use Google Forms' "Get pre-filled link", type anything at all into the
+   view-link field, and copy the resulting URL.
+3. Replace that typed value with the literal `{view}` and paste the whole URL
+   into `FORM_URL_TEMPLATE`.
+4. Run `python3 build_equity_brief.py` to bake the link into the findings
+   page, commit, and redeploy — the map picks it up at runtime through
+   `/api/meta`, with no rebuild of its own needed.
+
+A submitted report is the one thing a reader can hand the site that is not a
+line in the access log — everything else here is read off traffic, this is
+someone typing something. It goes to Google and to the form's owner, never to
+the box: nothing about it touches the server.
+
 ## Before it goes public
 
 1. **Confirm that republishing the feed's contents is expected.** Provenance is
@@ -1737,7 +1768,11 @@ or heartbeat to maintain. See [`deploy/README.md`](../deploy/README.md).
    `report_usage.py` reads it for which views, places and destinations get
    asked about — no cookie, no tag, no third party. The `/findings` footer says
    so; the permission question above should mention it too, so PPT is not
-   surprised by it later. See `deploy/README.md`, "Reading the usage".
+   surprised by it later. See `deploy/README.md`, "Reading the usage". The
+   same question should also cover the report-a-problem form, once it exists
+   (see "Reporting a problem" above) — what a reader submits there goes to
+   Google and to the form's owner, not to this server, and PPT should hear
+   that from the permission question rather than discover it later.
 
 ## Known gaps
 

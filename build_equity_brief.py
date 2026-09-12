@@ -62,6 +62,14 @@ from analyze_removed_ridership import leading_street
 import svgplot as sp
 from svgplot import el, escape, group
 
+# The footer's report-a-problem link is built by `refresh.feedback` so the
+# brief and the deployed map cannot compute the prefill rule two different
+# ways. No install needed to reach it -- it lives under src/ because the web
+# extra also imports it, but it is standard library like the rest of the
+# pipeline (see build_webdb.py, which reaches `refresh.query` the same way).
+sys.path.insert(0, str(Path(__file__).parent / "src"))
+from refresh import feedback  # noqa: E402
+
 DATA = Path(__file__).resolve().parent / "data"
 DOCS = Path(__file__).resolve().parent / "docs"
 CHANGE_CSV = DATA / "equity_change.csv"
@@ -968,6 +976,26 @@ def borrowed_caveat(ranked):
 
 
 
+def feedback_paragraph():
+    """The footer's report-a-problem line, or "" while no form is configured.
+
+    The findings page has no {view} of its own to send -- unlike the map, it
+    is one static document, not a click-by-click state -- so the one URL
+    worth prefilling is the page itself, and it has to be absolute: the value
+    is text a reader submits back to us, and a relative link would name
+    whatever page happened to embed this fragment rather than the findings
+    page they were actually reading.
+    """
+    url = feedback.feedback_url(MAP_SITE + "/findings")
+    if url is None:
+        return ""
+    return (f"<p>Spotted a number that does not match what runs on the "
+            f'street, or something broken? <a href="{escape(url)}" '
+            f'target="_blank" rel="noopener">Report it</a>. The form is '
+            f"hosted by Google: what is typed there goes to Google and to "
+            f"the people who run this site, never to this server.</p>")
+
+
 def page_body(rows, *, map_base):
     """The brief's prose, with the generated evidence dropped into its slots.
 
@@ -997,6 +1025,7 @@ def page_body(rows, *, map_base):
             columns=["Lose all buses", "Gain a bus"]),
         "table-removed": lambda: removed_table(load_removed(),
                                                base=map_base),
+        "feedback": feedback_paragraph,
     }))
 
 
