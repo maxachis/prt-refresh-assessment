@@ -49,6 +49,15 @@ import {
   layerData as placeDetail, listData as placesList, isVisible as placesOn,
   boundariesData, unchangedPlace,
 } from './places';
+import {
+  initRouteChangesLayer, loadRouteChanges, selectRouteGroup, clearRouteSelection,
+  setRouteChangesVisible, routeListHTML, routeCardHTML, routeKeyHTML,
+  routeTooltipHTML, mappingLabel, ROUTE_HIT_LAYERS, RouteBucket, isRouteBucket,
+  hiddenRouteBuckets, toggleRouteBucket, setHiddenRouteBuckets,
+  ServiceRow, isServiceBucket, hiddenServiceBuckets, toggleServiceBucket, setHiddenServiceBuckets,
+  RouteReading, isRouteReading, routeReading, setRouteReading,
+  groupsData as routeGroups, selectedData as routeDetail, isVisible as routesOn,
+} from './routechange';
 import { questionLineHTML, viewLabel } from './statebar';
 import {
   Camera, UrlState, isFramed, parseUrlState, toSearch,
@@ -67,6 +76,8 @@ import {
 const PGH: [number, number] = [-79.9959, 40.4406];
 const PGH_ZOOM = 12;              // the county, near enough
 const ORIGIN_COLOR = '#e2574c';   // the red "you asked here" pin
+/** Half-width of the box a click on the Route changes lines is tested in -- lines are thin. */
+const ROUTE_HIT_PX = 5;
 
 /**
  * The toolbar's controls, addressed by the attribute that carries their value.
@@ -204,6 +215,11 @@ let selectedPlace: string | null = null;
 // control that changes what is on the ground.
 let placeFill: PlaceFill = DEFAULT_PLACE_FILL;
 
+// The Route changes view's selected group, by its /api/route_changes key, or
+// null while the directory is showing. Kept here for the reason
+// `selectedPlace` is: `syncUrl` writes it and a reload restores it.
+let selectedRoute: string | null = null;
+
 // Whether the brush is armed, so a drag paints stops instead of panning the
 // map. A mode rather than a modifier because a phone has no modifier: paint
 // and pan are the same gesture there, and a shift-drag would leave the
@@ -284,6 +300,7 @@ map.on('load', () => {
   // whole route list painted across it.
   initStopRoutesLayer(map, JOURNEY_RIDE_LAYER);
   initPlacesLayer(map, CHANGE_BASE_LAYER);    // same slot as corridors; mutually exclusive with dots/surface too
+  initRouteChangesLayer(map, CHANGE_BASE_LAYER);  // same slot again; a whole view of its own
   renderPanel();
 
   map.on('click', (e: any) => {
@@ -302,6 +319,27 @@ map.on('load', () => {
     if (view === 'places') {
       const hit = map.queryRenderedFeatures(e.point, { layers: [BOUNDARY_LAYER] })[0];
       if (hit) void goToPlace(hit.properties!.key as string);
+      return;
+    }
+    // Route changes likewise has no point to answer at: a click selects the
+    // group whose line is under it, or clears the selection on empty map.
+    // The hit test is a small box rather than the point, because a line a
+    // few pixels wide is a hard target and a click that lands one pixel off
+    // it should not read as "clear". Topmost feature wins, which
+    // `ROUTE_HIT_LAYERS`' order makes the selected group's own lines.
+    if (view === 'routes') {
+      const { x, y } = e.point;
+      const box: [[number, number], [number, number]] = [
+        [x - ROUTE_HIT_PX, y - ROUTE_HIT_PX], [x + ROUTE_HIT_PX, y + ROUTE_HIT_PX]];
+      const hit = map.queryRenderedFeatures(box, { layers: ROUTE_HIT_LAYERS })[0];
+      if (hit) {
+        // A map click is a request for the card, so the sheet comes up to
+        // where it is readable -- the same rule `askAt` applies to a point.
+        sheet.atLeast('half');
+        void goToRoute(hit.properties!.key as string);
+      } else {
+        clearRoute();
+      }
       return;
     }
     // Snap to a change dot when one is under the cursor, so the panel that
@@ -371,6 +409,16 @@ map.on('load', () => {
       layer: 'stoproutes-lines',
       html: (f: any) => routeLineLabel(f.properties),
     },
+    // The Route changes lines: the selected group's own layer first, since it
+    // is drawn over the dimmed network, then the network. Whether a group is
+    // selected decides which word in the tooltip carries the weight, and it
+    // is read at hover time rather than captured here.
+    ...ROUTE_HIT_LAYERS.map((layer) => ({
+      layer,
+      html: (f: any) => routeTooltipHTML(f.properties, {
+        selected: routeDetail() !== null, reading: routeReading(),
+      }),
+    })),
     // The choropleth's tooltip anchors at the pointer, having no point of its
     // own to sit on. `placeFill` decides which reading leads
     // (`placeTooltipHTML`'s own doc), so this reads the module state rather
@@ -447,6 +495,12 @@ map.on('load', () => {
     // handled by `renderPanel()` above, and the legend's own null-hole
     // sentence is redrawn by `refreshLegend()` below.
     if (placesOn() && placeFill === 'service') setPlacesFill(map, placeFill, day);
+    // The Route changes overview is per day -- a route with no Sunday
+    // pattern draws nothing on a Sunday -- so it is refetched (from the
+    // per-day cache after the first time), and a selected group's two sides
+    // with it. The directory and the card were already redrawn by
+    // `renderPanel()` above and are day-free anyway.
+    if (routesOn()) void reloadRouteChanges();
     refreshLegend();
   });
 
@@ -482,6 +536,7 @@ map.on('load', () => {
     void showOneSeat(view === 'oneseat');
     showJourney(view === 'journey', previous === 'journey');
     void showPlaces(view === 'places');
+    void showRoutes(view === 'routes');
     // One-seat and the shared location report answer different questions from
     // the same fetched answer, so switching between them redraws rather than
     // refetches. Leaving the journey view is handled by `showJourney`, which
@@ -511,6 +566,8 @@ map.on('load', () => {
     // control needs no line here: it is drawn inside the panel, which the
     // view switch replaces wholesale.)
     $('place-fill-controls').classList.toggle('hidden', view !== 'places');
+    // Same for the one-to-one control: it decides whether the Route changes
+    // grey is drawn, and there is no grey to draw in any other view.
     refreshStopRoutesControls();
     // The brush paints dots, so it means nothing in the views that have none.
     // Disarmed rather than merely hidden: a mode left armed behind a control
@@ -579,6 +636,7 @@ map.on('load', () => {
     }
   });
 
+
   $('legend').addEventListener('click', (e) => {
     const w = (e.target as HTMLElement).closest<HTMLElement>('[data-weight]');
     if (w) {
@@ -594,12 +652,51 @@ map.on('load', () => {
       syncUrl();
       return;
     }
+    // The Route changes key's rows switch their lines off and on the same
+    // way. A filter on the layer rather than a refetch: the overview already
+    // carries every group. Into the link, unlike the dots' buckets, because
+    // its default hides sixty routes and an embed has to draw what its
+    // author saw.
+    const bucket = (e.target as HTMLElement).closest<HTMLElement>('[data-route-bucket]');
+    if (bucket && isRouteBucket(bucket.dataset.routeBucket!)) {
+      toggleRouteBucket(map, bucket.dataset.routeBucket as RouteBucket);
+      refreshLegend();
+      syncUrl();
+      return;
+    }
+    const service = (e.target as HTMLElement).closest<HTMLElement>('[data-route-service]');
+    if (service && isServiceBucket(service.dataset.routeService!)) {
+      toggleServiceBucket(map, service.dataset.routeService as ServiceRow);
+      refreshLegend();
+      syncUrl();
+      return;
+    }
+    // The reading switch recolours the overview and regroups the directory,
+    // which is drawn in the same colours; the card is untouched, since a
+    // selected group's colours are its two sides either way.
+    const reading = (e.target as HTMLElement).closest<HTMLElement>('[data-route-reading]');
+    if (reading && isRouteReading(reading.dataset.routeReading!)) {
+      setRouteReading(map, reading.dataset.routeReading as RouteReading);
+      refreshLegend();
+      if (routesOn()) renderPanel();
+      syncUrl();
+      return;
+    }
     const row = (e.target as HTMLElement).closest<HTMLElement>('[data-bucket]');
     if (!row) return;
     toggleBucket(map, row.dataset.bucket!, activeDay());
     refreshLegend();
   });
   $('legend-reset').addEventListener('click', () => {
+    // Only the reading on screen: a reader clearing the key they are looking
+    // at has not asked about the other one's rows.
+    if (routesOn()) {
+      if (routeReading() === 'service') setHiddenServiceBuckets(map, []);
+      else setHiddenRouteBuckets(map, []);
+      refreshLegend();
+      syncUrl();
+      return;
+    }
     resetBuckets(map, activeDay());
     refreshLegend();
   });
@@ -634,6 +731,15 @@ map.on('load', () => {
     // A row in the Places list.
     const row = (e.target as HTMLElement).closest<HTMLElement>('[data-select-place]');
     if (row) void goToPlace(row.dataset.selectPlace!);
+
+    // A row in the Route changes directory, or the card's way back to it --
+    // the same attribute with an empty value, so one handler serves both.
+    const routeRow = (e.target as HTMLElement).closest<HTMLElement>('[data-select-route]');
+    if (routeRow) {
+      const key = routeRow.dataset.selectRoute!;
+      if (key) void goToRoute(key);
+      else clearRoute();
+    }
 
     // The Places list's own count/share toggle. Delegated rather than bound
     // like the toolbar's segments, because this button is redrawn with every
@@ -781,6 +887,12 @@ function applyOpening(s: Partial<UrlState>): void {
   // turns the layer on, so pressing it first paints the fill correctly on
   // the first frame instead of the default and then a second repaint.
   if (s.placeFill) press(CONTROL.placeFill, s.placeFill);
+  // Before the view, for the same reason as the fill: the filter is set on
+  // the layer at once, so the overview's first draw is at the asked-for
+  // state rather than the default and a repaint.
+  if (s.routeHidden) setHiddenRouteBuckets(map, s.routeHidden);
+  if (s.serviceHidden) setHiddenServiceBuckets(map, s.serviceHidden);
+  if (s.routeReading) setRouteReading(map, s.routeReading);
   if (s.dest) {
     // A dropped pin has no button to press; a named district does, and
     // pressing it lights the toolbar as well as moving the destination.
@@ -801,6 +913,11 @@ function applyOpening(s: Partial<UrlState>): void {
   // Same reasoning as `s.at`: it answers a question the view above has to be
   // Places for it to mean anything, so it is pressed last too.
   if (s.place) void goToPlace(s.place);
+  // Last, like `s.place`: it means something only once the view is Route
+  // changes. A link that also carried a camera keeps it -- the reader who
+  // copied the link was looking at something in particular, and fitting the
+  // whole group would move them off it.
+  if (s.route) void goToRoute(s.route, { fly: !s.camera });
 }
 
 /**
@@ -825,6 +942,10 @@ function syncUrl() {
     placeFill,
     selection: selectionIds(),
     stopRoutes,
+    route: selectedRoute,
+    routeHidden: hiddenRouteBuckets(),
+    routeReading: routeReading(),
+    serviceHidden: hiddenServiceBuckets(),
   };
   const search = toSearch(state);
   // The mode is not part of the question, so it is not in what `toSearch`
@@ -851,7 +972,12 @@ function refreshEmbedLink(search = withoutEmbed(location.search)) {
   // A click has produced an answer even here -- the panel computed it, the
   // embed simply has nowhere to put it -- so the link says so, or the click
   // reads as having done nothing at all.
-  const place = last ? (lastPlace ? placeLabel(lastPlace) : 'this point') : null;
+  // In Route changes the answer is the selected group, not the last clicked
+  // point -- which may be left over from another view and would put "Full
+  // answer for <some corner>" under a map of route lines.
+  const place = view === 'routes'
+    ? (routeDetail() ? mappingLabel(routeDetail()!) : null)
+    : last ? (lastPlace ? placeLabel(lastPlace) : 'this point') : null;
   a.querySelector('.el-action')!.textContent = fullViewLabel(place);
 }
 
@@ -942,9 +1068,16 @@ function renderLegendBody() {
   // legend nor the one-seat legend has one, so the button is hidden rather
   // than left clickable and silently inert.
   $('legend-reset').classList.toggle('hidden',
-    corridorOn() || oneSeatOn() || journeyOn() || placesOn() || !dotsOn());
+    corridorOn() || oneSeatOn() || journeyOn() || placesOn() || !(dotsOn() || routesOn()));
   if (journeyOn()) {
     $('legend').innerHTML = journeyKeyHTML(journeyData());
+    return;
+  }
+  if (routesOn()) {
+    $('legend').innerHTML = routeKeyHTML({
+      groups: routeGroups(), day: activeDay(), hidden: hiddenRouteBuckets(),
+      serviceHidden: hiddenServiceBuckets(), reading: routeReading(), selected: routeDetail(),
+    });
     return;
   }
   if (placesOn()) {
@@ -1110,6 +1243,67 @@ async function goToPlace(key: string) {
 }
 
 /**
+ * Turn the Route changes view on or off, fetching the day's overview the
+ * first time (and once per day type thereafter -- see `loadRouteChanges`).
+ *
+ * Leaving the view keeps the selection, like Places: the layer stops being
+ * drawn, and coming back re-renders the same card with the same group
+ * selected rather than losing the reader's place.
+ */
+async function showRoutes(on: boolean) {
+  if (on) await withLoadingLegend(() => loadRouteChanges(map, activeDay()));
+  setRouteChangesVisible(map, on);
+  if (on) renderPanel({ scrollToTop: true });
+  refreshLegend();
+}
+
+/**
+ * Select one route group: draw both its sides over the dimmed network, fit
+ * the map to them, and swap the directory for its card.
+ *
+ * The single door into the selection, whether from a directory row, a line
+ * on the map, or a link's `route=` -- so all three end with the same map,
+ * panel and address bar. `selectedRoute` is set from the fetch's own
+ * outcome, not from `key` up front, for the reason `goToPlace` gives: a key
+ * nothing was displayed for must not be written into a link that restores
+ * nothing.
+ */
+async function goToRoute(key: string, { fly = true } = {}) {
+  const detail = await withLoadingLegend(() =>
+    selectRouteGroup(map, key, activeDay(), { fly }));
+  selectedRoute = detail ? key : null;
+  if (view === 'routes') renderPanel({ scrollToTop: true });
+  refreshLegend();
+  syncUrl();
+}
+
+/** Back to the directory: the network at full weight, nothing drawn over it. */
+function clearRoute() {
+  if (!selectedRoute && !routeDetail()) return;
+  clearRouteSelection(map);
+  selectedRoute = null;
+  if (view === 'routes') renderPanel({ scrollToTop: true });
+  refreshLegend();
+  syncUrl();
+}
+
+/**
+ * Redraw the Route changes view for the toolbar's day: the overview, and the
+ * selected group's two sides if there is one. The camera stays where it is
+ * -- a day switch is not a new question about where to look.
+ */
+async function reloadRouteChanges() {
+  await withLoadingLegend(async () => {
+    await loadRouteChanges(map, activeDay());
+    if (selectedRoute) {
+      await selectRouteGroup(map, selectedRoute, activeDay(), { fly: false });
+    }
+  });
+  if (view === 'routes') renderPanel();
+  refreshLegend();
+}
+
+/**
  * The walk radius has no meaning for the corridor view — a corridor is a
  * piece of street, not a catchment — so the control is disabled rather than
  * left clickable and silently ignored.
@@ -1154,6 +1348,17 @@ function renderPanel({ scrollToTop = false } = {}) {
   // every other view's empty state.
   if (view === 'places') {
     $('panel').innerHTML = placesListHTML(placesList() ?? [], placeSort, selectedPlace, placeFill);
+    return;
+  }
+  // Route changes likewise: the directory is the answer, and a selected group
+  // replaces it with a card until the reader goes back. The directory is
+  // drawn with the selected key marked even while the card's fetch is in
+  // flight, so a slow answer does not flash an unmarked list.
+  if (view === 'routes') {
+    const d = routeDetail();
+    $('panel').innerHTML = d
+      ? routeCardHTML(d)
+      : routeListHTML(routeGroups() ?? [], selectedRoute, { reading: routeReading(), day: activeDay() });
     return;
   }
   if (!lastPlace) {
@@ -1735,6 +1940,9 @@ function askAt(lat: number, lon: number) {
   // click to measure -- so a map click here asks nothing. Selecting a place
   // happens in the panel's own list instead.
   if (view === 'places') return;
+  // Route changes has no point to answer at either; its selection is made
+  // by the click handler and the directory, never through here.
+  if (view === 'routes') return;
   void load(lat, lon);
 }
 

@@ -691,3 +691,114 @@ export interface BoundariesGeoJSON {
   type: 'FeatureCollection';
   features: PlaceBoundaryFeature[];
 }
+
+// --------------------------------------------------------------------------
+// the Route changes view
+// --------------------------------------------------------------------------
+
+/**
+ * What became of one route group -- see `RouteGroup`. Five outcomes, and
+ * the middle three are the interesting ones: `one-to-one` is a route PRT
+ * kept under one number on each side, `split` is one of today's numbers
+ * becoming several of the plan's, `merged` is several becoming one.
+ */
+export type RouteStatus = 'discontinued' | 'new' | 'one-to-one' | 'split' | 'merged';
+
+/** One route on one side of a group: its public number and its name. */
+export interface RouteRef {
+  route: string;
+  name: string;
+}
+
+/**
+ * A group's trips and revenue hours on one day type, both networks.
+ *
+ * `pct_*` is `null`, not `Infinity`, where today's side is zero -- a new
+ * group, or a route with no service on that day -- because there is nothing
+ * to divide by. Revenue hours are in-service time only (first stop to last),
+ * per `analyze_route_hours.py`: a floor on platform hours, never a cost.
+ */
+/**
+ * The site's change buckets, as `query.BUCKETS` spells them -- the same keys
+ * the dots and the surface are coloured by.
+ */
+export type ServiceBucket = 'gone' | 'halved' | 'less' | 'same' | 'more' | 'doubled' | 'new' | 'none';
+
+export interface RouteDayService {
+  cur_trips: number;
+  prop_trips: number;
+  cur_hours: number;
+  prop_hours: number;
+  pct_trips: number | null;
+  pct_hours: number | null;
+  /** `query.bucket` on the two trip counts: the day's change in the site's own buckets. */
+  bucket: ServiceBucket;
+}
+
+/** One row of PRT's own route crosswalk, as PRT published it -- the plan's account of itself. */
+export interface RouteCrosswalkRow {
+  current_route: string;
+  final_route: string;
+  category: string;
+  related_routes: string;
+  route_page: string;
+}
+
+/**
+ * A ROUTE GROUP: the connected set of today's route numbers and the plan's
+ * that PRT maps onto one another, from `/api/route_changes`. This is
+ * `analyze_route_hours.py`'s unit, and its docstring is the reference for
+ * why it is not a corridor -- Carrick's 51 groups with the plan's 51 and 51S
+ * and reads as -10% trips, while the new 45 running much of the same street
+ * is a separate `new` group. Nothing adds them together, deliberately.
+ *
+ * `shown` is which side the overview draws for this group: today's for a
+ * discontinued route, which has no other side, and the plan's for everyone
+ * else. `riders_weekday` is 0 for a new group, since nobody can have ridden
+ * a route that has not run.
+ */
+export interface RouteGroup {
+  key: string;
+  rank: number;
+  status: RouteStatus;
+  current: RouteRef[];
+  proposed: RouteRef[];
+  riders_weekday: number;
+  service: Record<Day, RouteDayService>;
+  prt: RouteCrosswalkRow[];
+  shown: Side;
+}
+
+/**
+ * One drawn journey pattern of one group's route, on one side. `points` are
+ * `[lon, lat]`, the order MapLibre wants and the order every other drawn
+ * path here carries.
+ */
+export interface RouteChangeFeature {
+  key: string;
+  side: Side;
+  route: string;
+  name: string | null;
+  status: RouteStatus;
+  pattern_id: number;
+  points: [number, number][];
+}
+
+/**
+ * The whole view for one day type: every group, ranked by weekday riders and
+ * identical for every day, plus the patterns of each group's SHOWN side on
+ * that day. A route with no Sunday pattern draws nothing on a Sunday, which
+ * is why the overview is per day while the group list is not.
+ */
+export interface RouteChangesResult {
+  day: Day;
+  groups: RouteGroup[];
+  features: RouteChangeFeature[];
+}
+
+/** One group with the patterns of BOTH its sides, from `/api/route_changes/{key}`. */
+export interface RouteGroupDetail extends RouteGroup {
+  /** The day the features were drawn for; the group's own figures cover all three. */
+  day: Day;
+  features: RouteChangeFeature[];
+}

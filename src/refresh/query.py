@@ -2005,19 +2005,23 @@ _PLACE_INDEX = {}
 
 
 def place_index(con):
-    """The county's boundaries, loaded once per connection.
+    """The county's boundaries, loaded once per database file.
 
-    Cached on the connection because the panel asks this on every click and
-    parsing 3.5 MB of polygon JSON per request would dominate the response.
+    Cached because the panel asks this on every click and parsing 3.5 MB of
+    polygon JSON per request would dominate the response. Keyed by file
+    rather than by connection, like `_TIMETABLES`: the app now opens one
+    connection per worker thread, and per-connection would parse it once per
+    thread.
     """
-    cached = _PLACE_INDEX.get(id(con))
+    key = _database_of(con)
+    cached = _PLACE_INDEX.get(key)
     if cached is None:
         cached = geometry.PlaceIndex([
             geometry.Place(name=r["place"], kind=r["kind"],
                            polygons=json.loads(r["polygons"]))
             for r in con.execute(
                 "SELECT place, kind, polygons FROM place_boundary")])
-        _PLACE_INDEX[id(con)] = cached
+        _PLACE_INDEX[key] = cached
     return cached
 
 
@@ -3008,6 +3012,255 @@ def routes(con, side: str):
 def crosswalk(con):
     return [dict(r) for r in con.execute(
         "SELECT * FROM crosswalk ORDER BY current_route").fetchall()]
+
+
+# --------------------------------------------------------------------------
+# route_changes -- the route-GROUP view (convention 1's unit, drawn)
+# --------------------------------------------------------------------------
+
+def _crosswalk_current_tokens(current_route: str | None) -> list[str]:
+    """Every current route id one crosswalk cell names.
+
+    Comma-split, because PRT packs several current routes into one cell
+    ("86, 77") -- a naive whitespace split would read that as the single
+    route "86,". "-" and "" both mean no current route in that sub-cell.
+    """
+    return [tok.strip().split()[0] for tok in (current_route or "").split(",")
+            if tok.strip() and tok.strip() != "-"]
+
+
+def _crosswalk_final_token(final_route: str | None) -> str | None:
+    """The one proposed route id a crosswalk cell names, or None for "-"."""
+    final_route = (final_route or "").strip()
+    if not final_route or final_route == "-":
+        return None
+    return final_route.split()[0]
+
+
+def _crosswalk_index(rows):
+    """{current route id: [row, ...]}, {proposed route id of a "New" row:
+    [row, ...]} -- built once so `route_changes` need not scan the whole
+    crosswalk table per group."""
+    by_current: dict[str, list] = {}
+    by_new_final: dict[str, list] = {}
+    for r in rows:
+        for tok in _crosswalk_current_tokens(r["current_route"]):
+            by_current.setdefault(tok, []).append(r)
+        if r["category"] == "New":
+            tok = _crosswalk_final_token(r["final_route"])
+            if tok:
+                by_new_final.setdefault(tok, []).append(r)
+    return by_current, by_new_final
+
+
+def _group_prt_rows(by_current, by_new_final, current_ids, proposed_ids):
+    """PRT's own crosswalk rows for one group -- see `route_changes`.
+
+    Rows whose `current_route` names one of the group's current routes,
+    plus -- only for a group with no current side at all -- the "New" rows
+    whose `final_route` names one of its proposed routes. A group with a
+    current side never falls into the second half: its "New" reading, if
+    any, belongs to a different group entirely (this is exactly the Carrick
+    51 / new-45 split convention 1 forbids collapsing).
+    """
+    seen: set[tuple] = set()
+    out = []
+    for rid in current_ids:
+        for r in by_current.get(rid, []):
+            marker = (r["current_route"], r["final_route"])
+            if marker not in seen:
+                seen.add(marker)
+                out.append(r)
+    if not current_ids:
+        for rid in proposed_ids:
+            for r in by_new_final.get(rid, []):
+                marker = (r["current_route"], r["final_route"])
+                if marker not in seen:
+                    seen.add(marker)
+                    out.append(r)
+    return out
+
+
+# How PRT's table spells "no related routes" on 35 of its rows; the other 13
+# such cells are simply empty. Normalised to empty here so the card prints
+# "PRT points riders to: ..." only when there is somewhere to point.
+PRT_NO_RELATED = "N/A"
+
+
+def _prt_row(row) -> dict:
+    """One crosswalk row as the API sends it, PRT's "N/A" read as empty."""
+    out = dict(row)
+    if (out.get("related_routes") or "").strip() == PRT_NO_RELATED:
+        out["related_routes"] = ""
+    return out
+
+
+def _route_group_service_rows(con):
+    """{key: {day: {...}}} -- every `route_group_service` row, grouped.
+
+    `bucket` is `bucket()` on the day's two trip counts -- the same buckets,
+    same dead band, as every dot and cell on the site -- so the view can
+    colour a group by how much its service changed and an orange line means
+    what an orange dot means. Decided here rather than in the browser so
+    the thresholds live in one place.
+    """
+    out: dict[str, dict] = {}
+    for r in con.execute(
+            "SELECT key, day, cur_trips, prop_trips, cur_hours, prop_hours, "
+            "pct_trips, pct_hours FROM route_group_service"):
+        out.setdefault(r["key"], {})[r["day"]] = {
+            "cur_trips": r["cur_trips"], "prop_trips": r["prop_trips"],
+            "cur_hours": round(r["cur_hours"], 1),
+            "prop_hours": round(r["prop_hours"], 1),
+            "pct_trips": r["pct_trips"], "pct_hours": r["pct_hours"],
+            "bucket": bucket(r["cur_trips"], r["prop_trips"]),
+        }
+    return out
+
+
+def _side_entries(names, side_ids):
+    """[{"route": ..., "name": ...}, ...] in CSV order, for one side of a
+    group's route list."""
+    return [{"route": rid, "name": names.get(rid)} for rid in side_ids]
+
+
+def _route_group_dicts(con):
+    """[group dict, ...], ordered by `rank`, with `service` and `prt` filled
+    in but no `features` -- the part of `route_changes` that is day-free.
+
+    Shared between `route_changes` (all groups, one day's features) and
+    `route_change` (one group, both sides' features) so the two can never
+    disagree about a group's own figures.
+    """
+    service_by_key = _route_group_service_rows(con)
+    cw_by_current, cw_by_new_final = _crosswalk_index(crosswalk(con))
+    names = {side: {r["route_id"]: r["long_name"] for r in con.execute(
+        "SELECT route_id, long_name FROM routes WHERE side = ?", (side,))}
+        for side in SIDES}
+
+    groups = []
+    for r in con.execute(
+            "SELECT key, rank, current_routes, proposed_routes, status, "
+            "riders_weekday FROM route_group ORDER BY rank"):
+        current_ids = [c for c in r["current_routes"].split(";") if c]
+        proposed_ids = [p for p in r["proposed_routes"].split(";") if p]
+        groups.append({
+            "key": r["key"], "rank": r["rank"], "status": r["status"],
+            "current": _side_entries(names["current"], current_ids),
+            "proposed": _side_entries(names["proposed"], proposed_ids),
+            "riders_weekday": r["riders_weekday"],
+            "service": service_by_key.get(r["key"], {}),
+            "prt": [_prt_row(row) for row in _group_prt_rows(
+                cw_by_current, cw_by_new_final, current_ids, proposed_ids)],
+            # A discontinued group has nothing to draw on the proposed side;
+            # every other group -- including "new", which has nothing else
+            # -- draws its proposed side.
+            "shown": "current" if r["status"] == "discontinued" else "proposed",
+        })
+    return groups
+
+
+def _route_group_features(con, day: str, group, side: str):
+    """One group's drawable patterns on one side, for one day.
+
+    Mirrors `_side_kerb_routes`: the route universe is the group's own ids
+    (BUSES ONLY -- `analyze_route_hours.py` builds them from bus timetables
+    alone, so a rail pattern is never reached even though `journey_pattern`
+    carries rail too), and each route's patterns come from `journey_pattern`
+    for that side and day. A route with no pattern on that day type (a
+    Sunday-only group read on a weekday, say) simply contributes no feature.
+    """
+    route_ids = {e["route"] for e in group[side]}
+    if not route_ids:
+        return []
+    features = []
+    holes = ",".join("?" * len(route_ids))
+    for row in con.execute(
+            f"SELECT pattern_id, route_id, stops FROM journey_pattern "
+            f"WHERE side = ? AND day = ? AND route_id IN ({holes})",
+            (side, day, *route_ids)):
+        calling = row["stops"].split(";")
+        drawn = _pattern_path(con, side, day, row["pattern_id"], calling, at=0)
+        if drawn is None:
+            continue
+        points, _stop_index = drawn
+        features.append({
+            "key": group["key"], "side": side, "route": row["route_id"],
+            "name": next((e["name"] for e in group[side]
+                         if e["route"] == row["route_id"]), None),
+            "status": group["status"], "pattern_id": row["pattern_id"],
+            "points": points,
+        })
+    # Deterministic, as `_side_kerb_routes` sorts for the same reason: a link
+    # or a screenshot must draw the same lines in the same order every time.
+    features.sort(key=lambda f: (f["key"], f["route"], f["pattern_id"]))
+    return features
+
+
+def route_changes(con, day: str) -> dict:
+    """Every route GROUP `analyze_route_hours.py` publishes, for one day type.
+
+    FOR THE OVERVIEW OF WHAT CHANGED ROUTE BY ROUTE -- not a replacement for
+    `/api/routes` or `/api/crosswalk`, and not a published measure of access,
+    coverage or area (those stay `analyze_coverage_change.py`'s and
+    `analyze_corridor_change.py`'s per convention 10).
+
+    ROUTE-BASED, WHICH CONVENTION 1 OTHERWISE FORBIDS. The unit is a GROUP --
+    the connected component `analyze_route_hours.py` builds by joining
+    current route ids to proposed ones over PRT's own crosswalk plus the
+    S-variant edges it derives -- never a route compared to the
+    same-numbered route. AND A GROUP IS STILL NOT A CORRIDOR: today's 51
+    groups with the proposed 51 and 51S and reads -10.5% weekday trips,
+    while the new route 45 -- which runs 70 weekday trips over much of the
+    same street -- sits in its own "new" group with no current side at all.
+    Nothing here adds the two together, and nothing should; see that
+    script's docstring for why they cannot be merged.
+
+    EVERY FIGURE IN `groups` IS COPIED, NOT RECOMPUTED -- trips, hours, the
+    percent changes and riders come straight from
+    `data/route_frequency_change.csv` (`build_webdb.write_route_groups`), so
+    this can never drift from what `docs/answers/` and FINDINGS.md publish.
+
+    `groups` LISTS ALL 108 GROUPS AND IS DAY-FREE, regardless of `day`: each
+    group's `service` already carries all three day types (a group's own
+    figures do not depend on which day the caller asked to draw). Only
+    `features` -- the drawn paths -- is for the requested day.
+
+    `shown` names which side an overview draws for a group: "current" for a
+    discontinued group, which has nothing proposed to draw, "proposed"
+    otherwise (a "new" group has nothing else).
+
+    `prt` is PRT's own crosswalk rows for the group -- a labelling aid, per
+    `crosswalk`, and PRT's `related_routes` is PRT's own suggestion, never a
+    measured replacement.
+
+    FOR DRAWING ONLY, like `kerb_routes`: `features[*].points` comes from
+    `journey_shape`, thinned to `gtfs.SHAPE_SIMPLIFY_M` at build time, and
+    nothing may be measured off it.
+    """
+    groups = _route_group_dicts(con)
+    features = []
+    for group in groups:
+        features.extend(_route_group_features(con, day, group, group["shown"]))
+    return {"day": day, "groups": groups, "features": features}
+
+
+def route_change(con, key: str, day: str) -> dict | None:
+    """One route GROUP, with drawable patterns for BOTH sides on `day`.
+
+    The detail view behind a click on `route_changes`' overview: unlike the
+    overview, which only ever draws a group's `shown` side, this draws
+    whichever of `current`/`proposed` actually has routes, so a split or
+    merged group can be compared side by side. None for an unknown key.
+    """
+    groups = _route_group_dicts(con)
+    group = next((g for g in groups if g["key"] == key), None)
+    if group is None:
+        return None
+    features = []
+    for side in SIDES:
+        features.extend(_route_group_features(con, day, group, side))
+    return {**group, "day": day, "features": features}
 
 
 def meta(con):

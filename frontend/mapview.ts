@@ -132,12 +132,14 @@ export function stopPopupHtml(p: any, location?: string | null) {
  *
  * The marks answer "what stands within this walk of the pin", so they belong
  * to the views that ask it. A corridor is a piece of street (convention 11), a
- * journey's walk is the router's own (`journey.CONSTANTS`), and a place is
- * measured at every one of its own census blocks -- none of the three has a
- * radius for a circle to be drawn at.
+ * journey's walk is the router's own (`journey.CONSTANTS`), a place is
+ * measured at every one of its own census blocks, and a route group is a set
+ * of routes with no point in it at all -- none of the four has a radius for
+ * a circle to be drawn at.
  */
 export function viewHasWalkRadius(view: string): boolean {
-  return view !== 'corridors' && view !== 'journey' && view !== 'places';
+  return view !== 'corridors' && view !== 'journey' && view !== 'places'
+    && view !== 'routes';
 }
 
 /**

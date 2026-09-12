@@ -19,6 +19,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import json
+import threading
 
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.gzip import GZipMiddleware
@@ -42,9 +43,38 @@ LAT_RANGE = (40.15, 40.75)
 LON_RANGE = (-80.45, -79.55)
 
 
-def create_app(db_path: str | Path = "data/refresh.db") -> FastAPI:
-    con = query.connect(db_path)
-    meta = query.meta(con)
+def _connection_per_thread(db_path: str | Path):
+    """A connection for whichever thread asks, opened the first time it does.
+
+    Starlette runs each sync endpoint on a worker thread, and one connection
+    shared between them is not safe even read-only: Python's sqlite3 resets a
+    statement under a cursor another thread is still stepping, and a column
+    read then comes back NULL -- a NOT NULL figure arrived as None once under
+    a page load's burst (docs/worklog/one-sqlite-connection-serves-every-thread.md).
+    One per thread rather than per request because opening is cheap but not
+    free, and the caches `query` keeps are keyed by database file, so a
+    second connection to the same file shares them.
+    """
+    local = threading.local()
+
+    def connection():
+        con = getattr(local, "con", None)
+        if con is None:
+            con = local.con = query.connect(db_path)
+        return con
+    return connection
+
+
+def create_app(db_path: str | Path = "data/refresh.db", *,
+               warm: bool = True) -> FastAPI:
+    """The app over one database.
+
+    `warm=False` skips building the big layers at start-up, for a test whose
+    fixture database has no `change` table to build them from; a served app
+    never passes it.
+    """
+    db = _connection_per_thread(db_path)
+    meta = query.meta(db())
 
     app = FastAPI(
         title="PRT Bus Line Refresh — before and after",
@@ -52,6 +82,8 @@ def create_app(db_path: str | Path = "data/refresh.db") -> FastAPI:
         version="0.1.0",
     )
     app.add_middleware(GZipMiddleware, minimum_size=1000)
+    # Reachable for the test that checks two threads never share one.
+    app.state.connection = db
 
     # The two big layers, held as the bytes they are sent as, keyed by radius.
     #
@@ -76,13 +108,38 @@ def create_app(db_path: str | Path = "data/refresh.db") -> FastAPI:
     # cache by its URL would grow without bound as they drag one around.
     layer_cache: dict[tuple[str, int], bytes] = {}
 
-    def cached_layer(name: str, radius: float, build) -> Response:
+    # The three builders, by the name the cache keys them under. One table,
+    # so the endpoints and the start-up warm cannot disagree about what a
+    # key is built from.
+    layer_builders = {
+        "change": query.change_layer,
+        "surface": query.surface_layer,
+        "population": query.population_layer,
+    }
+
+    def cached_layer(name: str, radius: float) -> Response:
         key = (name, int(radius))
         body = layer_cache.get(key)
         if body is None:
-            body = json.dumps(build(), separators=(",", ":")).encode()
+            body = json.dumps(layer_builders[name](db(), radius),
+                              separators=(",", ":")).encode()
             layer_cache[key] = body
         return Response(content=body, media_type="application/json")
+
+    def warm_layer_cache() -> None:
+        """Build every entry before the app serves.
+
+        Left to the first reader, the six builds land on whichever requests
+        arrive first after a deploy -- and several at once are far slower
+        than the same builds in turn, since CPython's sqlite3 hands the GIL
+        around every row: four cold change layers together took 20 s where
+        one takes 0.9 s (docs/worklog/concurrent-heavy-queries-convoy-on-the-gil.md).
+        A few seconds at start-up instead, which `deploy/provision.sh`
+        already waits out before it switches traffic (Max's call).
+        """
+        for name in layer_builders:
+            for radius in query.RADII:
+                cached_layer(name, radius)
 
     def _check_point(lat: float, lon: float):
         if not (LAT_RANGE[0] <= lat <= LAT_RANGE[1]
@@ -147,7 +204,7 @@ def create_app(db_path: str | Path = "data/refresh.db") -> FastAPI:
             raise HTTPException(400, "give both dest_lat and dest_lon, or neither")
         if dest_lat is not None:
             _check_point(dest_lat, dest_lon)
-        return query.place(con, lat, lon, radius, dest_lat, dest_lon,
+        return query.place(db(), lat, lon, radius, dest_lat, dest_lon,
                            oneseat_day)
 
     @app.get("/api/change")
@@ -166,8 +223,7 @@ def create_app(db_path: str | Path = "data/refresh.db") -> FastAPI:
             raise HTTPException(
                 400, f"radius must be one of {list(query.RADII)} — the change "
                      "layer is precomputed at those two")
-        return cached_layer("change", radius,
-                            lambda: query.change_layer(con, radius))
+        return cached_layer("change", radius)
 
     @app.get("/api/surface")
     def api_surface(
@@ -186,8 +242,7 @@ def create_app(db_path: str | Path = "data/refresh.db") -> FastAPI:
             raise HTTPException(
                 400, f"radius must be one of {list(query.RADII)} — the surface "
                      "is precomputed at those two")
-        return cached_layer("surface", radius,
-                            lambda: query.surface_layer(con, radius))
+        return cached_layer("surface", radius)
 
     @app.get("/api/population")
     def api_population(
@@ -207,8 +262,7 @@ def create_app(db_path: str | Path = "data/refresh.db") -> FastAPI:
             raise HTTPException(
                 400, f"radius must be one of {list(query.RADII)} — the people "
                      "layer is precomputed at those two")
-        return cached_layer("population", radius,
-                            lambda: query.population_layer(con, radius))
+        return cached_layer("population", radius)
 
     @app.get("/api/corridors")
     def api_corridors(
@@ -222,7 +276,7 @@ def create_app(db_path: str | Path = "data/refresh.db") -> FastAPI:
         pavement, not access -- see `query.corridor_layer` and
         `analyze_corridor_change.py` for the distinction.
         """
-        return query.corridor_layer(con, day)
+        return query.corridor_layer(db(), day)
 
     @app.get("/api/places")
     def api_places():
@@ -239,7 +293,7 @@ def create_app(db_path: str | Path = "data/refresh.db") -> FastAPI:
         bus live beyond 2 km of a labelled PRT stop, take no place name, and
         are in neither this list nor its map. The view states that residual.
         """
-        return query.places(con)
+        return query.places(db())
 
     @app.get("/api/boundaries")
     def api_boundaries():
@@ -251,12 +305,12 @@ def create_app(db_path: str | Path = "data/refresh.db") -> FastAPI:
         slicing it per viewport -- would make the choropleth's colours depend
         on where the map happened to be.
         """
-        return query.boundaries(con)
+        return query.boundaries(db())
 
     @app.get("/api/places/{key}")
     def api_place_detail(key: str):
         """One place, with the block groups the plan changed as points."""
-        detail = query.place_detail(con, key)
+        detail = query.place_detail(db(), key)
         if detail is None:
             raise HTTPException(status_code=404, detail=f"no such place: {key}")
         return detail
@@ -268,7 +322,7 @@ def create_app(db_path: str | Path = "data/refresh.db") -> FastAPI:
         `seeds` is how many stops define the district; the centre is only
         somewhere for the map to fly to, and nothing is measured from it.
         """
-        return query.destinations(con)
+        return query.destinations(db())
 
     @app.get("/api/oneseat")
     def api_oneseat(
@@ -307,11 +361,11 @@ def create_app(db_path: str | Path = "data/refresh.db") -> FastAPI:
         if dest is None:
             _check_point(dest_lat, dest_lon)
         try:
-            return query.oneseat_layer(con, radius, key=dest,
+            return query.oneseat_layer(db(), radius, key=dest,
                                        dest_lat=dest_lat, dest_lon=dest_lon,
                                        day=day)
         except KeyError:
-            known = [d["key"] for d in query.destinations(con)]
+            known = [d["key"] for d in query.destinations(db())]
             raise HTTPException(404, f"no destination {dest!r}; known: {known}")
 
     @app.get("/api/journey")
@@ -340,7 +394,7 @@ def create_app(db_path: str | Path = "data/refresh.db") -> FastAPI:
         """
         _check_point(lat, lon)
         _check_point(dest_lat, dest_lon)
-        return query.journey_between(con, lat, lon, dest_lat, dest_lon, day=day)
+        return query.journey_between(db(), lat, lon, dest_lat, dest_lon, day=day)
 
     @app.get("/api/kerb_routes")
     def api_kerb_routes(
@@ -365,7 +419,7 @@ def create_app(db_path: str | Path = "data/refresh.db") -> FastAPI:
         that: it answers with today's list empty and the plan's drawn.
         """
         _check_point(lat, lon)
-        got = query.kerb_routes(con, lat, lon, day)
+        got = query.kerb_routes(db(), lat, lon, day)
         if got is None:
             raise HTTPException(
                 404, f"no stop within {query.STOP_SAME_POLE_M:.0f} m of that "
@@ -381,11 +435,11 @@ def create_app(db_path: str | Path = "data/refresh.db") -> FastAPI:
         _check_point(lat, lon)
         return [{"stop_id": s[0], "name": s[1], "lat": s[2], "lon": s[3],
                  "metres": round(s[4])}
-                for s in query.stops_within(con, lat, lon, radius, side)]
+                for s in query.stops_within(db(), lat, lon, radius, side)]
 
     @app.get("/api/routes")
     def api_routes(side: str = Query("current", pattern="^(current|proposed)$")):
-        return query.routes(con, side)
+        return query.routes(db(), side)
 
     @app.get("/api/crosswalk")
     def api_crosswalk():
@@ -394,7 +448,32 @@ def create_app(db_path: str | Path = "data/refresh.db") -> FastAPI:
         A labelling aid only. Convention 1 forbids comparing route N to route N
         for service volume, and nothing in /api/place goes through this.
         """
-        return query.crosswalk(con)
+        return query.crosswalk(db())
+
+    @app.get("/api/route_changes")
+    def api_route_changes(
+        day: str = Query("weekday", pattern=f"^({'|'.join(query.DAYS)})$"),
+    ):
+        """Every route GROUP the plan changes, for one day type, with the
+        drawn paths of whichever side each group's overview shows.
+
+        No `radius` parameter, for `/api/corridors`' reason: a group is a set
+        of routes, not a catchment. See `query.route_changes` for what a
+        group is (and is not).
+        """
+        return query.route_changes(db(), day)
+
+    @app.get("/api/route_changes/{key}")
+    def api_route_change(
+        key: str,
+        day: str = Query("weekday", pattern=f"^({'|'.join(query.DAYS)})$"),
+    ):
+        """One route group, drawn on BOTH sides for a click-through detail
+        view. 404 for a key `/api/route_changes` did not publish."""
+        detail = query.route_change(db(), key, day)
+        if detail is None:
+            raise HTTPException(404, f"no such route group: {key}")
+        return detail
 
     @app.get("/")
     def index():
@@ -414,6 +493,8 @@ def create_app(db_path: str | Path = "data/refresh.db") -> FastAPI:
     if _STATIC.exists():
         app.mount("/", StaticFiles(directory=_STATIC, html=True), name="static")
 
+    if warm:
+        warm_layer_cache()
     return app
 
 
@@ -632,5 +713,20 @@ CAVEATS = [
         "id": "bus-only",
         "text": "Bus only. Rail and the inclines are outside the Refresh and "
                 "are dropped from both sides.",
+    },
+    {
+        "id": "route-changes",
+        "text": "This view is route-based, which every other published "
+                "service figure here avoids (convention 1): the unit is a "
+                "GROUP of routes PRT's own crosswalk maps to one another, "
+                "never a route compared to the same-numbered route. A group "
+                "is not a corridor -- Carrick's current 51 reads -10% "
+                "weekday trips in its own group, while the new route 45 "
+                "runs 70 weekday trips over much of the same street in a "
+                "separate group, and nothing here adds the two together. "
+                "PRT's \"related routes\" is PRT's own suggestion, not a "
+                "measured replacement. Revenue hours are in-service time "
+                "only and not a cost figure. It is schedule against "
+                "schedule, like every other figure on this site.",
     },
 ]

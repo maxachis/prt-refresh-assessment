@@ -15,6 +15,10 @@ const FULL: UrlState = {
   placeFill: 'gained',
   selection: ['c:10005', 'p:2201'],
   stopRoutes: 'proposed',
+  route: 'c:77-86',
+  routeHidden: ['new', 'one-to-one'],
+  routeReading: 'service',
+  serviceHidden: ['same', 'more'],
 };
 
 describe('toSearch', () => {
@@ -29,6 +33,24 @@ describe('toSearch', () => {
     expect(p.get('surfaceunit')).toBe('people');
     expect(p.get('placefill')).toBe('gained');
     expect(p.get('stoproutes')).toBe('proposed');
+    expect(p.get('route')).toBe('c:77-86');
+    expect(p.get('routehide')).toBe('new,one-to-one');
+    expect(p.get('routecolor')).toBe('service');
+    expect(p.get('servicehide')).toBe('same,more');
+  });
+
+  it('leaves the service reading and its hidden rows out at their defaults', () => {
+    // Status is the reading a map opens on and nothing is hidden in the
+    // service reading until somebody hides it, so both follow `weight`'s
+    // only-when-chosen rule; an empty hidden list is plain absence here.
+    const p = new URLSearchParams(toSearch({ ...FULL, routeReading: 'status', serviceHidden: [] }));
+    expect(p.has('routecolor')).toBe(false);
+    expect(p.has('servicehide')).toBe(false);
+  });
+
+  it('reads the service reading\'s hidden rows back in the key\'s order', () => {
+    expect(parseUrlState('?servicehide=more,gone,bogus').serviceHidden).toEqual(['gone', 'more']);
+    expect(parseUrlState('?routecolor=service').routeReading).toBe('service');
   });
 
   it('writes which network the drawn routes are, since only one is on the map', () => {
@@ -86,6 +108,27 @@ describe('toSearch', () => {
     expect(p.has('place')).toBe(false);
   });
 
+  it('leaves out the selected route group until one has been picked', () => {
+    // Absence, like `place` and `at`: nothing is selected until it is.
+    const p = new URLSearchParams(toSearch({ ...FULL, route: null }));
+    expect(p.has('route')).toBe(false);
+  });
+
+  it('leaves the hidden route buckets out at the default, and says "none" when every row is on', () => {
+    // The default hides the one-to-one grey; a link carries the list only
+    // when the reader changed it, on the same only-when-chosen rule as
+    // `weight`. An empty list is written out, because absence means the
+    // default and the default is not empty.
+    expect(new URLSearchParams(toSearch({ ...FULL, routeHidden: ['one-to-one'] })).has('routehide'))
+      .toBe(false);
+    expect(new URLSearchParams(toSearch({ ...FULL, routeHidden: [] })).get('routehide')).toBe('none');
+  });
+
+  it('reads the hidden buckets back in key order, dropping what it does not know', () => {
+    expect(parseUrlState('?routehide=one-to-one,new,bogus').routeHidden).toEqual(['new', 'one-to-one']);
+    expect(parseUrlState('?routehide=none').routeHidden).toEqual([]);
+  });
+
   it('round-trips through parse', () => {
     expect(parseUrlState(toSearch(FULL))).toEqual(FULL);
   });
@@ -132,6 +175,14 @@ describe('parseUrlState', () => {
     ['?map=40.44,-79.99', 'camera'],
     ['?dest=', 'dest'],
     ['?placefill=net', 'placeFill'],
+    ['?route=51', 'route'],
+    ['?route=c:', 'route'],
+    ['?route=x:51', 'route'],
+    ['?route=c:51/../etc', 'route'],
+    ['?routehide=maybe', 'routeHidden'],
+    ['?routecolor=hours', 'routeReading'],
+    ['?servicehide=none', 'serviceHidden'],
+    ['?routehide=', 'routeHidden'],
     ['?stoproutes=maybe', 'stopRoutes'],
     // The two parameters this replaced before the feature shipped: `on` was
     // the old toggle's value and the side rode in a second parameter, so a
@@ -147,6 +198,11 @@ describe('parseUrlState', () => {
     // "Pick a point" is a mode the next click consumes. Arriving in it would
     // make an embedded map answer a question nobody asked on the first tap.
     expect(parseUrlState('?dest=pin')).not.toHaveProperty('dest');
+  });
+
+  it('reads a route group key in either of the API\'s two spellings', () => {
+    expect(parseUrlState('?route=c:51').route).toBe('c:51');
+    expect(parseUrlState('?route=p:89-89S').route).toBe('p:89-89S');
   });
 
   it('takes only the parameters that are there', () => {

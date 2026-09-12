@@ -64,6 +64,15 @@ describe('questionLine', () => {
   it('drops both the day and the radius from Places, which uses neither', () => {
     expect(questionLine({ ...BASE, view: 'places' })).toBe('Places');
   });
+
+  // Route changes has no walk radius -- a route group is not a catchment --
+  // but it DOES have a day: the patterns drawn are the ones that run on the
+  // toolbar's day type, and a Sunday map is missing every weekday-only route.
+  it('keeps the day but drops the radius on Route changes', () => {
+    expect(questionLine({ ...BASE, view: 'routes' })).toBe('Route changes · a weekday');
+    expect(questionLine({ ...BASE, view: 'routes', day: 'sunday', radius: 150 }))
+      .toBe('Route changes · a Sunday');
+  });
 });
 
 // The toolbar's routes control puts a second network's lines on the map
@@ -95,6 +104,8 @@ describe('the drawn routes on the line', () => {
       .toBe('Surface \u00b7 a weekday \u00b7 400 m walk');
     expect(questionLine({ ...BASE, view: 'places', stopRoutes: 'proposed' }))
       .toBe('Places');
+    expect(questionLine({ ...BASE, view: 'routes', stopRoutes: 'proposed' }))
+      .toBe('Route changes \u00b7 a weekday');
   });
 });
 
@@ -111,7 +122,7 @@ describe('viewLabel', () => {
   // with the state line rather than being a second set of names for the same
   // six views.
   it('names a view the way the state line names it', () => {
-    for (const view of ['dots', 'surface', 'both', 'corridors', 'oneseat', 'journey']) {
+    for (const view of ['dots', 'surface', 'both', 'corridors', 'oneseat', 'journey', 'routes']) {
       expect(questionLine({ ...BASE, view }).startsWith(viewLabel(view))).toBe(true);
     }
   });

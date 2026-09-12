@@ -631,6 +631,23 @@ with nothing left to catch, and they stay red. The published 633 is quoted on
 quote belongs in a published file rather than in a viewport-dependent key, and
 the key never showed the citywide number anyway.
 
+**The key says so in its labels, since 2026-09-12.** Measured at the kerb, the
+0 is exact and citywide: all 1,307 stops that lose every weekday bus are
+crosses, against 0 kept ones (Saturday 760 crosses and 210 kept; Sunday 743
+and 192). A key that read "loses all service (weekdays) · 0" over a map
+covered in crosses was taken to mean nobody loses all service, and the cross
+row as the same count twice. So the two absolute rows now say what they hold —
+"loses all service, stop kept (weekdays)", "new service, stop kept
+(weekdays)" — and the cross row says what the mark means for the buses, "the
+plan removes this stop — no bus here on any day". That clause is day-free
+because the count is: a removed stop has no proposed pole within 25 m, so it
+has no bus on any day, including the 548 crosses that had no Saturday bus to
+lose. The surface key keeps the plain labels, since a 100 m cell has no pole to
+keep and its red can be a cell whose every stop is removed. The weekday
+"stop kept" row is therefore a permanent 0 with a long label, which is
+accepted: a row that vanished when the day switched would be its own
+confusion.
+
 Three things follow in the drawing, each of which was a defect until it was
 fixed. The cross answers only its own switch in the key, since hiding "more
 service" must not take the 192 removed stops whose radius gains service with
@@ -1268,6 +1285,132 @@ leaving the buttons live would let them mean nothing silently. The day control
 does apply: the published answer is the weekday peak, but a Saturday or Sunday
 trip is a fair question and re-times the answer on screen.
 
+## The Route changes view
+
+The one view whose unit is a **route** — or rather a *route group*, the
+connected set of today's numbers and the plan's that PRT maps onto one
+another, which is `analyze_route_hours.py`'s unit and the one
+`data/route_frequency_change.csv` publishes. It answers the question a rider
+actually arrives with — "what happens to my bus?" — which every other view
+declines on principle: convention 1 forbids comparing route N to route N,
+because the plan re-splits corridors, and the site measures locations, ground,
+streets, people and journeys instead. This view is route-based anyway, on the
+same terms as the one-seat and travel-time views (conventions 13 and 14): it
+is a different question, it is labelled as one, and its caveat travels with
+every number it shows.
+
+**A group is not a corridor, and the card says so.** The 51 group reads −10%
+weekday trips; the new 45 runs 70 weekday trips over much of the same street in
+a separate group, because PRT's crosswalk records it as new rather than as the
+51's successor, and the only column that would connect them — PRT's "related
+routes" — chains across the network and cannot be unioned on
+(`analyze_route_hours.py`'s docstring). So the card prints the measured group
+and PRT's own suggestion as two different things: the service table is the
+group's, and "PRT points riders to: …" is PRT's, labelled as PRT's, with a link
+to PRT's route page — and PRT's own "N/A", which is how 35 of its rows spell
+"nowhere", arrives empty so the card does not point riders to N/A. Neither is
+a replacement claim the repo has measured. Where
+access is measured is the location, surface and street views, and the card
+sends the reader there.
+
+**The map draws what changed and hides what merely continued.** Nothing
+selected, every group's shown side is a line coloured by its status —
+discontinued routes red, along today's alignment; new routes blue, along the
+plan's; split and merged routes purple, along the plan's. **The key's rows
+are the filter**, as the Stop-by-stop key's are: each row switches its lines
+off and on, a switched-off row is dimmed, and "Show all" turns every row back
+on. The 65 one-to-one groups are grey and **off by default** (Max: "grey
+behind a toggle", then "make it so that, like with other views, the legend is
+selectable"): they are most of the network, and a map with all 108 groups on
+it at once is the whole network drawn twice, which is the picture the
+stop-by-stop and one-seat views already give. Unlike the dots' buckets, the
+switched-off rows travel in the link (`routehide=`), because the default hides
+sixty routes and an embed has to draw what its author saw; an empty list is
+spelled `none`, since absence means the default. The one-to-one bucket is the
+one whose name has to be read carefully — one today's number maps to one of
+the plan's, which says nothing about its service; the 61C becomes the 61X and
+gains 8% of its weekday trips — so the key names it *one-to-one* and never
+*unchanged*.
+
+**The key has a second reading, which colours the same lines by how much
+service each group keeps.** "What happened" is the default above; "How much
+service" (`routecolor=service`) recolours every group's shown side by the
+day's trips, today → plan, in the **Stop-by-stop key's own buckets and
+colours** — loses all service, halved or worse, less, about the same, more,
+doubled or better, new, with the same ±10% band around no change
+(`query.bucket`, computed once per group and day at request time from the
+published trips) — and widens a line the further its bucket is from "about
+the same", so the extremes read at a glance the way the dots' sizes do. This
+is the reading that shows what the status reading cannot: **a one-to-one
+group is not unchanged**, and here the 61C → 61X reads as a gain and the 51
+as a loss while both are grey in the other reading. The colour follows the
+toolbar's day, because a group's Saturday change is not its weekday one (the
+Y46 → 46L keeps its weekday trips and loses every Saturday one); the head
+line says which day, and the panel's directory regroups under the same
+buckets, its names in the same colours, with a note for the groups that run
+on neither network that day. Its rows are switches like the status rows,
+with their own hidden list in the link (`servicehide=`, written only when
+something is off, since this reading hides nothing by default); "Show all"
+clears whichever reading is on screen. The figure is **trips, not revenue
+hours** (Max: "trips as the figure"): hours would say the same thing for
+nearly every group and mislead where the two disagree — a route that gets
+shorter and more frequent — and trips is what the dots count. It is still a
+figure per route group, not per corridor: the 51 reads fewer trips while the
+new 45 runs much of the same street in its own bucket, and the foot says so.
+
+**Selecting a group changes what the colours mean, and the key changes with
+them.** A click on a line, or a row in the panel's directory, dims every other
+line and draws the group's own two sides in the site's today/plan pair — the
+blue and orange the travel-time view uses for its two itineraries — so a
+one-to-one route's reroute reads as two alignments over each other, which is
+the only way "how did this route change" has a picture. Today's side is drawn
+**wider, underneath** (`routechange.CASING_WIDTH`): the two sides are mostly
+the same street, and at one width the plan's line simply covered today's, so
+"today's alignment" appeared to be only the stub where they part company. The plan's side is
+**dotted** on top of it (Max: so it "stands out better when it overlaps with
+existing alignment"), since even as a casing a shared street was mostly the
+plan's colour with a blue edge; between the dots today's line shows through,
+so a shared stretch reads blue with orange dots, a street only the plan runs
+reads orange dots alone, and one it abandons reads solid blue — the 77 + 86
+→ 86 merge shows the 77's Penn Hills loop in blue by itself beside the
+dotted trunk. A dot pattern cannot vary per feature in MapLibre, so the plan
+side is a layer of its own over the same source, filtered by side
+(`routechange.addPlanDotsLayer`), and the key's swatch for it is dotted too. Blue therefore means
+*new route* before a selection and *today's alignment* after one; the key
+rewrites its rows at the moment of selection precisely because that is a
+trap, and an embed, which keeps the key and loses the panel, still says which
+it is.
+
+**The directory is the panel's empty state**, as the ranked list is for Places:
+grouped under Discontinued, New, Split or merged, and One-to-one, the last
+folded shut so the panel opens on what changed — or, in the service reading,
+under the day's trips buckets in the key's order, empty ones left out. Each
+row's name is printed in its bucket's colour, and a group with one side is named by that side alone
+— "17 SHADELAND" under Discontinued, not "17 SHADELAND → —": the heading
+already says the other side is missing, and an arrow to a dash read as a
+rendering fault (Max's call). The card for a selected group
+gives its service on all three day types — trips and revenue hours, today
+against the plan, with the published percent — beside today's weekday riders
+from WPRDC's route-level table. The figures are copied from
+`route_frequency_change.csv` at build time rather than recomputed from the
+app's own timetables, so a percent on the card is the percent
+`docs/answers/LOSE-SERVICE-HOURS.md` cites and cannot drift from it. Revenue
+hours are in-service time only — no layover, no deadhead — and the card says
+they are not a cost figure.
+
+**The day switch moves the map and, in the service reading, the colours and
+the directory's groupings.** The drawn patterns are per day type, because a
+route's Sunday pattern is not its weekday one and today's 53 has no weekday
+pattern at all; the status reading's list and the card's three-row table are
+day-free by construction, while the service reading is a day's figure and
+says which day in its head line and over its list. The state line says the
+day for the map's sake.
+
+**Nothing is measured off the lines.** They are the journey layer's shapes,
+thinned at build time and lossy by construction (`journey_shape`'s schema
+comment); the API and the module both say so. Street length lost is
+`analyze_corridor_change.py`'s question, measured on the full shape.
+
 ## The on-demand zones: removed, 2026-08-25
 
 The app used to carry a violet overlay of 10 proposed microtransit zones,
@@ -1304,6 +1447,8 @@ Reasoning and evidence:
 | `GET /api/stops?side=&lat=&lon=&radius=` | Stops one network puts inside the radius. |
 | `GET /api/routes?side=` | Bus routes with trips, revenue hours and span per day type. |
 | `GET /api/crosswalk` | PRT's current → proposed route mapping. A labelling aid; no served number goes through it. |
+| `GET /api/route_changes?day=` | Every route GROUP `analyze_route_hours.py` publishes (108, day-free list), with trips/hours/riders copied from `data/route_frequency_change.csv` and the drawn path of whichever side each group's overview shows, for one day type. Route-based, against convention 1 — see `query.route_changes`'s docstring for why a group is not a corridor. |
+| `GET /api/route_changes/{key}?day=` | One route group, drawn on both sides for one day type. 404 on an unknown key. |
 | `GET /api/meta` | Feed versions, sample dates, periods, caveats. |
 
 ### The three precomputed layers are built once, not once per request
@@ -1425,7 +1570,7 @@ self-documenting.
 
 | Parameter | Value |
 |---|---|
-| `view` | `dots`, `surface`, `both`, `corridors`, `oneseat`, `journey`, `places` |
+| `view` | `dots`, `surface`, `both`, `corridors`, `oneseat`, `journey`, `places`, `routes` |
 | `day` | `weekday`, `saturday`, `sunday` |
 | `radius` | `400` or `150` (convention 4's two radii) |
 | `oneseatday` | `any` — the published day-free measure — or `selected` (convention 13) |
@@ -1434,6 +1579,10 @@ self-documenting.
 | `dest` | `downtown`, `oakland`, or `lat,lon` for a dropped pin |
 | `at` | `lat,lon` — where the reader asked; opens the answer panel |
 | `map` | `lat,lon,zoom` — where the map is looking |
+| `route` | A route group's key (`c:51`, `p:45`, `c:77-86`) to open the Route changes view on; checked against the key grammar before it reaches a request |
+| `routehide` | The Route changes key's switched-off rows, comma-separated from `discontinued`, `new`, `reshaped`, `one-to-one`; `none` for every row on. Absent means the default, which is `one-to-one` alone |
+| `routecolor` | `service` to colour the Route changes overview by each group's trips change on the day, in the Stop-by-stop buckets; absent for the default reading, by what happened to the group |
+| `servicehide` | The service reading's switched-off rows, comma-separated from `gone`, `halved`, `less`, `same`, `more`, `doubled`, `new`. Absent means nothing hidden, which is that reading's default |
 | `embed` | `1` — map and key only, for an iframe; see below |
 
 A parameter that fails to parse is ignored and its control left at the default,

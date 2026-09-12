@@ -32,6 +32,11 @@ import { Destination } from './oneseat';
 import { PlaceFill, DEFAULT_PLACE_FILL } from './places';
 import { VIEWS } from './statebar';
 import { StopRoutes, DEFAULT_STOP_ROUTES } from './stoproutes';
+import {
+  RouteBucket, DEFAULT_HIDDEN_BUCKETS, isRouteBucket, isRouteKey, normaliseBuckets,
+  RouteReading, DEFAULT_ROUTE_READING, isRouteReading,
+  ServiceRow, isServiceBucket, normaliseServiceBuckets,
+} from './routechange';
 
 /**
  * The query parameters, named once.
@@ -54,6 +59,10 @@ export const PARAM = {
   placeFill: 'placefill',
   selection: 'sel',
   stopRoutes: 'stoproutes',
+  route: 'route',
+  routeHidden: 'routehide',
+  routeReading: 'routecolor',
+  serviceHidden: 'servicehide',
 } as const;
 
 /**
@@ -121,7 +130,35 @@ export interface UrlState {
    * rather than half-applied.
    */
   stopRoutes?: StopRoutes;
+  /**
+   * The Route changes view's selected group, by its `/api/route_changes`
+   * key, or null while the directory is showing. Absence, like `place`.
+   */
+  route?: string | null;
+  /**
+   * The rows of the Route changes key switched off, in key order. Written
+   * only when it differs from the default -- the one-to-one grey off -- on
+   * `weight`'s rule; an empty list is spelled `none`, since absence means
+   * the default and the default is not empty.
+   */
+  routeHidden?: RouteBucket[];
+  /**
+   * Which reading the Route changes overview is coloured by -- what happened
+   * to each group, or how much service it has on the day. Written only when
+   * it is the service reading, on `weight`'s rule.
+   */
+  routeReading?: RouteReading;
+  /**
+   * The service reading's key rows switched off, in key order. Written only
+   * when non-empty: unlike `routehide`, this reading's default is nothing
+   * hidden, so absence and empty are the same state and `none` has no job.
+   */
+  serviceHidden?: ServiceRow[];
 }
+
+/** How an empty `routehide` is spelled: absence would mean the default instead. */
+const NO_HIDDEN_BUCKETS = 'none';
+const BUCKET_SEP = ',';
 
 /** Is this page inside someone else's? */
 export function isFramed(win: { self: unknown; top: unknown }): boolean {
@@ -168,6 +205,16 @@ export function toSearch(s: UrlState): string {
   // of the URL -- see the head line the legend prints over it.
   if (s.selection.length) p.set(PARAM.selection, s.selection.join(','));
   p.set(PARAM.stopRoutes, s.stopRoutes ?? DEFAULT_STOP_ROUTES);
+  // Absence, like `place`: written once a group is selected, never before.
+  if (s.route) p.set(PARAM.route, s.route);
+  if (s.routeHidden && !sameBuckets(s.routeHidden, DEFAULT_HIDDEN_BUCKETS)) {
+    p.set(PARAM.routeHidden, s.routeHidden.length
+      ? s.routeHidden.join(BUCKET_SEP) : NO_HIDDEN_BUCKETS);
+  }
+  if (s.routeReading && s.routeReading !== DEFAULT_ROUTE_READING) {
+    p.set(PARAM.routeReading, s.routeReading);
+  }
+  if (s.serviceHidden?.length) p.set(PARAM.serviceHidden, s.serviceHidden.join(BUCKET_SEP));
   return `?${p}`;
 }
 
@@ -231,7 +278,35 @@ export function parseUrlState(search: string): Partial<UrlState> {
     s.stopRoutes = stopRoutes;
   }
 
+  // Checked against the key grammar before it can reach a fetch: this is the
+  // one parameter that becomes part of a request path, and a hand-typed link
+  // is the expected input.
+  const route = p.get(PARAM.route);
+  if (route && isRouteKey(route)) s.route = route;
+
+  const routeHidden = p.get(PARAM.routeHidden);
+  if (routeHidden === NO_HIDDEN_BUCKETS) s.routeHidden = [];
+  else if (routeHidden) {
+    // Unknown names are dropped rather than failing the whole list, on the
+    // hand-edited-link principle above; a list with nothing left is skipped.
+    const known = normaliseBuckets(routeHidden.split(BUCKET_SEP).filter(isRouteBucket));
+    if (known.length) s.routeHidden = known;
+  }
+
+  const routeReading = p.get(PARAM.routeReading);
+  if (routeReading && isRouteReading(routeReading)) s.routeReading = routeReading;
+
+  const serviceHidden = p.get(PARAM.serviceHidden);
+  if (serviceHidden) {
+    const known = normaliseServiceBuckets(serviceHidden.split(BUCKET_SEP).filter(isServiceBucket));
+    if (known.length) s.serviceHidden = known;
+  }
+
   return s;
+}
+
+function sameBuckets(a: readonly RouteBucket[], b: readonly RouteBucket[]): boolean {
+  return a.length === b.length && a.every((x, i) => x === b[i]);
 }
 
 function coords(p: Point): string {

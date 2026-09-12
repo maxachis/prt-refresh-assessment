@@ -137,7 +137,7 @@ describe('marks that outlive the click that drew them', () => {
     for (const v of ['dots', 'surface', 'both', 'oneseat']) {
       expect(viewHasWalkRadius(v)).toBe(true);
     }
-    for (const v of ['corridors', 'journey', 'places']) {
+    for (const v of ['corridors', 'journey', 'places', 'routes']) {
       expect(viewHasWalkRadius(v)).toBe(false);
     }
   });

@@ -43,6 +43,59 @@ def test_meta_carries_the_provenance_caveat(client):
     assert {"location-not-route", "cluster-max", "boardings"} <= ids
 
 
+def test_each_request_thread_gets_its_own_connection(db_path):
+    """FastAPI runs a sync endpoint on a worker thread, and Python's sqlite3
+    resets statements under a cursor another thread is still reading -- one
+    shared connection returned a NOT NULL column as None under a page load's
+    burst (docs/worklog/one-sqlite-connection-serves-every-thread.md). So a
+    thread reuses its own connection and never sees another thread's."""
+    import threading
+    app = create_app(db_path)
+    seen = {}
+
+    def grab(name):
+        seen[name] = (app.state.connection(), app.state.connection())
+
+    threads = [threading.Thread(target=grab, args=(i,)) for i in range(3)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+    for first, again in seen.values():
+        assert first is again
+    assert len({id(pair[0]) for pair in seen.values()}) == 3
+
+
+def test_a_burst_of_concurrent_requests_all_answer(client):
+    """The shape of the failure the per-thread connection prevents: the
+    heaviest layer and a row-walking endpoint in flight together. Not a
+    proof -- a race cannot be -- but the burst that surfaced it."""
+    from concurrent.futures import ThreadPoolExecutor
+    paths = ["/api/change?radius=400", "/api/route_changes?day=weekday",
+             "/api/meta", "/api/destinations"] * 4
+    with ThreadPoolExecutor(max_workers=len(paths)) as pool:
+        codes = list(pool.map(lambda p: client.get(p).status_code, paths))
+    assert codes == [200] * len(paths)
+
+
+def test_the_big_layers_are_built_before_the_app_serves(db_path, monkeypatch):
+    """Nothing built the change, surface and people layers until a reader
+    asked, so the first readers after a deploy each triggered a build and
+    convoyed on each other -- four cold builds together took 20 s where one
+    takes 0.9 s (docs/worklog/concurrent-heavy-queries-convoy-on-the-gil.md).
+    Now every entry is built inside `create_app`, and the proof is that once
+    the app exists a request answers without the builder at all."""
+    from refresh import query
+    app = create_app(db_path)
+    for name in ("change_layer", "surface_layer", "population_layer"):
+        monkeypatch.setattr(query, name, lambda *a, **k: pytest.fail(
+            f"{name} was built on request, not at start-up"))
+    c = TestClient(app)
+    for path in ("/api/change", "/api/surface", "/api/population"):
+        for radius in query.RADII:
+            assert c.get(path, params={"radius": radius}).status_code == 200
+
+
 def test_place_returns_both_sides(client):
     p = client.get("/api/place", params=DOWNTOWN).json()
     assert p["current"]["days"]["weekday"]["trips"] > 0
@@ -553,3 +606,35 @@ def test_meta_carries_the_stop_routes_caveat(client):
     text = {c["id"]: c["text"] for c in client.get("/api/meta").json()["caveats"]}
     assert "stop-routes" in text
     assert "measured" in text["stop-routes"]
+
+
+def test_route_changes_is_served(client):
+    r = client.get("/api/route_changes", params={"day": "weekday"})
+    assert r.status_code == 200
+    got = r.json()
+    assert got["day"] == "weekday"
+    assert len(got["groups"]) == 108
+    assert got["features"]
+
+
+def test_route_changes_rejects_a_day_it_does_not_measure(client):
+    r = client.get("/api/route_changes", params={"day": "tuesday"})
+    assert r.status_code == 422
+
+
+def test_route_change_detail_is_served(client):
+    r = client.get("/api/route_changes/c:51", params={"day": "weekday"})
+    assert r.status_code == 200
+    assert r.json()["key"] == "c:51"
+
+
+def test_route_change_detail_404s_for_an_unknown_key(client):
+    r = client.get("/api/route_changes/c:does-not-exist",
+                   params={"day": "weekday"})
+    assert r.status_code == 404
+
+
+def test_meta_carries_the_route_changes_caveat(client):
+    text = {c["id"]: c["text"] for c in client.get("/api/meta").json()["caveats"]}
+    assert "route-changes" in text
+    assert "group" in text["route-changes"]

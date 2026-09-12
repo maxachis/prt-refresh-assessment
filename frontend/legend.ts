@@ -58,12 +58,27 @@ const DAY_PLURAL: Record<Day, string> = {
  * entirely, so "loses all service" on the Saturday setting means Saturdays and
  * nothing more. Quoted off a screenshot without the day, it becomes a much
  * larger claim than the map ever made. Max asked for the day on 2026-09-09.
+ *
+ * The same two rows also say the STOP IS KEPT. A removed stop is a cross and
+ * in no bucket (`change.countIn`), so every dot on a coloured row is a pole
+ * the plan keeps -- which on a weekday makes "loses all service" read 0 in
+ * every viewport in the county, all 1,307 kerbs that lose every weekday bus
+ * being crosses. Unqualified, that 0 read as "nobody loses all service" with
+ * the map covered in crosses, and the cross's row read as the same thing
+ * counted again. The qualifier is what the row actually holds: on a weekday
+ * nothing, and on a weekend the ~200 poles that survive with no bus left to
+ * catch that day. Max asked for it on 2026-09-12. It is dots-only -- the
+ * surface key composes its own two labels, because a 100 m cell has no pole
+ * to keep and its red can be a cell whose every stop is removed.
  */
 const DAY_BOUND_LABELS = new Set(['gone', 'new']);
+const KEPT_STOP_QUALIFIER = 'stop kept';
 
-/** A bucket's label, carrying the day where the label claims a total. */
+/** A bucket's label, carrying the kept stop and the day where it claims a total. */
 function bucketLabel(key: string, label: string, day: Day): string {
-  return DAY_BOUND_LABELS.has(key) ? `${label} (${DAY_PLURAL[day]})` : label;
+  return DAY_BOUND_LABELS.has(key)
+    ? `${label}, ${KEPT_STOP_QUALIFIER} (${DAY_PLURAL[day]})`
+    : label;
 }
 
 /**
@@ -530,6 +545,16 @@ function newPlaceRow(n: number) {
  * "the plan removes this stop" is a fact about the pole, and what the buses
  * nearby do is on screen in the dots around it rather than in this row.
  *
+ * BUT THE ROW SAYS WHAT THE CROSS MEANS FOR THE BUSES, since 2026-09-12. On a
+ * weekday every kerb that loses every bus is a removed stop, so the coloured
+ * "loses all service" row reads 0 and this row carries the whole loss — and a
+ * label that named only the pole left readers asking where the loss went.
+ * The clause is DAY-FREE, as the count is: a removed stop has no proposed
+ * pole within 25 m (`query.is_removed_stop`), so it has no bus on any day,
+ * including the days it had none to lose. It cannot say "loses all service
+ * (Saturdays)": 548 of the crosses had no Saturday bus today, and are in the
+ * `none` bucket on that setting.
+ *
  * It DOES follow the Riders switch, unlike before. With these dots out of the
  * buckets, a key counting boardings would otherwise drop the riders at every
  * stop PRT is removing — the most at-risk figure the view has — from both the
@@ -542,7 +567,7 @@ function removedRow(n: number, cell: string) {
     <button class="lg-row ${off ? 'off' : ''}" data-bucket="${REMOVED_KEY}"
             aria-pressed="${!off}">
       <i class="lg-cross"></i>
-      <span class="lg-lab">the plan removes this stop</span>
+      <span class="lg-lab">the plan removes this stop — no bus here on any day</span>
       <span class="lg-n">${cell}</span>
     </button>`;
 }

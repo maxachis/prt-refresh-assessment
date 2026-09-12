@@ -186,7 +186,13 @@ describe('renderLegend', () => {
       day: 'weekday', bounds: BOX, weight: 'locations' });
     expect(el.innerHTML).toContain('lg-cross');
     expect(prose(el)).toContain('and what happens to the stop itself');
-    expect(prose(el)).toContain('the plan removes this stop');
+    // The row says what the cross means for the buses, because on a weekday
+    // it carries every stop that loses all service and the coloured row above
+    // it reads 0. Day-free, as the count is: a removed stop has no proposed
+    // pole within 25 m, so it has no bus on any day, including the days it
+    // had none to lose.
+    expect(prose(el)).toContain(
+      'the plan removes this stop — no bus here on any day');
   });
 
   it('keeps a removed stop out of the service buckets', () => {
@@ -424,37 +430,45 @@ const POPULATION: PopulationLayer = {
 };
 
 /**
- * The two absolute rows carry the day they are true of.
+ * The two absolute rows carry the day they are true of, and say the stop is
+ * kept.
  *
  * "Loses all service" and "new service" are the only labels on the key that
  * claim a total, and a total is only ever true of one day type: 152 locations
  * keep their weekday buses and lose the weekend entirely, so a reader on the
  * Saturday setting who quotes "loses all service" without the day has said
  * something the map never showed them. Max asked for this on 2026-09-09.
+ *
+ * "Stop kept" because a removed stop is a cross and in no bucket, so every
+ * dot on these rows is a pole the plan keeps -- and on a weekday that makes
+ * the "loses all service" row read 0 in every viewport in the county while
+ * the map is covered in crosses, all 1,307 of which lose every bus. Without
+ * the qualifier the 0 reads as "nobody loses all service" and the cross row
+ * as a second count of the same thing. Max asked for this on 2026-09-12.
  */
-describe('the day inside the absolute labels', () => {
+describe('the day and the kept stop inside the absolute labels', () => {
   const layerWith = (extra: any[] = []) =>
     ({ ...LAYER, points: [...LAYER.points, ...extra] });
 
-  it('names weekdays on the two absolute rows', () => {
+  it('names weekdays and the kept stop on the two absolute rows', () => {
     const el = stub();
     renderLegend(el, { layer: layerWith(), day: 'weekday', bounds: BOX,
                        weight: 'locations' });
-    expect(prose(el)).toContain('loses all service (weekdays)');
-    expect(prose(el)).toContain('new service (weekdays)');
+    expect(prose(el)).toContain('loses all service, stop kept (weekdays)');
+    expect(prose(el)).toContain('new service, stop kept (weekdays)');
   });
 
   it('follows the day switch', () => {
     const el = stub();
     renderLegend(el, { layer: layerWith(), day: 'saturday', bounds: BOX,
                        weight: 'locations' });
-    expect(prose(el)).toContain('loses all service (Saturdays)');
-    expect(prose(el)).toContain('new service (Saturdays)');
+    expect(prose(el)).toContain('loses all service, stop kept (Saturdays)');
+    expect(prose(el)).toContain('new service, stop kept (Saturdays)');
 
     const sun = stub();
     renderLegend(sun, { layer: layerWith(), day: 'sunday', bounds: BOX,
                         weight: 'locations' });
-    expect(prose(sun)).toContain('loses all service (Sundays)');
+    expect(prose(sun)).toContain('loses all service, stop kept (Sundays)');
   });
 
   it('leaves the relative labels alone', () => {
@@ -467,12 +481,21 @@ describe('the day inside the absolute labels', () => {
     expect(prose(el)).not.toContain('less service (');
   });
 
-  it('says it on the surface key too, which uses the same two words', () => {
+  it('says the day on the surface key too, but never the stop', () => {
+    // A 100 m cell has no pole to keep: the surface's red can be a cell whose
+    // every stop the plan removes, so "stop kept" would be false there.
     const el = stub();
     renderLegend(el, { layer: LAYER, day: 'sunday', bounds: BOX,
                        weight: 'locations', surface: SURFACE, unit: 'area' });
     expect(prose(el)).toContain('loses all service (Sundays)');
     expect(prose(el)).toContain('new service (Sundays)');
+
+    const alone = stub();
+    renderLegend(alone, { layer: LAYER, day: 'sunday', bounds: BOX,
+                          weight: 'locations', surface: SURFACE, unit: 'area',
+                          dots: false });
+    expect(prose(alone)).toContain('loses all service (Sundays)');
+    expect(prose(alone)).not.toContain('stop kept');
   });
 });
 
