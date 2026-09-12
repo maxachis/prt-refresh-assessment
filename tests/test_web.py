@@ -78,6 +78,24 @@ def test_a_burst_of_concurrent_requests_all_answer(client):
     assert codes == [200] * len(paths)
 
 
+def test_the_big_layers_are_built_before_the_app_serves(db_path, monkeypatch):
+    """Nothing built the change, surface and people layers until a reader
+    asked, so the first readers after a deploy each triggered a build and
+    convoyed on each other -- four cold builds together took 20 s where one
+    takes 0.9 s (docs/worklog/concurrent-heavy-queries-convoy-on-the-gil.md).
+    Now every entry is built inside `create_app`, and the proof is that once
+    the app exists a request answers without the builder at all."""
+    from refresh import query
+    app = create_app(db_path)
+    for name in ("change_layer", "surface_layer", "population_layer"):
+        monkeypatch.setattr(query, name, lambda *a, **k: pytest.fail(
+            f"{name} was built on request, not at start-up"))
+    c = TestClient(app)
+    for path in ("/api/change", "/api/surface", "/api/population"):
+        for radius in query.RADII:
+            assert c.get(path, params={"radius": radius}).status_code == 200
+
+
 def test_place_returns_both_sides(client):
     p = client.get("/api/place", params=DOWNTOWN).json()
     assert p["current"]["days"]["weekday"]["trips"] > 0

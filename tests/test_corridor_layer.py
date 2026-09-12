@@ -26,7 +26,8 @@ CORRIDOR_CSV = ROOT / "data" / "corridor_change.csv"
 
 # Just enough schema for corridor_layer and create_app to work: `meta` is
 # read (and may be empty) the moment the app starts, `corridor` is what is
-# under test.
+# under test. The app is built with `warm=False`, since the big layers it
+# would otherwise build at start-up have no tables here.
 _SCHEMA = """
 CREATE TABLE meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
 CREATE TABLE corridor (
@@ -122,7 +123,8 @@ from refresh.web.app import create_app         # noqa: E402
 
 @pytest.fixture
 def client(corridor_db):
-    return TestClient(create_app(corridor_db))
+    # The fixture has no change, surface or people tables to warm from.
+    return TestClient(create_app(corridor_db, warm=False))
 
 
 def test_endpoint_rejects_an_unknown_day(client):

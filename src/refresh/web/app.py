@@ -65,7 +65,14 @@ def _connection_per_thread(db_path: str | Path):
     return connection
 
 
-def create_app(db_path: str | Path = "data/refresh.db") -> FastAPI:
+def create_app(db_path: str | Path = "data/refresh.db", *,
+               warm: bool = True) -> FastAPI:
+    """The app over one database.
+
+    `warm=False` skips building the big layers at start-up, for a test whose
+    fixture database has no `change` table to build them from; a served app
+    never passes it.
+    """
     db = _connection_per_thread(db_path)
     meta = query.meta(db())
 
@@ -101,13 +108,39 @@ def create_app(db_path: str | Path = "data/refresh.db") -> FastAPI:
     # cache by its URL would grow without bound as they drag one around.
     layer_cache: dict[tuple[str, int], bytes] = {}
 
-    def cached_layer(name: str, radius: float, build) -> Response:
+    # The three builders, by the name the cache keys them under. One table,
+    # so the endpoints and the start-up warm cannot disagree about what a
+    # key is built from.
+    layer_builders = {
+        "change": query.change_layer,
+        "surface": query.surface_layer,
+        "population": query.population_layer,
+    }
+
+    def cached_layer(name: str, radius: float) -> Response:
         key = (name, int(radius))
         body = layer_cache.get(key)
         if body is None:
-            body = json.dumps(build(), separators=(",", ":")).encode()
+            body = json.dumps(layer_builders[name](db(), radius),
+                              separators=(",", ":")).encode()
             layer_cache[key] = body
         return Response(content=body, media_type="application/json")
+
+    def warm_layer_cache() -> None:
+        """Build every entry before the app serves.
+
+        Left to the first reader, the six builds land on whichever requests
+        arrive first after a deploy -- and several at once are far slower
+        than the same builds in turn, since CPython's sqlite3 hands the GIL
+        around every row: four cold change layers together took 20 s where
+        one takes 0.9 s (docs/worklog/concurrent-heavy-queries-convoy-on-the-gil.md).
+        A few seconds at start-up instead, which `deploy/provision.sh`
+        already waits out before it switches traffic (Max's call).
+        """
+        for name in layer_builders:
+            for radius in query.RADII:
+                cached_layer(name, radius)
+
 
     def _check_point(lat: float, lon: float):
         if not (LAT_RANGE[0] <= lat <= LAT_RANGE[1]
@@ -191,8 +224,7 @@ def create_app(db_path: str | Path = "data/refresh.db") -> FastAPI:
             raise HTTPException(
                 400, f"radius must be one of {list(query.RADII)} — the change "
                      "layer is precomputed at those two")
-        return cached_layer("change", radius,
-                            lambda: query.change_layer(db(), radius))
+        return cached_layer("change", radius)
 
     @app.get("/api/surface")
     def api_surface(
@@ -211,8 +243,7 @@ def create_app(db_path: str | Path = "data/refresh.db") -> FastAPI:
             raise HTTPException(
                 400, f"radius must be one of {list(query.RADII)} — the surface "
                      "is precomputed at those two")
-        return cached_layer("surface", radius,
-                            lambda: query.surface_layer(db(), radius))
+        return cached_layer("surface", radius)
 
     @app.get("/api/population")
     def api_population(
@@ -232,8 +263,7 @@ def create_app(db_path: str | Path = "data/refresh.db") -> FastAPI:
             raise HTTPException(
                 400, f"radius must be one of {list(query.RADII)} — the people "
                      "layer is precomputed at those two")
-        return cached_layer("population", radius,
-                            lambda: query.population_layer(db(), radius))
+        return cached_layer("population", radius)
 
     @app.get("/api/corridors")
     def api_corridors(
@@ -464,6 +494,8 @@ def create_app(db_path: str | Path = "data/refresh.db") -> FastAPI:
     if _STATIC.exists():
         app.mount("/", StaticFiles(directory=_STATIC, html=True), name="static")
 
+    if warm:
+        warm_layer_cache()
     return app
 
 

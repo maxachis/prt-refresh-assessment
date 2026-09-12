@@ -2,9 +2,10 @@
 
 Several big SQLite reads running at once in the app are far slower than the
 same reads one after another — four cold change-layer builds together take
-20 s where one takes 0.9 s, and sixteen took minutes. Open — measured
-2026-09-12 while checking the per-thread-connection fix, pre-existing and
-independent of it, not fixed because the session's task was that fix.
+20 s where one takes 0.9 s, and sixteen took minutes. Fixed, awaiting close —
+since 2026-09-12 the app builds all six big-layer entries before it serves
+(Max's call, the first approach below; 2.7 s measured at start-up), so the
+convoy has no cold start left to happen in.
 
 ## What is observed
 
@@ -48,12 +49,22 @@ would, once, for the length of the cold builds.
 ## Approaches considered
 
 - **Warm `layer_cache` at start-up** — build the six entries (two radii ×
-  three layers, ~4 s, ~4 MB) in `create_app` before the app serves. Removes
-  the cold-start herd entirely, and `deploy/provision.sh` already waits for
-  the app to answer before switching traffic. My recommendation; not done.
+  three layers, ~4 MB) in `create_app` before the app serves. Removes the
+  cold-start herd entirely, and `deploy/provision.sh` already waits for the
+  app to answer before switching traffic. **Taken** (Max): `warm_layer_cache`
+  in `app.py`, 2.7 s measured; `create_app(warm=False)` exists only for a
+  test whose fixture database has no layers to build, and
+  `tests/test_web.py::test_the_big_layers_are_built_before_the_app_serves`
+  pins that a request never reaches a builder.
 - **A lock per cache key**, so concurrent misses build once and the rest
   wait for the bytes. Fixes the herd without the start-up cost, but leaves
   the first reader paying it. Cheaper if start-up time turns out to matter.
 - **Fewer worker threads** (anyio's limiter, default 40) so fewer fetches
   overlap. Blunt: it slows the light endpoints too.
 - **Doing nothing**, on the grounds above — the window is one cold start.
+
+## What remains
+
+The convoy itself is not fixed — the per-row GIL hand-off is CPython's — and
+would return for any new heavy read that several requests can trigger at
+once. Anything that size belongs in the start-up warm or behind a lock.
