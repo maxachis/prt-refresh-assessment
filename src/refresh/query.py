@@ -2005,19 +2005,23 @@ _PLACE_INDEX = {}
 
 
 def place_index(con):
-    """The county's boundaries, loaded once per connection.
+    """The county's boundaries, loaded once per database file.
 
-    Cached on the connection because the panel asks this on every click and
-    parsing 3.5 MB of polygon JSON per request would dominate the response.
+    Cached because the panel asks this on every click and parsing 3.5 MB of
+    polygon JSON per request would dominate the response. Keyed by file
+    rather than by connection, like `_TIMETABLES`: the app now opens one
+    connection per worker thread, and per-connection would parse it once per
+    thread.
     """
-    cached = _PLACE_INDEX.get(id(con))
+    key = _database_of(con)
+    cached = _PLACE_INDEX.get(key)
     if cached is None:
         cached = geometry.PlaceIndex([
             geometry.Place(name=r["place"], kind=r["kind"],
                            polygons=json.loads(r["polygons"]))
             for r in con.execute(
                 "SELECT place, kind, polygons FROM place_boundary")])
-        _PLACE_INDEX[id(con)] = cached
+        _PLACE_INDEX[key] = cached
     return cached
 
 

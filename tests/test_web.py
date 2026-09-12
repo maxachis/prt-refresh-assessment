@@ -43,6 +43,41 @@ def test_meta_carries_the_provenance_caveat(client):
     assert {"location-not-route", "cluster-max", "boardings"} <= ids
 
 
+def test_each_request_thread_gets_its_own_connection(db_path):
+    """FastAPI runs a sync endpoint on a worker thread, and Python's sqlite3
+    resets statements under a cursor another thread is still reading -- one
+    shared connection returned a NOT NULL column as None under a page load's
+    burst (docs/worklog/one-sqlite-connection-serves-every-thread.md). So a
+    thread reuses its own connection and never sees another thread's."""
+    import threading
+    app = create_app(db_path)
+    seen = {}
+
+    def grab(name):
+        seen[name] = (app.state.connection(), app.state.connection())
+
+    threads = [threading.Thread(target=grab, args=(i,)) for i in range(3)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+    for first, again in seen.values():
+        assert first is again
+    assert len({id(pair[0]) for pair in seen.values()}) == 3
+
+
+def test_a_burst_of_concurrent_requests_all_answer(client):
+    """The shape of the failure the per-thread connection prevents: the
+    heaviest layer and a row-walking endpoint in flight together. Not a
+    proof -- a race cannot be -- but the burst that surfaced it."""
+    from concurrent.futures import ThreadPoolExecutor
+    paths = ["/api/change?radius=400", "/api/route_changes?day=weekday",
+             "/api/meta", "/api/destinations"] * 4
+    with ThreadPoolExecutor(max_workers=len(paths)) as pool:
+        codes = list(pool.map(lambda p: client.get(p).status_code, paths))
+    assert codes == [200] * len(paths)
+
+
 def test_place_returns_both_sides(client):
     p = client.get("/api/place", params=DOWNTOWN).json()
     assert p["current"]["days"]["weekday"]["trips"] > 0
