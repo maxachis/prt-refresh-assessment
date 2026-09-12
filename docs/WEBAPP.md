@@ -1281,6 +1281,32 @@ the plan's, which says nothing about its service; the 61C becomes the 61X and
 gains 8% of its weekday trips — so the key names it *one-to-one* and never
 *unchanged*.
 
+**The key has a second reading, which colours the same lines by how much
+service each group keeps.** "What happened" is the default above; "How much
+service" (`routecolor=service`) recolours every group's shown side by the
+day's trips, today → plan, in the **Stop-by-stop key's own buckets and
+colours** — loses all service, halved or worse, less, about the same, more,
+doubled or better, new, with the same ±10% band around no change
+(`query.bucket`, computed once per group and day at request time from the
+published trips) — and widens a line the further its bucket is from "about
+the same", so the extremes read at a glance the way the dots' sizes do. This
+is the reading that shows what the status reading cannot: **a one-to-one
+group is not unchanged**, and here the 61C → 61X reads as a gain and the 51
+as a loss while both are grey in the other reading. The colour follows the
+toolbar's day, because a group's Saturday change is not its weekday one (the
+Y46 → 46L keeps its weekday trips and loses every Saturday one); the head
+line says which day, and the panel's directory regroups under the same
+buckets, its names in the same colours, with a note for the groups that run
+on neither network that day. Its rows are switches like the status rows,
+with their own hidden list in the link (`servicehide=`, written only when
+something is off, since this reading hides nothing by default); "Show all"
+clears whichever reading is on screen. The figure is **trips, not revenue
+hours** (Max: "trips as the figure"): hours would say the same thing for
+nearly every group and mislead where the two disagree — a route that gets
+shorter and more frequent — and trips is what the dots count. It is still a
+figure per route group, not per corridor: the 51 reads fewer trips while the
+new 45 runs much of the same street in its own bucket, and the foot says so.
+
 **Selecting a group changes what the colours mean, and the key changes with
 them.** A click on a line, or a row in the panel's directory, dims every other
 line and draws the group's own two sides in the site's today/plan pair — the
@@ -1300,8 +1326,9 @@ it is.
 
 **The directory is the panel's empty state**, as the ranked list is for Places:
 grouped under Discontinued, New, Split or merged, and One-to-one, the last
-folded shut so the panel opens on what changed. Each row's name is printed
-in its bucket's colour, and a group with one side is named by that side alone
+folded shut so the panel opens on what changed — or, in the service reading,
+under the day's trips buckets in the key's order, empty ones left out. Each
+row's name is printed in its bucket's colour, and a group with one side is named by that side alone
 — "17 SHADELAND" under Discontinued, not "17 SHADELAND → —": the heading
 already says the other side is missing, and an arrow to a dash read as a
 rendering fault (Max's call). The card for a selected group
@@ -1314,11 +1341,13 @@ app's own timetables, so a percent on the card is the percent
 hours are in-service time only — no layover, no deadhead — and the card says
 they are not a cost figure.
 
-**The day switch moves the map and not the list.** The drawn patterns are per
-day type, because a route's Sunday pattern is not its weekday one and today's
-53 has no weekday pattern at all; the group list and the card's three-row
-table are day-free by construction. The state line says the day for the map's
-sake.
+**The day switch moves the map and, in the service reading, the colours and
+the directory's groupings.** The drawn patterns are per day type, because a
+route's Sunday pattern is not its weekday one and today's 53 has no weekday
+pattern at all; the status reading's list and the card's three-row table are
+day-free by construction, while the service reading is a day's figure and
+says which day in its head line and over its list. The state line says the
+day for the map's sake.
 
 **Nothing is measured off the lines.** They are the journey layer's shapes,
 thinned at build time and lossy by construction (`journey_shape`'s schema
@@ -1495,6 +1524,8 @@ self-documenting.
 | `map` | `lat,lon,zoom` — where the map is looking |
 | `route` | A route group's key (`c:51`, `p:45`, `c:77-86`) to open the Route changes view on; checked against the key grammar before it reaches a request |
 | `routehide` | The Route changes key's switched-off rows, comma-separated from `discontinued`, `new`, `reshaped`, `one-to-one`; `none` for every row on. Absent means the default, which is `one-to-one` alone |
+| `routecolor` | `service` to colour the Route changes overview by each group's trips change on the day, in the Stop-by-stop buckets; absent for the default reading, by what happened to the group |
+| `servicehide` | The service reading's switched-off rows, comma-separated from `gone`, `halved`, `less`, `same`, `more`, `doubled`, `new`. Absent means nothing hidden, which is that reading's default |
 | `embed` | `1` — map and key only, for an iframe; see below |
 
 A parameter that fails to parse is ignored and its control left at the default,

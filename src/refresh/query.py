@@ -3076,7 +3076,14 @@ def _prt_row(row) -> dict:
 
 
 def _route_group_service_rows(con):
-    """{key: {day: {...}}} -- every `route_group_service` row, grouped."""
+    """{key: {day: {...}}} -- every `route_group_service` row, grouped.
+
+    `bucket` is `bucket()` on the day's two trip counts -- the same buckets,
+    same dead band, as every dot and cell on the site -- so the view can
+    colour a group by how much its service changed and an orange line means
+    what an orange dot means. Decided here rather than in the browser so
+    the thresholds live in one place.
+    """
     out: dict[str, dict] = {}
     for r in con.execute(
             "SELECT key, day, cur_trips, prop_trips, cur_hours, prop_hours, "
@@ -3086,6 +3093,7 @@ def _route_group_service_rows(con):
             "cur_hours": round(r["cur_hours"], 1),
             "prop_hours": round(r["prop_hours"], 1),
             "pct_trips": r["pct_trips"], "pct_hours": r["pct_hours"],
+            "bucket": bucket(r["cur_trips"], r["prop_trips"]),
         }
     return out
 
@@ -3232,7 +3240,7 @@ def route_change(con, key: str, day: str) -> dict | None:
     features = []
     for side in SIDES:
         features.extend(_route_group_features(con, day, group, side))
-    return {**group, "features": features}
+    return {**group, "day": day, "features": features}
 
 
 def meta(con):

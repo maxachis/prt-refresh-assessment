@@ -713,6 +713,12 @@ export interface RouteRef {
  * to divide by. Revenue hours are in-service time only (first stop to last),
  * per `analyze_route_hours.py`: a floor on platform hours, never a cost.
  */
+/**
+ * The site's change buckets, as `query.BUCKETS` spells them -- the same keys
+ * the dots and the surface are coloured by.
+ */
+export type ServiceBucket = 'gone' | 'halved' | 'less' | 'same' | 'more' | 'doubled' | 'new' | 'none';
+
 export interface RouteDayService {
   cur_trips: number;
   prop_trips: number;
@@ -720,6 +726,8 @@ export interface RouteDayService {
   prop_hours: number;
   pct_trips: number | null;
   pct_hours: number | null;
+  /** `query.bucket` on the two trip counts: the day's change in the site's own buckets. */
+  bucket: ServiceBucket;
 }
 
 /** One row of PRT's own route crosswalk, as PRT published it -- the plan's account of itself. */
@@ -785,5 +793,7 @@ export interface RouteChangesResult {
 
 /** One group with the patterns of BOTH its sides, from `/api/route_changes/{key}`. */
 export interface RouteGroupDetail extends RouteGroup {
+  /** The day the features were drawn for; the group's own figures cover all three. */
+  day: Day;
   features: RouteChangeFeature[];
 }

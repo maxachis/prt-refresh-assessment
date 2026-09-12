@@ -1469,6 +1469,25 @@ def test_features_belong_to_their_group_and_the_shown_side(con,
         assert f["route"] in {r["route"] for r in group[group["shown"]]}
 
 
+def test_each_groups_day_carries_the_sites_own_change_bucket(
+        con, route_changes_present):
+    """The Route changes view can colour a surviving group by how much its
+    service changed, and it must do so in the buckets every other view uses
+    -- `query.bucket` on the group's two trip counts, dead band and all --
+    so an orange line means what an orange dot means. Computed here, once,
+    rather than in the browser, so the thresholds cannot drift apart."""
+    got = query.route_changes(con, "weekday")
+    by_key = {g["key"]: g for g in got["groups"]}
+    # 210 -> 188 weekday trips is -10.5%, just outside the +/-10% band.
+    assert by_key["c:51"]["service"]["weekday"]["bucket"] == "less"
+    assert by_key["c:17"]["service"]["weekday"]["bucket"] == "gone"
+    assert by_key["p:45"]["service"]["weekday"]["bucket"] == "new"
+    for g in got["groups"]:
+        for day, svc in g["service"].items():
+            assert svc["bucket"] == query.bucket(svc["cur_trips"], svc["prop_trips"]), \
+                (g["key"], day)
+
+
 def test_no_feature_draws_a_rail_route(con, route_changes_present):
     got = query.route_changes(con, "weekday")
     assert not any(f["route"] in RAIL_ROUTE_IDS for f in got["features"])
@@ -1506,6 +1525,14 @@ def test_route_change_gives_both_sides_features_for_one_group(con,
     assert detail["key"] == "c:51"
     sides = {f["side"] for f in detail["features"]}
     assert sides == {"current", "proposed"}
+
+
+def test_route_change_says_which_day_its_features_are_drawn_for(
+        con, route_changes_present):
+    """The card's three-day table is day-free, but the drawn patterns are
+    not, and the hover over a selected line reads the day's service off it
+    -- so the detail names its day the way the overview does."""
+    assert query.route_change(con, "c:51", "sunday")["day"] == "sunday"
 
 
 def test_route_change_is_none_for_an_unknown_key(con, route_changes_present):

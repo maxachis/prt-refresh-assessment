@@ -36,6 +36,20 @@
  *    because a map missing sixty routes has to say it is; and the hidden
  *    list travels in the link (`routehide=`) so an embed draws what its
  *    author saw.
+ *  - A SECOND READING COLOURS BY HOW MUCH, IN THE SITE'S OWN BUCKETS. The
+ *    key's switch (`RouteReading`) turns the overview from what happened to
+ *    a group into how much its trips changed on the toolbar's day -- the
+ *    dots' buckets (`query.bucket`, decided on the server so the ±10% dead
+ *    band lives in one place), the dots' colours (`change.STYLE`), and a
+ *    width that runs symmetric about "about the same" the way the dot sizes
+ *    do, so a gain is drawn as loudly as a loss. Trips, not revenue hours:
+ *    trips are what a rider feels as frequency, hours are the operator's
+ *    resource, and the two disagree on long routes (the 51: −10% trips, +2%
+ *    hours). The directory regroups under the same buckets so the panel
+ *    reads in the key's colours in either reading. This is the route-to-
+ *    route comparison the rest of the site refuses, and it makes the Carrick
+ *    trap visible -- the 51 draws as "less service" beside the new 45 in
+ *    blue on the same street -- so the foot says a group is not a corridor.
  *  - SELECTING A GROUP CHANGES WHAT BLUE MEANS. Unselected, the lines are
  *    coloured by status and blue is `new`. Selected, the group's own two
  *    sides are drawn in the site's today/plan pair (`NOW_COLOR` is a blue too)
@@ -51,12 +65,13 @@
  */
 import {
   RouteChangesResult, RouteGroup, RouteGroupDetail, RouteChangeFeature,
-  RouteStatus, RouteRef, Day, Side, DAYS,
+  RouteStatus, RouteRef, Day, Side, DAYS, ServiceBucket,
 } from './types';
 import { fetchJSONOnce, esc } from './utils';
 import { GONE_COLOR, NEW_COLOR } from './surface';
 import { KEPT_COLOR } from './corridor';
 import { NOW_COLOR, PROP_COLOR } from './journey';
+import { STYLE } from './change';
 
 // --------------------------------------------------------------------------
 // the vocabulary
@@ -86,6 +101,60 @@ export function isRouteBucket(s: string): s is RouteBucket {
 /** A list of buckets in the key's order, each at most once -- the form a link carries. */
 export function normaliseBuckets(buckets: readonly RouteBucket[]): RouteBucket[] {
   return ROUTE_BUCKETS.filter((b) => buckets.includes(b));
+}
+
+/**
+ * What the overview is coloured by: what happened to a group (`status`), or
+ * how much its trips changed on the toolbar's day (`service`) -- see the
+ * module docstring's third bullet. Status first, because it is the question
+ * the view was built to answer and the one the directory opens on.
+ */
+export type RouteReading = 'status' | 'service';
+export const DEFAULT_ROUTE_READING: RouteReading = 'status';
+export const READING_LABEL: Record<RouteReading, string> = {
+  status: 'What happened',
+  service: 'How much service',
+};
+
+export function isRouteReading(s: string): s is RouteReading {
+  return s === 'status' || s === 'service';
+}
+
+/**
+ * The service reading's rows: the site's buckets in the site's order, minus
+ * `none` -- a group with no trips on either network that day draws nothing,
+ * so it has no line to switch off; the directory counts those in a sentence.
+ */
+export type ServiceRow = Exclude<ServiceBucket, 'none'>;
+export const SERVICE_BUCKETS: ServiceRow[] = ['gone', 'halved', 'less', 'same', 'more', 'doubled', 'new'];
+
+/** `query.BUCKETS`'s own words, so a row here reads as the same row in the Stop-by-stop key. */
+export const SERVICE_LABEL: Record<ServiceBucket, string> = {
+  gone: 'loses all service',
+  halved: 'halved or worse',
+  less: 'less service',
+  same: 'about the same',
+  more: 'more service',
+  doubled: 'doubled or better',
+  new: 'new service',
+  none: 'no service either way',
+};
+
+/**
+ * Width multipliers for the service reading, symmetric about `same` the way
+ * the dot sizes (6 / 4.5 / 3 / 2.5) are: width says how big a change is and
+ * never which way it goes, so a gain is drawn as loudly as a loss.
+ */
+export const SERVICE_WIDTH: Record<ServiceBucket, number> = {
+  gone: 1.7, halved: 1.35, less: 1.0, same: 0.75, more: 1.0, doubled: 1.35, new: 1.7, none: 0.75,
+};
+
+export function isServiceBucket(s: string): s is ServiceRow {
+  return (SERVICE_BUCKETS as string[]).includes(s);
+}
+
+export function normaliseServiceBuckets(buckets: readonly ServiceRow[]): ServiceRow[] {
+  return SERVICE_BUCKETS.filter((b) => buckets.includes(b));
 }
 
 /**
@@ -258,6 +327,14 @@ export interface RouteLineProps {
   sort: 0 | 1;
   /** Width multiplier: 1 everywhere except a selected group's today side -- see `CASING_WIDTH`. */
   w: number;
+  /** The group's change bucket on the drawn day -- the service reading's colour key. */
+  bucket: ServiceBucket;
+  /** What the service reading paints the line: `STYLE[bucket]`'s colour. */
+  scolor: string;
+  /** The service reading's width multiplier, `SERVICE_WIDTH[bucket]`. */
+  sw: number;
+  /** The day's trips change, for the hover; null where today has no trips. */
+  pct: number | null;
 }
 
 /**
@@ -283,13 +360,19 @@ interface RouteLineFeature {
   properties: RouteLineProps;
 }
 
-function lineFeature(f: RouteChangeFeature, color: string, sort: 0 | 1, w = 1): RouteLineFeature {
+/** The day's service for a feature's group, or a neutral reading where the group is unknown. */
+const NO_SERVICE = { bucket: 'none' as ServiceBucket, pct_trips: null as number | null };
+
+function lineFeature(f: RouteChangeFeature, color: string, sort: 0 | 1, w: number,
+                     svc: { bucket: ServiceBucket; pct_trips: number | null }): RouteLineFeature {
   return {
     type: 'Feature',
     geometry: { type: 'LineString', coordinates: f.points },
     properties: {
       key: f.key, side: f.side, route: f.route, name: f.name, status: f.status,
       pattern_id: f.pattern_id, color, sort, w,
+      bucket: svc.bucket, scolor: STYLE[svc.bucket].color, sw: SERVICE_WIDTH[svc.bucket],
+      pct: svc.pct_trips,
     },
   };
 }
@@ -304,8 +387,10 @@ function lineFeature(f: RouteChangeFeature, color: string, sort: 0 | 1, w = 1): 
  * view exists to show.
  */
 export function toOverviewGeoJSON(r: RouteChangesResult) {
+  const service = new Map(r.groups.map((g) => [g.key, g.service[r.day]]));
   const features = r.features
-    .map((f) => lineFeature(f, STATUS_COLOR[f.status], f.status === 'one-to-one' ? 0 : 1))
+    .map((f) => lineFeature(f, STATUS_COLOR[f.status], f.status === 'one-to-one' ? 0 : 1, 1,
+                            service.get(f.key) ?? NO_SERVICE))
     .sort((a, b) => a.properties.sort - b.properties.sort);
   return { type: 'FeatureCollection' as const, features };
 }
@@ -316,10 +401,13 @@ export function toOverviewGeoJSON(r: RouteChangesResult) {
  * every other today-against-plan drawing here uses.
  */
 export function toSelectedGeoJSON(d: RouteGroupDetail) {
+  // The selection is drawn in the today/plan pair whichever reading is on,
+  // so its service properties are carried for the hover and never painted.
+  const svc = d.service[d.day] ?? NO_SERVICE;
   const features = d.features
     .map((f) => (f.side === 'current'
-      ? lineFeature(f, NOW_COLOR, 0, CASING_WIDTH)
-      : lineFeature(f, PROP_COLOR, 1, SELECTED_WIDTH)))
+      ? lineFeature(f, NOW_COLOR, 0, CASING_WIDTH, svc)
+      : lineFeature(f, PROP_COLOR, 1, SELECTED_WIDTH, svc)))
     .sort((a, b) => a.properties.sort - b.properties.sort);
   return { type: 'FeatureCollection' as const, features };
 }
@@ -351,13 +439,25 @@ export function bucketFilter(hidden: readonly RouteBucket[]): any {
   return ['!', ['in', ['get', 'status'], ['literal', statuses]]];
 }
 
+/** The service reading's counterpart: drop the switched-off buckets. */
+export function serviceFilter(hidden: readonly ServiceRow[]): any {
+  if (hidden.length === 0) return null;
+  return ['!', ['in', ['get', 'bucket'], ['literal', [...hidden]]]];
+}
+
+/** Which property the reading paints and widens by -- see `RouteLineProps`. */
+const PAINT_BY: Record<RouteReading, { color: string; width: string }> = {
+  status: { color: 'color', width: 'w' },
+  service: { color: 'scolor', width: 'sw' },
+};
+
 /**
  * Zoom-scaled, times the feature's own multiplier. The multiplier sits in
  * the curve's outputs rather than around the curve, because MapLibre only
  * accepts `zoom` as the input of a top-level interpolate.
  */
-function lineWidth(): any {
-  const at = (px: number) => ['*', ['get', 'w'], px];
+function lineWidth(reading: RouteReading): any {
+  const at = (px: number) => ['*', ['get', PAINT_BY[reading].width], px];
   return ['interpolate', ['linear'], ['zoom'],
     9, at(WIDE * 0.5), 14, at(WIDE), 16, at(WIDE * 1.6)];
 }
@@ -403,7 +503,7 @@ function addLineLayers(map: maplibregl.Map, src: string, lines: string, arrows: 
     },
     paint: {
       'line-color': ['get', 'color'],
-      'line-width': lineWidth(),
+      'line-width': lineWidth('status'),
       'line-opacity': opacity,
     },
   }, beforeId);
@@ -449,8 +549,11 @@ let detail: RouteGroupDetail | null = null;
 let visible = false;
 // The key's switched-off rows, held here the way `change.ts` holds its
 // hidden buckets: the filter is a fact about the layer, and the key, the
-// link and the map all read it from one place.
+// link and the map all read it from one place. Each reading keeps its own,
+// since its rows are different things.
 const hiddenBuckets = new Set<RouteBucket>(DEFAULT_HIDDEN_BUCKETS);
+const hiddenService = new Set<ServiceRow>();
+let reading: RouteReading = DEFAULT_ROUTE_READING;
 
 /** The overview on screen -- the groups and the drawn day -- or null before it has loaded. */
 export function layerData(): RouteChangesResult | null {
@@ -559,9 +662,46 @@ export function setHiddenRouteBuckets(map: maplibregl.Map, buckets: readonly Rou
   applyBucketFilter(map);
 }
 
+/** The service reading's switched-off rows, in key order. */
+export function hiddenServiceBuckets(): ServiceRow[] {
+  return normaliseServiceBuckets([...hiddenService]);
+}
+
+export function toggleServiceBucket(map: maplibregl.Map, bucket: ServiceRow) {
+  if (hiddenService.has(bucket)) hiddenService.delete(bucket);
+  else hiddenService.add(bucket);
+  applyBucketFilter(map);
+}
+
+export function setHiddenServiceBuckets(map: maplibregl.Map, buckets: readonly ServiceRow[]) {
+  hiddenService.clear();
+  for (const b of buckets) hiddenService.add(b);
+  applyBucketFilter(map);
+}
+
+export function routeReading(): RouteReading {
+  return reading;
+}
+
+/**
+ * Switch what the overview is coloured by. Paint properties rather than a
+ * refetch or a rebuild: both readings' colours and widths ride on every
+ * feature already, so this is a repaint of what is in hand. The filter
+ * follows, because each reading has its own switched-off rows.
+ */
+export function setRouteReading(map: maplibregl.Map, next: RouteReading) {
+  reading = next;
+  map.setPaintProperty(LAYER_LINES, 'line-color', ['get', PAINT_BY[next].color]);
+  map.setPaintProperty(LAYER_LINES, 'line-width', lineWidth(next));
+  map.setPaintProperty(LAYER_ARROWS, 'icon-color', ['get', PAINT_BY[next].color]);
+  applyBucketFilter(map);
+}
+
 /** Only the overview is filtered: a selected group draws whatever bucket it is in. */
 function applyBucketFilter(map: maplibregl.Map) {
-  const filter = bucketFilter(hiddenRouteBuckets());
+  const filter = reading === 'status'
+    ? bucketFilter(hiddenRouteBuckets())
+    : serviceFilter(hiddenServiceBuckets());
   map.setFilter(LAYER_LINES, filter);
   map.setFilter(LAYER_ARROWS, filter);
 }
@@ -592,18 +732,31 @@ function methodLink(): string {
   return ` <button class="howto" data-caveat="${ROUTE_CHANGES_CAVEAT}">method</button>`;
 }
 
+/** How the directory is laid out: by what happened, or by the day's trips change. */
+export interface RouteListOptions {
+  reading: RouteReading;
+  /** The day the trips figures and, in the service reading, the headings are for. */
+  day: Day;
+}
+
+/** "weekday" / "Saturday" / "Sunday", for a heading that names the figure's day. */
+const DAY_NOUN: Record<Day, string> = { weekday: 'weekday', saturday: 'Saturday', sunday: 'Sunday' };
+
 /**
  * The trips column of a directory row, or nothing for a group with one side.
  *
  * A discontinued route is −100% by construction and a new one has no
  * percent at all; printing either beside the mapping would say "−100%" of a
  * route the row already says is gone. The heading carries that fact, so the
- * figure is reserved for the groups where it means something.
+ * figure is reserved for the groups where it means something. The day is
+ * the toolbar's, named in the cell's title, since the panel's state line
+ * already says which day the map is on.
  */
-function rowChange(g: RouteGroup): string {
+function rowChange(g: RouteGroup, day: Day): string {
   if (g.current.length === 0 || g.proposed.length === 0) return '';
-  const pct = g.service.weekday.pct_trips;
-  return `<span class="rc-pct ${trend(pct)}" title="Weekday trips, today to plan">${signedPct(pct)}</span>`;
+  const pct = g.service[day].pct_trips;
+  const title = `${DAY_NOUN[day]} trips, today to plan`;
+  return `<span class="rc-pct ${trend(pct)}" title="${esc(title)}">${signedPct(pct)}</span>`;
 }
 
 /** The colour class a signed figure wears: the panel's own up/down/flat. */
@@ -613,53 +766,92 @@ function trend(pct: number | null): 'up' | 'down' | 'flat' {
 }
 
 /**
- * The name's colour class: the map's colour for the three coloured buckets,
- * none for one-to-one -- its grey would read as disabled text on the dark
- * panel, and it is the section whose whole point is that it is not one of
- * the three.
+ * The name's colour, in the status reading: a class for the three coloured
+ * buckets, none for one-to-one -- its grey would read as disabled text on
+ * the dark panel, and it is the section whose whole point is that it is not
+ * one of the three. In the service reading, the bucket's own colour inline,
+ * from the same table the map paints from.
  */
-function nameClass(status: RouteStatus): string {
-  return status === 'one-to-one' ? 'rc-map' : `rc-map ${status}`;
+function nameMarkup(g: RouteGroup, { reading, day }: RouteListOptions): string {
+  const label = esc(mappingLabel(g, { farSideNamed: false }));
+  if (reading === 'service') {
+    return `<span class="rc-map" style="color:${STYLE[g.service[day].bucket].color}">${label}</span>`;
+  }
+  const cls = g.status === 'one-to-one' ? 'rc-map' : `rc-map ${g.status}`;
+  return `<span class="${cls}">${label}</span>`;
 }
 
-function routeRow(g: RouteGroup, selected: boolean): string {
+function routeRow(g: RouteGroup, selected: boolean, opts: RouteListOptions): string {
   return `
     <button type="button" class="rc-row${selected ? ' selected' : ''}"
             data-select-route="${esc(g.key)}">
-      <span class="${nameClass(g.status)}">${esc(mappingLabel(g, { farSideNamed: false }))}</span>
-      ${rowChange(g)}
+      ${nameMarkup(g, opts)}
+      ${rowChange(g, opts.day)}
     </button>`;
 }
 
 /** A heading and its rows -- "Discontinued (21)" over the rows that wear it. */
-function section(title: string, groups: RouteGroup[], selectedKey: string | null): string {
+function section(title: string, groups: RouteGroup[], selectedKey: string | null,
+                 opts: RouteListOptions): string {
   return `
     <div class="scope-head">${esc(title)} (${groups.length})</div>
-    <div class="rc-list">${groups.map((g) => routeRow(g, g.key === selectedKey)).join('')}</div>`;
+    <div class="rc-list">${groups.map((g) => routeRow(g, g.key === selectedKey, opts)).join('')}</div>`;
+}
+
+/** "Less service", for a heading. */
+function capitalised(s: string): string {
+  return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
 /**
- * The directory: every group under its status heading, in rank order within
- * each. Split and merged share a heading -- they share a colour on the map,
- * and "reshaped" is the reading a reader wants first; the card's pill says
- * which. One-to-one is folded shut so the list opens on what changed.
+ * The directory: every group under a heading, in rank order within each.
+ *
+ * In the status reading the headings are the statuses. Split and merged
+ * share one -- they share a colour on the map, and "reshaped" is the reading
+ * a reader wants first; the card's pill says which -- and one-to-one is
+ * folded shut so the list opens on what changed.
+ *
+ * In the service reading the headings are the day's buckets, in the key's
+ * order, so the panel reads in the key's colours either way; a bucket no
+ * group falls in is left out, and the groups with no trips on either
+ * network that day are counted in a sentence rather than listed under a
+ * colour nothing on the map wears.
  */
-export function routeListHTML(groups: RouteGroup[], selectedKey: string | null): string {
-  const by = (statuses: RouteStatus[]) => groups.filter((g) => statuses.includes(g.status));
-  const kept = by(['one-to-one']);
-  return `
+export function routeListHTML(groups: RouteGroup[], selectedKey: string | null,
+                              opts: RouteListOptions = { reading: 'status', day: 'weekday' }): string {
+  const head = `
     <div class="place-head">
       <h2>Route changes</h2>
       <div class="muted">${groups.length.toLocaleString()} route groups, ranked by weekday riders</div>
     </div>
-    <p class="note">${GROUP_NOTE}${methodLink()}</p>
-    ${section('Discontinued', by(['discontinued']), selectedKey)}
-    ${section('New', by(['new']), selectedKey)}
-    ${section('Split or merged', by(['split', 'merged']), selectedKey)}
+    <p class="note">${GROUP_NOTE}${methodLink()}</p>`;
+  if (opts.reading === 'service') return head + serviceSections(groups, selectedKey, opts);
+  const by = (statuses: RouteStatus[]) => groups.filter((g) => statuses.includes(g.status));
+  const kept = by(['one-to-one']);
+  return `${head}
+    ${section('Discontinued', by(['discontinued']), selectedKey, opts)}
+    ${section('New', by(['new']), selectedKey, opts)}
+    ${section('Split or merged', by(['split', 'merged']), selectedKey, opts)}
     <details class="svc rc-kept">
       <summary>One-to-one (${kept.length}) — one number on each side; how its service changed</summary>
-      <div class="rc-list">${kept.map((g) => routeRow(g, g.key === selectedKey)).join('')}</div>
+      <div class="rc-list">${kept.map((g) => routeRow(g, g.key === selectedKey, opts)).join('')}</div>
     </details>`;
+}
+
+function serviceSections(groups: RouteGroup[], selectedKey: string | null,
+                         opts: RouteListOptions): string {
+  const inBucket = (b: ServiceBucket) => groups.filter((g) => g.service[opts.day].bucket === b);
+  const idle = inBucket('none').length;
+  const idleNote = idle === 0 ? '' : `
+    <p class="muted rc-idle">${idle} group${idle === 1 ? ' runs' : 's run'} on neither network on ${esc(DAY_WORD[opts.day])},
+      so ${idle === 1 ? 'it has' : 'they have'} no line to draw.</p>`;
+  return `
+    <div class="muted rc-by">Grouped by ${esc(DAY_NOUN[opts.day])} trips, today → plan</div>
+    ${SERVICE_BUCKETS.map((b) => {
+      const rows = inBucket(b);
+      return rows.length ? section(capitalised(SERVICE_LABEL[b]), rows, selectedKey, opts) : '';
+    }).join('')}
+    ${idleNote}`;
 }
 
 /** One day's row of the card's service table: trips and hours, today → plan, each signed. */
@@ -743,8 +935,12 @@ export interface RouteKeyOptions {
   groups: RouteGroup[] | null;
   /** The day the drawn patterns are for. */
   day: Day;
-  /** The rows switched off, whose lines are not on the map. */
+  /** The status reading's rows switched off, whose lines are not on the map. */
   hidden: readonly RouteBucket[];
+  /** The service reading's rows switched off. */
+  serviceHidden: readonly ServiceRow[];
+  /** Which reading the overview is coloured by. */
+  reading: RouteReading;
   /** The selected group, whose two sides have taken over the colours. */
   selected: RouteGroupDetail | null;
 }
@@ -755,16 +951,68 @@ function swatchRow(color: string, label: string): string {
 }
 
 /** One row of the overview's key: a switch, dimmed while its lines are off. */
-function bucketRow(bucket: RouteBucket, label: string, n: number, hidden: readonly RouteBucket[]): string {
-  const off = hidden.includes(bucket);
-  const color = STATUS_COLOR[BUCKET_STATUSES[bucket][0]];
+function keyRow(attr: string, value: string, color: string, label: string, n: number,
+                off: boolean): string {
   return `
-    <button class="lg-row ${off ? 'off' : ''}" data-route-bucket="${bucket}"
+    <button class="lg-row ${off ? 'off' : ''}" ${attr}="${value}"
             aria-pressed="${!off}">
       <i style="background:${color};border-radius:2px"></i>
       <span class="lg-lab">${label}</span>
       <span class="lg-n">${n}</span>
     </button>`;
+}
+
+function bucketRow(bucket: RouteBucket, label: string, n: number, hidden: readonly RouteBucket[]): string {
+  const color = STATUS_COLOR[BUCKET_STATUSES[bucket][0]];
+  return keyRow('data-route-bucket', bucket, color, label, n, hidden.includes(bucket));
+}
+
+function serviceKeyRow(bucket: ServiceRow, n: number, hidden: readonly ServiceRow[]): string {
+  return keyRow('data-route-service', bucket, STYLE[bucket].color, SERVICE_LABEL[bucket], n,
+                hidden.includes(bucket));
+}
+
+/** The reading switch, in the same dress as the dots key's Locations/Riders. */
+function readingSwitch(reading: RouteReading): string {
+  const readings: RouteReading[] = ['status', 'service'];
+  return `
+    <div class="seg lg-weight" role="group" aria-label="Colour the routes by">
+      ${readings.map((r) => `
+        <button data-route-reading="${r}" aria-pressed="${reading === r}"
+                class="${reading === r ? 'active' : ''}">${READING_LABEL[r]}</button>`).join('')}
+    </div>`;
+}
+
+/** How many groups fall in each of the day's buckets, every bucket present even at zero. */
+function serviceCounts(groups: RouteGroup[], day: Day): Record<ServiceBucket, number> {
+  const counts = Object.fromEntries(
+    [...SERVICE_BUCKETS, 'none'].map((b) => [b, 0])) as Record<ServiceBucket, number>;
+  for (const g of groups) counts[g.service[day].bucket] += 1;
+  return counts;
+}
+
+/**
+ * The service reading's key: the day's buckets that have a group in them,
+ * in the dots' colours, each a switch. The head line sums them three ways
+ * -- fewer, about the same, more -- so folded down it still says which way
+ * the day went.
+ */
+function serviceKeyHTML(groups: RouteGroup[], day: Day, hidden: readonly ServiceRow[]): string {
+  const n = serviceCounts(groups, day);
+  const fewer = n.gone + n.halved + n.less;
+  const more = n.more + n.doubled + n.new;
+  const head = `${groups.length.toLocaleString()} route groups · ${fewer} fewer trips`
+    + ` · ${n.same} about the same · ${more} more · ${DAY_WORD[day]}`;
+  return `
+    <div class="lg-head"><b>${esc(head)}</b></div>
+    ${readingSwitch('service')}
+    ${SERVICE_BUCKETS.filter((b) => n[b] > 0).map((b) => serviceKeyRow(b, n[b], hidden)).join('')}
+    <div class="lg-foot">Each group’s trips today → plan on ${esc(DAY_WORD[day])}, in the
+      Stop-by-stop key’s buckets and colours — a ±10% band around no change.
+      Route by route, which is not how access is measured: a group is
+      not a corridor, and the 51 reads fewer trips while the new 45 runs much
+      of the same street. Click a row to show or hide its lines; click a line to
+      select its group.</div>`;
 }
 
 /**
@@ -774,7 +1022,7 @@ function bucketRow(bucket: RouteBucket, label: string, n: number, hidden: readon
  * The head line is the summary sentence for the day, written to stand alone:
  * the phone and embed layouts fold the key down to it.
  */
-export function routeKeyHTML({ groups, day, hidden, selected }: RouteKeyOptions): string {
+export function routeKeyHTML({ groups, day, hidden, serviceHidden, reading, selected }: RouteKeyOptions): string {
   if (selected) {
     return `
       <div class="lg-head"><b>${esc(mappingLabel(selected))}</b>
@@ -786,12 +1034,14 @@ export function routeKeyHTML({ groups, day, hidden, selected }: RouteKeyOptions)
         nothing is measured off their length.</div>`;
   }
   if (!groups) return '<div class="lg-head"><b>Route changes</b></div>';
+  if (reading === 'service') return serviceKeyHTML(groups, day, serviceHidden);
   const n = statusCounts(groups);
   const reshaped = n.split + n.merged;
   const head = `${groups.length.toLocaleString()} route groups · ${n.discontinued} discontinued`
     + ` · ${n.new} new · ${reshaped} split or merged · ${DAY_WORD[day]}`;
   return `
     <div class="lg-head"><b>${esc(head)}</b></div>
+    ${readingSwitch('status')}
     ${bucketRow('discontinued', 'discontinued — today’s alignment', n.discontinued, hidden)}
     ${bucketRow('new', 'new — proposed alignment', n.new, hidden)}
     ${bucketRow('reshaped', 'split or merged — proposed alignment', reshaped, hidden)}
@@ -812,11 +1062,20 @@ export function routeKeyHTML({ groups, day, hidden, selected }: RouteKeyOptions)
  * Once a group is selected the network word carries the weight, because it
  * is the thing the two colours on the map are now distinguishing.
  */
-export function routeTooltipHTML(props: RouteLineProps, { selected }: { selected: boolean }): string {
+export function routeTooltipHTML(
+  props: RouteLineProps,
+  { selected, reading = 'status' }: { selected: boolean; reading?: RouteReading },
+): string {
   const route = esc(props.name ? `${props.route} ${props.name}` : props.route);
   const side = esc(SIDE_WORD[props.side]);
   const status = esc(STATUS_LABEL[props.status]);
+  // In the service reading the colour is asking about the day's trips, so
+  // the hover answers with them -- the bucket's word, and the percent where
+  // there is a today to take it against.
+  const service = reading === 'service'
+    ? ` · ${esc(SERVICE_LABEL[props.bucket])}${props.pct === null ? '' : ` (${signedPct(props.pct)} trips)`}`
+    : '';
   return selected
-    ? `${route} · <b>${side}</b> · ${status}`
-    : `<b>${route}</b> · ${side} · ${status}`;
+    ? `${route} · <b>${side}</b> · ${status}${service}`
+    : `<b>${route}</b> · ${side} · ${status}${service}`;
 }

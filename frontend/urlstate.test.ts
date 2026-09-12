@@ -17,6 +17,8 @@ const FULL: UrlState = {
   stopRoutes: 'proposed',
   route: 'c:77-86',
   routeHidden: ['new', 'one-to-one'],
+  routeReading: 'service',
+  serviceHidden: ['same', 'more'],
 };
 
 describe('toSearch', () => {
@@ -33,6 +35,22 @@ describe('toSearch', () => {
     expect(p.get('stoproutes')).toBe('proposed');
     expect(p.get('route')).toBe('c:77-86');
     expect(p.get('routehide')).toBe('new,one-to-one');
+    expect(p.get('routecolor')).toBe('service');
+    expect(p.get('servicehide')).toBe('same,more');
+  });
+
+  it('leaves the service reading and its hidden rows out at their defaults', () => {
+    // Status is the reading a map opens on and nothing is hidden in the
+    // service reading until somebody hides it, so both follow `weight`'s
+    // only-when-chosen rule; an empty hidden list is plain absence here.
+    const p = new URLSearchParams(toSearch({ ...FULL, routeReading: 'status', serviceHidden: [] }));
+    expect(p.has('routecolor')).toBe(false);
+    expect(p.has('servicehide')).toBe(false);
+  });
+
+  it('reads the service reading\'s hidden rows back in the key\'s order', () => {
+    expect(parseUrlState('?servicehide=more,gone,bogus').serviceHidden).toEqual(['gone', 'more']);
+    expect(parseUrlState('?routecolor=service').routeReading).toBe('service');
   });
 
   it('writes which network the drawn routes are, since only one is on the map', () => {
@@ -162,6 +180,8 @@ describe('parseUrlState', () => {
     ['?route=x:51', 'route'],
     ['?route=c:51/../etc', 'route'],
     ['?routehide=maybe', 'routeHidden'],
+    ['?routecolor=hours', 'routeReading'],
+    ['?servicehide=none', 'serviceHidden'],
     ['?routehide=', 'routeHidden'],
     ['?stoproutes=maybe', 'stopRoutes'],
     // The two parameters this replaced before the feature shipped: `on` was

@@ -644,7 +644,13 @@ changes published findings.
     bucket is named *one-to-one* everywhere and drawn grey, switched off by
     default from the key's own rows, which are the view's filter the way
     the Stop-by-stop key's are (Max's decision; `routehide=` carries the
-    switched-off rows in a link). And **the colours change meaning on
+    switched-off rows in a link). The key's second reading, "How much
+    service" (`routecolor=service`), recolours every group by its **trips**
+    change on the toolbar's day in the Stop-by-stop buckets and colours
+    (`query.bucket`, the same ±10% band), which is where a one-to-one gain
+    or loss becomes visible; trips rather than hours is Max's call, and it
+    is still a figure per group, never per corridor. And **the colours
+    change meaning on
     selection** — blue is *new* in the overview and *today's alignment* once
     a group is selected — so the key rewrites itself at that moment and
     anything screenshotted from this view needs the key in the frame. Access

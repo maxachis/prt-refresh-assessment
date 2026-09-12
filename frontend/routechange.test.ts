@@ -6,7 +6,10 @@ import {
   routeListHTML, routeCardHTML, routeKeyHTML, routeTooltipHTML,
   ROUTE_CHANGES_CAVEAT, ROUTE_BUCKETS, BUCKET_STATUSES, DEFAULT_HIDDEN_BUCKETS,
   isRouteBucket, normaliseBuckets, bucketFilter,
+  SERVICE_BUCKETS, SERVICE_LABEL, SERVICE_WIDTH, isServiceBucket, serviceFilter,
+  DEFAULT_ROUTE_READING, isRouteReading,
 } from './routechange';
+import { STYLE } from './change';
 import { GONE_COLOR, NEW_COLOR } from './surface';
 import { KEPT_COLOR } from './corridor';
 import { NOW_COLOR, PROP_COLOR } from './journey';
@@ -18,7 +21,7 @@ import {
 function service(overrides: Partial<RouteDayService> = {}): RouteDayService {
   return {
     cur_trips: 210, prop_trips: 188, cur_hours: 160.7, prop_hours: 164.0,
-    pct_trips: -10.5, pct_hours: 2.1,
+    pct_trips: -10.5, pct_hours: 2.1, bucket: 'less',
     ...overrides,
   };
 }
@@ -46,10 +49,10 @@ const DISCONTINUED = group({
   current: [{ route: '2', name: 'Mount Royal' }], proposed: [],
   riders_weekday: 412,
   service: {
-    weekday: service({ prop_trips: 0, prop_hours: 0, pct_trips: -100, pct_hours: -100 }),
+    weekday: service({ prop_trips: 0, prop_hours: 0, pct_trips: -100, pct_hours: -100, bucket: 'gone' }),
     saturday: service({ cur_trips: 0, cur_hours: 0, prop_trips: 0, prop_hours: 0,
-                        pct_trips: null, pct_hours: null }),
-    sunday: service({ prop_trips: 0, prop_hours: 0, pct_trips: -100, pct_hours: -100 }),
+                        pct_trips: null, pct_hours: null, bucket: 'none' }),
+    sunday: service({ prop_trips: 0, prop_hours: 0, pct_trips: -100, pct_hours: -100, bucket: 'gone' }),
   },
   prt: [{ current_route: '2', final_route: '-', category: 'Discontinued',
           related_routes: '', route_page: '' }],
@@ -62,9 +65,9 @@ const NEW = group({
   riders_weekday: 0,
   service: {
     weekday: service({ cur_trips: 0, cur_hours: 0, prop_trips: 70, prop_hours: 55.2,
-                       pct_trips: null, pct_hours: null }),
-    saturday: service({ cur_trips: 0, cur_hours: 0, pct_trips: null, pct_hours: null }),
-    sunday: service({ cur_trips: 0, cur_hours: 0, pct_trips: null, pct_hours: null }),
+                       pct_trips: null, pct_hours: null, bucket: 'new' }),
+    saturday: service({ cur_trips: 0, cur_hours: 0, pct_trips: null, pct_hours: null, bucket: 'new' }),
+    sunday: service({ cur_trips: 0, cur_hours: 0, pct_trips: null, pct_hours: null, bucket: 'new' }),
   },
   prt: [],
 });
@@ -80,7 +83,7 @@ const KEPT = group({
   current: [{ route: '61C', name: 'MCKEESPORT-HOMESTEAD' }],
   proposed: [{ route: '61C', name: 'McKeesport-Homestead' }],
   service: {
-    weekday: service({ pct_trips: 0, pct_hours: 0.4 }),
+    weekday: service({ prop_trips: 210, pct_trips: 0, pct_hours: 0.4, bucket: 'same' }),
     saturday: service(),
     sunday: service({ pct_trips: null, cur_trips: 0, cur_hours: 0 }),
   },
@@ -221,6 +224,27 @@ describe('toOverviewGeoJSON', () => {
     for (const f of gj.features.slice(1)) expect(f.properties.sort).toBe(1);
   });
 
+  it('carries the day\'s service bucket, its colour and its width, joined from the group', () => {
+    // The colour is the dots' own for that bucket, and the width runs
+    // symmetric about "about the same" the way the dot sizes do, so a gain
+    // is drawn as loudly as a loss.
+    const byKey = new Map(toOverviewGeoJSON(result).features.map((f) => [f.properties.key, f.properties]));
+    expect(byKey.get('c:51')!.bucket).toBe('less');
+    expect(byKey.get('c:51')!.scolor).toBe(STYLE.less.color);
+    expect(byKey.get('c:51')!.sw).toBe(SERVICE_WIDTH.less);
+    expect(byKey.get('c:51')!.pct).toBe(-10.5);
+    expect(byKey.get('c:2')!.bucket).toBe('gone');
+    expect(byKey.get('c:2')!.scolor).toBe(STYLE.gone.color);
+    expect(byKey.get('c:2')!.pct).toBe(-100);
+    expect(byKey.get('c:61C')!.bucket).toBe('same');
+    expect(byKey.get('c:61C')!.sw).toBe(SERVICE_WIDTH.same);
+  });
+
+  it('reads the bucket for the day the overview was drawn for', () => {
+    const sunday = toOverviewGeoJSON({ ...result, day: 'sunday' });
+    expect(sunday.features.find((f) => f.properties.key === 'c:61C')!.properties.bucket).toBe('less');
+  });
+
   it('carries what the hover and the click need', () => {
     const p = toOverviewGeoJSON(result).features.find((f) => f.properties.key === 'c:51')!.properties;
     expect(p).toMatchObject({ key: 'c:51', side: 'proposed', route: '51',
@@ -231,6 +255,7 @@ describe('toOverviewGeoJSON', () => {
 describe('toSelectedGeoJSON', () => {
   const detail: RouteGroupDetail = {
     ...group(),
+    day: 'weekday',
     features: [
       feature({ side: 'proposed', route: '51S', name: 'Carrick Short', pattern_id: 13 }),
       feature({ side: 'current', route: '51', name: 'CARRICK', pattern_id: 2 }),
@@ -304,6 +329,40 @@ describe('route buckets', () => {
   });
 });
 
+describe('the service reading', () => {
+  it('starts on what happened, and knows its two readings', () => {
+    expect(DEFAULT_ROUTE_READING).toBe('status');
+    expect(isRouteReading('service')).toBe(true);
+    expect(isRouteReading('status')).toBe(true);
+    expect(isRouteReading('trips')).toBe(false);
+  });
+
+  it('uses the site\'s buckets in the site\'s order, with the site\'s words', () => {
+    expect(SERVICE_BUCKETS).toEqual(['gone', 'halved', 'less', 'same', 'more', 'doubled', 'new']);
+    expect(SERVICE_LABEL.gone).toBe('loses all service');
+    expect(SERVICE_LABEL.same).toBe('about the same');
+    expect(SERVICE_LABEL.doubled).toBe('doubled or better');
+    for (const b of SERVICE_BUCKETS) expect(STYLE[b]).toBeDefined();
+    expect(isServiceBucket('halved')).toBe(true);
+    expect(isServiceBucket('none')).toBe(false);
+  });
+
+  it('draws gains as wide as losses, and the unchanged narrowest', () => {
+    expect(SERVICE_WIDTH.gone).toBe(SERVICE_WIDTH.new);
+    expect(SERVICE_WIDTH.halved).toBe(SERVICE_WIDTH.doubled);
+    expect(SERVICE_WIDTH.less).toBe(SERVICE_WIDTH.more);
+    expect(SERVICE_WIDTH.same).toBeLessThan(SERVICE_WIDTH.less);
+    expect(SERVICE_WIDTH.less).toBeLessThan(SERVICE_WIDTH.halved);
+    expect(SERVICE_WIDTH.halved).toBeLessThan(SERVICE_WIDTH.gone);
+  });
+
+  it('filters the overview by bucket, and by nothing when every row is on', () => {
+    expect(serviceFilter(['same', 'less']))
+      .toEqual(['!', ['in', ['get', 'bucket'], ['literal', ['same', 'less']]]]);
+    expect(serviceFilter([])).toBeNull();
+  });
+});
+
 describe('bucketFilter', () => {
   it('drops the statuses of every hidden bucket, and nothing when none is hidden', () => {
     expect(bucketFilter(['one-to-one']))
@@ -368,6 +427,37 @@ describe('routeListHTML', () => {
     expect(row).toMatch(/rc-pct[^>]*>—</);
   });
 
+  it('regroups under the service buckets for the day when asked, in the key\'s colours', () => {
+    const svc = routeListHTML(GROUPS, null, { reading: 'service', day: 'weekday' });
+    const iLess = svc.indexOf('Less service (2)');
+    const iSame = svc.indexOf('About the same (1)');
+    const iGone = svc.indexOf('Loses all service (1)');
+    const iNew = svc.indexOf('New service (1)');
+    expect(iGone).toBeGreaterThan(-1);
+    expect(iLess).toBeGreaterThan(iGone);
+    expect(iSame).toBeGreaterThan(iLess);
+    expect(iNew).toBeGreaterThan(iSame);
+    expect(svc).not.toContain('Discontinued (');
+    expect(svc).not.toContain('<details');
+    expect(svc).toContain('weekday trips');
+    expect(svc).toMatch(new RegExp(`style="color:${STYLE.less.color}"[^>]*>51 CARRICK`));
+    expect(svc).toMatch(new RegExp(`style="color:${STYLE.gone.color}"[^>]*>2 Mount Royal`));
+  });
+
+  it('follows the day in the service reading, so a Sunday regroups the same groups', () => {
+    const sunday = routeListHTML(GROUPS, null, { reading: 'service', day: 'sunday' });
+    expect(sunday).toContain('Less service (3)');
+    expect(sunday).toContain('Sunday trips');
+    expect(sunday).not.toContain('About the same (');
+  });
+
+  it('leaves out a bucket no group falls in, and names the ones that run on neither network', () => {
+    const sat = routeListHTML([DISCONTINUED, NEW], null, { reading: 'service', day: 'saturday' });
+    expect(sat).not.toContain('Loses all service (');
+    expect(sat).toContain('New service (1)');
+    expect(sat).toMatch(/1 group runs on neither network on a Saturday/);
+  });
+
   it('leaves the change off a group with only one side -- there is nothing to compare', () => {
     const one = routeListHTML([NEW, DISCONTINUED], null);
     expect(one).not.toContain('−100%');
@@ -392,7 +482,7 @@ describe('routeListHTML', () => {
 });
 
 describe('routeCardHTML', () => {
-  const detail: RouteGroupDetail = { ...group(), features: [feature()] };
+  const detail: RouteGroupDetail = { ...group(), day: 'weekday', features: [feature()] };
   const html = routeCardHTML(detail);
 
   it('leads with the mapping and a status pill, and a way back to the directory', () => {
@@ -413,13 +503,13 @@ describe('routeCardHTML', () => {
   });
 
   it('prints a dash for an undefined percent', () => {
-    expect(routeCardHTML({ ...NEW, features: [] })).toMatch(/>—</);
+    expect(routeCardHTML({ ...NEW, features: [], day: 'weekday' })).toMatch(/>—</);
   });
 
   it('gives the weekday riders with their source, and omits them for a new group', () => {
     expect(html).toContain('6,013');
     expect(html).toContain('WPRDC route ridership, average weekday');
-    const fresh = routeCardHTML({ ...NEW, features: [] });
+    const fresh = routeCardHTML({ ...NEW, features: [], day: 'weekday' });
     expect(fresh).not.toContain('WPRDC');
   });
 
@@ -434,13 +524,13 @@ describe('routeCardHTML', () => {
   });
 
   it('says when PRT\'s table has no row for the group', () => {
-    const fresh = routeCardHTML({ ...NEW, features: [] });
+    const fresh = routeCardHTML({ ...NEW, features: [], day: 'weekday' });
     expect(fresh).toMatch(/PRT.s table has no row/);
     expect(fresh).not.toContain('PRT points riders to');
   });
 
   it('skips the pointer and the link where PRT left them blank', () => {
-    const gone = routeCardHTML({ ...DISCONTINUED, features: [] });
+    const gone = routeCardHTML({ ...DISCONTINUED, features: [], day: 'weekday' });
     expect(gone).toContain('Discontinued');
     expect(gone).not.toContain('PRT points riders to');
     expect(gone).not.toContain('<a ');
@@ -459,6 +549,7 @@ describe('routeCardHTML', () => {
         prt: [{ current_route: '51', final_route: '51', category: '<u>Mod</u>',
                 related_routes: '<s>r</s>', route_page: 'https://e.test/?a=1&b="2"' }],
       }),
+      day: 'weekday',
       features: [],
     };
     const out = routeCardHTML(nasty);
@@ -470,7 +561,7 @@ describe('routeCardHTML', () => {
 });
 
 describe('routeKeyHTML', () => {
-  const nothing = routeKeyHTML({ groups: GROUPS, day: 'weekday', hidden: ['one-to-one'], selected: null });
+  const nothing = routeKeyHTML({ groups: GROUPS, day: 'weekday', hidden: ['one-to-one'], serviceHidden: [], reading: 'status', selected: null });
 
   it('opens with a summary sentence that stands alone when the key is folded', () => {
     expect(nothing).toContain(
@@ -482,7 +573,7 @@ describe('routeKeyHTML', () => {
     expect(nothing).toContain(`background:${NEW_COLOR}`);
     expect(nothing).toContain(`background:${RESHAPED_COLOR}`);
     expect(nothing).toContain(`background:${KEPT_COLOR}`);
-    expect(routeKeyHTML({ groups: GROUPS, day: 'saturday', hidden: [], selected: null }))
+    expect(routeKeyHTML({ groups: GROUPS, day: 'saturday', hidden: [], serviceHidden: [], reading: 'status', selected: null }))
       .toContain('a Saturday');
   });
 
@@ -492,14 +583,36 @@ describe('routeKeyHTML', () => {
     }
     expect(nothing).toMatch(/class="lg-row off" data-route-bucket="one-to-one"\s+aria-pressed="false"/);
     expect(nothing).toMatch(/class="lg-row " data-route-bucket="new"\s+aria-pressed="true"/);
-    const grey = routeKeyHTML({ groups: GROUPS, day: 'weekday', hidden: ['new'], selected: null });
+    const grey = routeKeyHTML({ groups: GROUPS, day: 'weekday', hidden: ['new'], serviceHidden: [], reading: 'status', selected: null });
     expect(grey).toMatch(/class="lg-row " data-route-bucket="one-to-one"/);
     expect(grey).toMatch(/class="lg-row off" data-route-bucket="new"/);
   });
 
+  it('offers the two readings as a switch, pressed on the current one', () => {
+    expect(nothing).toMatch(/data-route-reading="status"\s+aria-pressed="true"/);
+    expect(nothing).toMatch(/data-route-reading="service"\s+aria-pressed="false"/);
+  });
+
+  it('keys the service buckets with counts for the day, in the dots\' colours, toggles like the status rows', () => {
+    const svc = routeKeyHTML({
+      groups: GROUPS, day: 'weekday', hidden: ['one-to-one'], serviceHidden: ['same'],
+      reading: 'service', selected: null,
+    });
+    expect(svc).toContain('5 route groups · 3 fewer trips · 1 about the same · 1 more · a weekday');
+    expect(svc).toMatch(/data-route-service="less"\s+aria-pressed="true"/);
+    expect(svc).toMatch(/class="lg-row off" data-route-service="same"/);
+    expect(svc).toContain(`background:${STYLE.less.color}`);
+    expect(svc).toContain(`background:${STYLE.gone.color}`);
+    expect(svc).not.toContain('data-route-service="halved"');
+    expect(svc).not.toContain('data-route-bucket=');
+    expect(svc).not.toContain(`background:${RESHAPED_COLOR}`);
+    expect(svc).toContain('±10%');
+    expect(svc).toContain('not a corridor');
+  });
+
   it('switches to the two alignment swatches once a group is selected, because blue changes meaning', () => {
-    const detail: RouteGroupDetail = { ...group(), features: [feature()] };
-    const selected = routeKeyHTML({ groups: GROUPS, day: 'weekday', hidden: ['one-to-one'], selected: detail });
+    const detail: RouteGroupDetail = { ...group(), day: 'weekday', features: [feature()] };
+    const selected = routeKeyHTML({ groups: GROUPS, day: 'weekday', hidden: ['one-to-one'], serviceHidden: [], reading: 'service', selected: detail });
     expect(selected).toContain('51 CARRICK → 51 Carrick, 51S Carrick Short');
     expect(selected).toContain(`background:${NOW_COLOR}`);
     expect(selected).toContain("today's alignment");
@@ -509,14 +622,15 @@ describe('routeKeyHTML', () => {
   });
 
   it('has something to say before the layer arrives', () => {
-    expect(routeKeyHTML({ groups: null, day: 'weekday', hidden: ['one-to-one'], selected: null }))
+    expect(routeKeyHTML({ groups: null, day: 'weekday', hidden: ['one-to-one'], serviceHidden: [], reading: 'status', selected: null }))
       .toContain('Route changes');
   });
 });
 
 describe('routeTooltipHTML', () => {
   const props = { key: 'c:51', side: 'proposed' as const, route: '51', name: 'Carrick',
-                  status: 'split' as const, pattern_id: 12, color: RESHAPED_COLOR, sort: 1 as const, w: 1 };
+                  status: 'split' as const, pattern_id: 12, color: RESHAPED_COLOR, sort: 1 as const, w: 1,
+                  bucket: 'less' as const, scolor: STYLE.less.color, sw: SERVICE_WIDTH.less, pct: -10.5 };
 
   it('names the route, the network and the status', () => {
     const html = routeTooltipHTML(props, { selected: false });
@@ -524,6 +638,18 @@ describe('routeTooltipHTML', () => {
     expect(html).toContain('proposed');
     expect(html).toContain('split');
     expect(html).toMatch(/<b>51 Carrick<\/b>/);
+  });
+
+  it('adds the trips change in the service reading, where the colour is asking about it', () => {
+    const html = routeTooltipHTML(props, { selected: false, reading: 'service' });
+    expect(html).toContain('−10% trips');
+    expect(html).toContain('less service');
+    expect(routeTooltipHTML(props, { selected: false, reading: 'status' })).not.toContain('trips');
+    // A new route has no percent, so it says so rather than printing a dash.
+    const fresh = routeTooltipHTML({ ...props, bucket: 'new', pct: null, status: 'new' },
+                                   { selected: false, reading: 'service' });
+    expect(fresh).toContain('new service');
+    expect(fresh).not.toContain('—');
   });
 
   it('says today for the current side', () => {

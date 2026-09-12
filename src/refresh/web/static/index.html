@@ -180,6 +180,15 @@
        toolbar with the controls that change the question. */
     #legend .lg-weight { margin:6px 0 4px; }
     #legend .lg-weight button { padding:3px 9px; font-size:11px; }
+    /* The key's switches keep the older inline pill row. The toolbar's
+       `.seg` became a drop-down list that only shows inside an open group,
+       and the key has no group to open, so without this the switches were
+       in the markup and nowhere on screen. */
+    #legend .seg { display:inline-flex; position:static; flex-direction:row;
+      min-width:0; box-shadow:none; }
+    #legend .seg button { border-bottom:0; border-right:1px solid var(--line);
+      text-align:center; }
+    #legend .seg button:last-child { border-right:0; }
     .lg-lab { flex:1; }
     .lg-n { font-variant-numeric:tabular-nums; color:var(--muted); }
     .lg-foot { font-size:10.5px; color:var(--muted); margin:8px 2px 0;

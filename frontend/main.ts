@@ -54,6 +54,8 @@ import {
   setRouteChangesVisible, routeListHTML, routeCardHTML, routeKeyHTML,
   routeTooltipHTML, mappingLabel, ROUTE_HIT_LAYERS, RouteBucket, isRouteBucket,
   hiddenRouteBuckets, toggleRouteBucket, setHiddenRouteBuckets,
+  ServiceRow, isServiceBucket, hiddenServiceBuckets, toggleServiceBucket, setHiddenServiceBuckets,
+  RouteReading, isRouteReading, routeReading, setRouteReading,
   groupsData as routeGroups, selectedData as routeDetail, isVisible as routesOn,
 } from './routechange';
 import { questionLineHTML, viewLabel } from './statebar';
@@ -411,7 +413,9 @@ map.on('load', () => {
     // is read at hover time rather than captured here.
     ...ROUTE_HIT_LAYERS.map((layer) => ({
       layer,
-      html: (f: any) => routeTooltipHTML(f.properties, { selected: routeDetail() !== null }),
+      html: (f: any) => routeTooltipHTML(f.properties, {
+        selected: routeDetail() !== null, reading: routeReading(),
+      }),
     })),
     // The choropleth's tooltip anchors at the pointer, having no point of its
     // own to sit on. `placeFill` decides which reading leads
@@ -658,14 +662,35 @@ map.on('load', () => {
       syncUrl();
       return;
     }
+    const service = (e.target as HTMLElement).closest<HTMLElement>('[data-route-service]');
+    if (service && isServiceBucket(service.dataset.routeService!)) {
+      toggleServiceBucket(map, service.dataset.routeService as ServiceRow);
+      refreshLegend();
+      syncUrl();
+      return;
+    }
+    // The reading switch recolours the overview and regroups the directory,
+    // which is drawn in the same colours; the card is untouched, since a
+    // selected group's colours are its two sides either way.
+    const reading = (e.target as HTMLElement).closest<HTMLElement>('[data-route-reading]');
+    if (reading && isRouteReading(reading.dataset.routeReading!)) {
+      setRouteReading(map, reading.dataset.routeReading as RouteReading);
+      refreshLegend();
+      if (routesOn()) renderPanel();
+      syncUrl();
+      return;
+    }
     const row = (e.target as HTMLElement).closest<HTMLElement>('[data-bucket]');
     if (!row) return;
     toggleBucket(map, row.dataset.bucket!, activeDay());
     refreshLegend();
   });
   $('legend-reset').addEventListener('click', () => {
+    // Only the reading on screen: a reader clearing the key they are looking
+    // at has not asked about the other one's rows.
     if (routesOn()) {
-      setHiddenRouteBuckets(map, []);
+      if (routeReading() === 'service') setHiddenServiceBuckets(map, []);
+      else setHiddenRouteBuckets(map, []);
       refreshLegend();
       syncUrl();
       return;
@@ -864,6 +889,8 @@ function applyOpening(s: Partial<UrlState>): void {
   // the layer at once, so the overview's first draw is at the asked-for
   // state rather than the default and a repaint.
   if (s.routeHidden) setHiddenRouteBuckets(map, s.routeHidden);
+  if (s.serviceHidden) setHiddenServiceBuckets(map, s.serviceHidden);
+  if (s.routeReading) setRouteReading(map, s.routeReading);
   if (s.dest) {
     // A dropped pin has no button to press; a named district does, and
     // pressing it lights the toolbar as well as moving the destination.
@@ -915,6 +942,8 @@ function syncUrl() {
     stopRoutes,
     route: selectedRoute,
     routeHidden: hiddenRouteBuckets(),
+    routeReading: routeReading(),
+    serviceHidden: hiddenServiceBuckets(),
   };
   const search = toSearch(state);
   // The mode is not part of the question, so it is not in what `toSearch`
@@ -1044,7 +1073,8 @@ function renderLegendBody() {
   }
   if (routesOn()) {
     $('legend').innerHTML = routeKeyHTML({
-      groups: routeGroups(), day: activeDay(), hidden: hiddenRouteBuckets(), selected: routeDetail(),
+      groups: routeGroups(), day: activeDay(), hidden: hiddenRouteBuckets(),
+      serviceHidden: hiddenServiceBuckets(), reading: routeReading(), selected: routeDetail(),
     });
     return;
   }
@@ -1326,7 +1356,7 @@ function renderPanel({ scrollToTop = false } = {}) {
     const d = routeDetail();
     $('panel').innerHTML = d
       ? routeCardHTML(d)
-      : routeListHTML(routeGroups() ?? [], selectedRoute);
+      : routeListHTML(routeGroups() ?? [], selectedRoute, { reading: routeReading(), day: activeDay() });
     return;
   }
   if (!lastPlace) {

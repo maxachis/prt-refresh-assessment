@@ -34,6 +34,8 @@ import { VIEWS } from './statebar';
 import { StopRoutes, DEFAULT_STOP_ROUTES } from './stoproutes';
 import {
   RouteBucket, DEFAULT_HIDDEN_BUCKETS, isRouteBucket, isRouteKey, normaliseBuckets,
+  RouteReading, DEFAULT_ROUTE_READING, isRouteReading,
+  ServiceRow, isServiceBucket, normaliseServiceBuckets,
 } from './routechange';
 
 /**
@@ -59,6 +61,8 @@ export const PARAM = {
   stopRoutes: 'stoproutes',
   route: 'route',
   routeHidden: 'routehide',
+  routeReading: 'routecolor',
+  serviceHidden: 'servicehide',
 } as const;
 
 /**
@@ -138,6 +142,18 @@ export interface UrlState {
    * the default and the default is not empty.
    */
   routeHidden?: RouteBucket[];
+  /**
+   * Which reading the Route changes overview is coloured by -- what happened
+   * to each group, or how much service it has on the day. Written only when
+   * it is the service reading, on `weight`'s rule.
+   */
+  routeReading?: RouteReading;
+  /**
+   * The service reading's key rows switched off, in key order. Written only
+   * when non-empty: unlike `routehide`, this reading's default is nothing
+   * hidden, so absence and empty are the same state and `none` has no job.
+   */
+  serviceHidden?: ServiceRow[];
 }
 
 /** How an empty `routehide` is spelled: absence would mean the default instead. */
@@ -195,6 +211,10 @@ export function toSearch(s: UrlState): string {
     p.set(PARAM.routeHidden, s.routeHidden.length
       ? s.routeHidden.join(BUCKET_SEP) : NO_HIDDEN_BUCKETS);
   }
+  if (s.routeReading && s.routeReading !== DEFAULT_ROUTE_READING) {
+    p.set(PARAM.routeReading, s.routeReading);
+  }
+  if (s.serviceHidden?.length) p.set(PARAM.serviceHidden, s.serviceHidden.join(BUCKET_SEP));
   return `?${p}`;
 }
 
@@ -271,6 +291,15 @@ export function parseUrlState(search: string): Partial<UrlState> {
     // hand-edited-link principle above; a list with nothing left is skipped.
     const known = normaliseBuckets(routeHidden.split(BUCKET_SEP).filter(isRouteBucket));
     if (known.length) s.routeHidden = known;
+  }
+
+  const routeReading = p.get(PARAM.routeReading);
+  if (routeReading && isRouteReading(routeReading)) s.routeReading = routeReading;
+
+  const serviceHidden = p.get(PARAM.serviceHidden);
+  if (serviceHidden) {
+    const known = normaliseServiceBuckets(serviceHidden.split(BUCKET_SEP).filter(isServiceBucket));
+    if (known.length) s.serviceHidden = known;
   }
 
   return s;
