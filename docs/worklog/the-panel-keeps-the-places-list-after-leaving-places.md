@@ -1,9 +1,11 @@
 # The panel keeps the Places list after leaving the Places view
 
-Switching from Places to any other view leaves the ranked place list sitting in
-the answer panel, under a heading that now says "Locations", until the reader
-clicks the map. Open — noticed while moving the Places controls into the
-toolbar, deliberately not fixed in that change.
+Switching from Places — and, since 2026-09-12, from Route changes — to any
+other view leaves that view's list sitting in the answer panel, under a heading
+that now says "Locations", until the reader clicks the map. Open — noticed
+while moving the Places controls into the toolbar, deliberately not fixed in
+that change, and deliberately mirrored rather than fixed when the Route
+changes view was built on the Places pattern.
 
 ## What is observed
 
@@ -49,3 +51,13 @@ general case open. Worth deciding whether to fix them together.
   `leaving` branch. One line, fixes the observed case; does nothing for the map
   marks. Not done here — this session's task was the control move, and the
   entry above suggests the two want one decision rather than two patches.
+
+## 2026-09-12: the Route changes view inherits it
+
+`showRoutes` (`frontend/main.ts`) was written from `showPlaces` and carries the
+same `if (on) renderPanel(...)` asymmetry, so leaving Route changes for
+Stop-by-stop leaves the route directory — or a selected group's card — under a
+Locations heading until the next click. Same cause, same short window. Left
+as-is on purpose: a second view with the symptom strengthens the case for the
+one general fix (the view that filled the panel owns it) over two local
+patches, and that decision is Max's.
