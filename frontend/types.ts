@@ -845,15 +845,38 @@ export interface SearchRoute {
 }
 
 /**
- * What `POST /api/search` answers with. Three lists rather than one ranked
- * list, because the three are different units and a pick on each does a
- * different thing; the box groups them under three headings for that reason.
+ * An address or a whole street the box found in the county's own address
+ * points. `kind` tells the two apart because they answer different queries:
+ * a query with a leading house number is one building ("address"); a query
+ * with none is a whole street, and the row is that street's median point in
+ * one municipality rather than any single building on it ("street"). A pick
+ * on either is a map click at the point — there is no stop mark to draw and
+ * no walk radius of its own, just the answer panel opening there.
+ */
+export interface SearchAddress {
+  kind: 'address' | 'street';
+  /** As the county writes it: "118 ORR AVE", "227 S HOME AVE"; for a street, "ORR AVE". */
+  label: string;
+  /** The boundary that contains the point (convention 6); null outside every one. */
+  place: string | null;
+  /** Five digits for an address, null for a street. */
+  zip: string | null;
+  lat: number;
+  lon: number;
+}
+
+/**
+ * What `POST /api/search` answers with. Four lists rather than one ranked
+ * list, because the four are different units and a pick on each does a
+ * different thing; the box groups them under four headings for that reason —
+ * a place, a stop, a route, and an address or street.
  */
 export interface SearchResponse {
   q: string;
   places: SearchPlace[];
   stops: SearchStop[];
   routes: SearchRoute[];
+  addresses: SearchAddress[];
 }
 
 /** One drawable shape of a route, already `[lon, lat]` like every other path here. */

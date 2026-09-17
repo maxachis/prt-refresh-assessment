@@ -656,7 +656,8 @@ def test_search_empty_body_answers_with_empty_lists(client):
     r = client.post("/api/search", json={})
     assert r.status_code == 200
     body = r.json()
-    assert body == {"q": "", "places": [], "stops": [], "routes": []}
+    assert body == {"q": "", "places": [], "stops": [], "routes": [],
+                    "addresses": []}
 
 
 def test_search_finds_carrick(client):
@@ -683,6 +684,12 @@ def test_search_rejects_a_body_over_200_chars(client):
 def test_search_accepts_exactly_200_chars(client):
     r = client.post("/api/search", json={"q": "carrick " + "a" * 192})
     assert r.status_code == 200
+
+
+def test_search_carries_an_addresses_list(client):
+    r = client.post("/api/search", json={"q": "carrick"})
+    assert r.status_code == 200
+    assert "addresses" in r.json()
 
 
 # --------------------------------------------------------------------------

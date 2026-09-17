@@ -74,10 +74,12 @@ data/coverage_change.csv for place labels and boardings).
 
 import argparse
 import csv
+import gzip
 import json
 import sqlite3
+import statistics
 import sys
-from collections import Counter
+from collections import Counter, defaultdict
 from pathlib import Path
 
 import gtfs
@@ -652,7 +654,45 @@ CREATE TABLE walk_network (
     name TEXT PRIMARY KEY,
     data BLOB NOT NULL
 );
+
+-- The county's own address points, for the search box's fourth group.
+-- Nothing else in this database reads either table -- they exist to answer
+-- a typed address, not to place a bus. `street`/`muni` are search keys built
+-- by `refresh.query.address_key`, the same function `parse_address_query`
+-- runs a typed query through, so a stored key and a query always normalise
+-- identically; `label` is the address as the county itself writes it, for
+-- display. See `ingest_addresses.py` and
+-- docs/worklog/address-search-needs-a-geocoder-and-the-log-must-not-see-the-query.md.
+CREATE TABLE address (
+    num        INTEGER NOT NULL,   -- house number
+    street     TEXT NOT NULL,      -- normalised search key, e.g. "s home ave"
+    muni       TEXT NOT NULL,      -- normalised county municipality
+    label      TEXT NOT NULL,      -- as the county writes it: "227 S HOME AVE"
+    zip        TEXT,
+    lat REAL NOT NULL, lon REAL NOT NULL
+);
+CREATE INDEX ix_address ON address(num, street);
+
+-- One row per street (street, muni), for a query with no house number. `n`
+-- is how many addresses stand on it, so ranking by `n DESC` surfaces the
+-- street a reader probably meant over a same-named stub a block long.
+CREATE TABLE street (
+    street TEXT NOT NULL, muni TEXT NOT NULL,
+    label  TEXT NOT NULL,             -- "S HOME AVE"
+    lat REAL NOT NULL, lon REAL NOT NULL,  -- median lat and median lon
+    n INTEGER NOT NULL
+);
+CREATE INDEX ix_street ON street(street);
 """
+
+# Rows per `executemany` batch for the address/street load. The deploy box
+# has run out of memory building this database before
+# (docs/worklog/the-deploy-box-runs-out-of-memory-building-the-database.md),
+# and the address table is 500k+ rows -- streamed from the file in chunks,
+# so the batch under construction is the only part of it resident at once.
+ADDRESS_INSERT_CHUNK = 10_000
+
+ADDRESSES = DATA / "addresses.csv.gz"
 
 
 def stop_names(feed):
@@ -699,6 +739,72 @@ def load_corridor():
                   "`python3 analyze_corridor_change.py` first")
     return [(r["day"], r["klass"], float(r["length_m"]), r["geometry"])
             for r in csv.DictReader(open(CORRIDOR, encoding="utf-8"))]
+
+
+def _address_label(num, num_suffix, st_prefix, st_name, st_type) -> str:
+    """The address as the county writes it: "218 A SHAFER RD"."""
+    return " ".join(p for p in (num, num_suffix, st_prefix, st_name, st_type)
+                    if p)
+
+
+def _street_label(st_prefix, st_name, st_type) -> str:
+    """The street alone, as the county writes it: "S HOME AVE"."""
+    return " ".join(p for p in (st_prefix, st_name, st_type) if p)
+
+
+def write_addresses(con):
+    """Stream `data/addresses.csv.gz` into `address`, and derive `street`.
+
+    See `ingest_addresses.py` for the source and its method; this only
+    reshapes its tidy output. The address rows go in as they are read, a
+    chunk at a time (`ADDRESS_INSERT_CHUNK`), so the 500k-row table is never
+    held whole in memory; only the per-street coordinate lists are, which
+    the median needs and which are two floats per building.
+
+    Missing is fatal, like the corridor and walk-network files: a database
+    built without it would serve a search box that silently never finds an
+    address rather than failing the build that omitted it.
+    """
+    if not ADDRESSES.exists():
+        sys.exit(f"error: {ADDRESSES} missing -- run "
+                 "`python3 ingest_addresses.py` first")
+
+    n_addresses = 0
+    chunk = []
+    by_street = defaultdict(lambda: {"lats": [], "lons": [], "label": None})
+    with gzip.open(ADDRESSES, "rt", encoding="utf-8") as f:
+        for r in csv.DictReader(f):
+            lat, lon = float(r["lat"]), float(r["lon"])
+            street_key = query.address_key(r["st_prefix"], r["st_name"],
+                                           r["st_type"])
+            muni_key = query.address_key(r["municipality"])
+            label = _address_label(r["num"], r["num_suffix"], r["st_prefix"],
+                                   r["st_name"], r["st_type"])
+            chunk.append((int(r["num"]), street_key, muni_key, label,
+                          r["zip_code"] or None, lat, lon))
+            if len(chunk) >= ADDRESS_INSERT_CHUNK:
+                con.executemany("INSERT INTO address VALUES (?,?,?,?,?,?,?)",
+                                chunk)
+                n_addresses += len(chunk)
+                chunk = []
+
+            group = by_street[(street_key, muni_key)]
+            group["lats"].append(lat)
+            group["lons"].append(lon)
+            if group["label"] is None:
+                group["label"] = _street_label(r["st_prefix"], r["st_name"],
+                                               r["st_type"])
+    if chunk:
+        con.executemany("INSERT INTO address VALUES (?,?,?,?,?,?,?)", chunk)
+        n_addresses += len(chunk)
+
+    con.executemany(
+        "INSERT INTO street VALUES (?,?,?,?,?,?)",
+        ((street_key, muni_key, group["label"],
+          statistics.median(group["lats"]), statistics.median(group["lons"]),
+          len(group["lats"]))
+         for (street_key, muni_key), group in by_street.items()))
+    return n_addresses, len(by_street)
 
 
 def load_crosswalk():
@@ -897,6 +1003,9 @@ def build(out_path):
     corridor = load_corridor()
     con.executemany("INSERT INTO corridor VALUES (?,?,?,?)", corridor)
     print(f"  corridor runs: {len(corridor):,} rows")
+
+    n_addresses, n_streets = write_addresses(con)
+    print(f"  addresses: {n_addresses:,} buildings, {n_streets:,} streets")
 
     key_id = 0
     reach_id = 0

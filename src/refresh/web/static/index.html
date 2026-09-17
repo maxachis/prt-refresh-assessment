@@ -1041,20 +1041,21 @@
            the sheet AND puts the cursor in the box: one tap. Phone only,
            like its neighbour; on a wide screen the box is on the strip. -->
       <button id="search-toggle" aria-controls="mapbar"
-              aria-label="Find a stop, route or place" title="Search">⌕</button>
+              aria-label="Find an address, stop, route or place" title="Search">⌕</button>
       <div id="controls-scrim"></div>
       <!-- The toolbar's groups, left to right. The SEARCH box is first: it
            is not a control in the sense the rest are -- it changes nothing
            about the question -- but it is how a reader who knows a name
            rather than a map position points at the thing to ask about, and
-           the strip is where pointing happens. What it finds (a stop, a
-           route, a place) and what a pick does is `frontend/search.ts`; the
-           text goes by POST so it never reaches the access log. -->
+           the strip is where pointing happens. What it finds (an address, a
+           stop, a route, a place) and what a pick does is
+           `frontend/search.ts`; the text goes by POST so it never reaches
+           the access log. -->
       <div id="mapbar">
         <div class="controls" id="search-controls">
           <label class="lbl" for="search-input">find</label>
           <input id="search-input" type="search" autocomplete="off"
-                 spellcheck="false" placeholder="Find a stop, route or place"
+                 spellcheck="false" placeholder="Find an address, stop, route or place"
                  role="combobox" aria-autocomplete="list" aria-expanded="false"
                  aria-controls="search-results" aria-haspopup="listbox" />
           <div id="search-results" role="listbox"

@@ -47,7 +47,7 @@ import {
   routeKeyHTML as drawnRouteKeyHTML, routeCardHTML as drawnRouteCardHTML,
   DrawnRoute, ROUTE_VIEW_LINES_LAYER,
 } from './routeview';
-import { initSearch, easeTarget, searchRequest, Row } from './search';
+import { initSearch, easeTarget, searchRequest, Row, LatLon } from './search';
 import {
   initPlacesLayer, loadPlaces, loadBoundaries, selectPlace, setPlacesVisible,
   placesListHTML, placesKeyHTML, placeTooltipHTML, setPlacesFill,
@@ -78,7 +78,7 @@ import { dismissNotice, safeLocalStorage, shouldShowNotice } from './notice';
 import {
   PlaceResult, Day, OneSeatDay, JourneyResult, NamedDestination, Weight,
   SurfaceUnit,
-  StopRef, KerbRoutesResult, Side, RouteResult, SearchResponse, SearchStop,
+  StopRef, KerbRoutesResult, Side, RouteResult, SearchResponse,
   SearchPlace,
 } from './types';
 
@@ -1195,7 +1195,8 @@ function initSearchBox() {
     onPick: (row: Row) => {
       setControlsOpen(false);
       switch (row.kind) {
-        case 'stop': goToStop(row.stop); break;
+        case 'stop': goToPoint(row.stop); break;
+        case 'address': goToPoint(row.address); break;
         case 'place': goToSearchedPlace(row.place); break;
         case 'route':
           pickRoute({ side: row.route.side, route_id: row.route.route_id }, { fit: true });
@@ -1212,22 +1213,26 @@ function initSearchBox() {
 }
 
 /**
- * Ask at a stop found by name, as a click on it would.
+ * Ask at a point found by name -- a stop or an address alike -- as a click
+ * there would. Picking either is a map click at that point: a stop has the
+ * kerb's own code decide what runs there once clicked (convention 2), and
+ * an address has no stop mark to draw at all, only the same walk-radius
+ * answer a click anywhere else on the ground gets.
  *
  * The map moves first only when it has to (`easeTarget`): a reader who has
- * framed a neighbourhood and is picking its stops from the list should not
- * have the map jump under each pick. Places has no click to answer -- a
- * click there selects a place, not a point -- so there the move is all.
+ * framed a neighbourhood and is picking rows from the list should not have
+ * the map jump under each pick. Places has no click to answer -- a click
+ * there selects a place, not a point -- so there the move is all.
  */
-function goToStop(s: SearchStop) {
+function goToPoint(p: LatLon) {
   const b = map.getBounds();
   const target = easeTarget({
     zoom: map.getZoom(),
     bounds: { west: b.getWest(), south: b.getSouth(), east: b.getEast(), north: b.getNorth() },
-  }, s);
+  }, p);
   if (target) map.easeTo({ center: [target.lon, target.lat], zoom: target.zoom });
   if (view === 'places') return;
-  askAt(s.lat, s.lon);
+  askAt(p.lat, p.lon);
 }
 
 /**

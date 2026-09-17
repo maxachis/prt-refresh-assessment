@@ -1,13 +1,15 @@
 # Address search needs a geocoder, and the access log must not see the query
 
-**Observed:** the search box finds stops, routes and named places from
-`refresh.db`, but a reader who types their street address gets "Nothing
-found" — the repo has no address data and no way to turn text into a point.
-**Where it stands:** open, one decision owed — the licence. Max chose the
-order on 2026-09-12 (stops and places first, then routes, then addresses,
-self-hosted) and the first two are built; the question of what to tell PPT
-about search closed on 2026-09-17 (the site is public, in partnership with
-PPT), so what this entry still holds is the source and its unstated licence.
+**Observed:** the search box found stops, routes and named places from
+`refresh.db`, but a reader who typed their street address got "Nothing
+found" — the repo had no address data and no way to turn text into a point.
+**Where it stands:** fixed, awaiting close. `ingest_addresses.py`,
+`build_webdb.py`'s `address`/`street` tables and `query.search`'s fourth
+group all built 2026-09-17, on Max's decision that day to ship on the
+county's "licence not specified". Max chose the order on 2026-09-12 (stops
+and places first, then routes, then addresses, self-hosted), and the
+what-to-tell-PPT question closed the same day address search shipped (the
+site is public, in partnership with PPT).
 
 > The ordering and "self-hosted rather than a third-party geocoder" are Max's
 > decisions, 2026-09-12. The source below is agent-derived and re-checkable.
@@ -90,15 +92,14 @@ recorded beside the rest of what the site collects in `docs/WEBAPP.md`,
 "Public, in partnership with PPT": a search resolves to a coordinate, and
 coordinates are logged; the typed text is not.
 
-## Decisions owed
-
-1. Is "licence not specified" on the county address points acceptable to
-   ship on, or does the county need to be asked? Recommendation: open
-   PASDA's full metadata record; if it is silent too, ask the county's GIS
-   office by email.
-
 ## Resolved
 
+- Whether "licence not specified" on the county address points is
+  acceptable to ship on: yes, decided by Max on 2026-09-17, without asking
+  the county. Neither WPRDC nor PASDA's landing page carries terms; PASDA's
+  full metadata record was not opened, so a stronger answer may still exist
+  there or by asking the county's GIS office, but nothing here is blocked on
+  it.
 - Whether to tell PPT that a search resolves to a logged coordinate: moot as
   an email, since the site is already public and built in partnership with
   PPT (Max, 2026-09-17). The fact itself is recorded in `docs/WEBAPP.md`

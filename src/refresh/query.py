@@ -3511,26 +3511,208 @@ def _search_route_index(con):
     return cached
 
 
+# --------------------------------------------------------------------------
+# search: the fourth group -- addresses
+#
+# A rider types a street address the way they would say it, not the way the
+# county's GIS spells it: "North Ave" for "N AVE", "118 Orr Avenue, Harmar
+# PA 15024" for the county's "118 ORR AVE" in "HARMAR". `ADDRESS_ABBREVIATIONS`
+# closes that gap token by token, applied identically to the stored `street`/
+# `muni` keys at build time (`address_key`, used by `build_webdb.py`) and to
+# the typed query at search time (`parse_address_query`), so the two always
+# normalise to the same string. See `ingest_addresses.py` and
+# `docs/worklog/address-search-needs-a-geocoder-and-the-log-must-not-see-the-query.md`
+# for why this exists and where the source came from.
+# --------------------------------------------------------------------------
+
+# Applied token-by-token, both when a street/municipality key is built
+# (`address_key`) and when a typed query is parsed (`parse_address_query`),
+# so "North Ave" and "N AVE" collapse to the same "n ave" on both sides of
+# the lookup. One dict, defined once, rather than a pair of regexes that
+# could drift apart.
+ADDRESS_ABBREVIATIONS = {
+    "avenue": "ave", "street": "st", "road": "rd", "drive": "dr",
+    "court": "ct", "lane": "ln", "boulevard": "blvd", "place": "pl",
+    "circle": "cir", "highway": "hwy", "extension": "ext", "square": "sq",
+    "terrace": "ter", "trail": "trl", "village": "vlg", "manor": "mnr",
+    "alley": "aly", "parkway": "pkwy",
+    "north": "n", "south": "s", "east": "e", "west": "w",
+}
+
+# A trailing all-digit token this long is a ZIP code, never a house number
+# (which is checked first and always leads the query) or a street name.
+ZIP_TOKEN_LENGTH = 5
+
+# The unicode codepoint a stored key can never contain, used to turn a
+# prefix into a half-open SQL range: `key >= p AND key < p + PREFIX_HIGH`
+# matches every key starting with `p` while still letting SQLite use the
+# index on the column, which `LIKE 'p%'` does not without its own
+# extension. Both `address.street`/`address.muni` and `street.street`/
+# `street.muni` are plain lowercased ASCII (`address_key`), so this can
+# never collide with a real character in either.
+PREFIX_HIGH = "￿"
+
+
+def address_key(*parts: str) -> str:
+    """Join normalised, abbreviated parts into one search key.
+
+    Used identically by `build_webdb.py` to build `address.street` from
+    (st_prefix, st_name, st_type) and `address.muni` from municipality, and
+    by `parse_address_query` to normalise what a reader typed -- the one
+    function both sides call, so the stored key and the query can never
+    normalise differently.
+    """
+    tokens = []
+    for part in parts:
+        for token in _normalise_name(part).split():
+            tokens.append(ADDRESS_ABBREVIATIONS.get(token, token))
+    return " ".join(tokens)
+
+
+def parse_address_query(q: str) -> dict:
+    """A typed address, pulled apart into a house number, a ZIP filter and
+    the remaining street/municipality tokens.
+
+    A leading all-digit token is the house number -- a rider always leads
+    with it ("118 Orr Ave"), so this never has to guess between a number
+    and a street named after one. A trailing 5-digit token is a ZIP filter,
+    and a trailing "pa" is dropped, so "118 Orr Avenue, Harmar PA 15024"
+    and "118 orr ave harmar" resolve the same way. What is left is
+    abbreviated by `ADDRESS_ABBREVIATIONS` and handed back as one token
+    tuple -- street and municipality tokens are not told apart here, because
+    `_search_addresses` does that by trying the whole tuple as a street key
+    first and peeling municipality tokens off the end only if that misses
+    (the same order a reader who omitted a comma would want).
+    """
+    tokens = _normalise_name(q).split()
+    num = None
+    if tokens and tokens[0].isdigit():
+        num = int(tokens.pop(0))
+    zip_code = None
+    if tokens and tokens[-1].isdigit() and len(tokens[-1]) == ZIP_TOKEN_LENGTH:
+        zip_code = tokens.pop()
+    if tokens and tokens[-1] == "pa":
+        tokens.pop()
+    return {
+        "num": num, "zip": zip_code,
+        "tokens": tuple(ADDRESS_ABBREVIATIONS.get(t, t) for t in tokens),
+    }
+
+
+def _prefix_bounds(prefix: str) -> tuple[str, str]:
+    """A half-open range matching every stored key starting with `prefix`."""
+    return prefix, prefix + PREFIX_HIGH
+
+
+def _address_result_row(con, kind: str, r) -> dict:
+    """One `address` or `street` row, as `search` returns it.
+
+    `place` is the boundary that CONTAINS the point (convention 6), never
+    the county's own `municipality` column -- the same reason `_corner_row`
+    gives for a stop corner, and for the same reason: a raw source label is
+    not the answer panel's place.
+    """
+    return {
+        "kind": kind, "label": r["label"],
+        "place": place_containing(con, r["lat"], r["lon"]),
+        "zip": r["zip"] if kind == "address" else None,
+        "lat": r["lat"], "lon": r["lon"],
+    }
+
+
+def _query_address_rows(con, num: int, street_tokens, muni_tokens,
+                        zip_code: str | None, limit: int):
+    """Buildings at an exact house number, street-prefix matched."""
+    street_lo, street_hi = _prefix_bounds(" ".join(street_tokens))
+    sql = ("SELECT num, street, muni, label, zip, lat, lon FROM address "
+           "WHERE num = ? AND street >= ? AND street < ?")
+    params = [num, street_lo, street_hi]
+    if muni_tokens:
+        muni_lo, muni_hi = _prefix_bounds(" ".join(muni_tokens))
+        sql += " AND muni >= ? AND muni < ?"
+        params += [muni_lo, muni_hi]
+    if zip_code:
+        sql += " AND zip = ?"
+        params.append(zip_code)
+    sql += " ORDER BY street, muni, label, lat, lon LIMIT ?"
+    params.append(limit)
+    return con.execute(sql, params).fetchall()
+
+
+def _query_street_rows(con, street_tokens, muni_tokens, limit: int):
+    """Streets by name-prefix, busiest (most addresses) first -- there is no
+    house number to narrow by, so `n` stands in for "the street a reader
+    probably meant"."""
+    street_lo, street_hi = _prefix_bounds(" ".join(street_tokens))
+    sql = ("SELECT street, muni, label, lat, lon, n FROM street "
+           "WHERE street >= ? AND street < ?")
+    params = [street_lo, street_hi]
+    if muni_tokens:
+        muni_lo, muni_hi = _prefix_bounds(" ".join(muni_tokens))
+        sql += " AND muni >= ? AND muni < ?"
+        params += [muni_lo, muni_hi]
+    sql += " ORDER BY n DESC, street, muni LIMIT ?"
+    params.append(limit)
+    return con.execute(sql, params).fetchall()
+
+
+def _search_addresses(con, parsed: dict, limit: int) -> list[dict]:
+    """Addresses and streets matching a parsed query.
+
+    THE MUNICIPALITY PEEL. A reader who types "118 orr ave harmar" or "orr
+    ave penn hills" has put the municipality after the street with no
+    separator this table can see, so the whole token tuple is tried as a
+    street key first; if that finds nothing and more than one token remains,
+    the last token moves onto a municipality-prefix filter and the shrunken
+    street key is tried again, one token at a time, until a single token is
+    left. Each round is a fresh query rather than a post-filter, because the
+    prefix trick needs the municipality bound in the WHERE clause to use
+    `ix_address`/`ix_street` at all.
+
+    Returns `[]`, never raises, when the `address` table is absent -- an
+    older `refresh.db` built before this slice, exactly the guard
+    `oneseat_named` uses for `destination`.
+    """
+    if not _has_table(con, "address") or not parsed["tokens"]:
+        return []
+    kind = "address" if parsed["num"] is not None else "street"
+    tokens = parsed["tokens"]
+    for peel in range(len(tokens)):
+        street_tokens = tokens[:len(tokens) - peel]
+        muni_tokens = tokens[len(tokens) - peel:] if peel else ()
+        if kind == "address":
+            rows = _query_address_rows(con, parsed["num"], street_tokens,
+                                       muni_tokens, parsed["zip"], limit)
+        else:
+            rows = _query_street_rows(con, street_tokens, muni_tokens, limit)
+        if rows:
+            return [_address_result_row(con, kind, r) for r in rows]
+    return []
+
+
 def search(con, q: str, limit: int = 6):
-    """Free-text lookup of named places, bus stops and routes.
+    """Free-text lookup of named places, bus stops, routes and addresses.
 
     The type-ahead box's one query, and the only endpoint this repo serves
     over POST rather than GET: the front door keeps a 30-day access log of
     request URIs (`deploy/setup-caddy.sh`, `report_usage.py`), and a search
     box gets typed into before a reader has any reason to trust it -- a home
-    address, most likely -- long before this repo offers address search
-    itself. Query text belongs in a POST body, never a logged URL. (Caddy
-    also sets `Cache-Control: public` on `/api/*`; a POST response is never
-    cached, which independently rules out GET here.)
+    address, most plausibly. Query text belongs in a POST body, never a
+    logged URL. (Caddy also sets `Cache-Control: public` on `/api/*`; a POST
+    response is never cached, which independently rules out GET here.) What
+    the log still records is the point a pick resolves to, exactly as it
+    does for a map click -- see the worklog entry cited on
+    `_search_addresses`.
 
     `limit` is clamped to 1..20 rather than rejected, since a type-ahead
     caller passing something silly should still get a usable answer. An
-    empty or whitespace-only query returns three empty lists rather than
-    every place/stop/route in the county.
+    empty or whitespace-only query returns four empty lists rather than
+    every place/stop/route/address in the county.
     """
     limit = max(1, min(20, limit))
     q_stripped = q.strip()
-    out = {"q": q_stripped, "places": [], "stops": [], "routes": []}
+    out = {"q": q_stripped, "places": [], "stops": [], "routes": [],
+           "addresses": []}
     q_tokens = tuple(_normalise_name(q_stripped).split())
     if not q_tokens:
         return out
@@ -3570,6 +3752,9 @@ def search(con, q: str, limit: int = 6):
          "short_name": r["short_name"], "long_name": r["long_name"],
          "days": r["days"]}
         for r, _exact in routes_[:limit]]
+
+    out["addresses"] = _search_addresses(con, parse_address_query(q_stripped),
+                                         limit)
 
     return out
 

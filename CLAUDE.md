@@ -61,6 +61,9 @@ python3 analyze_removed_ridership.py # -> data/removed_ridership.csv (needs
                                     #    that lose every bus, clustered at
                                     #    150 m and ranked by the boardings
                                     #    observed at them today.
+python3 ingest_addresses.py         # -> data/addresses.csv.gz. Every active
+                                    #    building in the county, for the
+                                    #    search box's fourth group.
 python3 build_webdb.py              # -> data/refresh.db, for the web app only.
                                     #    Now needs ingest_census.py to have run
                                     #    as well: the map's People reading is
@@ -70,7 +73,10 @@ python3 build_webdb.py              # -> data/refresh.db, for the web app only.
                                     #    silently absent layer. Also needs
                                     #    analyze_route_hours.py to have run,
                                     #    for the route-group tables the
-                                    #    Route changes view reads.
+                                    #    Route changes view reads, and
+                                    #    ingest_addresses.py to have run, for
+                                    #    the address/street tables the search
+                                    #    box's fourth group reads.
 ```
 
 **The pedestrian network** is a third independent ingest, because it reads
@@ -202,6 +208,7 @@ The six upstream sources, and what each is the authority for:
 | WPRDC route ridership (CKAN SQL) | Route-level riders, current through Apr 2026 — preferred over stop-level for route totals |
 | Census: 2020 blocks + centres of population + ACS 5-year (`census.gov`) | Who lives where. The population denominator behind every `EQUITY-*` answer, and the only source in the repo that is not about transit. Blocks say where inside a block group people live; ACS says who they are |
 | OpenStreetMap, via Overpass (`overpass-api.de`) | The ground between a door and a bus stop. Every walkable way in Allegheny County, including the public stairways, which on the slopes are the actual pedestrian route. The only source behind how long a walk takes |
+| Allegheny County Addressing Address Points (WPRDC CKAN) | Where a typed address is. The only source behind the search box's fourth group, and the only ground-truth address list in the repo |
 
 `DATA_SOURCES.md` is the full inventory, with live-verified endpoints, per-file
 row counts, and the PDF parsing traps. Read it before touching `ingest_blr.py`.

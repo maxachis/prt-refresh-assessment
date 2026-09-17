@@ -502,17 +502,16 @@ def create_app(db_path: str | Path = "data/refresh.db", *,
 
     @app.post("/api/search")
     def api_search(body: SearchRequest):
-        """Free-text lookup of named places, bus stops and routes.
+        """Free-text lookup of named places, bus stops, routes and addresses.
 
         POST, NOT GET, DELIBERATELY. The front door keeps a 30-day access
         log of request URIs (`deploy/setup-caddy.sh`, `report_usage.py`),
         and a reader will type things into a search box before they have any
-        reason to trust it with them -- a home address, most plausibly, long
-        before this repo offers address search itself. A GET puts that text
-        in the URL and therefore in the log; a POST body never appears
-        there. (`/api/*` also carries `Cache-Control: public` in Caddy's
-        config, and a POST is never cached regardless -- a second, smaller
-        reason this is not a GET.)
+        reason to trust it with them -- a home address, most plausibly. A
+        GET puts that text in the URL and therefore in the log; a POST body
+        never appears there. (`/api/*` also carries `Cache-Control: public`
+        in Caddy's config, and a POST is never cached regardless -- a
+        second, smaller reason this is not a GET.)
 
         `q` is capped at `SEARCH_QUERY_MAX_CHARS` (422 past it, via the
         request model) and clamped to a stripped, whitespace-only-safe

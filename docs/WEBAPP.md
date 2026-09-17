@@ -168,6 +168,26 @@ different thing and none of them changes the reader's view:
   and in Places also selects it in the ranked list, as clicking its row would.
 - **A route**, on one network, tagged "today" or "proposed" with its long
   name. A pick draws it — see below.
+- **An address or a whole street**, from Allegheny County's own address
+  points (WPRDC, `ingest_addresses.py`), fetched and matched entirely on
+  this server so a reader's home address never leaves it for a third-party
+  geocoder. A query with a leading house number ("118 orr") matches a
+  building, tagged with its municipality and ZIP; one with none ("orr ave")
+  matches a whole street instead, at its median point in one municipality,
+  tagged "street" and the municipality so it cannot be mistaken for a
+  building. A pick is a map click at that point — `goToPoint` in
+  `frontend/main.ts`, the same helper a stop pick uses — because there is no
+  stop mark to draw and no unit of its own beyond the walk radius the click
+  already answers with. The licence on the county's address points is
+  unstated; shipping on it anyway was Max's call, 2026-09-17
+  (`docs/worklog/address-search-needs-a-geocoder-and-the-log-must-not-see-the-query.md`).
+
+  The four groups are not always in the same order. A house-number query
+  ("118 orr") leads with addresses, because nothing else in the box can
+  answer it. A bare-digit query with no street word after it ("61") still
+  leads with routes, per the rule below. Otherwise it is places, stops,
+  routes, and a bare street name last of the four — "brownsville" is a place
+  and a dozen stops before it is the name of a street.
 
 **The query goes by POST**, and that is the one decision here that is not
 cosmetic. The deployed site keeps an access log of request URIs (`deploy/
@@ -1849,7 +1869,9 @@ surprise:
   and nothing reads it but the notice.
 
 One thing is still open, and it is with the county rather than PPT: the
-address points behind a future address search carry no stated licence —
+address points behind address search (see "Search" above) carry no stated
+licence. Shipping on it anyway was Max's call, 2026-09-17; whether to press
+the county for a stated licence stays open —
 [`docs/worklog/address-search-needs-a-geocoder-and-the-log-must-not-see-the-query.md`](worklog/address-search-needs-a-geocoder-and-the-log-must-not-see-the-query.md).
 
 ## The first-visit notice: stop locations are a draft

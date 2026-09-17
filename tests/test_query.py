@@ -1582,9 +1582,10 @@ def test_search_rank_prefers_shorter_names_then_alphabetical():
     assert a < b   # "ave" < "blvd" alphabetically, same length
 
 
-def test_search_empty_query_returns_three_empty_lists(con):
+def test_search_empty_query_returns_four_empty_lists(con):
     got = query.search(con, "   ")
-    assert got == {"q": "", "places": [], "stops": [], "routes": []}
+    assert got == {"q": "", "places": [], "stops": [], "routes": [],
+                   "addresses": []}
 
 
 def test_search_finds_carrick_with_a_four_number_bbox_and_a_route(con):
@@ -1684,6 +1685,70 @@ def test_search_groups_a_corner_shared_by_both_networks_into_one_row(con):
                if re.sub(r"[^a-z0-9]+", " ", s["name"].lower()).strip() == target]
     assert len(matches) == 1
     assert set(matches[0]["sides"]) == {"current", "proposed"}
+
+
+# --------------------------------------------------------------------------
+# search: addresses
+# --------------------------------------------------------------------------
+
+def test_address_key_abbreviates_and_normalises():
+    assert query.address_key("N", "4th", "ST") == "n 4th st"
+    assert (query.address_key("", "Orr", "Avenue")
+            == query.address_key("", "ORR", "AVE"))
+
+
+def test_parse_address_query_splits_number_street_and_zip():
+    got = query.parse_address_query("118 Orr Avenue, Harmar PA 15024")
+    assert got == {"num": 118, "zip": "15024",
+                   "tokens": ("orr", "ave", "harmar")}
+
+
+def test_parse_address_query_with_no_number_is_a_street_query():
+    got = query.parse_address_query("Orr Ave")
+    assert got == {"num": None, "zip": None, "tokens": ("orr", "ave")}
+
+
+@pytest.fixture(scope="module")
+def address_present(con):
+    if not query._has_table(con, "address"):
+        pytest.skip("refresh.db predates the address table -- rebuild it "
+                    "with `python3 build_webdb.py` (needs "
+                    "ingest_addresses.py to have run first)")
+
+
+def test_search_finds_118_orr_ave(con, address_present):
+    got = query.search(con, "118 orr ave")
+    assert got["addresses"]
+    first = got["addresses"][0]
+    assert first["kind"] == "address"
+    assert first["label"] == "118 ORR AVE"
+    # 40.5421828, -79.8116778 -- pinned so a future boundary rebuild that
+    # moves this point to a different place fails loudly here rather than
+    # silently on screen.
+    assert first["place"] == "Harmar township"
+
+
+def test_search_resolves_the_full_written_form_to_the_same_row(con,
+                                                                address_present):
+    plain = query.search(con, "118 orr ave")["addresses"][0]
+    written = query.search(
+        con, "118 Orr Avenue, Harmar PA 15024")["addresses"][0]
+    assert written["lat"] == plain["lat"] and written["lon"] == plain["lon"]
+
+
+def test_search_with_no_number_finds_a_street_row(con, address_present):
+    got = query.search(con, "orr ave")
+    assert got["addresses"]
+    row = got["addresses"][0]
+    assert row["kind"] == "street"
+    assert row["label"] == "ORR AVE"
+    assert row["zip"] is None
+
+
+def test_search_a_number_at_a_nonexistent_street_finds_nothing(con,
+                                                                address_present):
+    got = query.search(con, "118 nosuchstreetatall")
+    assert got["addresses"] == []
 
 
 # --------------------------------------------------------------------------

@@ -1,5 +1,5 @@
 /**
- * The toolbar's search box: a stop, a route or a place, found by name.
+ * The toolbar's search box: an address, a stop, a route or a place, found by name.
  *
  * Everything else on the map is reached by looking — pan until the corner
  * you mean is under the cursor, then click it. That is fine for a reader who
@@ -18,7 +18,7 @@
  * this one. A `GET /api/search?q=` would write every address to disk on the
  * box, masked reader address or not; a POST body is never logged.
  *
- * Three groups rather than one ranked list, because the three results are
+ * Four groups rather than one ranked list, because the results are
  * different units and a pick on each does a different thing. A reader who
  * typed "61" wants to see the routes matching it separated from the stops
  * on 61st Street, not interleaved by some score.
@@ -37,7 +37,7 @@
  * `dropdown.ts` and `legend.ts`. `initSearch` at the bottom is the wiring.
  */
 import { esc } from './utils';
-import { SearchResponse, SearchPlace, SearchStop, SearchRoute, Side } from './types';
+import { SearchResponse, SearchPlace, SearchStop, SearchRoute, SearchAddress, Side } from './types';
 import { SIDE_WORD } from './stoproutes';
 
 /** Where the text goes. POST — see the module comment; never put `q` in a URL. */
@@ -64,8 +64,10 @@ export const NETWORK_TAG: Record<Side, string> = { current: 'today', proposed: '
 
 const TAG_SEP = ' · ';
 
-/** The three headings, in the order the groups are listed and walked. */
-const GROUP_HEADING = { places: 'Places', stops: 'Stops', routes: 'Routes' } as const;
+/** The four headings, in the order the groups are listed and walked. */
+const GROUP_HEADING = {
+  places: 'Places', stops: 'Stops', routes: 'Routes', addresses: 'Addresses',
+} as const;
 
 const NOTHING_FOUND = 'Nothing found';
 
@@ -109,6 +111,21 @@ export function routeTag(r: SearchRoute): string {
   return [SIDE_WORD[r.side], r.long_name].filter(Boolean).join(TAG_SEP);
 }
 
+/** The word this module uses for a whole-street row, in its tag. */
+const STREET_TAG_WORD = 'street';
+
+/**
+ * "Harmar township · 15024" for a building; "street · Harmar township" for
+ * a whole street. The street case leads with the word itself, because
+ * without it a street's median point ("ORR AVE") reads exactly like a
+ * building at that name with no number — the one thing this tag must never
+ * imply, since nobody's door is there.
+ */
+export function addressTag(a: SearchAddress): string {
+  if (a.kind === 'street') return [STREET_TAG_WORD, a.place].filter(Boolean).join(TAG_SEP);
+  return [a.place, a.zip].filter(Boolean).join(TAG_SEP);
+}
+
 // --------------------------------------------------------------------------
 // the rows
 // --------------------------------------------------------------------------
@@ -116,7 +133,8 @@ export function routeTag(r: SearchRoute): string {
 export type Row =
   | { kind: 'place'; place: SearchPlace }
   | { kind: 'stop'; stop: SearchStop }
-  | { kind: 'route'; route: SearchRoute };
+  | { kind: 'route'; route: SearchRoute }
+  | { kind: 'address'; address: SearchAddress };
 
 /**
  * Every result in one list, in the order the headings show them.
@@ -130,6 +148,7 @@ export function rows(r: SearchResponse): Row[] {
     places: r.places.map((place): Row => ({ kind: 'place', place })),
     stops: r.stops.map((stop): Row => ({ kind: 'stop', stop })),
     routes: r.routes.map((route): Row => ({ kind: 'route', route })),
+    addresses: r.addresses.map((address): Row => ({ kind: 'address', address })),
   };
   return groupOrder(r.q).flatMap((g) => byGroup[g]);
 }
@@ -137,13 +156,34 @@ export function rows(r: SearchResponse): Row[] {
 type Group = keyof typeof GROUP_HEADING;
 
 /**
- * Which group leads. Places, stops, routes -- except that a query starting
- * with a digit is a route number to anyone typing it, and PRT's
- * "BUTLER ST + #6130"-style stop names would otherwise put two stops above
- * the whole 61 family. The routes move to the top; nothing is dropped.
+ * A house number followed by a street word: "118 orr", "227 S Home Ave".
+ * That shape is a house number to anyone typing it, never a route number --
+ * routes are one to three characters, not "118 " -- so it is checked before
+ * the bare-digit rule below.
+ */
+const HOUSE_NUMBER_QUERY = /^\d+\s+[a-z]/i;
+
+/**
+ * Which group leads.
+ *
+ * A house-number query moves addresses to the top: "118 orr" is unambiguous,
+ * and nothing else in the box answers it.
+ *
+ * Otherwise a query starting with a bare digit is a route number to anyone
+ * typing it, and PRT's "BUTLER ST + #6130"-style stop names would otherwise
+ * put two stops above the whole 61 family. The routes move to the top;
+ * nothing is dropped.
+ *
+ * Otherwise places, stops, routes, addresses -- a bare street name last,
+ * because "brownsville" is a place and a dozen stops before it is the name
+ * of a street, and a street row with no number is the weakest match of the
+ * four.
  */
 export function groupOrder(q: string): Group[] {
-  return /^\d/.test(q.trim()) ? ['routes', 'places', 'stops'] : ['places', 'stops', 'routes'];
+  const query = q.trim();
+  if (HOUSE_NUMBER_QUERY.test(query)) return ['addresses', 'routes', 'places', 'stops'];
+  if (/^\d/.test(query)) return ['routes', 'places', 'stops', 'addresses'];
+  return ['places', 'stops', 'routes', 'addresses'];
 }
 
 /**
@@ -166,6 +206,7 @@ function rowFace(row: Row): { name: string; tag: string } {
     case 'place': return { name: row.place.name, tag: row.place.kind };
     case 'stop': return { name: row.stop.name, tag: stopTag(row.stop.sides, row.stop.place) };
     case 'route': return { name: row.route.short_name, tag: routeTag(row.route) };
+    case 'address': return { name: row.address.label, tag: addressTag(row.address) };
   }
 }
 
@@ -178,14 +219,16 @@ function optionHTML(row: Row, idx: number, highlighted: boolean): string {
 }
 
 /**
- * The listbox: three headed groups, a group with nothing in it omitted, and
- * one line when all three are empty — an empty box under a typed word reads
+ * The listbox: four headed groups, a group with nothing in it omitted, and
+ * one line when all four are empty — an empty box under a typed word reads
  * as the search not having run.
  */
 export function resultsHTML(r: SearchResponse, highlight: number | null): string {
   const all = rows(r);
   if (all.length === 0) return `<div class="sr-empty">${NOTHING_FOUND}</div>`;
-  const kindOf: Record<Group, Row['kind']> = { places: 'place', stops: 'stop', routes: 'route' };
+  const kindOf: Record<Group, Row['kind']> = {
+    places: 'place', stops: 'stop', routes: 'route', addresses: 'address',
+  };
   let idx = 0;
   return groupOrder(r.q).map((group) => {
     const own = all.filter((row) => row.kind === kindOf[group]);
@@ -309,7 +352,7 @@ export function initSearch({ elements, search, onPick }: SearchOptions): { focus
       if (mine !== seq) return;
       // A failed search is an empty one as far as the reader can tell; the
       // line under the box says so rather than the list going quiet.
-      current = { q, places: [], stops: [], routes: [] };
+      current = { q, places: [], stops: [], routes: [], addresses: [] };
       highlight = null;
       paint();
       setOpen(true);
