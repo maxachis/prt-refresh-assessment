@@ -709,3 +709,70 @@ describe('the surface figures under a painted selection', () => {
     expect(prose(el)).toContain('buses per day, proposed vs today');
   });
 });
+
+describe('the key under a narrowed period', () => {
+  const opts = { layer: LAYER, day: 'weekday' as const, bounds: BOX,
+                 weight: 'riders' as const, period: 'am_6_9a' as const };
+
+  it('names the window beside the day in the head', () => {
+    const el = stub();
+    renderLegend(el, opts);
+    expect(prose(el)).toContain('a weekday · 6–9am');
+  });
+
+  it('drops the Locations/Riders switch and counts locations anyway', () => {
+    const el = stub();
+    renderLegend(el, opts);
+    expect(el.innerHTML).not.toContain('data-weight');
+    // Not boardings: with `weight: 'riders'` ignored, the head is the same
+    // stop count the default weighting would have printed.
+    expect(prose(el)).toMatch(/<b>3<\/b>\s*stops in view/);
+    expect(prose(el)).not.toContain('daily boardings');
+  });
+
+  it('leaves the ridership weighting alone for when the period is cleared', () => {
+    // Passing `weight: 'riders'` through unread, not overwritten -- switching
+    // back to "All day" has to restore whatever the reader had chosen.
+    const el = stub();
+    renderLegend(el, { ...opts, period: 'all' });
+    expect(prose(el)).toContain('daily boardings');
+  });
+
+  it('drops the Ground/People switch on the surface key and stays on ground', () => {
+    const el = stub();
+    renderLegend(el, { ...opts, surface: SURFACE, unit: 'people', population: POPULATION });
+    expect(el.innerHTML).not.toContain('data-surface-unit');
+    expect(el.innerHTML).toContain('km²');
+    expect(el.innerHTML).not.toContain('people lose all service');
+  });
+
+  it('names the window on the surface-only head too', () => {
+    const el = stub();
+    renderLegend(el, { ...opts, surface: SURFACE, dots: false });
+    expect(prose(el)).toMatch(/Surface<\/b>\s*<span class="muted">·\s*a weekday · 6–9am · 400 m walk/);
+  });
+
+  it('titles the ramp with the window, not "per day"', () => {
+    // The ramp is a key to what is painted, and what is painted is one
+    // window's buses; "buses per day" over a 6-9am surface would be the one
+    // line in the box contradicting the head.
+    const el = stub();
+    renderLegend(el, { ...opts, surface: SURFACE });
+    expect(prose(el)).toContain('buses 6–9am, proposed vs today');
+    expect(prose(el)).not.toContain('buses per day');
+  });
+
+  it('prints the one footnote saying boardings and People are per day', () => {
+    const el = stub();
+    renderLegend(el, opts);
+    expect(el.innerHTML).toContain('lg-foot');
+    expect(el.innerHTML).toContain('PRT records boardings per day, not per hour');
+  });
+
+  it('prints none of that on the published, all-day layer', () => {
+    const el = stub();
+    renderLegend(el, { ...opts, period: 'all' });
+    expect(el.innerHTML).not.toContain('PRT records boardings per day');
+    expect(el.innerHTML).toContain('data-weight');
+  });
+});

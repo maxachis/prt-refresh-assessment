@@ -1,12 +1,13 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
   countIn, countNewPlacesIn, countRemovedIn, sumRidersIn, STYLE, viewportScope,
-  selectionScope, withinBrush, removedLine, dotLabel, toGeoJSON,
+  selectionScope, withinBrush, removedLine, dotLabel, toGeoJSON, loadChangeLayer,
 } from './change';
 import {
   BUCKET, ID, NAME, PUBLISHED, REMOVED, RIDERS, STOP_CUR, STOP_PROP,
   ChangePoint, ChangeLayer,
 } from './types';
+import { forgetFetched } from './utils';
 
 // The wire format is positional, so an off-by-one in the offsets recolours the
 // whole map and miscounts the legend without changing a single number on the
@@ -290,6 +291,29 @@ describe('dotLabel at a removed stop', () => {
   });
 });
 
+describe('dotLabel under a narrowed period', () => {
+  const BUCKETS = KEYS.map((k) => ({ key: k, label: k }));
+  const p = { published: 1, removed: 0, b0: 'doubled', sc0: 12, sp0: 24 };
+
+  it('names the window instead of the bare day', () => {
+    const html = dotLabel(p, 'weekday', BUCKETS, { period: 'am_6_9a' });
+    expect(html).toContain('12 → 24 buses 6–9am on a weekday at this stop');
+    expect(html).not.toContain('per weekday');
+  });
+
+  it('leaves the all-day wording byte-identical when no period is given', () => {
+    expect(dotLabel(p, 'weekday', BUCKETS))
+      .toContain('12 → 24 buses per weekday at this stop');
+  });
+
+  it('says the window at a removed stop too, over "Currently"', () => {
+    const gone = { published: 1, removed: 1, replacement: null, nearestStraight: null,
+                   b1: 'doubled', sc1: 40, sp1: 0, name: 'Forbes Ave at Craig St' };
+    const html = dotLabel(gone, 'saturday', BUCKETS, { period: 'eve_6_8p' });
+    expect(html).toContain('Currently 40 buses 6–8pm on a Saturday at this stop');
+  });
+});
+
 describe('a dot answers for the pole with no pin down', () => {
   const BUCKETS = KEYS.map((k) => ({ key: k, label: k }));
   const pole = { published: 1, removed: 0, b0: 'doubled', sc0: 40, sp0: 80,
@@ -462,5 +486,45 @@ describe('withinBrush', () => {
 
   it('takes nothing when the stroke is over empty ground', () => {
     expect(withinBrush(500, 500, 14, dots)).toEqual([]);
+  });
+});
+
+describe('loadChangeLayer', () => {
+  const fakeMap = () => ({
+    getSource: () => ({ setData: () => {} }),
+    setPaintProperty: () => {},
+    setFilter: () => {},
+  }) as any;
+
+  const emptyLayer: ChangeLayer = {
+    radius: 400, days: ['weekday', 'saturday', 'sunday'],
+    buckets: KEYS.map((k) => ({ key: k, label: k })), fields: [],
+    replacement: {}, moved: {}, points: [],
+  };
+
+  beforeEach(() => {
+    forgetFetched();
+    vi.stubGlobal('fetch', vi.fn(async () => ({
+      ok: true, json: async () => emptyLayer,
+    })));
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('fetches the published, all-day layer with no period parameter', async () => {
+    await loadChangeLayer(fakeMap(), 400, 'weekday');
+    expect(fetch).toHaveBeenCalledWith('/api/change?radius=400');
+  });
+
+  it('leaves the all-day URL byte-identical when the period is passed explicitly', async () => {
+    await loadChangeLayer(fakeMap(), 400, 'weekday', 'all');
+    expect(fetch).toHaveBeenCalledWith('/api/change?radius=400');
+  });
+
+  it('carries the period only when it narrows the day', async () => {
+    await loadChangeLayer(fakeMap(), 400, 'weekday', 'am_6_9a');
+    expect(fetch).toHaveBeenCalledWith('/api/change?radius=400&period=am_6_9a');
   });
 });

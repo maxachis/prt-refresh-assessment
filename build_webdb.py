@@ -402,6 +402,12 @@ CREATE INDEX ix_change_radius ON change(radius);
 -- query.py -- which is what lets the served-cell count be checked against the
 -- km2 figures docs/answers/ publishes. Cells with no bus either way on any day
 -- are not stored.
+-- The seven period columns after the two totals are the same measurement's
+-- own split (`query.days_of_service` returns it beside the total), stored so
+-- the surface can be served for one time of day (`/api/surface?period=`)
+-- without a second three-minute build. Their names are
+-- `data/coverage_change.csv`'s, and `tests/test_period_layers.py` pins that
+-- the seven add up to the total in every row.
 CREATE TABLE surface (
     radius     INTEGER NOT NULL,   -- 400 | 150, both built
     ix         INTEGER NOT NULL,   -- lattice column
@@ -409,7 +415,10 @@ CREATE TABLE surface (
     day        TEXT NOT NULL,
     cur_trips  INTEGER NOT NULL,
     prop_trips INTEGER NOT NULL,
-    PRIMARY KEY (radius, day, ix, iy)
+""" + "".join(
+    f"    {col:<10} INTEGER NOT NULL,\n"
+    for col in query.period_columns("cur") + query.period_columns("prop")
+) + """    PRIMARY KEY (radius, day, ix, iy)
 );
 CREATE INDEX ix_surface_radius ON surface(radius);
 
@@ -1251,7 +1260,9 @@ def surface_layer(out_path):
     write = sqlite3.connect(out_path)
     for radius in query.RADII:
         rows = query.compute_surface(read, radius)
-        write.executemany("INSERT INTO surface VALUES (?,?,?,?,?,?)", rows)
+        write.executemany(
+            "INSERT INTO surface VALUES (?,?,?,?,?,?,"
+            + ",".join("?" * (2 * len(query.PKEYS))) + ")", rows)
         cells = len(rows) // len(DAYS)
         served = sum(1 for r in rows
                      if r[3] == "weekday" and (r[4] > 0 or r[5] > 0))

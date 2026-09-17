@@ -19,7 +19,7 @@
  * counting helpers.
  */
 import { esc } from './utils';
-import { Day, Side } from './types';
+import { Day, Side, Period, PERIOD_LABEL, ALL_DAY } from './types';
 import { StopRoutes } from './stoproutes';
 
 const SEP = ' · ';
@@ -34,7 +34,16 @@ export interface QuestionState {
   destination: string;
   /** Which network's routes are drawn at the clicked kerb, or 'off'. */
   stopRoutes: StopRoutes;
+  /**
+   * The time-of-day window the dots and the surface are narrowed to, or
+   * `'all'`. Optional because only those two layers read it; every other
+   * view's line is built without one and must stay so.
+   */
+  period?: Period;
 }
+
+/** The views whose map the toolbar's time control narrows. */
+const TAKES_PERIOD = ['dots', 'surface', 'both'];
 
 const VIEW_LABEL: Record<string, string> = {
   dots: 'Stop-by-stop',
@@ -135,6 +144,13 @@ export function questionLine(s: QuestionState): string {
   if (TAKES_DESTINATION.includes(s.view)) parts[0] += ` to ${s.destination}`;
   parts.push(s.view === 'oneseat' && !s.oneSeatRestricted
     ? 'any day' : DAY_WORD[s.day]);
+  // Beside the day it narrows, and only where the map is narrowed: this is
+  // the summary a phone reader sees with the key folded away, and "a
+  // weekday" over a 6-9am map is the whole day claimed for one window.
+  const period = s.period ?? ALL_DAY;
+  if (period !== ALL_DAY && TAKES_PERIOD.includes(s.view)) {
+    parts.push(PERIOD_LABEL[period]);
+  }
   if (usesRadius(s.view)) parts.push(`${s.radius} m walk`);
   if (s.stopRoutes !== 'off' && DRAWS_STOPS.includes(s.view)) {
     parts.push(ROUTES_WORD[s.stopRoutes]);

@@ -33,7 +33,7 @@
  */
 import {
   ChangeLayer, ChangePoint, Day, DAYS, BUCKET, NAME, PUBLISHED, REMOVED,
-  STOP_CUR, STOP_PROP,
+  STOP_CUR, STOP_PROP, Period, PERIOD_LABEL, ALL_DAY,
   field, riders, pointId,
 } from './types';
 import { fetchJSONOnce } from './utils';
@@ -214,6 +214,13 @@ export function ensureRemovedCrossIcon(map: maplibregl.Map): string {
   }
   return REMOVED_ICON;
 }
+
+/** The day type as `dotLabel` names it under a narrowed period -- "a weekday". */
+const DAY_WORD: Record<Day, string> = {
+  weekday: 'a weekday',
+  saturday: 'a Saturday',
+  sunday: 'a Sunday',
+};
 
 let data: ChangeLayer | null = null;
 /** Buckets the reader has switched off by clicking the legend. */
@@ -699,11 +706,17 @@ export function initChangeLayer(map: maplibregl.Map) {
   }, 'walk-fill');
 }
 
-export async function loadChangeLayer(map: maplibregl.Map, radius: number, day: Day) {
+export async function loadChangeLayer(
+  map: maplibregl.Map, radius: number, day: Day, period: Period = ALL_DAY,
+) {
   // Held for the life of the page: the dot layer is the same 150 KB at a
   // radius the reader has already visited, and toggling 400 m -> 150 m ->
-  // 400 m was three round trips of about half a second each.
-  data = await fetchJSONOnce<ChangeLayer>(`/api/change?radius=${radius}`);
+  // 400 m was three round trips of about half a second each. `period` joins
+  // the cache key by joining the URL -- the all-day fetch stays byte-for-byte
+  // what it was before this control existed, so nothing else that reads this
+  // cache had to change.
+  const periodParam = period === ALL_DAY ? '' : `&period=${period}`;
+  data = await fetchJSONOnce<ChangeLayer>(`/api/change?radius=${radius}${periodParam}`);
   (map.getSource(SRC) as maplibregl.GeoJSONSource).setData(toGeoJSON(data) as any);
   // The dots are the same set at either radius (query.change_points), so a
   // selection survives a radius change -- but the feature state does not
@@ -794,10 +807,17 @@ function poleLine(props: any): string {
  * `pole: false` suppresses the pole heading, and exists for one caller: the
  * marks a pin drops name the pole themselves and print this beneath their own
  * divider, so leaving it on would name the same stop twice in one tooltip.
+ *
+ * `period` narrows the count line to one of PRT's seven windows: "12 buses
+ * 6-9am on a weekday" rather than "12 buses per weekday". The two numbers
+ * themselves need no separate handling here -- under a period they already
+ * arrive as that window's own trip counts (`query.kerb_departures`), so only
+ * the words describing them change.
  */
 export function dotLabel(props: any, day: Day,
                          buckets: { key: string; label: string }[],
-                         { pole = true }: { pole?: boolean } = {}) {
+                         { pole = true, period = ALL_DAY }:
+                           { pole?: boolean; period?: Period } = {}) {
   const i = DAYS.indexOf(day);
   const key = props[`b${i}`];
   // Neither a new place nor a removed stop is drawn in a bucket, so neither
@@ -819,8 +839,10 @@ export function dotLabel(props: any, day: Day,
   const cur = props[`sc${i}`], prop = props[`sp${i}`];
   const dayWord = day === 'weekday' ? 'weekday' : day;
   const count = gone ? `Currently ${cur}` : `${cur} → ${prop}`;
+  const when = period === ALL_DAY
+    ? `per ${dayWord}` : `${PERIOD_LABEL[period]} on ${DAY_WORD[day]}`;
   return `${pole ? poleLine(props) : ''}${removedLine(props)}` +
-    `${count} buses per ${dayWord} at this stop<br>` +
+    `${count} buses ${when} at this stop<br>` +
     `${gone ? '' : `<b>${label}</b><br>`}` +
     `<span style="opacity:.6">click for the full comparison</span>`;
 }

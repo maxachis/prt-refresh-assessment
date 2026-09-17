@@ -19,6 +19,23 @@ export const PERIOD_LABEL: Record<string, string> = {
   owl_11p_4a: '11pm–4am',
 };
 
+/** One of PKEYS, typed rather than a bare string wherever a period key travels. */
+export type PKey = typeof PKEYS[number];
+
+/**
+ * The map's time-of-day scope: the whole day, or one of PRT's seven windows.
+ *
+ * `'all'` rather than the key's own absence, because it is what
+ * `/api/change` and `/api/surface` name their default (`query.ALL_DAY`), and
+ * the URL parameter, the fetch and this type all have to agree on one
+ * spelling for "the whole day" or a link written by one and read by another
+ * would silently disagree about what it asked for.
+ */
+export type Period = 'all' | PKey;
+
+/** The whole-day scope, spelled the way `query.ALL_DAY` spells it server-side. */
+export const ALL_DAY: Period = 'all';
+
 export interface StopRef {
   stop_id: string;
   name: string;

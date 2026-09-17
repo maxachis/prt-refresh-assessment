@@ -19,7 +19,7 @@
 import { esc } from './utils';
 import {
   Day, ChangeLayer, SurfaceLayer, CorridorLayer, CorridorKlass, OneSeatLayer,
-  Weight, SurfaceUnit, PopulationLayer, Side,
+  Weight, SurfaceUnit, PopulationLayer, Side, Period, PERIOD_LABEL, ALL_DAY,
 } from './types';
 import {
   STYLE, countIn, countNewPlacesIn, NEW_PLACE_KEY, countRemovedIn, REMOVED_KEY,
@@ -182,6 +182,14 @@ const SCOPED_SURFACE_NOTE = `
  * (convention 15): the surface can report square kilometres or residents over
  * the identical cells, and neither is a correction to the other, so the
  * reader is told which one they are looking at rather than left to assume.
+ *
+ * That switch, and the reading it chooses, both answer to `period`. PRT's
+ * boardings extract has no hour in it and neither does the census, so a
+ * narrowed window has nothing a People reading could be built from --
+ * `/api/population` itself takes no period. The switch is dropped rather
+ * than left pressed on a reading that cannot be asked for, and the ground
+ * figures print regardless of what `unit` was left set to, so switching back
+ * to "All day" restores whichever reading the reader had chosen.
  */
 export function surfaceKey(opts: {
   layer: SurfaceLayer;
@@ -198,16 +206,28 @@ export function surfaceKey(opts: {
    * and repeating it here is the box saying one word twice.
    */
   named?: boolean;
+  /** The time-of-day window the surface is narrowed to, or `'all'`. */
+  period?: Period;
 }) {
   const {
     layer, day, bounds, unit, population, scoped = false, named = false,
+    period = ALL_DAY,
   } = opts;
   const gradient = RAMP.map(([stop, color]) =>
     `${color} ${((stop + 2) / 4 * 100).toFixed(1)}%`).join(', ');
+  // Ground, whatever `unit` says, while a period is narrowed -- see the note
+  // above the switch this replaces.
+  const effectiveUnit: SurfaceUnit = period === ALL_DAY ? unit : 'area';
+
+  // "per day" is the ramp's unit only while the layer is the whole day's;
+  // narrowed, the painted ratio is one window's buses and the title says
+  // which, so no line in this box reads as the whole day under a head that
+  // does not.
+  const rampWhen = period === ALL_DAY ? 'per day' : PERIOD_LABEL[period];
 
   return `
     <div class="lg-ramp">
-      <div class="lg-lab">${named ? 'Buses' : 'Surface — buses'} per day,
+      <div class="lg-lab">${named ? 'Buses' : 'Surface — buses'} ${rampWhen},
         proposed vs today</div>
       <div class="lg-bar" style="background:linear-gradient(90deg, ${gradient})"></div>
       <div class="lg-ends"><span>¼ or less</span><span>same</span><span>4× or more</span></div>
@@ -217,13 +237,14 @@ export function surfaceKey(opts: {
         <span><i style="background:${NEW_COLOR}"></i>new service
           (${DAY_PLURAL[day]})</span>
       </div>
+      ${period === ALL_DAY ? `
       <div class="seg lg-weight" role="group" aria-label="Show the surface as">
         ${(Object.keys(UNIT_LABEL) as SurfaceUnit[]).map((u) => `
           <button data-surface-unit="${u}" aria-pressed="${unit === u}"
                   class="${unit === u ? 'active' : ''}">${UNIT_LABEL[u]}</button>`).join('')}
-      </div>
+      </div>` : ''}
       ${scoped ? SCOPED_SURFACE_NOTE
-                : unit === 'people' ? populationLines(day, bounds, population)
+                : effectiveUnit === 'people' ? populationLines(day, bounds, population)
                                     : areaLines(layer, day, bounds)}
     </div>`;
 }
@@ -627,12 +648,34 @@ export interface LegendOptions {
    * window on a laptop screen.
    */
   dots?: boolean;
+  /**
+   * The time-of-day window the change and surface layers are narrowed to, or
+   * `'all'` for the published, whole-day layer.
+   *
+   * PRT's boardings extract has no hour in it, so a narrowed window forces
+   * the count to locations regardless of `weight` -- there is no such thing
+   * as the boardings between 6 and 9am -- and forces the surface to Ground
+   * regardless of `unit`, for the same reason `/api/population` takes no
+   * period at all. Neither state variable is touched: this only changes how
+   * the key reads while a period is active, so switching back to "All day"
+   * restores whichever reading the reader had chosen.
+   */
+  period?: Period;
+}
+
+/** The footnote a narrowed period adds to the key, and nothing else. */
+function periodFootnote(period: Period): string {
+  if (period === ALL_DAY) return '';
+  return `
+    <div class="lg-foot">PRT records boardings per day, not per hour, so the
+      key counts stops here; the People reading is per day too. Everything
+      else is the same map with only the buses in this window counted.</div>`;
 }
 
 export function renderLegend(el: HTMLElement, opts: LegendOptions) {
   const {
     layer, day, bounds, weight, surface, unit = 'area', population, selection,
-    dots = true,
+    dots = true, period = ALL_DAY,
   } = opts;
   const keys = layer.buckets.map((b) => b.key);
   const dayIndex = layer.days.indexOf(day);
@@ -643,10 +686,14 @@ export function renderLegend(el: HTMLElement, opts: LegendOptions) {
   const scope = painted
     ? selectionScope(painted) : viewportScope(west, south, east, north);
 
+  // Locations, whatever `weight` says, while a period is narrowed -- see
+  // `LegendOptions.period`.
+  const effectiveWeight: Weight = period === ALL_DAY ? weight : 'locations';
+
   const counts = countIn(layer.points, dayIndex, keys, scope);
   const newPlaces = countNewPlacesIn(layer.points, scope);
   const removed = countRemovedIn(layer.points, scope);
-  const tally = weight === 'riders'
+  const tally = effectiveWeight === 'riders'
     ? sumRidersIn(layer.points, dayIndex, keys, scope)
     : null;
 
@@ -702,6 +749,11 @@ export function renderLegend(el: HTMLElement, opts: LegendOptions) {
   // no longer applies to the number beside it.
   const walkNote = surface ? ` · surface: ${layer.radius} m walk` : '';
 
+  // Named after the day, right beside it -- "loses all service (weekdays)"
+  // above already reads as a claim about the whole day, so the window it was
+  // actually measured in has to sit where a reader cannot miss it either.
+  const periodNote = period === ALL_DAY ? '' : ` · ${PERIOD_LABEL[period]}`;
+
   // With the dots off there is nothing here to count, so the head names the
   // layer instead. The day and the radius stay: the surface is measured per
   // day type and per walk radius exactly as the dots are.
@@ -710,21 +762,23 @@ export function renderLegend(el: HTMLElement, opts: LegendOptions) {
   el.innerHTML = surfaceOnly ? `
     <div class="lg-head">
       <b>Surface</b>
-      <span class="muted">· ${DAY_WORD[day]} · ${layer.radius} m walk</span>
+      <span class="muted">· ${DAY_WORD[day]}${periodNote} · ${layer.radius} m walk</span>
     </div>
     ${surfaceKey({
       layer: surface!, day, bounds, unit, population, scoped: !!painted,
-      named: true,
-    })}` : `
+      named: true, period,
+    })}
+    ${periodFootnote(period)}` : `
     <div class="lg-head">
       ${head}
-      <span class="muted">· ${DAY_WORD[day]}${walkNote}</span>
+      <span class="muted">· ${DAY_WORD[day]}${periodNote}${walkNote}</span>
     </div>
+    ${period === ALL_DAY ? `
     <div class="seg lg-weight" role="group" aria-label="Count the dots by">
       ${(Object.keys(WEIGHT_LABEL) as Weight[]).map((w) => `
         <button data-weight="${w}" aria-pressed="${weight === w}"
                 class="${weight === w ? 'active' : ''}">${WEIGHT_LABEL[w]}</button>`).join('')}
-    </div>
+    </div>` : ''}
     ${shown.map((b) => `
       <button class="lg-row ${isHidden(b.key) ? 'off' : ''}" data-bucket="${esc(b.key)}"
               aria-pressed="${!isHidden(b.key)}">
@@ -734,11 +788,12 @@ export function renderLegend(el: HTMLElement, opts: LegendOptions) {
       </button>`).join('')}
     ${marksBlock(newPlaces, removed, removedCell)}
     ${surface ? surfaceKey({
-      layer: surface, day, bounds, unit, population, scoped: !!painted,
+      layer: surface, day, bounds, unit, population, scoped: !!painted, period,
     }) : ''}
     ${tally ? riderFoot(tally.unmeasured, newPlaces) : ''}
     ${painted ? `
     <div class="lg-foot">The stops you painted, not everything on screen —
       hand-picked, so quote it as a sample. The link in your address bar
-      carries it.</div>` : ''}`;
+      carries it.</div>` : ''}
+    ${periodFootnote(period)}`;
 }

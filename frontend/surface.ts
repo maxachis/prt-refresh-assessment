@@ -32,7 +32,9 @@
  *    says so, and the location counts stay on screen beside it (convention 10:
  *    the two are complements and neither is quoted alone).
  */
-import { SurfaceLayer, SurfaceCell, Day, DAYS, S_CUR, S_PROP } from './types';
+import {
+  SurfaceLayer, SurfaceCell, Day, DAYS, S_CUR, S_PROP, Period, ALL_DAY,
+} from './types';
 import { fetchJSONOnce } from './utils';
 
 const SRC = 'surface';
@@ -211,11 +213,15 @@ export function initSurfaceLayer(map: maplibregl.Map, beneath: string) {
 }
 
 export async function loadSurfaceLayer(
-  map: maplibregl.Map, radius: number, day: Day,
+  map: maplibregl.Map, radius: number, day: Day, period: Period = ALL_DAY,
 ) {
   // Held for the life of the page, and the one that pays for it most: this
   // is 1.3 MB and about two seconds, re-fetched on every visit to Surface.
-  data = await fetchJSONOnce<SurfaceLayer>(`/api/surface?radius=${radius}`);
+  // `period` joins the URL exactly as it does for `loadChangeLayer`, so the
+  // all-day fetch stays the same bytes it always was and a narrowed one gets
+  // its own cache entry rather than colliding with it.
+  const periodParam = period === ALL_DAY ? '' : `&period=${period}`;
+  data = await fetchJSONOnce<SurfaceLayer>(`/api/surface?radius=${radius}${periodParam}`);
   (map.getSource(SRC) as maplibregl.GeoJSONSource).setData(toGeoJSON(data) as any);
   setSurfaceDay(map, day);
   return data;

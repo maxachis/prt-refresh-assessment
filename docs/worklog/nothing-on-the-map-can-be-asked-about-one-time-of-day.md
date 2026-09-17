@@ -4,10 +4,12 @@
 know what the plan does to their morning rush, their evening, or their late bus
 home has one place to look — the answer panel's seven-row period table — and no
 way to see it across the map.
-**Where it stands:** open, scoped, not started. Five views are candidates and
-they are not equal: two can show a *published* per-period figure with no new
-analysis, one is a query parameter the docs already flag as the missing control,
-two need pipeline work first. Two views are deliberately not candidates.
+**Where it stands:** candidates 1 and 5 built 2026-09-17 — the dots, the
+surface and the panel's highlight, as the toolbar's *time* control
+(`docs/WEBAPP.md`, "One time of day"); fixed for those, awaiting close. The
+travel-time window (2), the street layer (3) and the route cards (4) remain
+open, and the three decisions at the bottom are still Max's — the build took
+the recommended answers as assumptions, stated in *What was built*.
 
 > Raised by Max, 2026-09-17: "folks who are interested in, at least for some of
 > the views, being able to also filter by certain times of day -- such as rush
@@ -157,6 +159,39 @@ Agent's recommendation, 2026-09-17; nothing below is decided.
 - **Order of delivery:** dots + surface + panel highlight (one change,
   published numbers); travel-time window (small change, caveat wording); the
   corridor layer (pipeline); route cards only if asked.
+
+## What was built (2026-09-17)
+
+Candidates 1 and 5, under the recommended shape above, without waiting on the
+decisions below — each was taken as an assumption and can be reversed:
+
+- `period=` on `/api/change` and `/api/surface`, one of PRT's seven keys or
+  `all`; same format, `period` named in the response; served per period on
+  first request from `create_app`'s cache (0.65 s / 0.25 s measured). The
+  surface rows carry the fourteen period columns
+  (`build_webdb.py`, `query.compute_surface`); the kerb counts are narrowed
+  by parsing the stored minutes (`query._kerb_period_totals`). Pinned by
+  `tests/test_period_layers.py`: the seven add up to the day at every kerb
+  and in every cell, a period dot equals the panel's period row at the same
+  kerb, and a period layer's riders are `null` throughout.
+- A `<select>` labelled *time* after the day control, shown on the
+  Stop-by-stop, Surface and combined views only; `period=` in the URL only
+  when narrowed. The key and the state line name the window after the day;
+  the Locations/Riders and Ground/People switches are not drawn under a
+  period and the reader's choice is kept for when it is cleared; one
+  footnote says why; the ramp title says "buses 6–9am" rather than "per
+  day"; the dot hover says "12 buses 6–9am on a weekday". The panel marks
+  the window's row in both period tables and is otherwise the whole day, as
+  its headline says.
+- Not built: the People reading per period (decided against above), and
+  the Riders reading per period (decision 2, taken as *suppressed*).
+
+Two things seen in the visual check and left as they are. The toolbar wraps
+to a second row at 1,388 px wide because "6–9am · morning rush" is the
+widest option; the rush-hour hint is the reason the control was asked for,
+so it stayed. And under the overnight window the key's counts collapse as
+predicted — the head line names the window, which is the mitigation this
+entry proposed, and nothing more was added.
 
 ## Decisions owed
 

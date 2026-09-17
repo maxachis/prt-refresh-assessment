@@ -8,6 +8,7 @@ const FULL: UrlState = {
   oneSeatRestricted: true,
   weight: 'riders',
   surfaceUnit: 'people',
+  period: 'am_6_9a',
   dest: { key: 'oakland' },
   at: { lat: 40.4406, lon: -79.9959 },
   camera: { lat: 40.44, lon: -80.0, zoom: 13.5 },
@@ -31,6 +32,7 @@ describe('toSearch', () => {
     expect(p.get('dest')).toBe('oakland');
     expect(p.get('weight')).toBe('riders');
     expect(p.get('surfaceunit')).toBe('people');
+    expect(p.get('period')).toBe('am_6_9a');
     expect(p.get('placefill')).toBe('gained');
     expect(p.get('stoproutes')).toBe('proposed');
     expect(p.get('route')).toBe('c:77-86');
@@ -86,6 +88,14 @@ describe('toSearch', () => {
     // Same reasoning as `weight`: `area` is the default, so it stays implicit.
     const p = new URLSearchParams(toSearch({ ...FULL, surfaceUnit: 'area' }));
     expect(p.has('surfaceunit')).toBe(false);
+  });
+
+  it('leaves the period out of a link asking about the whole day', () => {
+    // Same reasoning as `weight` and `surfaceUnit`: `all` is the published
+    // layer every other figure on the site is measured against, so writing
+    // it into every link would make it look like a setting the reader chose.
+    const p = new URLSearchParams(toSearch({ ...FULL, period: 'all' }));
+    expect(p.has('period')).toBe(false);
   });
 
   it('writes a dropped destination pin as coordinates', () => {
@@ -170,6 +180,7 @@ describe('parseUrlState', () => {
     ['?oneseatday=maybe', 'oneSeatRestricted'],
     ['?weight=people', 'weight'],
     ['?surfaceunit=ground', 'surfaceUnit'],
+    ['?period=teatime', 'period'],
     ['?at=40.44', 'at'],
     ['?at=here,there', 'at'],
     ['?map=40.44,-79.99', 'camera'],

@@ -27,7 +27,7 @@
  * value it has no button for.
  */
 import { Day, DAYS } from './types';
-import { Weight, SurfaceUnit } from './types';
+import { Weight, SurfaceUnit, Period, PKEYS, ALL_DAY } from './types';
 import { Destination } from './oneseat';
 import { PlaceFill, DEFAULT_PLACE_FILL } from './places';
 import { VIEWS } from './statebar';
@@ -54,6 +54,7 @@ export const PARAM = {
   dest: 'dest',
   weight: 'weight',
   surfaceUnit: 'surfaceunit',
+  period: 'period',
   at: 'at',
   camera: 'map',
   place: 'place',
@@ -116,6 +117,16 @@ export interface UrlState {
   weight: Weight;
   /** Whether the surface key is showing ground or the people on it. */
   surfaceUnit: SurfaceUnit;
+  /**
+   * The time-of-day window the change and surface layers are narrowed to, or
+   * `'all'` for the published, whole-day layer.
+   *
+   * Written only when it is narrowed, on `weight`'s rule: `all` is the
+   * layer every other figure on this site is measured against, so writing it
+   * into every link would make the whole day look like a setting the reader
+   * had chosen rather than the map's own starting point.
+   */
+  period: Period;
   dest: Destination;
   /** Where the reader asked, or null while the panel is still a prompt. */
   at: Point | null;
@@ -206,6 +217,9 @@ export function toSearch(s: UrlState): string {
   // it into every link would make the switch look like a setting the reader
   // had chosen rather than the map's own starting point.
   if (s.surfaceUnit === 'people') p.set(PARAM.surfaceUnit, s.surfaceUnit);
+  // Same reasoning again: `all` is the default, so it stays implicit and a
+  // link narrowed to one window is the one that carries the parameter.
+  if (s.period !== ALL_DAY) p.set(PARAM.period, s.period);
   // Both of these are absences rather than defaults: no point has been asked
   // about, and the map has not been moved off wherever it opened.
   if (s.at) p.set(PARAM.at, coords(s.at));
@@ -261,6 +275,15 @@ export function parseUrlState(search: string): Partial<UrlState> {
 
   if (p.get(PARAM.surfaceUnit) === 'people') s.surfaceUnit = 'people';
   else if (p.get(PARAM.surfaceUnit) === 'area') s.surfaceUnit = 'area';
+
+  // Checked against the seven keys the server actually knows, on the
+  // hand-edited-link principle above -- a value neither `all` nor one of
+  // PRT's own windows is dropped rather than reaching `/api/change` as a
+  // 400.
+  const period = p.get(PARAM.period);
+  if (period === ALL_DAY || (period && (PKEYS as readonly string[]).includes(period))) {
+    s.period = period as Period;
+  }
 
   const oneSeatDay = p.get(PARAM.oneSeatDay);
   if (oneSeatDay === ONESEAT_DAY.selected) s.oneSeatRestricted = true;

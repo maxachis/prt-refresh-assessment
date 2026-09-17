@@ -368,6 +368,18 @@
     #search-input:focus { outline:none; border-color:#39414f; }
     #search-input:focus-visible { outline:2px solid var(--now); outline-offset:1px; }
     #search-input::-webkit-search-cancel-button { display:none; }
+
+    /* The time-of-day control. A native select rather than a `.seg` -- eight
+       options do not fit a phone toolbar as a row of buttons the way the
+       three-way controls do -- dressed to sit level with them anyway:
+       `.seg-current`'s own colours and padding, so the strip still reads as
+       one row of like things despite this one control being a different
+       element. */
+    #period-select { border:1px solid var(--line); border-radius:8px;
+      background:#0c0e12; color:var(--ink); padding:5px 9px; font:inherit;
+      font-size:12px; cursor:pointer; }
+    #period-select:focus-visible { outline:2px solid var(--now); outline-offset:1px; }
+    #period-select:disabled { opacity:.35; cursor:not-allowed; }
     #search-results { display:none; position:absolute; top:calc(100% + 4px); left:0;
       width:380px; max-height:min(60vh, 480px); overflow-y:auto;
       border:1px solid var(--line); border-radius:8px; background:#0c0e12;
@@ -458,6 +470,14 @@
     td.bar span { display:block; height:5px; border-radius:2px; min-width:1px; }
     .b-now { background:var(--now); margin-bottom:2px; }
     .b-prop { background:var(--prop); }
+    /* The row the toolbar's time-of-day window is narrowed to, in both period
+       tables (the kerb block and the walk-radius block). A left border rather
+       than a background tint, because the row already carries two bars of
+       fill colour (`.b-now`/`.b-prop`) and a background would compete with
+       them; `--sel` is the same neutral the toolbar's own pressed segments
+       use, so "this is the one that's on" reads the same way in both places. */
+    table.periods tr.sel { box-shadow:inset 3px 0 0 var(--sel); }
+    table.periods tr.sel th { color:var(--ink); font-weight:600; }
     .legend { display:flex; flex-wrap:wrap; gap:5px 14px; font-size:11px;
       color:var(--muted); margin-top:8px; }
     .legend i { display:inline-block; width:10px; height:5px; border-radius:2px;
@@ -1227,6 +1247,35 @@
             <button data-day="saturday">Saturday</button>
             <button data-day="sunday">Sunday</button>
           </div>
+        </div>
+        <!-- The time-of-day window. Eight positions -- the whole day plus
+             PRT's seven periods -- do not fit a phone toolbar as a row of
+             buttons the way the three-way controls above do, so this is a
+             native select instead of a `.seg`; `dropdown.ts` only folds a
+             group built around `.seg`, so this one is left untouched by that
+             logic and simply sits in its own row. Shown only where the dots
+             or the surface are the map on screen (main.ts's
+             `periodControlShown`): the one-seat, travel-time, street,
+             Places and Route changes views all answer a different kind of
+             question, and none of PRT's boardings or route service has an
+             hour on it for those views to narrow. Narrowing this to one
+             window also blanks the dots' Riders reading and the surface's
+             People reading (convention: PRT's boardings extract has no hour
+             dimension), which is why the key drops both switches under a
+             period rather than leaving them pointed at a number that does
+             not exist. -->
+        <div class="controls" id="time-controls">
+          <span class="lbl">time</span>
+          <select id="period-select">
+            <option value="all" selected>All day</option>
+            <option value="early_4_6a">4–6am</option>
+            <option value="am_6_9a">6–9am · morning rush</option>
+            <option value="mid_9a_3p">9am–3pm</option>
+            <option value="pm_3_6p">3–6pm · evening rush</option>
+            <option value="eve_6_8p">6–8pm</option>
+            <option value="late_8_11p">8–11pm</option>
+            <option value="owl_11p_4a">11pm–4am</option>
+          </select>
         </div>
       </div>
       <!-- The legend is the summary and the filter as well as the key: the

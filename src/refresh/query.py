@@ -93,6 +93,29 @@ PERIODS = (
 )
 PKEYS = tuple(p[0] for p in PERIODS)
 
+# The time-of-day dimension of the two big layers, and the sentinel for its
+# absence. ALL_DAY is the layer as it has always been -- every departure of
+# the day type -- and it stays the default, because it is what the key's
+# counts, the surface's km2 and every screenshot to date were read off. A
+# period narrows the SAME layer to the departures whose minute falls in one of
+# PRT's seven windows: same points, same cells, same buckets, same wire
+# format, so nothing about the reading changes except which buses are
+# counted. A sentinel string rather than None so the cache key, the URL and
+# the layer's own `period` field all spell the whole day the same way.
+ALL_DAY = "all"
+LAYER_PERIODS = (ALL_DAY, *PKEYS)
+
+
+def period_columns(prefix: str) -> list[str]:
+    """`cur_am_6_9a`, ... -- the per-period columns a stored row carries.
+
+    One spelling, shared by `build_webdb.py`'s schema, `compute_surface`'s
+    rows and `surface_layer`'s read, and the same spelling
+    `data/coverage_change.csv` uses, so a stored period can be checked
+    against the published one by name.
+    """
+    return [f"{prefix}_{k}" for k in PKEYS]
+
 # The hourly tier's window and threshold: no gap over 60 minutes anywhere
 # between 6am and 6pm, counting the wait from 6am to the first departure and
 # from the last departure to 6pm.
@@ -1282,8 +1305,39 @@ def BUCKET_AT(day: int) -> int: return FIXED_FIELDS + 2 + POINT_STRIDE * day
 def RIDERS_AT(day: int) -> int: return FIXED_FIELDS + 3 + POINT_STRIDE * day
 
 
-def kerb_departures(con, dedup: float = STOP_SAME_POLE_M):
+@functools.lru_cache(maxsize=4)
+def _kerb_period_totals(con):
+    """{(side, stop_id, day): {period: departures}} for every pole.
+
+    One parse of every stored departure list, cached per connection, because
+    `kerb_departures` is asked for each of the seven periods at each radius
+    and re-reading ~100k rows of times for every one of them is the
+    difference between a layer that warms in a second and one that takes a
+    minute. The whole-day total deliberately does NOT come from here: it
+    stays `SUM(n)` in SQL so the layer served with no period is byte-for-byte
+    the layer served before periods existed, and
+    `test_the_seven_periods_at_a_kerb_add_up_to_its_day` pins the two paths
+    to each other.
+    """
+    out: dict[tuple[str, str, str], dict[str, int]] = {}
+    for r in con.execute("SELECT side, stop_id, day, times FROM departures"):
+        per = out.setdefault((r["side"], r["stop_id"], r["day"]),
+                             dict.fromkeys(PKEYS, 0))
+        for t in r["times"].split(","):
+            if t:
+                per[period_of(int(t))] += 1
+    return out
+
+
+def kerb_departures(con, dedup: float = STOP_SAME_POLE_M, *,
+                    period: str = ALL_DAY):
     """Buses calling at each point's own kerb, both networks, by day type.
+
+    `period` narrows the count to the departures whose minute falls in one
+    of PRT's seven windows (`PKEYS`); `ALL_DAY` is every departure, and the
+    default. The kerb, its poles and its 25 m identity rule do not move with
+    it -- only which buses are counted does -- so a rush-hour map is the same
+    map with fewer buses on it, never a different set of stops.
 
     The unit Stop-by-stop is named for, and since 2026-09-10 the unit of both
     of its channels: the tooltip prints these two numbers and the dot's colour
@@ -1306,11 +1360,16 @@ def kerb_departures(con, dedup: float = STOP_SAME_POLE_M):
     only what falls inside 25 m would paint it "loses all service" while the
     map draws a line to the stop that serves it.
     """
+    if period not in LAYER_PERIODS:
+        raise ValueError(f"period must be one of {LAYER_PERIODS}, not {period!r}")
     totals: dict[tuple[str, str, str], int] = {}
-    for r in con.execute(
-            "SELECT side, stop_id, day, SUM(n) AS n FROM departures "
-            "GROUP BY side, stop_id, day"):
-        totals[(r["side"], r["stop_id"], r["day"])] = r["n"]
+    if period == ALL_DAY:
+        for r in con.execute(
+                "SELECT side, stop_id, day, SUM(n) AS n FROM departures "
+                "GROUP BY side, stop_id, day"):
+            totals[(r["side"], r["stop_id"], r["day"])] = r["n"]
+    else:
+        totals = {k: per[period] for k, per in _kerb_period_totals(con).items()}
     ids = {side: {r["stop_id"] for r in con.execute(
         "SELECT stop_id FROM stops WHERE side = ?", (side,))}
         for side in ("current", "proposed")}
@@ -1361,8 +1420,19 @@ def point_boardings(con) -> dict[str, dict[str, float | None]]:
                 "  sunday_boardings FROM stop_place")}
 
 
-def change_layer(con, radius: float = PRIMARY_RADIUS):
+def change_layer(con, radius: float = PRIMARY_RADIUS, *,
+                 period: str = ALL_DAY):
     """The citywide layer at one radius, all three day types, packed for the wire.
+
+    `period` narrows every kerb's two counts -- and so its colour -- to one of
+    PRT's seven windows, and the response names it in `period`. The format
+    does not change, so a client that decodes the whole-day layer decodes a
+    period layer unchanged; what does change is that the boardings column is
+    `null` at EVERY point, not just the added ones. The usage extract is per
+    stop per day type with no hour in it, so there is no such thing as the
+    boardings at a kerb between 6 and 9am, and shipping the day's figure under
+    a rush-hour map would let the Riders reading report all-day riders as
+    the ones at risk in the morning (convention 15's asymmetry, one axis over).
 
     Columnar on purpose. The same content as GeoJSON is several megabytes of
     repeated key names for ~5,900 points; as fixed-width rows it is a few
@@ -1398,8 +1468,8 @@ def change_layer(con, radius: float = PRIMARY_RADIUS):
     named = {f"{'c' if r['side'] == 'current' else 'p'}:{r['stop_id']}":
              r["name"] for r in
              con.execute("SELECT side, stop_id, name FROM stops")}
-    boardings = point_boardings(con)
-    kerbs = kerb_departures(con)
+    boardings = point_boardings(con) if period == ALL_DAY else {}
+    kerbs = kerb_departures(con, period=period)
     idx = {k: i for i, k in enumerate(BUCKET_KEYS)}
     packed: dict[str, list] = {}
     for r in rows:
@@ -1426,6 +1496,7 @@ def change_layer(con, radius: float = PRIMARY_RADIUS):
 
     return {
         "radius": int(radius),
+        "period": period,
         "days": list(DAYS),
         "buckets": [{"key": k, "label": lab} for k, lab in BUCKETS],
         "fields": ["lat", "lon", "published", "id", "removed", "name",
@@ -1707,13 +1778,24 @@ def compute_surface(con, radius: float = PRIMARY_RADIUS):
         if not any(cur[d]["trips"] or prop[d]["trips"] for d in DAYS):
             continue
         for day in DAYS:
+            # The seven period counts ride along: they are already in hand
+            # from the same measurement, and storing them is what lets the
+            # surface be served for one time of day without a second build.
             out.append((int(radius), ix, iy, day,
-                        cur[day]["trips"], prop[day]["trips"]))
+                        cur[day]["trips"], prop[day]["trips"],
+                        *(round(cur[day]["periods"][k]) for k in PKEYS),
+                        *(round(prop[day]["periods"][k]) for k in PKEYS)))
     return out
 
 
-def surface_layer(con, radius: float = PRIMARY_RADIUS):
+def surface_layer(con, radius: float = PRIMARY_RADIUS, *,
+                  period: str = ALL_DAY):
     """The surface at one radius, all three day types, packed for the wire.
+
+    `period` reads one of PRT's seven windows off the stored row instead of
+    the day total, and names itself in `period`; the cells, their order and
+    the format are the same, so a cell with no bus in that window travels as
+    zeros rather than vanishing and the client draws the same lattice.
 
     Cells travel as lattice indices rather than coordinates: the lattice is
     regular, so `origin` plus (ix, iy) reconstructs the square exactly, and
@@ -1727,8 +1809,12 @@ def surface_layer(con, radius: float = PRIMARY_RADIUS):
     let a reader quote a figure off the surface as though `docs/answers/`
     published it.
     """
+    if period not in LAYER_PERIODS:
+        raise ValueError(f"period must be one of {LAYER_PERIODS}, not {period!r}")
+    cur_col, prop_col = (("cur_trips", "prop_trips") if period == ALL_DAY
+                         else (f"cur_{period}", f"prop_{period}"))
     rows = con.execute(
-        "SELECT ix, iy, day, cur_trips, prop_trips FROM surface "
+        f"SELECT ix, iy, day, {cur_col} AS cur, {prop_col} AS prop FROM surface "
         "WHERE radius = ? ORDER BY ix, iy", (int(radius),)).fetchall()
 
     packed: dict[tuple[int, int], list] = {}
@@ -1736,10 +1822,11 @@ def surface_layer(con, radius: float = PRIMARY_RADIUS):
         c = packed.setdefault((r["ix"], r["iy"]),
                               [r["ix"], r["iy"], 0, 0, 0, 0, 0, 0])
         at = 2 + 2 * DAYS.index(r["day"])
-        c[at:at + 2] = [r["cur_trips"], r["prop_trips"]]
+        c[at:at + 2] = [r["cur"], r["prop"]]
 
     return {
         "radius": int(radius),
+        "period": period,
         "cell_m": CELL_M,
         "days": list(DAYS),
         # Enough to rebuild any cell's square client-side: the south-west

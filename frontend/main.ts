@@ -77,7 +77,7 @@ import { initDropdowns } from './dropdown';
 import { dismissNotice, safeLocalStorage, shouldShowNotice } from './notice';
 import {
   PlaceResult, Day, OneSeatDay, JourneyResult, NamedDestination, Weight,
-  SurfaceUnit,
+  SurfaceUnit, Period, ALL_DAY,
   StopRef, KerbRoutesResult, Side, RouteResult, SearchResponse,
   SearchPlace,
 } from './types';
@@ -193,6 +193,17 @@ let weight: Weight = 'locations';
 // key reads, not which question the surface is answering -- and it has no
 // toolbar button of its own, only the switch drawn inside the key itself.
 let surfaceUnit: SurfaceUnit = 'area';
+
+// The toolbar's time-of-day window: the whole day, or one of PRT's seven
+// periods. Lives here rather than only in `#period-select`, the same as
+// `radius` and `activeDay()`'s day, because every fetch that reads it --
+// `loadChangeLayer`, `loadSurfaceLayer` -- and every render that reads it --
+// the legend, the dot hover, the answer panel's period tables -- needs the
+// value between the control firing and the next one. `ALL_DAY` is `'all'`,
+// the same spelling `/api/change` and `/api/surface` default to and the one
+// `urlstate.ts` omits from a link, so nothing here invents a second name for
+// "the whole day".
+let period: Period = ALL_DAY;
 
 // Which network's routes are drawn at the clicked kerb, or 'off'. One value
 // with three positions rather than a toggle and a side: the lines are one
@@ -441,7 +452,7 @@ map.on('load', () => {
       // The mark has already named the pole; the dot repeats itself if asked
       // to name it again.
       return d && dot
-        ? dotLabel(dot.properties, activeDay(), d.buckets, { pole: false })
+        ? dotLabel(dot.properties, activeDay(), d.buckets, { pole: false, period })
         : null;
     }),
     // A removed stop is drawn as a cross and not as a dot, so naming the dot
@@ -452,7 +463,7 @@ map.on('load', () => {
       layer,
       html: (f: any) => {
         const d = layerData();
-        return d ? dotLabel(f.properties, activeDay(), d.buckets) : null;
+        return d ? dotLabel(f.properties, activeDay(), d.buckets, { period }) : null;
       },
       anchor: (f: any) => (f.geometry as any).coordinates,
     })),
@@ -517,9 +528,9 @@ map.on('load', () => {
   // disagree that disagreement is the finding (the station consolidations).
   segment(CONTROL.radius, (b) => {
     radius = Number(b.dataset.radius);
-    void loadChangeLayer(map, radius, activeDay()).then(refreshLegend);
+    void loadChangeLayer(map, radius, activeDay(), period).then(refreshLegend);
     if (surfaceData()) {
-      void loadSurfaceLayer(map, radius, activeDay()).then(refreshLegend);
+      void loadSurfaceLayer(map, radius, activeDay(), period).then(refreshLegend);
     }
     // Same lazy-refetch rule as the surface itself: only reload the
     // population lattice if a reader has already asked for it at least once.
@@ -645,6 +656,12 @@ map.on('load', () => {
     // control needs no line here: it is drawn inside the panel, which the
     // view switch replaces wholesale.)
     $('place-fill-controls').classList.toggle('hidden', view !== 'places');
+    // The time-of-day window means something only where the dots or the
+    // surface are the map on screen -- the one-seat, travel-time, street,
+    // Places and Route changes views all answer a different kind of
+    // question from a different fetch, none of which PRT's data can narrow
+    // to an hour.
+    $('time-controls').classList.toggle('hidden', !periodControlShown(view));
     // Same for the one-to-one control: it decides whether the Route changes
     // grey is drawn, and there is no grey to draw in any other view.
     refreshStopRoutesControls();
@@ -715,6 +732,32 @@ map.on('load', () => {
     }
   });
 
+  // The time-of-day window. A native select rather than a `segment()`
+  // control -- it has no buttons for `press` to click, so `applyOpening`
+  // sets `period` directly instead -- so its own wiring lives here rather
+  // than going through that helper. Changing it always refetches the dots
+  // (`period` narrows what `/api/change` returns, not just how it is drawn),
+  // and refetches the surface only if a reader has already asked for it at
+  // least once, mirroring the radius handler's own lazy-refetch rule above:
+  // a reader who has never opened Surface should not pay for it just because
+  // they moved this select.
+  $('period-select').addEventListener('change', (e) => {
+    period = (e.target as HTMLSelectElement).value as Period;
+    // The panel's period tables already carry all seven windows for the
+    // point in hand (`place.ts`'s `periodRows` doc) -- moving this select
+    // only changes which row is marked, not what was fetched -- so it is
+    // redrawn at once rather than waiting on the map's own refetch below.
+    renderPanel();
+    const changeReady = loadChangeLayer(map, radius, activeDay(), period);
+    const surfaceReady = surfaceData()
+      ? loadSurfaceLayer(map, radius, activeDay(), period)
+      : Promise.resolve();
+    void Promise.all([changeReady, surfaceReady]).then(refreshLegend);
+    // What `segment()` does for a button press, by hand: the state line
+    // names the window beside the day, and the link carries it.
+    refreshStateLine();
+    syncUrl();
+  });
 
   $('legend').addEventListener('click', (e) => {
     const w = (e.target as HTMLElement).closest<HTMLElement>('[data-weight]');
@@ -891,7 +934,7 @@ map.on('load', () => {
   // Unconditional, and it must stay that way: see `applyOpening`. Anything
   // that made this conditional again would have to know which control presses
   // fetch, which is the thing that was got wrong.
-  void loadChangeLayer(map, radius, activeDay()).then(refreshLegend);
+  void loadChangeLayer(map, radius, activeDay(), period).then(refreshLegend);
   void loadMeta();
   void loadDestinations();
 });
@@ -967,6 +1010,21 @@ function applyOpening(s: Partial<UrlState>): void {
   // sees the final `surfaceUnit` by the time `view` is pressed below, so
   // opening straight onto People fetches the population lattice exactly once.
   if (s.surfaceUnit) surfaceUnit = s.surfaceUnit;
+  // Before the unconditional opening fetch below `applyOpening`'s own caller
+  // makes: unlike `weight` and `surfaceUnit`, THIS one changes the URL a
+  // fetch is built from (`loadChangeLayer`'s `&period=`), so a link opening
+  // narrowed to one window has to have `period` set before that fetch fires,
+  // not merely before the legend that reads it renders. There is no button
+  // for `press` to click -- `#period-select` is a native select, not a
+  // `.seg` -- so the element's own value is set here directly, the one place
+  // a link has to reach past the state variable to the control itself.
+  if (s.period) {
+    period = s.period;
+    ($('period-select') as HTMLSelectElement).value = s.period;
+    // Not a `press`, so nothing below redraws the state line for it; a link
+    // with no `view=` presses no button at all before the map opens.
+    refreshStateLine();
+  }
   // Unlike `weight` and `surfaceUnit` above, this one now has a button
   // (`#place-fill-controls`), pressed before `view` below for the same
   // reason the radius and day are: `showPlaces` reads `placeFill` when it
@@ -1029,6 +1087,7 @@ function syncUrl() {
     oneSeatRestricted,
     weight,
     surfaceUnit,
+    period,
     dest,
     at: last,
     camera,
@@ -1119,7 +1178,7 @@ function refreshStateLine() {
       })
     : questionLineHTML({
         view, day: activeDay(), radius, oneSeatRestricted,
-        destination: destinationName(), stopRoutes,
+        destination: destinationName(), stopRoutes, period,
       });
   refreshControlsButton();
 }
@@ -1340,6 +1399,7 @@ function renderLegendBody() {
     unit: surfaceUnit,
     population: populationData(),
     selection: selection(),
+    period,
   });
 }
 
@@ -1348,7 +1408,7 @@ async function showSurface(on: boolean) {
   if (on && !surfaceData()) {
     $('legend').classList.add('loading');
     try {
-      await loadSurfaceLayer(map, radius, activeDay());
+      await loadSurfaceLayer(map, radius, activeDay(), period);
     } finally {
       $('legend').classList.remove('loading');
     }
@@ -1611,7 +1671,7 @@ function renderPanel({ scrollToTop = false } = {}) {
   // radius stays below it, labelled, because that is the published unit. The
   // views with no dots in them (`dotsOn` false) get the walk radius alone --
   // there is no stop there for a click to have landed on.
-  render(lastPlace, { withKerb: dotsOn(), routes: stopRoutes });
+  render(lastPlace, { withKerb: dotsOn(), routes: stopRoutes, period });
 }
 
 function showJourney(on: boolean, leaving = false) {
@@ -1690,6 +1750,18 @@ async function loadJourney(lat: number, lon: number) {
 function refreshDayControls() {
   $('day-controls').classList.toggle(
     'hidden', !dayControlsShown(view, oneSeatRestricted, placeFill));
+}
+
+/**
+ * Whether the time-of-day select means anything for the view that is up.
+ *
+ * Only the two views the dots or the surface are drawn in read `period` at
+ * all -- one-seat, travel-time, streets, Places and Route changes each fetch
+ * something PRT publishes with no hour on it, so narrowing them would either
+ * do nothing or silently lie about what the fetch actually asked for.
+ */
+function periodControlShown(v: string): boolean {
+  return v === 'dots' || v === 'surface' || v === 'both';
 }
 
 /** Which day the one-seat question is being asked for right now. */

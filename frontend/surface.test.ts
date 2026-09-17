@@ -1,8 +1,10 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
   rampValue, cellKind, toGeoJSON, summariseInBounds, RAMP, RAMP_CLAMP,
+  loadSurfaceLayer,
 } from './surface';
 import { SurfaceLayer } from './types';
+import { forgetFetched } from './utils';
 
 const ORIGIN = { lat0: 40.45, lon0: -79.98, dlat: 0.000898, dlon: 0.001181 };
 
@@ -129,5 +131,40 @@ describe('summariseInBounds', () => {
     const cells = [[0, 0, 10, 10, 10, 0, 0, 0]];
     expect(area(cells, 0).same).toBe(CELL_KM2);
     expect(area(cells, 1).gone).toBe(CELL_KM2);
+  });
+});
+
+describe('loadSurfaceLayer', () => {
+  const fakeMap = () => ({
+    getSource: () => ({ setData: () => {} }),
+    setPaintProperty: () => {},
+  }) as any;
+
+  const emptyLayer: SurfaceLayer = layer([]);
+
+  beforeEach(() => {
+    forgetFetched();
+    vi.stubGlobal('fetch', vi.fn(async () => ({
+      ok: true, json: async () => emptyLayer,
+    })));
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('fetches the published, all-day surface with no period parameter', async () => {
+    await loadSurfaceLayer(fakeMap(), 400, 'weekday');
+    expect(fetch).toHaveBeenCalledWith('/api/surface?radius=400');
+  });
+
+  it('leaves the all-day URL byte-identical when the period is passed explicitly', async () => {
+    await loadSurfaceLayer(fakeMap(), 400, 'weekday', 'all');
+    expect(fetch).toHaveBeenCalledWith('/api/surface?radius=400');
+  });
+
+  it('carries the period only when it narrows the day', async () => {
+    await loadSurfaceLayer(fakeMap(), 400, 'weekday', 'pm_3_6p');
+    expect(fetch).toHaveBeenCalledWith('/api/surface?radius=400&period=pm_3_6p');
   });
 });

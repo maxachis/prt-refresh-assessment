@@ -692,3 +692,28 @@ describe('the route chips, while the lines are on the map', () => {
     }
   });
 });
+
+describe('the row a narrowed time-of-day window highlights', () => {
+  // Both period tables mark the same row the toolbar's time control is set
+  // to, so a reader who narrowed the map to one window can find its row by
+  // eye without re-reading every line -- the panel's headline still says
+  // "whole day" throughout, per the brief, since only the row markup changes.
+  it('marks the walk-radius block\'s own row, and only that one', () => {
+    const html = serviceBodyHTML(PLACE, 'weekday', '', 'am_6_9a');
+    expect(html).toMatch(/<tr class="sel">\s*<th>[^<]*6[^<]*9[^<]*<\/th>/);
+    expect((html.match(/class="sel"/g) ?? []).length).toBe(1);
+  });
+
+  it('marks the kerb block\'s own row too, independently of the radius block', () => {
+    const html = panelHTML(AT_A_STOP, 'weekday',
+                           { withKerb: true, period: 'mid_9a_3p' });
+    // One "sel" row in the kerb block above, one in the walk block below --
+    // the same window, marked in both places the number appears.
+    expect((html.match(/class="sel"/g) ?? []).length).toBe(2);
+  });
+
+  it('marks no row at all for the whole day, the panel\'s default', () => {
+    const html = serviceBodyHTML(PLACE, 'weekday');
+    expect(html).not.toContain('class="sel"');
+  });
+});

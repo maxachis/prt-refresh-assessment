@@ -32,7 +32,7 @@
 import { esc, clock, duration, signed, pct } from './utils';
 import {
   PKEYS, PERIOD_LABEL, Day, PlaceResult, DayService, OneSeatVerdict, OneSeatDay,
-  Boardings, PlacePopulation, StopRef, KerbResult, Side,
+  Boardings, PlacePopulation, StopRef, KerbResult, Side, Period, ALL_DAY,
 } from './types';
 import { routeColors } from './routecolor';
 import { StopRoutes } from './stoproutes';
@@ -142,7 +142,21 @@ function tierBadge(before: boolean, after: boolean): string {
   return `<span class="tier none">below hourly, before and after</span>`;
 }
 
-function periodRows(before: DayService, after: DayService): string {
+/**
+ * One row per period, with the one the map's toolbar is narrowed to marked.
+ *
+ * `period` only decides which row wears `.sel`. The seven numbers are the
+ * whole day's, always: `/api/place` takes no period, and the panel's
+ * headline above this table sums all seven whatever the map is narrowed
+ * to -- the map's time control changes which buses the DOTS and the SURFACE
+ * count, and this table is where the reader sees the same window inside the
+ * whole day. The highlight is drawn in both period tables this function
+ * backs (`kerbBlockHTML` and `serviceBodyHTML`), because a reader who
+ * narrowed the map to one window should not have to find its row by eye in
+ * either block.
+ */
+function periodRows(before: DayService, after: DayService,
+                    period: Period = ALL_DAY): string {
   const max = Math.max(
     1,
     ...PKEYS.map((k) => Math.max(before.periods[k] ?? 0, after.periods[k] ?? 0)),
@@ -153,7 +167,7 @@ function periodRows(before: DayService, after: DayService): string {
     const d = a - b;
     const cls = d > 0 ? 'up' : d < 0 ? 'down' : 'flat';
     return `
-      <tr>
+      <tr class="${k === period ? 'sel' : ''}">
         <th>${PERIOD_LABEL[k]}</th>
         <td class="bar">
           <span class="b-now" style="width:${(b / max) * 100}%"></span>
@@ -611,11 +625,12 @@ function headlineHTML(before: DayService, after: DayService,
 }
 
 /** The seven periods the headline above sums over. Scope-free by itself. */
-function periodTableHTML(before: DayService, after: DayService): string {
+function periodTableHTML(before: DayService, after: DayService,
+                         period: Period = ALL_DAY): string {
   return `
     <table class="periods">
       <thead><tr><th></th><th></th><th class="n">now</th><th class="n">prop.</th><th class="n">Δ</th></tr></thead>
-      <tbody>${periodRows(before, after)}</tbody>
+      <tbody>${periodRows(before, after, period)}</tbody>
     </table>`;
 }
 
@@ -691,7 +706,11 @@ function routesBlockHTML(before: DayService, after: DayService,
  * Which of the toolbar ROUTES control's three positions is on, so the block
  * can say what the lines on the map are and colour its chips to match.
  */
-export interface KerbBlockOptions { routes?: StopRoutes }
+export interface KerbBlockOptions {
+  routes?: StopRoutes;
+  /** The toolbar's time-of-day window, so its row can be marked below. */
+  period?: Period;
+}
 
 /**
  * What the lines on the map are, in words — the panel's half of the toolbar's
@@ -743,7 +762,7 @@ export function kerbBlockHTML(k: KerbResult, d: Day,
         <span class="muted">· PRT stop ${esc(k.stop_id)}</span></div>
       ${headlineHTML(before, after, d, AT_THIS_STOP)}
       <div class="tiers">${tierBadge(before.hourly, after.hourly)}</div>
-      ${periodTableHTML(before, after)}
+      ${periodTableHTML(before, after, opts.period)}
       <dl class="facts">
         ${serviceFactsRows(before, after)}
         ${boardingsFact(before.boardings, d, AT_THIS_STOP)}
@@ -771,7 +790,8 @@ export function kerbBlockHTML(k: KerbResult, d: Day,
  * unit. Its scope is now stated on the headline rather than only in the place
  * head above it, because the kerb block can sit between the two.
  */
-export function serviceBodyHTML(p: PlaceResult, d: Day, middle = ''): string {
+export function serviceBodyHTML(p: PlaceResult, d: Day, middle = '',
+                                period: Period = ALL_DAY): string {
   const before = p.current.days[d];
   const after = p.proposed.days[d];
 
@@ -787,7 +807,7 @@ export function serviceBodyHTML(p: PlaceResult, d: Day, middle = ''): string {
 
     <div class="tiers">${tierBadge(before.hourly, after.hourly)}</div>
 
-    ${periodTableHTML(before, after)}
+    ${periodTableHTML(before, after, period)}
     <div class="legend">
       <span><i class="sw-now"></i> today</span>
       <span><i class="sw-prop"></i> proposed</span>
@@ -831,6 +851,8 @@ export function serviceBodyHTML(p: PlaceResult, d: Day, middle = ''): string {
 export interface PanelScope {
   withKerb?: boolean;
   routes?: StopRoutes;
+  /** The toolbar's time-of-day window, so both period tables can mark its row. */
+  period?: Period;
 }
 
 /**
@@ -840,7 +862,7 @@ export interface PanelScope {
  * which is how everything else in this module is checked.
  */
 export function panelHTML(p: PlaceResult, d: Day,
-                          { withKerb = false, routes = 'off' }: PanelScope = {}): string {
+                          { withKerb = false, routes = 'off', period }: PanelScope = {}): string {
   const kerb = withKerb ? p.kerb ?? null : null;
   // The place head carries the radius only when it is the panel's one scope.
   // Hung over a kerb headline it would label the wrong number -- the trap
@@ -853,11 +875,11 @@ export function panelHTML(p: PlaceResult, d: Day,
       <h2>${esc(placeLabel(p))}</h2>
       <div class="muted">${where}</div>
     </div>
-    ${kerb ? kerbBlockHTML(kerb, d, { routes }) : ''}
+    ${kerb ? kerbBlockHTML(kerb, d, { routes, period }) : ''}
     ${kerb ? `<h3 class="scope-head">Within a ${p.radius} m walk</h3>
       <div class="scope-sub">The published unit: every stop a rider can walk
         to, on both networks, measured in the same circle.</div>` : ''}
-    ${serviceBodyHTML(p, d, oneSeatBlock(p.oneseat ?? [], p.oneseat_day ?? 'any'))}`;
+    ${serviceBodyHTML(p, d, oneSeatBlock(p.oneseat ?? [], p.oneseat_day ?? 'any'), period)}`;
 }
 
 export function render(p: PlaceResult, scope: PanelScope = {}) {

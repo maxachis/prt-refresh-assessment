@@ -50,6 +50,13 @@ _STATIC = Path(__file__).parent / "static"
 # one corner had 300 routes.
 MIN_RADIUS, MAX_RADIUS = 50, 1500
 
+# The time-of-day axis of the two big layers: the whole day, or one of PRT's
+# seven windows. A pattern rather than an Enum so the 422 names every value
+# the layer accepts, in the order `/api/meta`'s `periods` lists them.
+PERIOD_PATTERN = f"^({'|'.join(query.LAYER_PERIODS)})$"
+PERIOD_DESCRIPTION = ("time of day: the whole day (the default and the layer "
+                      "as published), or one of PRT's seven periods")
+
 # Roughly Allegheny County, plus margin. A point outside it has no PRT service
 # by definition, and rejecting it early gives a clearer error than an empty
 # result that looks like a service loss.
@@ -117,14 +124,24 @@ def create_app(db_path: str | Path = "data/refresh.db", *,
     # never a single slot: two radii under one key would serve the strict
     # layer's colours under the headline question.
     #
-    # Bounded by construction -- `query.RADII` has two members and the three
-    # endpoints reject anything else before reaching here -- so this is at most
-    # six entries, about 4 MB.
+    # Bounded by construction -- `query.RADII` has two members, the period
+    # axis eight (the whole day and PRT's seven windows, on the two layers
+    # that take it) and the endpoints reject anything else before reaching
+    # here -- so this is at most 34 entries. The six whole-day ones are about
+    # 4 MB and are warmed below; a period entry is built on first request,
+    # since most readers never touch the control, and the 28 of them would
+    # add about 13 s to every start-up (measured 2026-09-17: 0.65 s per
+    # change period, 0.25 s per surface period) to serve a press that takes
+    # under a second when it comes.
     #
     # NOT the one-seat layer, which looks like a fourth candidate and is not:
     # its destination can be any point a reader drops a pin on, so keying a
     # cache by its URL would grow without bound as they drag one around.
-    layer_cache: dict[tuple[str, int], bytes] = {}
+    layer_cache: dict[tuple[str, int, str], bytes] = {}
+    # One build at a time. A period layer is built on demand, so two readers
+    # pressing the same period together would otherwise build it twice, and
+    # in parallel -- the convoy the warm below exists to avoid.
+    layer_build_lock = threading.Lock()
 
     # The three builders, by the name the cache keys them under. One table,
     # so the endpoints and the start-up warm cannot disagree about what a
@@ -135,13 +152,18 @@ def create_app(db_path: str | Path = "data/refresh.db", *,
         "population": query.population_layer,
     }
 
-    def cached_layer(name: str, radius: float) -> Response:
-        key = (name, int(radius))
+    def cached_layer(name: str, radius: float,
+                     period: str = query.ALL_DAY) -> Response:
+        key = (name, int(radius), period)
         body = layer_cache.get(key)
         if body is None:
-            body = json.dumps(layer_builders[name](db(), radius),
-                              separators=(",", ":")).encode()
-            layer_cache[key] = body
+            with layer_build_lock:
+                body = layer_cache.get(key)
+                if body is None:
+                    kwargs = {} if period == query.ALL_DAY else {"period": period}
+                    body = json.dumps(layer_builders[name](db(), radius, **kwargs),
+                                      separators=(",", ":")).encode()
+                    layer_cache[key] = body
         return Response(content=body, media_type="application/json")
 
     def warm_layer_cache() -> None:
@@ -237,24 +259,33 @@ def create_app(db_path: str | Path = "data/refresh.db", *,
         radius: float = Query(query.PRIMARY_RADIUS,
                               description="walk radius in metres; must be one "
                                           "of the precomputed radii"),
+        period: str = Query(query.ALL_DAY, pattern=PERIOD_PATTERN,
+                            description=PERIOD_DESCRIPTION),
     ):
         """The citywide change layer: every location, bucketed, all three days.
 
         Radius is restricted to the built set rather than free like
         `/api/place`, because this table is precomputed -- see `build_webdb.py`
         for why ~5,900 locations cannot be measured per request.
+
+        `period` narrows every kerb to the buses in one of PRT's seven
+        windows. The format is unchanged and the response says which period
+        it is; the boardings column is null throughout, because the usage
+        extract has no hour in it (`query.change_layer`).
         """
         if int(radius) not in query.RADII:
             raise HTTPException(
                 400, f"radius must be one of {list(query.RADII)} — the change "
                      "layer is precomputed at those two")
-        return cached_layer("change", radius)
+        return cached_layer("change", radius, period)
 
     @app.get("/api/surface")
     def api_surface(
         radius: float = Query(query.PRIMARY_RADIUS,
                               description="walk radius in metres; must be one "
                                           "of the precomputed radii"),
+        period: str = Query(query.ALL_DAY, pattern=PERIOD_PATTERN,
+                            description=PERIOD_DESCRIPTION),
     ):
         """The magnitude surface: every covered 100 m cell, all three days.
 
@@ -262,12 +293,18 @@ def create_app(db_path: str | Path = "data/refresh.db", *,
         measured on a lattice rather than only where a stop stands today, so
         the plan reads as a field instead of a scatter. Precomputed for the
         same reason, and more so: this is ~48,500 cells per radius.
+
+        `period` reads one of PRT's seven windows off the same rows; the
+        cells and the format are unchanged. The People reading
+        (`/api/population`) has no period, deliberately: the published
+        equity figures are per day type, and a residents count nothing
+        publishes could not be checked against `/findings`.
         """
         if int(radius) not in query.RADII:
             raise HTTPException(
                 400, f"radius must be one of {list(query.RADII)} — the surface "
                      "is precomputed at those two")
-        return cached_layer("surface", radius)
+        return cached_layer("surface", radius, period)
 
     @app.get("/api/population")
     def api_population(

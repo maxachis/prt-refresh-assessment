@@ -28,6 +28,25 @@ describe('questionLine', () => {
       .toBe('Stop-by-stop + surface · a weekday · 400 m walk');
   });
 
+  // The window sits beside the day it narrows, on the views whose map is
+  // narrowed by it, and nowhere else: a one-seat or street map is the whole
+  // day whatever the toolbar's time control is left set to.
+  it('names the window after the day where the map is narrowed to one', () => {
+    expect(questionLine({ ...BASE, period: 'am_6_9a' }))
+      .toBe('Stop-by-stop · a weekday · 6–9am · 400 m walk');
+    expect(questionLine({ ...BASE, view: 'surface', period: 'late_8_11p' }))
+      .toBe('Surface · a weekday · 8–11pm · 400 m walk');
+    expect(questionLine({ ...BASE, view: 'both', period: 'all' }))
+      .toBe('Stop-by-stop + surface · a weekday · 400 m walk');
+  });
+
+  it('leaves the window off the views whose map it does not narrow', () => {
+    expect(questionLine({ ...BASE, view: 'corridors', period: 'am_6_9a' }))
+      .toBe('Streets · a weekday · 400 m walk');
+    expect(questionLine({ ...BASE, view: 'oneseat', period: 'am_6_9a' }))
+      .toBe('One-seat ride to Downtown · any day · 400 m walk');
+  });
+
   // The street view has no walk radius on the map, but the panel a click
   // opens is still the walk-access panel, so the radius stays on the line.
   it('keeps the radius on Streets, where the panel still uses it', () => {

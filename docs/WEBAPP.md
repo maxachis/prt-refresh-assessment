@@ -1007,6 +1007,60 @@ people live, not whether any of them ride, and a block's residents all sit at
 one point. And it is 2020 census population against a 2026 network, which is a
 different vintage from everything else on the site.
 
+## One time of day
+
+`?period=am_6_9a`. The dots and the surface can be asked about one of PRT's
+seven periods — 4–6am, 6–9am, 9am–3pm, 3–6pm, 6–8pm, 8–11pm, 11pm–4am, the
+windows the Frequency & Hours PDFs publish and `analyze_frequency_change.py`
+measures — instead of the whole day type. The toolbar's *time* control sets
+it; "All day" is the default and is the layer exactly as it was.
+
+It is the answer panel's period table drawn citywide, and nothing more. The
+database stores every departure's minute rather than a count (see "Why
+departure times are stored" above) precisely so a bucket can be chosen after
+the build, and the surface rows carry the seven per-period counts beside the
+day total because the build already had them in hand
+(`query.compute_surface`). A rush-hour map is therefore **the same map with
+fewer buses counted**: same points, same cells, same 25 m kerb, same walk
+radius, same ±10% buckets and colours, same wire format — `/api/change` and
+`/api/surface` return today's shape with a `period` field naming the window,
+and the client decodes a period layer with the code that decodes the whole
+day. `tests/test_period_layers.py` pins that the seven periods add up to the
+day at every kerb and in every cell, and that a period dot's two numbers are
+the numbers the panel's row for that period prints at the same kerb.
+
+The per-location period counts are published — `data/coverage_change.csv`
+carries `cur_am_6_9a` … `prop_owl_11p_4a` and `docs/answers/README.md` already
+quotes the late-evening cut — so unlike the one-seat day switch this is a
+published figure narrowed, not a side measurement. The kerb's periods are as
+unpublished as the kerb's day total is (convention 2), for the same reason.
+
+Two things cannot follow the control, and the key says so instead of
+pretending:
+
+- **Boardings have no hour.** The May 2025 usage extract is per stop per day
+  type (`B_W_202505`, `B_S_202505`, `B_U_202505`) and nothing else, so "the
+  riders at a kerb between 6 and 9am" is not a number anyone has. A period
+  layer ships `null` in every riders column, the Locations/Riders switch is
+  not drawn, and the counts are stops whatever the switch was set to — the
+  reader's choice is kept, not overwritten, and comes back with "All day".
+  An all-day figure left under a rush-hour map would have read as the riders
+  at risk in the morning, which is convention 15's asymmetry one axis over.
+- **The People reading is per day.** `/api/population` takes no period, and
+  the Ground/People switch is not drawn while one is active. The published
+  equity figures are per day type; a residents count for one window would
+  have nothing on `/findings` to be checked against, which is the trap
+  convention 12 exists for.
+
+One consequence to expect: under the overnight window most of the map has no
+bus on either side, `query.bucket` returns `none`, nothing is drawn, and the
+key's counts collapse. That is not a finding about the plan, and the head line
+names the window so a screenshot cannot suggest it is.
+
+Not on the travel-time, one-seat, street, places or route views, each for a
+recorded reason —
+[`docs/worklog/nothing-on-the-map-can-be-asked-about-one-time-of-day.md`](worklog/nothing-on-the-map-can-be-asked-about-one-time-of-day.md).
+
 ## The street layer
 
 The dots and the surface both measure from a walk radius. Neither can answer
@@ -1526,9 +1580,9 @@ Reasoning and evidence:
 | Endpoint | Returns |
 |---|---|
 | `GET /api/place?lat=&lon=&radius=` | Before and after at one point, all three day types, plus the one-seat verdicts for the named destinations. Optional `dest_lat`/`dest_lon` adds a dropped pin's verdict; `oneseat_day=` follows the map so a dot and its panel cannot answer different questions. The app's purpose; everything else is navigation. |
-| `GET /api/change?radius=` | The citywide layer: every location bucketed, all three day types, columnar, each with the boardings observed there — `null`, never 0, where the plan adds a bus and nothing stops today. Radius must be 400 or 150 — it is precomputed. ~510 KB, 149 KB gzipped. |
+| `GET /api/change?radius=&period=` | The citywide layer: every location bucketed, all three day types, columnar, each with the boardings observed there — `null`, never 0, where the plan adds a bus and nothing stops today. Radius must be 400 or 150 — it is precomputed. `period=` narrows every kerb to one of PRT's seven windows, same shape, riders `null` throughout; default `all`. ~510 KB, 149 KB gzipped. |
 | `GET /api/population?radius=` | Residents per 100 m cell, split into lose-all / gain / keep / neither, all three day types. Same lattice as the surface; citywide totals are `equity_change.csv`'s. Radius must be 400 or 150. |
-| `GET /api/surface?radius=` | The magnitude surface: every covered 100 m cell, all three day types, columnar as lattice indices. Radius must be 400 or 150. ~1.3 MB, 198 KB gzipped. |
+| `GET /api/surface?radius=&period=` | The magnitude surface: every covered 100 m cell, all three day types, columnar as lattice indices. Radius must be 400 or 150. `period=` reads one of PRT's seven windows off the same rows; default `all`. ~1.3 MB, 198 KB gzipped. |
 | `GET /api/corridors?day=` | Every street run kept, lost or added for one day type, with citywide kilometres by class. No radius — a corridor is pavement, not a catchment. ~290 KB weekday. |
 | `GET /api/oneseat?radius=&dest=` *or* `&dest_lat=&dest_lon=` | Every location's one-seat verdict for one destination, named or dropped. Not precomputed — only its expensive half is, which is what lets the destination be arbitrary. `day=` defaults to `any`, the published day-free answer; a day type restricts both ends and is a different measurement. |
 | `GET /api/journey?lat=&lon=&dest_lat=&dest_lon=&day=` | How long the trip takes door to door, both networks, over every ready-minute of the weekday 07:00–09:00 peak. Answered at both transfer radii, with `sign_flips` where they disagree about which network is faster. Nothing precomputed and no radius control — seconds, not milliseconds. |
@@ -1555,8 +1609,14 @@ paid again — a large part of why Max found the map laggy.
 They are now held **as the bytes they are sent as**, keyed by radius, on both
 sides of the wire:
 
-- **The server** keeps at most six entries (three layers × two radii, about
-  4 MB) in `create_app`'s own `cached_layer`. Bytes rather than the dict,
+- **The server** keeps the six whole-day entries (three layers × two radii,
+  about 4 MB), warmed at start-up, in `create_app`'s own `cached_layer`, and
+  up to 28 more for the seven periods of the two layers that take one —
+  built on first request under a lock, since most readers never touch the
+  time control and warming all 28 would add about 13 s to every start-up
+  (0.65 s per change period, 0.25 s per surface period, measured 2026-09-17)
+  to save a press that takes under a second.
+  Bytes rather than the dict,
   because caching the dict would still leave FastAPI's encoder walking 6,765
   rows of 17 on every hit. Measured cold → warm: change at 400 m 216 ms →
   2.4 ms, surface at 400 m 397 ms → 3.4 ms.
