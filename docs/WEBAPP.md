@@ -23,9 +23,10 @@ default. The proposed feed's provenance, which is what had blocked a public
 deploy, is recorded in `DATA_SOURCES.md`: PRT sent the feed to PPT on request
 and PPT passed it on.
 
-Reachable is not announced. Nobody has been pointed at that URL, and item 1 of
-[Before it goes public](#before-it-goes-public) — asking PPT whether serving the
-timetable itself is expected — is still open. See [`deploy/README.md`](../deploy/README.md)
+It is public, and built in partnership with PPT — so the permission question
+that used to gate an announcement is settled; see
+[Public, in partnership with PPT](#public-in-partnership-with-ppt) for what
+that closed and what it did not. See [`deploy/README.md`](../deploy/README.md)
 for the box.
 
 ## Why this became possible on 2026-08-11
@@ -1823,31 +1824,30 @@ line in the access log — everything else here is read off traffic, this is
 someone typing something. It goes to Google and to the form's owner, never to
 the box: nothing about it touches the server.
 
-## Before it goes public
+## Public, in partnership with PPT
 
-1. **Confirm that republishing the feed's contents is expected.** Provenance is
-   settled — PRT sent the feed to PPT on request and PPT passed it on
-   (`DATA_SOURCES.md`) — so the numbers are citable. What is a different act is
-   *serving the timetable itself*: this app exposes every departure at every
-   stop of a feed PRT publishes at no URL, and sending a file to a requester is
-   not the same as publishing it. One question to PPT settles it. Permission,
-   not a technical matter.
-2. **Decide on address search.** A stop, a route or a named place can be
-   found by name since 2026-09-12; an address cannot. The source is chosen
-   (the county's own address points on WPRDC) and the geocoder will be
-   self-hosted, never a third party; what is owed is the licence question
-   and one sentence in the permission email —
-   [`docs/worklog/address-search-needs-a-geocoder-and-the-log-must-not-see-the-query.md`](worklog/address-search-needs-a-geocoder-and-the-log-must-not-see-the-query.md).
-3. **Say what is collected, when asking PPT.** Since 2026-09-11 the front door
-   keeps a 30-day access log with the reader's address masked to a /24, and
-   `report_usage.py` reads it for which views, places and destinations get
-   asked about — no cookie, no tag, no third party. The `/findings` footer says
-   so; the permission question above should mention it too, so PPT is not
-   surprised by it later. See `deploy/README.md`, "Reading the usage". The
-   same question should also cover the report-a-problem form, once it exists
-   (see "Reporting a problem" above) — what a reader submits there goes to
-   Google and to the form's owner, not to this server, and PPT should hear
-   that from the permission question rather than discover it later.
+The site is public and the work is done in partnership with PPT — Max,
+2026-09-17 — which closes the permission question this section used to hold
+open: whether *serving the timetable itself* (every departure at every stop of
+a feed PRT publishes at no URL, sent to PPT on request and passed on per
+`DATA_SOURCES.md`) was expected. It was. What the section still owes is the
+record of what the site collects, so the partnership never learns it by
+surprise:
+
+- Since 2026-09-11 the front door keeps a 30-day access log with the reader's
+  address masked to a /24, and `report_usage.py` reads it for which views,
+  places and destinations get asked about — no cookie, no tag, no third
+  party. The `/findings` footer says so; `deploy/README.md`, "Reading the
+  usage", has the detail.
+- A search resolves to a coordinate, and coordinates are logged the way a
+  click's are; the text a reader types is not, because `/api/search` is a
+  POST with the query in the body (see "Search" above).
+- What a reader submits through the report-a-problem form goes to Google and
+  to the form's owner, not to this server ("Reporting a problem" above).
+
+One thing is still open, and it is with the county rather than PPT: the
+address points behind a future address search carry no stated licence —
+[`docs/worklog/address-search-needs-a-geocoder-and-the-log-must-not-see-the-query.md`](worklog/address-search-needs-a-geocoder-and-the-log-must-not-see-the-query.md).
 
 ## Known gaps
 

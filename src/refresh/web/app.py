@@ -9,10 +9,10 @@ ON BINDING THIS PUBLICLY. `refresh serve` binds 127.0.0.1 by default. The
 proposed-network GTFS this app serves is published at no URL: PRT sent it to
 Pittsburghers for Public Transit on request and PPT passed it on
 (DATA_SOURCES.md), which settles provenance and makes the numbers citable.
-Serving it on a public address is still a further step -- it puts PRT's
-unpublished timetable on the web at the finest possible grain, every departure
-at every stop -- so confirm that is expected before changing the bind address.
-See docs/WEBAPP.md, "Before it goes public".
+Serving it on a public address puts PRT's unpublished timetable on the web at
+the finest possible grain, every departure at every stop; the deployed site
+does so in partnership with PPT, and what it collects from a reader is
+recorded in docs/WEBAPP.md, "Public, in partnership with PPT".
 """
 from __future__ import annotations
 

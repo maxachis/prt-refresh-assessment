@@ -17,10 +17,10 @@ itself gaining and losing buses, as who keeps a one-seat ride to Downtown,
 Oakland or a point you pick, as how many minutes a trip to one of those
 takes on each network, or as what happens to each route by name. See [`docs/WEBAPP.md`](docs/WEBAPP.md). The pipeline remains the primary artifact and
 stays standard-library only; the app is an optional extra that only reads what
-the pipeline builds. It is deployed at
-<https://prt-refresh.lemaliconsulting.com> (`deploy/README.md`), though nobody
-has been pointed at that URL yet — one permission question to PPT is open before
-it is announced.
+the pipeline builds. It is public at
+<https://prt-refresh.lemaliconsulting.com> (`deploy/README.md`), built in
+partnership with PPT; what it collects from a reader is recorded in
+`docs/WEBAPP.md`, "Public, in partnership with PPT".
 
 `docs/BASE_CAMP.md` is human-authored and is **ground truth for intent**; every
 other document is secondary to it. Work is organised around its question IDs

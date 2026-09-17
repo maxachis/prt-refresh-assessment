@@ -3,10 +3,11 @@
 **Observed:** the search box finds stops, routes and named places from
 `refresh.db`, but a reader who types their street address gets "Nothing
 found" — the repo has no address data and no way to turn text into a point.
-**Where it stands:** open, decision owed. Max chose the order on 2026-09-12
-(stops and places first, then routes, then addresses, self-hosted) and the
-first two are built; this entry holds the source, the licence question and the
-logging rule the third slice needs settled before it is written.
+**Where it stands:** open, one decision owed — the licence. Max chose the
+order on 2026-09-12 (stops and places first, then routes, then addresses,
+self-hosted) and the first two are built; the question of what to tell PPT
+about search closed on 2026-09-17 (the site is public, in partnership with
+PPT), so what this entry still holds is the source and its unstated licence.
 
 > The ordering and "self-hosted rather than a third-party geocoder" are Max's
 > decisions, 2026-09-12. The source below is agent-derived and re-checkable.
@@ -16,10 +17,10 @@ logging rule the third slice needs settled before it is written.
 Nominatim, Photon, Mapbox or Google would each turn a typed address into a
 point in an afternoon, and each sends the reader's home address to a third
 party. The `/findings` footer already says the site sets no cookie, runs no
-tag and talks to no third party, and the permission question to PPT
-(`docs/WEBAPP.md`, "Before it goes public") is about to repeat it. Nominatim's
-usage policy also forbids autocomplete and caps at one request a second,
-which is the wrong shape for a type-ahead box. Rejected by Max on those
+tag and talks to no third party, and `docs/WEBAPP.md` ("Public, in
+partnership with PPT") records that as the posture the partnership rests on.
+Nominatim's usage policy also forbids autocomplete and caps at one request a
+second, which is the wrong shape for a type-ahead box. Rejected by Max on those
 grounds; not a technical judgement.
 
 ## The source
@@ -84,16 +85,21 @@ addresses into every search box, whether or not it can answer them.
 
 What the log does still record is the point the pick resolves to, because
 the pick becomes `/api/place?lat=…&lon=…`, exactly as a click does today.
-That is the posture the site already has for a click and the permission
-question to PPT should say so in one sentence: a search resolves to a
-coordinate, and coordinates are logged; the typed text is not.
+That is the posture the site already has for a click, and it is now
+recorded beside the rest of what the site collects in `docs/WEBAPP.md`,
+"Public, in partnership with PPT": a search resolves to a coordinate, and
+coordinates are logged; the typed text is not.
 
 ## Decisions owed
 
 1. Is "licence not specified" on the county address points acceptable to
-   ship on, or does PPT (or the county) need to be asked? Recommendation:
-   open PASDA's full metadata record; if it is silent too, ask the county's
-   GIS office by email in the same week the PPT permission question goes out.
-2. Should the permission email say that a search resolves to a logged
-   coordinate? Recommendation: yes, one sentence, beside the existing note
-   about the access log.
+   ship on, or does the county need to be asked? Recommendation: open
+   PASDA's full metadata record; if it is silent too, ask the county's GIS
+   office by email.
+
+## Resolved
+
+- Whether to tell PPT that a search resolves to a logged coordinate: moot as
+  an email, since the site is already public and built in partnership with
+  PPT (Max, 2026-09-17). The fact itself is recorded in `docs/WEBAPP.md`
+  instead, where the rest of what the site collects is.
