@@ -738,6 +738,17 @@
     #methods button { margin-top:14px; background:#0c0e12; color:var(--ink);
       border:1px solid var(--line); border-radius:8px; padding:6px 14px;
       font:inherit; cursor:pointer; }
+    /* First-visit notice: stop locations are a draft. Styled as the methods
+       drawer's card, because it is the same kind of thing -- a caveat the
+       reader has to meet before the map -- shown once (frontend/notice.ts). */
+    #notice { background:var(--panel); color:var(--ink); border:1px solid var(--line);
+      border-radius:12px; max-width:460px; padding:22px 24px; }
+    #notice::backdrop { background:rgba(8,10,14,.72); }
+    #notice h2 { margin:0 0 12px; font-size:16px; }
+    #notice p { margin:0; font-size:14px; line-height:1.45; }
+    #notice button { margin-top:16px; background:#0c0e12; color:var(--ink);
+      border:1px solid var(--line); border-radius:8px; padding:6px 14px;
+      font:inherit; cursor:pointer; }
     .maplibregl-popup-content { background:#171a21; color:var(--ink); font-size:12px;
       border:1px solid var(--line); }
     .maplibregl-popup-tip { border-top-color:#171a21 !important;
@@ -948,6 +959,7 @@
       #app.embed #legend-box { bottom:88px; margin-bottom:0; }
 
       #methods .card { max-height:88dvh; border-radius:14px; margin:12px; }
+      #notice { border-radius:14px; margin:auto 12px; }
     }
 
     /* Finger-sized hit areas, on any touch screen at any width -- a tablet in
@@ -959,6 +971,7 @@
       #legend .lg-row { min-height:40px; }
       #legend-collapse, #side-toggle, #methods-close {
         min-width:34px; min-height:34px; }
+      #notice button { min-height:44px; }
       /* The two small map buttons keep their drawn size and grow their hit
          area outward, because a 44 px square drawn in the corner of a 250 px
          key is a button that has eaten the thing it belongs to. */
@@ -1276,6 +1289,16 @@
       <button id="methods-close">Close</button>
     </div>
   </div>
+
+  <!-- Shown once per browser, never in an embed; see frontend/notice.ts.
+       The wording is the whole statement: it is not repeated in the methods
+       drawer or the masthead, by decision. -->
+  <dialog id="notice" aria-labelledby="notice-title">
+    <h2 id="notice-title">Stop locations are a draft</h2>
+    <p>The routes on this map are PRT's Proposed Final Network. Bus stop
+      locations along each route are a draft and subject to change.</p>
+    <form method="dialog"><button id="notice-close" autofocus>Got it</button></form>
+  </dialog>
 
   <script src="/vendor/maplibre-gl.js"></script>
   <script src="/app.js"></script>

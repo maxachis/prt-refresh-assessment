@@ -74,6 +74,7 @@ import { initSheet, onLayoutFlip, Sheet } from './sheet';
 import { basemapStyle, canvasScale, fadeMs, readMachine } from './hardware';
 import { initHover } from './hover';
 import { initDropdowns } from './dropdown';
+import { dismissNotice, safeLocalStorage, shouldShowNotice } from './notice';
 import {
   PlaceResult, Day, OneSeatDay, JourneyResult, NamedDestination, Weight,
   SurfaceUnit,
@@ -128,6 +129,20 @@ const opening = parseUrlState(location.search);
  */
 const embedded = isEmbedded(location.search);
 if (embedded) $('app').classList.add('embed');
+
+/**
+ * The first-visit notice that stop locations are a draft, over whatever view
+ * the link asked for -- it must never reset that view. Closing it by any
+ * route (the button, Escape, the backdrop) counts as reading it.
+ */
+{
+  const storage = safeLocalStorage();
+  const notice = $('notice') as HTMLDialogElement;
+  if (shouldShowNotice({ embedded, storage })) {
+    notice.addEventListener('close', () => dismissNotice(storage));
+    notice.showModal();
+  }
+}
 
 /**
  * Stands in for the sheet where there is no panel to move.

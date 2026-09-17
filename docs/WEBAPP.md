@@ -1844,10 +1844,45 @@ surprise:
   POST with the query in the body (see "Search" above).
 - What a reader submits through the report-a-problem form goes to Google and
   to the form's owner, not to this server ("Reporting a problem" above).
+- Since 2026-09-17 the browser keeps one flag in `localStorage`, that the
+  first-visit notice below has been dismissed. It never leaves the browser
+  and nothing reads it but the notice.
 
 One thing is still open, and it is with the county rather than PPT: the
 address points behind a future address search carry no stated licence —
 [`docs/worklog/address-search-needs-a-geocoder-and-the-log-must-not-see-the-query.md`](worklog/address-search-needs-a-geocoder-and-the-log-must-not-see-the-query.md).
+
+## The first-visit notice: stop locations are a draft
+
+PRT asked, through PPT, that readers be told on arrival that the stops along
+the Proposed Final Network's routes are not final — Max, 2026-09-17, at the
+level of detail PPT relayed: it is *stop locations* that are draft, not the
+routes. So the app opens with one card over whatever view the link asked for:
+
+> **Stop locations are a draft**
+> The routes on this map are PRT's Proposed Final Network. Bus stop locations
+> along each route are a draft and subject to change.
+
+Three decisions, all Max's. The wording is the whole statement — it is not
+repeated as a caveat in the methods drawer or as a line in the masthead. It
+shows **once per browser** (`frontend/notice.ts`, a `localStorage` flag), because
+a card that comes back on every load is one readers click through without
+reading. And it never shows in an embed, where there is no room for it over a
+300 px map; the embed's corner link carries the reader to the full site, where
+the notice meets them, and skipping it there does not mark it read.
+
+It is a native `<dialog>`, so closing it by any route — the button, Escape, the
+backdrop — counts as reading it, and it never resets the view underneath. Where
+storage is unavailable (a private window, blocked site data) it shows and the
+dismissal is silently not saved. Renaming `NOTICE_DISMISSED_KEY` re-shows it to
+everyone.
+
+What it does not say, and why: which views the draft status bites hardest.
+Stop-by-stop and the one-seat view read a stop at its own kerb (convention 2),
+so a stop drawn as retired there may end up moved rather than removed, where a
+figure inside a walk radius barely notices a pole shifting a block. That
+sentence was drafted and cut — the notice carries PRT's statement and nothing
+of ours — but anyone quoting a per-stop figure off the map should know it.
 
 ## Known gaps
 
